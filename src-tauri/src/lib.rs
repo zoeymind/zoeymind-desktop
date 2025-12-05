@@ -1,4 +1,4 @@
-use tauri::{Manager, TitleBarStyle};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -9,7 +9,7 @@ pub fn run() {
         #[cfg(target_os = "macos")]
         {
           // macOS: 使用 Overlay 样式，保留原生按钮
-          let _ = window.set_title_bar_style(TitleBarStyle::Overlay);
+          let _ = window.set_title_bar_style(tauri::TitleBarStyle::Overlay);
         }
         
         #[cfg(target_os = "windows")]
