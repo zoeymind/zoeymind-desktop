@@ -10,7 +10,7 @@
  * 弹框会一次展示所有异常 recovery，用户可逐项处理，处理完自动关闭。
  */
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { router } from '@/routes'
 import { toast, createUUID } from '@/shared/app-shared'
 import {
   listRecoveries,
@@ -28,7 +28,6 @@ import { save as saveDialog } from '@tauri-apps/plugin-dialog'
 import { join } from '@tauri-apps/api/path'
 
 export function RecoveryDialog() {
-  const navigate = useNavigate()
   const [items, setItems] = useState<RecoveryDescriptor[] | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -91,7 +90,7 @@ export function RecoveryDialog() {
       await clearRecovery(desc.projectId)
       toast.success('已恢复')
       closeIfEmpty((items ?? []).filter(i => i.projectId !== desc.projectId))
-      navigate(`/editor/${id}`)
+      await router.navigate(`/editor/${id}`)
     } catch (error) {
       toast.error(`恢复失败: ${(error as Error).message}`)
     } finally {
