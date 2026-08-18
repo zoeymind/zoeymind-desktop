@@ -1,15 +1,12 @@
 /**
- * 未保存离开守卫 —— 拦下所有边界事件, 弹一个"保存 / 丢弃 / 取消"对话框.
+ * 未保存离开守卫 —— tabbed workflow 下只做 Tauri 关窗 + beforeunload 拦截.
  *
- * 拦截来源:
- *   - react-router 路由跳转 (useBlocker)      — 返回列表 / 打开另一项
- *   - window beforeunload                     — 浏览器刷新 / 关标签
- *   - tauri onCloseRequested                  — Cmd+W / 红灯关闭
- *
- * 触发条件: useMindMapStore.isDirty === true 或者当前 id 是 pending 未保存.
+ * 路由拦截 (useBlocker) 在 tabs 时代不再适用: 切 tab 不改路由的 back/forward
+ * 语义, 关 tab 走 TabBar 里独立的 CloseConfirmDialog. 这里只保留窗口级别的:
+ *   - tauri onCloseRequested (Cmd+Q / 红灯 / 更新触发的关窗)
+ *   - browser beforeunload (Ctrl+R / 关标签)
  */
 import { useEffect, useState } from 'react'
-import { useBlocker } from 'react-router-dom'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button } from '@zoeymind/ui'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
@@ -23,19 +20,13 @@ interface Props {
   saveFlow: SaveFlow
 }
 
-export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element {
+export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element | null {
   const isDirty = useMindMapStore(s => s.isDirty)
   const isPending = !!projectId && pendingProjects.isPending(projectId)
   const shouldGuard = isDirty || isPending
-  const [tauriPromptOpen, setTauriPromptOpen] = useState(false)
+  const [promptOpen, setPromptOpen] = useState(false)
 
-  // 路由拦截
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
-    if (!shouldGuard) return false
-    return currentLocation.pathname !== nextLocation.pathname
-  })
-
-  // Tauri 关窗拦截
+  // Tauri 关窗
   useEffect(() => {
     if (!shouldGuard) return
     const win = getCurrentWindow()
@@ -49,7 +40,7 @@ export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element 
           return
         }
         event.preventDefault()
-        setTauriPromptOpen(true)
+        setPromptOpen(true)
       })
       .then(fn => {
         unlisten = fn
@@ -59,7 +50,7 @@ export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element 
     }
   }, [shouldGuard, projectId])
 
-  // beforeunload (Ctrl+R / 关标签)
+  // beforeunload
   useEffect(() => {
     if (!shouldGuard) return
     const handler = (e: BeforeUnloadEvent) => {
@@ -70,55 +61,44 @@ export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element 
     return () => window.removeEventListener('beforeunload', handler)
   }, [shouldGuard])
 
-  const open = blocker.state === 'blocked' || tauriPromptOpen
-
-  const closeAll = () => {
-    if (blocker.state === 'blocked') blocker.reset?.()
-    setTauriPromptOpen(false)
-  }
-
-  const proceed = () => {
-    if (tauriPromptOpen) {
-      setTauriPromptOpen(false)
-      void getCurrentWindow().close()
-      return
-    }
-    if (blocker.state === 'blocked') blocker.proceed?.()
+  const proceedClose = () => {
+    setPromptOpen(false)
+    void getCurrentWindow().close()
   }
 
   const handleSave = async () => {
     try {
       await saveFlow.save()
-      proceed()
+      proceedClose()
     } catch {
-      /* 让用户重试 */
+      /* 保留窗口 */
     }
   }
 
-  const handleDiscard = async () => {
+  const handleDiscard = () => {
     if (projectId && pendingProjects.isPending(projectId)) {
       pendingProjects.clear(projectId)
-    } else if (projectId) {
-      await saveFlow.discardAndClose()
     }
     useMindMapStore.getState().setDirty(false)
-    proceed()
+    proceedClose()
   }
 
+  if (!promptOpen) return null
+
   return (
-    <Dialog open={open} onOpenChange={next => (!next ? closeAll() : undefined)}>
+    <Dialog open onOpenChange={next => (!next ? setPromptOpen(false) : undefined)}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>还有未保存的改动</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          离开会丢掉未保存的改动. 需要先保存吗?
+          关闭窗口会丢掉未保存的改动. 需要先保存吗?
         </p>
         <DialogFooter className="flex flex-row justify-end gap-2">
-          <Button variant="ghost" onClick={closeAll}>
+          <Button variant="ghost" onClick={() => setPromptOpen(false)}>
             取消
           </Button>
-          <Button variant="outline" onClick={() => void handleDiscard()}>
+          <Button variant="outline" onClick={handleDiscard}>
             不保存
           </Button>
           <Button onClick={() => void handleSave()}>保存</Button>

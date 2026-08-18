@@ -9,7 +9,8 @@
  * `isActive` prop 触发 setMindMap; 其它 tab 的 canvas 保留 DOM 但不占用全局
  * store 的 mindMap 引用.
  */
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { PanelLeft } from 'lucide-react'
 import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
 import { ProjectListPage } from '@/products/mind/features/mindmap/pages/ProjectsPage'
@@ -26,6 +27,22 @@ const LOCAL_ORG_ID = 'local'
 export function WorkspaceShell() {
   const tabs = useTabs(s => s.tabs)
   const activeId = useTabs(s => s.activeId)
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // URL <- activeId (deep-link 分享 / refresh 恢复)
+  useEffect(() => {
+    const target =
+      activeId === 'home'
+        ? '/'
+        : tabs.find(t => t.id === activeId)?.kind === 'draft'
+          ? '/editor/new'
+          : `/editor/${activeId}`
+    if (location.pathname !== target) {
+      navigate(target, { replace: true })
+    }
+  }, [activeId, tabs, location.pathname, navigate])
+
   return (
     <div className="relative h-full w-full">
       <HomePane visible={activeId === 'home'} />
