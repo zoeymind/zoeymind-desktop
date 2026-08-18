@@ -3,8 +3,6 @@
  */
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { logger } from '@zoeymind/logger'
-import { i18next } from '@zoeymind/i18n'
-import { useLoading } from '@/shared/app-shared'
 import { listProjects, useProjectsEvents, type ProjectRow } from '@/shared/native'
 
 export type SortType = 'recent' | 'created' | 'name' | 'starred'
@@ -43,32 +41,30 @@ export function useProjects() {
   const [loading, setLoading] = useState(true)
   const [searchText, setSearchText] = useState('')
   const [sortType, setSortType] = useState<SortType>('recent')
-  const { showLoading, hideLoading } = useLoading()
   const bumpCount = useProjectsEvents(s => s.bumpCount)
 
+  // 只维护本地 loading, 不动全局 Loading 遮罩:
+  // Home 面板是 keep-alive 挂载, 每次 bumpProjects() (保存/删除等) 都会 refetch,
+  // 触发全局 Loading 会盖在编辑器 tab 上闪一下 (VS Code 后台列表刷新也是静默的).
   useEffect(() => {
     const controller = { isMounted: true }
     const run = async () => {
       if (!controller.isMounted) return
       setLoading(true)
       try {
-        showLoading(i18next.t('projects.actions.loadingProjects'))
         const rows = await listProjects()
         if (controller.isMounted) setProjects(rows.map(toWithStats))
       } catch (error) {
         logger.error('加载项目失败:', error)
       } finally {
-        if (controller.isMounted) {
-          setLoading(false)
-          hideLoading()
-        }
+        if (controller.isMounted) setLoading(false)
       }
     }
     run()
     return () => {
       controller.isMounted = false
     }
-  }, [showLoading, hideLoading, bumpCount])
+  }, [bumpCount])
 
   const refreshProjects = useCallback(async () => {
     try {
