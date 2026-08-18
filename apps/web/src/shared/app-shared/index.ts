@@ -39,12 +39,10 @@ export function formatDuration(ms: number): string {
   return h > 0 ? `${h}h${m}m${rest}s` : m > 0 ? `${m}m${rest}s` : `${rest}s`
 }
 
-// ── 2. 主题预设 ──────────────────────────────────
-export {
-  ThemePresetProvider,
-  useThemePreset,
-  ThemeMenu
-} from './theme-preset'
+// ── 2. 主题预设 + 语言切换 ──────────────────────────
+export { ThemePresetProvider, useThemePreset } from './ThemePresetProvider'
+export { ThemeMenu } from './ThemeMenu'
+export { LanguageSwitcher } from './LanguageSwitcher'
 
 // ── 3. Loading Provider ──────────────────────────
 export { LoadingProvider, useLoading } from './loading'

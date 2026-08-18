@@ -30,6 +30,7 @@ import {
 import { cn, Button } from '@zoeymind/ui'
 import { useState } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
+import { LanguageSwitcher, ThemeMenu } from '@/shared/app-shared'
 import {
   AppBrandBar,
   CreateProjectDialog,
@@ -122,8 +123,20 @@ export function ProjectsSidebar({
             </Button>
           </div>
 
-          {/* 搜索按钮 (⌘K 触发) */}
+          {/* 新建按钮 */}
           <div className="px-3 pt-3 pb-2">
+            <NewProjectMenu
+              onCreated={onCreated}
+              workspaceId={
+                activeView === 'mine' || activeView === 'shared'
+                  ? undefined
+                  : (activeWorkspaceId ?? undefined)
+              }
+            />
+          </div>
+
+          {/* 搜索按钮 (⌘K 触发) */}
+          <div className="px-3 pb-2">
             <Button
               variant="outline"
               className="h-9 w-full justify-start gap-2 text-sm text-muted-foreground font-normal"
@@ -206,18 +219,10 @@ export function ProjectsSidebar({
             />
 
           </nav>
-
-          {/* 新建按钮 */}
-          <div className="px-3 pb-2">
-            <NewProjectMenu
-              onCreated={onCreated}
-              workspaceId={
-                // view=mine / shared: 建"我的图" (null-project); 其他情况按当前 workspace
-                activeView === 'mine' || activeView === 'shared'
-                  ? undefined
-                  : (activeWorkspaceId ?? undefined)
-              }
-            />
+          {/* 底部: 语言切换 + 主题切换 */}
+          <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
+            <LanguageSwitcher variant="text" />
+            <ThemeMenu />
           </div>
 
         </div>
