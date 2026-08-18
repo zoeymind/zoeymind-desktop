@@ -22,8 +22,6 @@ export {
   type Priority
 } from './ai-chat/tools/mindmap/priority-label'
 
-// === Joyride 引导配置（纯 UI，无网络） ===
-export { joyrideStyles, joyrideLocale } from './components/guides/joyrideConfig'
 
 // === 桌面端 dormant stub ===
 // 老组件（ProjectCard / ProjectListItem / SnapshotPanel / mindMapExporter / useStorageManager）

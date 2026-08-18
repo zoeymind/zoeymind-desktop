@@ -44,10 +44,6 @@ import { MindMapScrollbar } from './MindMapScrollbar.tsx'
 import { PreviewIndicator } from './PreviewIndicator.tsx'
 import { CollaborationCursorLayer } from './CollaborationCursorLayer'
 import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
-import Joyride, { type CallBackProps } from 'react-joyride'
-import { useAIGuide } from './guides/useAIGuide'
-import { joyrideStyles } from './guides/joyrideConfig'
-import { AIWelcomeDialog } from './guides/AIWelcomeDialog'
 
 // 初始化插件
 initPlugins()
@@ -93,36 +89,6 @@ export function MindMapCanvas() {
   // 权限管理 - 从store获取权限状态
   const { hasPermission, canEdit } = usePermissionStore()
 
-  // AI Guide 相关逻辑
-  const {
-    showWelcome,
-    setShowWelcome,
-    joyrideRun,
-    joyrideKey,
-    handleStartJoyride,
-    handleJoyrideCallback: handleGuideCallback
-  } = useAIGuide(mindMap, canEdit)
-
-  // 引导步骤定义
-  const joyrideSteps = useMemo(() => createAiGuideSteps(t), [t])
-  const joyrideLocale = useMemo(
-    () => ({
-      back: t('common.prev'),
-      close: t('common.close'),
-      last: t('common.confirm'),
-      next: t('common.next'),
-      skip: t('mindmap.guides.joyrideSkip')
-    }),
-    [t]
-  )
-
-  const handleJoyrideCallback = useCallback(
-    (data: CallBackProps) => {
-      const { status } = data
-      handleGuideCallback(status)
-    },
-    [handleGuideCallback]
-  )
 
   const handleLoadError = useCallback(
     (error: unknown) => {
@@ -523,28 +489,6 @@ export function MindMapCanvas() {
             <CollaborationCursorLayer containerRef={containerRef} collaboration={collaboration} />
             <StatusBar />
 
-            {/* 用户引导 */}
-            {canEdit && (
-              <>
-                <Joyride
-                  key={joyrideKey}
-                  steps={joyrideSteps}
-                  run={joyrideRun}
-                  continuous
-                  showProgress
-                  showSkipButton
-                  styles={joyrideStyles}
-                  locale={joyrideLocale}
-                  callback={handleJoyrideCallback}
-                />
-
-                <AIWelcomeDialog
-                  open={showWelcome}
-                  onOpenChange={setShowWelcome}
-                  onStartGuide={handleStartJoyride}
-                />
-              </>
-            )}
           </div>
         </div>
       </AIChatProvider>
