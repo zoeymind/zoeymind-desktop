@@ -19,6 +19,7 @@ import { router } from '@/routes'
 import { appLocales } from '@/locales'
 import { LoadingProvider } from '@/shared/app-shared/loading'
 import { ThemePresetProvider } from '@/shared/app-shared/theme-preset'
+import { RecoveryDialog } from '@/pages/RecoveryDialog'
 
 const queryClient = new QueryClient({
   defaultOptions: {
