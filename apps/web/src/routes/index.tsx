@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useCallback, useState } from 'react'
+import { PanelLeft } from 'lucide-react'
 import { MainLayout } from '@/components/layouts/main-layout'
 import { ProjectListPage } from '@/products/mind/features/mindmap/pages/ProjectsPage'
 import {
@@ -28,7 +29,7 @@ function ProjectListShell() {
   }, [])
 
   return (
-    <div className="flex h-screen w-full bg-background">
+    <div className="relative flex h-full w-full bg-background">
       <ProjectsSidebar
         activeView={activeView}
         activeFolderId={activeFolderId}
@@ -43,7 +44,17 @@ function ProjectListShell() {
         organizationId={LOCAL_ORG_ID}
         canCreateWorkspace={false}
       />
-      <div className="flex-1 min-w-0">
+      {/* 侧栏收起时的展开按钮 —— 悬浮在主区左上角 */}
+      {collapsed && (
+        <button
+          onClick={() => setCollapsed(false)}
+          className="absolute left-2 top-2 z-20 inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground shadow-sm hover:bg-muted"
+          aria-label="展开侧栏"
+        >
+          <PanelLeft className="size-4" />
+        </button>
+      )}
+      <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
         <ProjectListPage
           view={activeView}
           folderId={activeFolderId}

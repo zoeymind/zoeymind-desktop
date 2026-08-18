@@ -241,11 +241,6 @@ export function ProjectsSidebar({
             />
           </div>
 
-          {/* 底部: 应用切换 + 账户菜单 */}
-          <div className="mt-auto space-y-2 border-t p-3">
-            <AppLauncher side="top" />
-            <SidebarAccountMenu />
-          </div>
         </div>
       </aside>
 
