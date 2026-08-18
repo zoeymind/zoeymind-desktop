@@ -1,20 +1,21 @@
 /**
- * useCreateProject —— 桌面端本地版：
- *   - 新建 = 内存 pendingProjects.stash + 跳编辑器 (id `unsaved-*`)
- *   - 只有用户 Ctrl+S 时才走 saveDialog + writeBundle + registerProject
- *   - 未保存返回列表 → 不留任何记录
+ * useCreateProject —— 桌面端本地版:
+ *   - 新建/导入 = pendingProjects.stash + useTabs.openTab (draft)
+ *   - 保存由 saveFlow.save() 走 native saveDialog
+ *   - 关闭 draft tab 无保存 -> 不留记录
  */
 import { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { logger } from '@zoeymind/logger'
 import { toast } from '@/shared/app-shared'
 import { i18next } from '@zoeymind/i18n'
 import type { MindMapNodeTree } from 'simple-mind-map'
+import { defaultMindmapData } from '@zoeymind/shared'
 
 import { parseXMindFile } from '@/products/mind/features/mindmap/utils/xmindParser'
 import { parseZMXmindFile } from '@/products/mind/features/mindmap/utils/ZMXMindImporter'
 import { parseMarkdownFile } from '@/products/mind/features/mindmap/utils/markdownParser'
 import { pendingProjects } from '@/shared/native'
+import { useTabs } from '@/shared/tabs/store'
 
 export type ImportFormat = 'xmind-standard' | 'xmind-zm' | 'markdown'
 
@@ -31,37 +32,31 @@ interface UseCreateProjectReturn {
 
 function deriveTitleFromFilename(filename: string): string {
   const base = filename.replace(/\.[^./\\]+$/, '')
-  return base.trim() || i18next.t('mindmap.editor.newProjectTitle') || '未命名'
+  return base.trim() || i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
 }
 
+function stashAndOpenTab(title: string, tree: MindMapNodeTree, onCreated?: (id: string) => void) {
+  const id = pendingProjects.stash({ title, tree })
+  useTabs.getState().openTab({ id, kind: 'draft', title })
+  onCreated?.(id)
+}
 
 export function useCreateProject(opts: UseCreateProjectOptions = {}): UseCreateProjectReturn {
   const [creating, setCreating] = useState(false)
-  const navigate = useNavigate()
 
-  const stashAndOpen = useCallback(
-    (title: string, tree: MindMapNodeTree) => {
-      const id = pendingProjects.stash({ title, tree })
-      opts.onCreated?.(id)
-      navigate(`/editor/${id}`)
-    },
-    [navigate, opts]
-  )
-
-  // 新建空白 -> /editor/new (VS Code 风格 draft 路由). draft 内 stash 由 EditorShellForDraft 挂载时创建.
   const createBlank = useCallback(async () => {
     if (creating) return
     setCreating(true)
     try {
-      opts.onCreated?.('new')
-      navigate('/editor/new')
+      const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
+      stashAndOpenTab(title, defaultMindmapData, opts.onCreated)
     } catch (error) {
-      logger.error('新建跳转失败', error)
+      logger.error('新建 draft tab 失败', error)
       toast.error(i18next.t('mindmap.editor.createFailed'))
     } finally {
       setCreating(false)
     }
-  }, [creating, navigate, opts])
+  }, [creating, opts.onCreated])
 
   const createFromImport = useCallback(
     async (file: File, xmindFormat: 'standard' | 'zm' = 'standard') => {
@@ -78,7 +73,7 @@ export function useCreateProject(opts: UseCreateProjectOptions = {}): UseCreateP
         } else {
           throw new Error('unsupported file type')
         }
-        stashAndOpen(deriveTitleFromFilename(file.name), parsed)
+        stashAndOpenTab(deriveTitleFromFilename(file.name), parsed, opts.onCreated)
       } catch (error) {
         logger.error('导入失败', error)
         toast.error(i18next.t('mindmap.editor.importFailed'))
@@ -86,7 +81,7 @@ export function useCreateProject(opts: UseCreateProjectOptions = {}): UseCreateP
         setCreating(false)
       }
     },
-    [creating, stashAndOpen]
+    [creating, opts.onCreated]
   )
 
   return { creating, createBlank, createFromImport }

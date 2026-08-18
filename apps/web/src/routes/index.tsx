@@ -1,133 +1,62 @@
-import { createBrowserRouter, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { PanelLeft } from 'lucide-react'
+/**
+ * 路由 = URL 适配层, tabs store 是 SOURCE OF TRUTH.
+ *
+ * 顶层只有一个 route "/*", 由 <WorkspaceShell> 根据 useTabs().activeId 决定
+ * 展示 Home 还是某个编辑器 tab.
+ *
+ * URL <-> tabs 双向:
+ *   - 用户点 tab / 关闭 tab / 首次打开时: activeId 变化 -> useEffect
+ *     replaceState(url) 让浏览器 URL 反映当前 tab (deep-link 分享).
+ *   - 外部 URL (/editor/:id / /editor/new) 到达: WorkspaceShell 在 mount 时把 URL
+ *     解释成 openTab + setActive, 之后 URL 由 store 主导.
+ */
+import { useEffect, useRef } from 'react'
+import {
+  createBrowserRouter,
+  Navigate,
+  useLocation,
+  useNavigate
+} from 'react-router-dom'
 import { MainLayout } from '@/components/layouts/main-layout'
-import { ProjectListPage } from '@/products/mind/features/mindmap/pages/ProjectsPage'
-import {
-  ProjectsSidebar,
-  type ProjectView
-} from '@/products/mind/features/mindmap/components/projects/ProjectsSidebar'
-import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
-import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import {
-  UnsavedGuard,
-  SaveFlowProvider,
-  useSaveFlowContext,
-  pendingProjects
-} from '@/shared/native'
-import { defaultMindmapData } from '@zoeymind/shared'
-import { i18next } from '@zoeymind/i18n'
+import { WorkspaceShell } from '@/components/workspace-shell'
 
-const LOCAL_ORG_ID = 'local'
-
-function ProjectListShell() {
-  const [activeView, setActiveView] = useState<ProjectView>('all')
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
-  const [collapsed, setCollapsed] = useState(false)
-  const [searchText, setSearchText] = useState('')
-
-  const handleViewChange = useCallback((next: ProjectView) => {
-    setActiveView(next)
-    setActiveFolderId(null)
-  }, [])
-
-  const handleSelectFolder = useCallback((id: string) => {
-    setActiveView('folder')
-    setActiveFolderId(id)
-  }, [])
-
-  return (
-    <div className="relative flex h-full w-full bg-background">
-      <ProjectsSidebar
-        activeView={activeView}
-        activeFolderId={activeFolderId}
-        onViewChange={handleViewChange}
-        onSelectFolder={handleSelectFolder}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(v => !v)}
-        activeWorkspaceId={null}
-        workspaces={[]}
-        onSelectWorkspace={() => undefined}
-        onOpenSearch={() => undefined}
-        organizationId={LOCAL_ORG_ID}
-        canCreateWorkspace={false}
-      />
-      {collapsed && (
-        <button
-          onClick={() => setCollapsed(false)}
-          className="absolute left-2 top-2 z-20 inline-flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground shadow-sm hover:bg-muted"
-          aria-label="展开侧栏"
-        >
-          <PanelLeft className="size-4" />
-        </button>
-      )}
-      <div className="flex flex-1 min-w-0 min-h-0">
-        <ProjectListPage
-          view={activeView}
-          folderId={activeFolderId}
-          searchText={searchText}
-          onClearSearch={() => setSearchText('')}
-          workspaceId={null}
-          workspaceName={null}
-        />
-      </div>
-    </div>
-  )
-}
-
-function EditorInner({ id }: { id: string }) {
-  const saveFlow = useSaveFlowContext()
-  return (
-    <ProjectProvider key={id} workspaceId={id} cloudMode={false}>
-      <MindMapCanvas />
-      <UnsavedGuard projectId={id} saveFlow={saveFlow} />
-    </ProjectProvider>
-  )
-}
-
-/**
- * 已保存项目路由 —— id 是 SqlProjectRepo 里的 uuid.
- * URL 例: /editor/9f2b...
- */
-function EditorShell() {
-  const { id } = useParams<{ id: string }>()
+function RouteAdapter() {
+  const location = useLocation()
   const navigate = useNavigate()
-  if (!id) {
-    navigate('/', { replace: true })
-    return null
-  }
-  return (
-    <SaveFlowProvider projectId={id}>
-      <EditorInner id={id} />
-    </SaveFlowProvider>
-  )
-}
+  const bootstrappedRef = useRef(false)
 
-/**
- * 新建 / draft 路由 —— 每次进来创建一个内存 stash 条目, editor 使用它作为 workspaceId.
- * URL 保持 /editor/new (VS Code 风格), 内部 tempId 仅内存态, refresh 不保留.
- */
-function EditorShellForDraft() {
-  const navigate = useNavigate()
-  // 只在首次挂载时 stash 一份, 避免 React StrictMode 双跑造成两份.
-  const draftIdRef = useRef<string | null>(null)
-  if (draftIdRef.current === null) {
-    const title =
-      i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图') || '未命名思维导图'
-    draftIdRef.current = pendingProjects.stash({ title, tree: defaultMindmapData })
-  }
-  const draftId = draftIdRef.current
-
-  // Refresh 后如果 stash 已经不在 (页面 reload), 兜底回列表.
+  // 只在首次挂载时把 URL 解释为 tab (deep-link).
   useEffect(() => {
-    if (!pendingProjects.isPending(draftId)) navigate('/', { replace: true })
-  }, [draftId, navigate])
+    if (bootstrappedRef.current) return
+    bootstrappedRef.current = true
+    void (async () => {
+      const path = location.pathname
+      const { useTabs } = await import('@/shared/tabs/store')
+      const { pendingProjects } = await import('@/shared/native')
+      const { defaultMindmapData } = await import('@zoeymind/shared')
+      const { i18next } = await import('@zoeymind/i18n')
+      const s = useTabs.getState()
+      if (path === '/editor/new') {
+        const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
+        const draftId = pendingProjects.stash({ title, tree: defaultMindmapData })
+        s.openTab({ id: draftId, kind: 'draft', title })
+      } else if (path.startsWith('/editor/')) {
+        const id = path.slice('/editor/'.length)
+        if (id) {
+          const { getProject } = await import('@/shared/native')
+          const row = await getProject(id)
+          s.openTab({ id, kind: 'file', title: row?.name ?? id })
+        }
+      } else {
+        s.setActive('home')
+      }
+      // URL 冗余部分统一收敛回 store 决定的形式.
+      navigate('/', { replace: true })
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  return (
-    <SaveFlowProvider projectId={draftId}>
-      <EditorInner id={draftId} />
-    </SaveFlowProvider>
-  )
+  return <WorkspaceShell />
 }
 
 export const router = createBrowserRouter([
@@ -135,9 +64,9 @@ export const router = createBrowserRouter([
     path: '/',
     element: <MainLayout />,
     children: [
-      { index: true, element: <ProjectListShell /> },
-      { path: 'editor/new', element: <EditorShellForDraft /> },
-      { path: 'editor/:id', element: <EditorShell /> },
+      { index: true, element: <RouteAdapter /> },
+      { path: 'editor/new', element: <RouteAdapter /> },
+      { path: 'editor/:id', element: <RouteAdapter /> },
       { path: '*', element: <Navigate to="/" replace /> }
     ]
   }

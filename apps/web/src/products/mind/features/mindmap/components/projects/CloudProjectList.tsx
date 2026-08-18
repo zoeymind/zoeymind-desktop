@@ -250,9 +250,14 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     // 默认的项目点击处理：使用传入的 onProjectClick 或导航到新路由
     const handleProjectClick = onProjectClick
       ? (project: CloudProjectWithStats) => onProjectClick(project)
-      : (project: CloudProjectWithStats) => {
-          // 桌面端不走 org 路由, 直接跳编辑器.
-          navigate({ to: `/editor/${project.id}` })
+      : async (project: CloudProjectWithStats) => {
+          // 桌面端: openTab 到工作区 tab, 不再直接 navigate.
+          const { useTabs } = await import('@/shared/tabs/store')
+          useTabs.getState().openTab({
+            id: project.id,
+            kind: 'file',
+            title: project.name ?? project.title ?? ''
+          })
         }
 
     return (

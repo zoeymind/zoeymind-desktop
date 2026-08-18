@@ -13,7 +13,9 @@ import { Home, Plus, X } from 'lucide-react'
 import { useRef } from 'react'
 import { cn } from '@zoeymind/ui'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
-import { useNavigate } from 'react-router-dom'
+import { pendingProjects } from '@/shared/native'
+import { defaultMindmapData } from '@zoeymind/shared'
+import { i18next } from '@zoeymind/i18n'
 
 export function TabBar() {
   const tabs = useTabs(s => s.tabs)
@@ -21,7 +23,12 @@ export function TabBar() {
   const setActive = useTabs(s => s.setActive)
   const closeTab = useTabs(s => s.closeTab)
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
+
+  const onPlus = () => {
+    const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
+    const id = pendingProjects.stash({ title, tree: defaultMindmapData })
+    useTabs.getState().openTab({ id, kind: 'draft', title })
+  }
 
   // 鼠标滚轮 (垂直) 转横向滚动.
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -53,7 +60,7 @@ export function TabBar() {
       ))}
       <button
         type="button"
-        onClick={() => navigate('/editor/new')}
+        onClick={onPlus}
         aria-label="New tab"
         title="新项目"
         className="ml-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
