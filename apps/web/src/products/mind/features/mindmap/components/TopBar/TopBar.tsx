@@ -287,7 +287,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
     <>
       <FloatingToolbar position="top-left">
         {/* 主工具栏 */}
-        <FloatingToolbarGroup className="min-w-[350px] max-w-[500px] flex-nowrap py-1.5 px-2">
+        <FloatingToolbarGroup className="max-w-[440px] flex-nowrap">
           {/* 使用shadcn DropdownMenu替换按钮 */}
           <Popover
             open={activeTab === 'search'}
@@ -355,7 +355,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
             </PopoverContent>
           </Popover>
 
-          <div className="w-px h-6 bg-white/20" />
+          <div className="mx-1 h-4 w-px bg-border" />
 
           {/* 项目标题或本地标题 */}
           {isEditing ? (
@@ -365,7 +365,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
               defaultValue={displayTitle}
               onBlur={handleTitleSave}
               onKeyDown={handleKeyDown}
-              className="bg-transparent text-sm text-white/90 font-medium outline-none border-none flex-1 min-w-0 max-w-[200px]"
+              className="bg-transparent text-sm text-foreground font-medium outline-none border-none flex-1 min-w-0 max-w-[200px]"
               aria-label={t('mindmap.topbar.title.editTitle')}
               title={t('mindmap.topbar.title.editTitle')}
               placeholder={t('mindmap.topbar.title.placeholder')}
@@ -374,7 +374,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
             <span
               onDoubleClick={canEdit ? handleTitleEdit : undefined}
               className={cn(
-                'text-sm text-white/90 font-medium truncate flex-1',
+                'text-sm text-foreground font-medium truncate flex-1',
                 canEdit ? 'cursor-text' : 'cursor-default'
               )}
               title={
@@ -387,7 +387,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
             </span>
           )}
 
-          {collaborationCluster && <div className="w-px h-6 bg-white/20" />}
+          {collaborationCluster && <div className="w-px h-4 bg-border" />}
           {collaborationCluster}
 
           {/* 分享按钮 */}

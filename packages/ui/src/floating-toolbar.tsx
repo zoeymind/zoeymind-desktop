@@ -68,8 +68,7 @@ const FloatingToolbarGroup = React.forwardRef<HTMLDivElement, FloatingToolbarGro
       <div
         ref={ref}
         className={cn(
-          // Header 内嵌样式: 透明底 + foreground 色, 不再自带 pill 阴影.
-          'flex items-center gap-1 text-foreground',
+          'flex items-center gap-0.5 text-foreground',
           orientation === 'vertical' && 'flex-col',
           className
         )}
@@ -109,9 +108,9 @@ const FloatingToolbarButton = React.forwardRef<HTMLButtonElement, FloatingToolba
     }
 
     const sizeClasses = {
-      sm: 'p-1',
-      md: 'p-1.5',
-      lg: 'p-2'
+      sm: 'p-0.5',
+      md: 'p-1',
+      lg: 'p-1.5'
     }
 
     return (
