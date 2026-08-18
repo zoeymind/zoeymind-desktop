@@ -35,13 +35,13 @@ import {
   pendingProjects,
   createUUID,
   type ZMindBundle,
-  type ProjectRow
+  type ProjectRow,
 } from './'
+import { useTabs } from '@/shared/tabs/store'
 import { bumpProjects } from './projects-events'
 import { exists, mkdir } from '@tauri-apps/plugin-fs'
 import { save as saveDialog } from '@tauri-apps/plugin-dialog'
 import { join } from '@tauri-apps/api/path'
-import { useNavigate } from 'react-router-dom'
 import { composePreviewWithLogo } from './preview'
 
 const RECOVERY_DEBOUNCE_MS = 5_000
@@ -82,7 +82,6 @@ function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
 export function useSaveFlow(projectId: string | null) {
   const setDirty = useMindMapStore(s => s.setDirty)
   const isDirty = useMindMapStore(s => s.isDirty)
-  const navigate = useNavigate()
 
   const stateRef = useRef<SaveFlowState>({
     source: null,
@@ -148,7 +147,7 @@ export function useSaveFlow(projectId: string | null) {
     const state = stateRef.current
     if (!state.source) return
 
-    // 未保存的新建：先弹保存对话框、写盘、入 SqlProjectRepo，再切换到真实 id
+    // draft (unsaved-*): 先弹 saveDialog, 检查目标是否已被别的 tab 占用, 通过后写盘 + 入库
     if (pendingProjects.isPending(projectId)) {
       const dir = await preferredSaveDir()
       if (!(await exists(dir))) await mkdir(dir, { recursive: true })
@@ -159,6 +158,21 @@ export function useSaveFlow(projectId: string | null) {
         filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
       })
       if (!picked) return
+
+      // 碰撞检查: 目标路径已被登记 -> 若还被别的 tab 打开, 拒绝
+      const collided = await findByPath(picked)
+      if (collided) {
+        const busy = useTabs.getState().tabs.find(
+          t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
+        )
+        if (busy) {
+          const { toast } = await import('@/shared/app-shared')
+          toast.error(
+            `“${collided.name}” 已在另一个 tab 中打开, 请先关闭再保存到该路径`
+          )
+          return
+        }
+      }
 
       // preview
       let previewPng: Uint8Array | null = state.source.previewPng ?? null
@@ -174,7 +188,6 @@ export function useSaveFlow(projectId: string | null) {
       const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
       await writeBundle(picked, bundle)
 
-      const collided = await findByPath(picked)
       let realId: string
       if (collided) {
         realId = collided.id
@@ -191,12 +204,16 @@ export function useSaveFlow(projectId: string | null) {
           nodeCount: state.source.nodeCount ?? 0
         })
       }
-      pendingProjects.clear(projectId)
+
+      // pending stash 保留 (仍以 draft id 作为 workspaceId 供 useCanvasManager 使用),
+      // state.path 记录真实路径, 之后再次 save 就走 "已入库" 分支.
       state.path = picked
       await rememberSaveDir(picked)
       setDirty(false)
       bumpProjects()
-      navigate(`/editor/${realId}`, { replace: true })
+
+      // 就地升级 tab: id 保持不变 -> EditorPane React key 稳定 -> 不 remount
+      useTabs.getState().promoteDraftInPlace(projectId, realId, state.source.name)
       return
     }
 

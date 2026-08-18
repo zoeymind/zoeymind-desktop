@@ -1,12 +1,13 @@
 /**
- * 工作区 Tab 状态 —— VS Code / 浏览器风格的多文档 shell.
+ * 工作区 Tab 状态 —— VS Code / 浏览器风格多文档 shell.
  *
- * 语义:
- *   - Home tab 是隐式的固定第 0 位, 不进 tabs 数组 (activeId === 'home' 表示 Home).
- *   - `tabs` 只装可关闭的 editor tab. draft = 未保存新建; file = 已入库 (projectId 是真实 uuid).
- *   - draft 的 id 就是 pendingProjects.stash 返回的 tempId (unsaved-*); file 的 id = projectId.
- *   - 同一 projectId 只允许开一个 tab (openTab 命中则 setActive).
- *   - 关闭 draft 时: 由消费方 (TabBar) 决定是否弹 UnsavedGuard, store 只提供 closeTab 原子.
+ * 关键设计:
+ *   - tab.id 是**稳定 React key**, 从 openTab 那一刻起永不变.
+ *     draft 用 `unsaved-*` 前缀; 直接打开的 file tab 用 projectId.
+ *   - tab.projectId 是可选真身: draft 时未定, 首次保存后写入.
+ *     save-flow / useSaveFlow 走 projectId; 内部 useCanvasManager 等继续
+ *     用 tab.id 作为稳定 workspaceId, 因此保存后不 remount.
+ *   - Home 是隐式的固定位, 不在 tabs 数组里 (activeId === 'home').
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -14,9 +15,11 @@ import { persist } from 'zustand/middleware'
 export type TabId = string | 'home'
 
 export interface OpenTab {
-  id: string // draft: unsaved-*; file: projectId
+  id: string
   kind: 'draft' | 'file'
   title: string
+  /** 已保存/已入库项目在 SqlProjectRepo 里的 uuid; draft 未定. */
+  projectId?: string
 }
 
 interface TabsState {
@@ -26,8 +29,11 @@ interface TabsState {
   closeTab: (id: string) => void
   setActive: (id: TabId) => void
   renameTab: (id: string, title: string) => void
-  /** draft 保存成功后, id/kind/title 一起换成 file. */
-  promoteDraft: (draftId: string, projectId: string, title: string) => void
+  /**
+   * draft 保存成功后**就地**升级 (id 保持不变, 只加 projectId 并翻 kind='file').
+   * 这样 EditorPane 的 React key 稳定, 保存后不 remount / 不 flash.
+   */
+  promoteDraftInPlace: (tabId: string, projectId: string, title?: string) => void
   goHome: () => void
 }
 
@@ -39,8 +45,13 @@ export const useTabs = create<TabsState>()(
 
       openTab: tab => {
         set(state => {
-          const existing = state.tabs.find(t => t.id === tab.id)
-          if (existing) return { ...state, activeId: tab.id }
+          // openTab 语义: 已有同 id 就直接激活; 也匹配 projectId 命中 (从卡片重新点开)
+          const existing = state.tabs.find(
+            t =>
+              t.id === tab.id ||
+              (tab.projectId && (t.projectId === tab.projectId || t.id === tab.projectId))
+          )
+          if (existing) return { ...state, activeId: existing.id }
           return { tabs: [...state.tabs, tab], activeId: tab.id }
         })
       },
@@ -49,7 +60,6 @@ export const useTabs = create<TabsState>()(
         set(state => {
           const next = state.tabs.filter(t => t.id !== id)
           if (state.activeId !== id) return { ...state, tabs: next }
-          // 关的是当前活动 tab: fallback 到最后一个还开着的; 都关光则 home.
           const fallback: TabId = next.length > 0 ? next[next.length - 1].id : 'home'
           return { tabs: next, activeId: fallback }
         })
@@ -64,20 +74,22 @@ export const useTabs = create<TabsState>()(
           tabs: state.tabs.map(t => (t.id === id ? { ...t, title } : t))
         })),
 
-      promoteDraft: (draftId, projectId, title) =>
+      promoteDraftInPlace: (tabId, projectId, title) =>
         set(state => ({
           tabs: state.tabs.map(t =>
-            t.id === draftId ? { id: projectId, kind: 'file', title } : t
-          ),
-          activeId: state.activeId === draftId ? projectId : state.activeId
+            t.id === tabId
+              ? { ...t, kind: 'file', projectId, title: title ?? t.title }
+              : t
+          )
         }))
     }),
     {
       name: 'zoeymind:tabs',
-      version: 1,
-      // draft tab 不能持久化: pendingProjects 只在内存, 重启后 tempId 失效.
+      version: 2,
+      // draft 不能持久化: pendingProjects 只在内存, 重启后 tempId 失效.
+      // 已保存 tab 有 projectId, 重启后能恢复 (通过 projectId 读 SqlProjectRepo).
       partialize: state => ({
-        tabs: state.tabs.filter(t => t.kind === 'file'),
+        tabs: state.tabs.filter(t => t.kind === 'file' && !!t.projectId),
         activeId: state.activeId === 'home' ? 'home' : state.activeId
       })
     }
