@@ -72,9 +72,24 @@ export function useStorageManager(): UseStorageManagerResult {
     }
   }, [workspaceId])
 
-  // 每次画布改动同步 bundle source 到 save-flow；真正的写盘由 Ctrl+S 触发
+  /**
+   * 挂 data_change 前拿一次 baseline hash: mindmap 首帧 setData 之后
+   * 也会触发 data_change (引擎内部的初始化事件), 这些不是用户编辑, 不应
+   * markDirty. 用 tree JSON hash 做门槛: 只有真的变了才 markDirty.
+   */
+  const lastCleanHashRef = useRef<string>('')
+
   useEffect(() => {
     if (!mindMap) return
+
+    const treeHash = (t: MindMapNodeTree): string => {
+      try {
+        return JSON.stringify(t)
+      } catch {
+        return `${Date.now()}`
+      }
+    }
+
     const sync = () => {
       const tree = mindMap.getData() as MindMapNodeTree
       flow.registerBundleSource({
@@ -82,15 +97,35 @@ export function useStorageManager(): UseStorageManagerResult {
         name: nameRef.current,
         nodeCount: countNodes(tree)
       })
+      return tree
     }
-    sync()
+
+    // 初次挂载: 记 baseline (代表当前是干净态), 之后再判 dirty.
+    const initTree = sync()
+    lastCleanHashRef.current = treeHash(initTree)
+
     const onChange = () => {
-      sync()
+      const tree = sync()
+      const nextHash = treeHash(tree)
+      if (nextHash === lastCleanHashRef.current) return
       flow.markDirty()
     }
     mindMap.on?.('data_change', onChange)
+
+    // 保存 (isDirty: true -> false) 完成后, 把当前 tree 记成新的 baseline.
+    let prevDirty = useMindMapStore.getState().isDirty
+    const unsubDirty = useMindMapStore.subscribe(state => {
+      const nextDirty = state.isDirty
+      if (prevDirty === true && nextDirty === false) {
+        const tree = mindMap.getData() as MindMapNodeTree
+        lastCleanHashRef.current = treeHash(tree)
+      }
+      prevDirty = nextDirty
+    })
+
     return () => {
       mindMap.off?.('data_change', onChange)
+      unsubDirty()
     }
   }, [mindMap, flow])
 
