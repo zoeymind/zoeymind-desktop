@@ -92,16 +92,14 @@ export const Loading: FC<LoadingProps> = ({ tip, className = '', show, progress 
     <div
       className={`
         loading-container
-        fixed inset-0 flex flex-col items-center justify-center
+        fixed inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center
         bg-background
-        z-[9999] transition-all duration-300 ease-out
+        z-30 transition-all duration-300 ease-out
         ${show ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}
         ${className}
       `}
       style={{
-        // 使用transform3d启用硬件加速，优化动画性能
         transform: show ? 'translate3d(0,0,0) scale(1)' : 'translate3d(0,0,0) scale(0.98)',
-        // 提升渲染层级
         isolation: 'isolate'
       }}
     >

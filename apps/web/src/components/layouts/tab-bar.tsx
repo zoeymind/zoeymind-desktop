@@ -1,13 +1,14 @@
 /**
- * 工作区 TabBar —— 浏览器 / VS Code 风格的文档 tab 条.
+ * TabBar —— 浏览器 / VS Code 风格文档 tab 条.
  *
- * 结构 (从左到右):
- *   [Home (固定, home icon)] [tab1 · x] [tab2 · x] ... [+ 新 tab]
+ * 布局:
+ *   [Home] [tab · x] [tab · x] ... [+]
+ * 每个元素撑满整个 titlebar 高度 (h-full = 40px), 内部 items-center 竖向居中.
+ * 活动 tab 用底部一条 primary 色下划线 + 背景色区分.
  *
- * 布局约束:
- *   - 外壳 flex-1 min-w-0, 里面 overflow-x-auto: tab 数量超过宽度自动横向滚动.
- *   - 支持鼠标滚轮 (垂直 -> 横向) 快速滑动.
- *   - TitleBar 里给一段拖拽 gap, 由 title-bar 保证; TabBar 内部按钮都禁止 drag.
+ * 溢出策略:
+ *   - overflow-x-auto, 滚动条隐藏.
+ *   - 鼠标滚轮 (垂直) 转横向滚动.
  */
 import { Home, Plus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -40,7 +41,6 @@ export function TabBar() {
     useTabs.getState().openTab({ id, kind: 'draft', title })
   }
 
-  // 鼠标滚轮 (垂直) 转横向滚动.
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     const el = scrollerRef.current
     if (!el) return
@@ -67,7 +67,8 @@ export function TabBar() {
       <div
         ref={scrollerRef}
         onWheel={onWheel}
-        className="flex h-full min-w-0 items-end gap-0.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        data-tauri-drag-region
+        className="flex h-full min-w-0 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <HomeChip active={activeId === 'home'} onClick={() => setActive('home')} />
         {tabs.map(tab => (
@@ -87,9 +88,10 @@ export function TabBar() {
           onClick={onPlus}
           aria-label="New tab"
           title="新项目"
-          className="ml-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+          data-tauri-drag-region="false"
+          className="flex h-full items-center justify-center px-2.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-4" />
         </button>
       </div>
       {pendingTab && (
@@ -103,13 +105,73 @@ export function TabBar() {
             setPendingCloseId(null)
           }}
           onSave={() => {
-            // TabBar 拿不到 SaveFlowContext; 切到目标 tab, 让用户在编辑器里 Ctrl+S.
             setActive(pendingTab.id)
             setPendingCloseId(null)
           }}
         />
       )}
     </>
+  )
+}
+
+const chipBase =
+  'group relative inline-flex h-full shrink-0 cursor-pointer items-center gap-1.5 border-r border-transparent px-3 text-xs transition-colors'
+
+const chipActive =
+  'bg-background text-foreground after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
+
+const chipInactive =
+  'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+
+function HomeChip({ active, onClick }: { active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-tauri-drag-region="false"
+      className={cn(chipBase, active ? chipActive : chipInactive, 'px-3')}
+      aria-label="Home"
+      title="Home"
+    >
+      <Home className="size-4" />
+    </button>
+  )
+}
+
+interface TabChipProps {
+  tab: OpenTab
+  active: boolean
+  onSelect: () => void
+  onClose: (e: React.MouseEvent) => void
+}
+
+function TabChip({ tab, active, onSelect, onClose }: TabChipProps) {
+  return (
+    <div
+      role="tab"
+      aria-selected={active}
+      onClick={onSelect}
+      data-tauri-drag-region="false"
+      className={cn(
+        chipBase,
+        active ? chipActive : chipInactive,
+        'max-w-[220px] pr-1'
+      )}
+      title={tab.title}
+    >
+      <span className="truncate">{tab.title}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close tab"
+        className={cn(
+          'inline-flex size-5 items-center justify-center rounded hover:bg-muted',
+          !active && 'opacity-0 group-hover:opacity-100'
+        )}
+      >
+        <X className="size-3" />
+      </button>
+    </div>
   )
 }
 
@@ -141,61 +203,5 @@ function CloseConfirmDialog({ tab, onCancel, onDiscard, onSave }: CloseConfirmPr
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function HomeChip({ active, onClick }: { active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-7 shrink-0 items-center gap-1 rounded-t-md border border-b-0 px-2 text-xs transition-colors',
-        active
-          ? 'border-border bg-background text-foreground'
-          : 'border-transparent bg-transparent text-muted-foreground hover:text-foreground'
-      )}
-      aria-label="Home"
-      title="Home"
-    >
-      <Home className="size-3.5" />
-    </button>
-  )
-}
-
-interface TabChipProps {
-  tab: OpenTab
-  active: boolean
-  onSelect: () => void
-  onClose: (e: React.MouseEvent) => void
-}
-
-function TabChip({ tab, active, onSelect, onClose }: TabChipProps) {
-  return (
-    <div
-      role="tab"
-      aria-selected={active}
-      onClick={onSelect}
-      className={cn(
-        'group inline-flex h-7 max-w-[220px] shrink-0 cursor-pointer items-center gap-1.5 rounded-t-md border border-b-0 pl-2.5 pr-1 text-xs transition-colors',
-        active
-          ? 'border-border bg-background text-foreground'
-          : 'border-transparent bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-      )}
-      title={tab.title}
-    >
-      <span className="truncate">{tab.title}</span>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close tab"
-        className={cn(
-          'inline-flex size-4 items-center justify-center rounded hover:bg-muted',
-          !active && 'opacity-0 group-hover:opacity-100'
-        )}
-      >
-        <X className="size-3" />
-      </button>
-    </div>
   )
 }
