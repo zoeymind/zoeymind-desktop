@@ -24,3 +24,25 @@ export {
 
 // === Joyride 引导配置（纯 UI，无网络） ===
 export { joyrideStyles, joyrideLocale } from './components/guides/joyrideConfig'
+
+// === 桌面端 dormant stub ===
+// 老组件（ProjectCard / ProjectListItem / SnapshotPanel / mindMapExporter / useStorageManager）
+// 里对 projectDB / useProjectManager 的引用未迁移；这里给一个空实现兜底避免
+// vite pre-transform 时 barrel 缺 export 报错。现役 UI 不再使用这两条路径。
+export const projectDB: Record<string, () => Promise<null>> = new Proxy(
+  {},
+  { get: () => async () => null }
+)
+export const useProjectManager = () => ({
+  getProjectStats: () => ({ nodeCount: 0, chatCount: 0, updatedAt: Date.now() }),
+  refreshProjectStats: () => undefined
+})
+// 类型占位（dormant 老组件 import type ProjectWithStats）
+export type ProjectWithStats = {
+  id: string
+  name: string
+  updatedAt: number
+  createdAt: number
+  metadata?: { starred?: boolean }
+  description?: string
+}

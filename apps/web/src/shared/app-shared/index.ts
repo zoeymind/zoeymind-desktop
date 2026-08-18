@@ -54,8 +54,14 @@ export { useOrganization } from './useOrganization'
 export { useFeature, useFlags } from './flags'
 export { useAnalytics, ANALYTICS_EVENTS } from './analytics'
 
-// 桌面端零用户概念：不 export UserAvatarWithCard / AppLauncher / 个人中心相关组件。
-// mind features 里对这些名字的引用需要在使用点直接删掉，而不是在 shim 里给假组件。
+// 桌面端零用户概念：以下组件都渲染 null，只是保住 barrel export 让 dormant
+// 老文件（ProjectCard/ProjectsSidebar/SidebarAccountMenu 等）编译过关；
+// 现役 UI 不应再使用它们。
+const NULL_COMPONENT = (): null => null
+export const AppLauncher = NULL_COMPONENT
+export const UserAvatarWithCard = NULL_COMPONENT
+export const NotificationBell = NULL_COMPONENT
+export const PageHeader = NULL_COMPONENT
 
 // CodeBlock / mentions / product 常量：mindmap features 少量 UI 用到，
 // 都是本地纯 UI，不牵动网络。
