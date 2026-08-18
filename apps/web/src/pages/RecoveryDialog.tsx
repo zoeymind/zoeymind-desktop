@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from '@/shared/app-shared'
+import { toast, createUUID } from '@/shared/app-shared'
 import {
   listRecoveries,
   readRecoveryBundle,
@@ -21,7 +21,6 @@ import {
   findByPath,
   refreshProjectIndex,
   defaultVaultDir,
-  createUUID,
   type RecoveryDescriptor
 } from '@/shared/native'
 import { exists, mkdir } from '@tauri-apps/plugin-fs'
