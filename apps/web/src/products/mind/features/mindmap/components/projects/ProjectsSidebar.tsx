@@ -42,6 +42,7 @@ import { NewProjectMenu } from './NewProjectMenu'
 import { SidebarAccountMenu } from './SidebarAccountMenu'
 import { SidebarFolders } from './SidebarFolders'
 import { SearchShortcutHint } from './WorkspaceSearchDialog'
+import brandLogo from '@/assets/logo.svg?url'
 
 export type ProjectView = 'all' | 'mine' | 'favorited' | 'shared' | 'trash' | 'folder' | 'workspace'
 
@@ -69,12 +70,10 @@ interface ProjectsSidebarProps {
   onWorkspaceCreated?: (workspaceId: string) => void
 }
 
-// 参照飞书: 全部导图 → 我创建的 → 收藏 → 分享给我
+// 桌面端本地视图：全部 / 收藏（去掉云端"分享给我" 和 "回收站"）
 const MAIN_NAV: { view: ProjectView; icon: typeof LayoutGrid; labelKey: string }[] = [
   { view: 'all', icon: LayoutGrid, labelKey: 'projects.home.navAll' },
-  { view: 'mine', icon: User, labelKey: 'projects.home.navMine' },
-  { view: 'favorited', icon: Star, labelKey: 'projects.home.navFavorited' },
-  { view: 'shared', icon: Share2, labelKey: 'projects.home.navShared' }
+  { view: 'favorited', icon: Star, labelKey: 'projects.home.navFavorited' }
 ]
 
 export function ProjectsSidebar({
@@ -108,14 +107,9 @@ export function ProjectsSidebar({
         <div className="flex h-full w-60 flex-col">
           {/* 顶部品牌 + 折叠按钮 */}
           <div className="flex items-start gap-2 border-b border-border/50 p-3">
-            <div className="min-w-0 flex-1">
-              <AppBrandBar
-                productName="Zoey Mind"
-                variant="vertical"
-                showAccountMenu={false}
-                showWorkspaceSubtitle={false}
-                brandHref={organizationId ? `/org/${organizationId}/hub` : undefined}
-              />
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <img src={brandLogo} alt="ZoeyMind" className="size-6 shrink-0" />
+              <span className="truncate text-sm font-semibold">ZoeyMind</span>
             </div>
             <Button
               variant="ghost"
@@ -211,21 +205,6 @@ export function ProjectsSidebar({
               onSelectFolder={onSelectFolder}
             />
 
-            <div className="my-1.5 border-t" />
-
-            <button
-              type="button"
-              onClick={() => onViewChange('trash')}
-              className={cn(
-                'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
-                activeView === 'trash'
-                  ? 'bg-accent font-medium text-accent-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50'
-              )}
-            >
-              <Trash2 className="size-4 shrink-0" />
-              {t('projects.home.navTrash')}
-            </button>
           </nav>
 
           {/* 新建按钮 */}

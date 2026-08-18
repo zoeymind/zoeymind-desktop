@@ -241,14 +241,6 @@ export function ProjectListPage({
             }
           />
 
-          {showOverview && (
-            <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <StatCard value={totalCount} label={t('projects.home.statAll')} />
-              <StatCard value={weekCount} label={t('projects.home.statWeek')} />
-              <StatCard value={sharedCount} label={t('projects.home.statCollab')} />
-              <StatCard value={favCount} label={t('projects.home.statFavorited')} />
-            </div>
-          )}
 
           {/* 列表 */}
           {renderList()}

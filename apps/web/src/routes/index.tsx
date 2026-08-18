@@ -54,7 +54,7 @@ function ProjectListShell() {
           <PanelLeft className="size-4" />
         </button>
       )}
-      <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
+      <div className="flex flex-1 min-w-0 min-h-0">
         <ProjectListPage
           view={activeView}
           folderId={activeFolderId}

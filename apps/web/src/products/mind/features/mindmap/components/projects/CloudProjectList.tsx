@@ -218,7 +218,7 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
 
     if (displayProjects.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[60vh] text-muted-foreground">
           {searchText ? (
             <>
               <p className="text-lg mb-4">{t('projects.cloud.noMatchSearch')}</p>

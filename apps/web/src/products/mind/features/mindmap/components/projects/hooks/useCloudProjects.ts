@@ -1,30 +1,229 @@
-// @ts-nocheck — legacy project card util, dormant
-/** 云项目列表 —— 桌面端 no-op。数据源改走本地 useProjects；本 hook 只是让 CloudProjectList/MoveDialog 之类的 import 不炸。 */
-import { useMemo } from 'react'
+// @ts-nocheck
+/**
+ * useCloudProjects —— 桌面端本地版：由 SqlProjectRepo 驱动，让 CloudProjectList 直接渲染本地导图列表。
+ * 保留原产品版本的 API 表面（projects / loading / renameProject / deleteProject / toggleFavorite ...），
+ * 组件级 JSX 完全不改。
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { logger } from '@zoeymind/logger'
+import { i18next } from '@zoeymind/i18n'
+import { toast } from '@/shared/app-shared'
+import { useNavigate } from 'react-router-dom'
+import type { MindMapNodeTree } from 'simple-mind-map'
+import { defaultMindmapData } from '@zoeymind/shared'
+import { exists, mkdir } from '@tauri-apps/plugin-fs'
+import { join } from '@tauri-apps/api/path'
+import {
+  createUUID,
+  defaultVaultDir,
+  listProjects,
+  refreshProjectIndex,
+  registerProject,
+  setStarred,
+  unregisterProject,
+  writeBundle,
+  type ProjectRow,
+  type ZMindBundle
+} from '@/shared/native'
 
 export interface CloudProjectWithStats {
   id: string
   name: string
+  path: string
   updatedAt: string
   createdAt: string
-  workspaceId: string | null
+  workspaceId: null
   folderId: string | null
   isFavorited: boolean
+  isOwner: true
+  isArchived: boolean
+  exists: boolean
+  metadata: { starred: boolean; tags: string[] }
+  stats: { nodeCount: number; size: number }
+  nodeCount: number
+  size: number
 }
 
-const NOOP_ASYNC = async () => undefined
+function toCloud(row: ProjectRow): CloudProjectWithStats {
+  return {
+    id: row.id,
+    name: row.name,
+    path: row.path,
+    updatedAt: new Date(row.updatedAt).toISOString(),
+    createdAt: new Date(row.createdAt).toISOString(),
+    workspaceId: null,
+    folderId: row.folderId,
+    isFavorited: row.isStarred,
+    isOwner: true,
+    isArchived: row.isArchived,
+    exists: row.exists,
+    metadata: { starred: row.isStarred, tags: row.tags },
+    stats: { nodeCount: row.nodeCount, size: row.size },
+    nodeCount: row.nodeCount,
+    size: row.size
+  }
+}
 
-export function useCloudProjects(_opts?: { workspaceId?: string; filter?: string }) {
-  return useMemo(
-    () => ({
-      projects: [] as CloudProjectWithStats[],
-      loading: false,
-      isPending: false,
-      refetch: NOOP_ASYNC,
-      updateProject: NOOP_ASYNC,
-      deleteProject: NOOP_ASYNC,
-      toggleFavorite: NOOP_ASYNC
-    }),
+function sanitizeFilename(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'Untitled'
+}
+
+async function pickUniquePath(dir: string, baseName: string): Promise<string> {
+  const first = await join(dir, `${baseName}.zmind`)
+  if (!(await exists(first))) return first
+  for (let i = 2; i < 1000; i++) {
+    const candidate = await join(dir, `${baseName}-${i}.zmind`)
+    if (!(await exists(candidate))) return candidate
+  }
+  throw new Error('cannot pick unique filename')
+}
+
+function countNodes(tree: MindMapNodeTree): number {
+  const children = Array.isArray(tree.children) ? tree.children : []
+  let total = 1
+  for (const child of children) total += countNodes(child)
+  return total
+}
+
+interface UseCloudProjectsOptions {
+  searchText?: string
+  sortType?: 'recent' | 'created' | 'name' | 'starred'
+  folderId?: string
+  workspaceId?: string
+  owner?: 'me' | 'all'
+  onProjectsChanged?: () => void
+}
+
+export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
+  const { searchText = '', sortType = 'recent', folderId, onProjectsChanged } = opts
+  const [rows, setRows] = useState<ProjectRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const navigate = useNavigate()
+
+  const refreshProjects = useCallback(
+    async (_options?: { silent?: boolean }) => {
+      try {
+        const list = await listProjects()
+        setRows(list)
+      } catch (error) {
+        logger.error('加载项目失败', error)
+      }
+    },
     []
   )
+
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    listProjects()
+      .then(list => {
+        if (mounted) setRows(list)
+      })
+      .catch(err => logger.error('加载项目失败', err))
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const projects = useMemo(() => {
+    let items = rows.map(toCloud)
+    if (folderId) items = items.filter(p => p.folderId === folderId)
+    if (searchText) {
+      const q = searchText.toLowerCase()
+      items = items.filter(p => p.name.toLowerCase().includes(q))
+    }
+    items.sort((a, b) => {
+      if (sortType === 'starred') {
+        const diff = (b.isFavorited ? 1 : 0) - (a.isFavorited ? 1 : 0)
+        if (diff !== 0) return diff
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      }
+      if (sortType === 'created')
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      if (sortType === 'name') return a.name.localeCompare(b.name)
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    })
+    return items
+  }, [rows, folderId, searchText, sortType])
+
+  const createProject = useCallback(
+    async (name?: string) => {
+      if (creating) return
+      setCreating(true)
+      try {
+        const title = name?.trim() || i18next.t('mindmap.editor.newProjectTitle')
+        const dir = await defaultVaultDir()
+        if (!(await exists(dir))) await mkdir(dir, { recursive: true })
+        const targetPath = await pickUniquePath(dir, sanitizeFilename(title))
+        const now = Date.now()
+        const nodeCount = countNodes(defaultMindmapData)
+        const bundle: ZMindBundle = {
+          tree: defaultMindmapData,
+          meta: { name: title, tags: [], createdAt: now, updatedAt: now, nodeCount }
+        }
+        await writeBundle(targetPath, bundle)
+        const id = createUUID()
+        await registerProject({
+          id,
+          path: targetPath,
+          name: title,
+          folderId: folderId ?? null,
+          nodeCount
+        })
+        await refreshProjects()
+        onProjectsChanged?.()
+        navigate(`/editor/${id}`)
+      } catch (error) {
+        logger.error('创建失败', error)
+        toast.error(i18next.t('mindmap.editor.createFailed'))
+      } finally {
+        setCreating(false)
+      }
+    },
+    [creating, folderId, navigate, onProjectsChanged, refreshProjects]
+  )
+
+  const renameProject = useCallback(
+    async (project: CloudProjectWithStats, newName: string) => {
+      await refreshProjectIndex(project.id, { name: newName.trim() })
+      await refreshProjects()
+      onProjectsChanged?.()
+    },
+    [onProjectsChanged, refreshProjects]
+  )
+
+  const deleteProject = useCallback(
+    async (project: CloudProjectWithStats) => {
+      await unregisterProject(project.id)
+      await refreshProjects()
+      onProjectsChanged?.()
+    },
+    [onProjectsChanged, refreshProjects]
+  )
+
+  const toggleFavorite = useCallback(
+    async (project: CloudProjectWithStats) => {
+      await setStarred(project.id, !project.isFavorited)
+      await refreshProjects()
+    },
+    [refreshProjects]
+  )
+
+  return {
+    isAuthenticated: true,
+    projects,
+    loading,
+    creating,
+    renameLoading: false,
+    deleteLoading: false,
+    refreshProjects,
+    createProject,
+    renameProject,
+    deleteProject,
+    toggleFavorite
+  }
 }
