@@ -20,15 +20,38 @@ export { cn } from '@zoeymind/ui'
 export const createUUID: () => string = uuidV4
 export const generateUUID: () => string = uuidV4
 
-/** sonner 直传，保持三行 API：toast() / toastLoading / dismissToast。 */
-export const toast = sonnerToast
+/**
+ * toast 支持两种入参：
+ *   toast('msg')                              — sonner 原生
+ *   toast({ title, description, variant? })   — 老 shadcn/useToast 风格
+ * 后者被产品仓大量 ProjectCard/编辑器路径使用，直接透传给 sonner 会
+ * 把对象当成 React child 渲染, 报 “Objects are not valid as a React child”.
+ */
+type ShadcnToast = { title?: string; description?: string; variant?: 'default' | 'destructive' }
+type ToastInput = string | number | ShadcnToast
+function normalize(input: ToastInput): { message: string; opts?: { description?: string } } {
+  if (typeof input === 'object' && input !== null && ('title' in input || 'description' in input)) {
+    const { title, description } = input
+    return { message: title ?? description ?? '', opts: description ? { description } : undefined }
+  }
+  return { message: String(input) }
+}
+function toastFn(input: ToastInput): string | number {
+  const { message, opts } = normalize(input)
+  if (typeof input === 'object' && input !== null && (input as ShadcnToast).variant === 'destructive') {
+    return sonnerToast.error(message, opts)
+  }
+  return sonnerToast(message, opts)
+}
+// 挂上 sonner 的常用方法, 让 `toast.success(...)` 等仍可用
+export const toast = Object.assign(toastFn, sonnerToast) as typeof toastFn & typeof sonnerToast
 export const toastLoading = (message: string): string | number => sonnerToast.loading(message)
 export const dismissToast = (id?: string | number): void => {
   sonnerToast.dismiss(id)
 }
 // eslint-disable-next-line react-refresh/only-export-components
-export function useToast(): { toast: typeof sonnerToast } {
-  return { toast: sonnerToast }
+export function useToast(): { toast: typeof toast } {
+  return { toast }
 }
 
 export function formatDuration(ms: number): string {

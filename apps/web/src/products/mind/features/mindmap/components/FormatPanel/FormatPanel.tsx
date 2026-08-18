@@ -4,7 +4,6 @@ import { useTranslation } from '@zoeymind/i18n'
 import { useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Tags } from './Tags'
 import { ThemePanel } from './ThemePanel'
-import { SnapshotPanel } from './SnapshotPanel'
 import { CommentPanel } from './CommentPanel'
 import { AIFeaturePanel, useAIProcessing } from '@zoeymind-ext-mind'
 import { useFeature } from '@/shared/app-shared'
@@ -150,23 +149,6 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
               </FloatingToolbarButton>
             )}
 
-            {canEdit && (
-              <FloatingToolbarButton
-                active={activeTab === 'snapshot'}
-                onClick={() => toggleFormatTab('snapshot')}
-                title={t('mindmap.formatPanel.toolbar.snapshot')}
-              >
-                <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                  <polyline
-                    points="12,6 12,12 16,14"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </FloatingToolbarButton>
-            )}
 
             <FloatingToolbarButton
               active={activeTab === 'comment'}
@@ -193,13 +175,6 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
         {canEdit && activeTab === 'theme' && <ThemePanel isActive={true} />}
         {/* AI 面板始终渲染, 内部用 display:none 收起 — 后台流不会被卸载中断 */}
         {showAiTab && <AIFeaturePanel isActive={activeTab === 'ai'} />}
-        {canEdit && activeTab === 'snapshot' && (
-          <SnapshotPanel
-            isActive={true}
-            onPreviewStateChange={onPreviewStateChange}
-            setExitPreviewCallback={setExitPreviewCallback}
-          />
-        )}
         {activeTab === 'comment' && (
           <CommentPanel isActive={true} targetNodeUid={targetNodeUid} onClose={closeFormatTab} />
         )}
