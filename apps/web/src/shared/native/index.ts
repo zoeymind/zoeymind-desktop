@@ -12,3 +12,8 @@ export * from './preview'
 export * from './recovery'
 export * from './folders-repo'
 export * from './projects-repo'
+export * from './mcp-repo'
+export * from './save-flow'
+
+// 便利再导出：native 侧 hook 大多同时要 UUID，避免调用方两条 import
+export { createUUID, generateUUID } from '@/shared/app-shared'
