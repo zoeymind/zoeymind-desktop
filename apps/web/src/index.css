@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* 让 Tailwind v4 扫到 vendored 包和产品源码，否则 `sm:max-w-sm` 等前缀类不生成 */
+@source "../../../packages/ui/src";
+@source "../../../packages/simple-mind-map/src";
+@source "../src";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
