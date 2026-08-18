@@ -251,12 +251,8 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     const handleProjectClick = onProjectClick
       ? (project: CloudProjectWithStats) => onProjectClick(project)
       : (project: CloudProjectWithStats) => {
-          if (currentOrg) {
-            navigate({
-              to: '/org/$orgId/zoeymind/editor/$id',
-              params: { orgId: currentOrg.id, id: project.id }
-            })
-          }
+          // 桌面端不走 org 路由, 直接跳编辑器.
+          navigate({ to: `/editor/${project.id}` })
         }
 
     return (
