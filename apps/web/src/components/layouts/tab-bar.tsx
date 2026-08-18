@@ -23,6 +23,7 @@ import {
 } from '@zoeymind/ui'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
 import { pendingProjects } from '@/shared/native'
+import { tabDirty } from '@/shared/tabs/instances'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { defaultMindmapData } from '@zoeymind/shared'
 import { i18next } from '@zoeymind/i18n'
@@ -34,6 +35,7 @@ export function TabBar() {
   const closeTab = useTabs(s => s.closeTab)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
+  const liveDirty = useMindMapStore(s => s.isDirty)
 
   const onPlus = () => {
     const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
@@ -71,18 +73,27 @@ export function TabBar() {
         className="flex h-full min-w-0 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <HomeChip active={activeId === 'home'} onClick={() => setActive('home')} />
-        {tabs.map(tab => (
-          <TabChip
-            key={tab.id}
-            tab={tab}
-            active={activeId === tab.id}
-            onSelect={() => setActive(tab.id)}
-            onClose={e => {
-              e.stopPropagation()
-              requestClose(tab)
-            }}
-          />
-        ))}
+        {tabs.map(tab => {
+          const isActiveTab = activeId === tab.id
+          const dirty =
+            tab.kind === 'draft' ||
+            (isActiveTab
+              ? liveDirty
+              : tabDirty.get(tab.id))
+          return (
+            <TabChip
+              key={tab.id}
+              tab={tab}
+              active={isActiveTab}
+              dirty={dirty}
+              onSelect={() => setActive(tab.id)}
+              onClose={e => {
+                e.stopPropagation()
+                requestClose(tab)
+              }}
+            />
+          )
+        })}
         <button
           type="button"
           onClick={onPlus}
@@ -115,10 +126,10 @@ export function TabBar() {
 }
 
 const chipBase =
-  'group relative inline-flex h-full shrink-0 cursor-pointer items-center gap-1.5 border-r border-transparent px-3 text-xs transition-colors'
+  'group relative inline-flex h-full shrink-0 cursor-pointer items-center gap-1.5 border-r border-border/40 px-3 text-xs transition-colors'
 
 const chipActive =
-  'bg-background text-foreground after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
+  'bg-background text-foreground border-r-transparent after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
 
 const chipInactive =
   'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -141,11 +152,12 @@ function HomeChip({ active, onClick }: { active: boolean; onClick: () => void })
 interface TabChipProps {
   tab: OpenTab
   active: boolean
+  dirty: boolean
   onSelect: () => void
   onClose: (e: React.MouseEvent) => void
 }
 
-function TabChip({ tab, active, onSelect, onClose }: TabChipProps) {
+function TabChip({ tab, active, dirty, onSelect, onClose }: TabChipProps) {
   return (
     <div
       role="tab"
@@ -160,17 +172,31 @@ function TabChip({ tab, active, onSelect, onClose }: TabChipProps) {
       title={tab.title}
     >
       <span className="truncate">{tab.title}</span>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close tab"
-        className={cn(
-          'inline-flex size-5 items-center justify-center rounded hover:bg-muted',
-          !active && 'opacity-0 group-hover:opacity-100'
+      {/* dirty dot / close 二选一: 未 hover 时显示 dot, hover 时显示 x */}
+      <span className="relative inline-flex size-5 items-center justify-center">
+        {dirty && (
+          <span
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute inline-block size-1.5 rounded-full bg-foreground/70 transition-opacity',
+              'group-hover:opacity-0'
+            )}
+          />
         )}
-      >
-        <X className="size-3" />
-      </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close tab"
+          className={cn(
+            'inline-flex size-5 items-center justify-center rounded hover:bg-muted transition-opacity',
+            dirty
+              ? 'opacity-0 group-hover:opacity-100'
+              : !active && 'opacity-0 group-hover:opacity-100'
+          )}
+        >
+          <X className="size-3" />
+        </button>
+      </span>
     </div>
   )
 }

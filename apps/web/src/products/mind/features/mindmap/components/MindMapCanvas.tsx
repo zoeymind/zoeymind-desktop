@@ -34,7 +34,7 @@ import { useProjectContext } from '@/products/mind/features/mindmap/contexts/Pro
 import { useOrganization } from '@/shared/app-shared'
 import { toast, toastLoading, dismissToast, ThemeMenu, LanguageSwitcher } from '@/shared/app-shared'
 import { useTranslation } from '@zoeymind/i18n'
-import { Button } from '@zoeymind/ui'
+import { Button, Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@zoeymind/ui'
 import type { default as MindMap } from 'simple-mind-map'
 import { isWaitingForCollaboration } from '@/products/mind/features/mindmap/types/mindmap-extensions'
 import { logger } from '@zoeymind/logger'
@@ -484,23 +484,23 @@ export function MindMapCanvas() {
             />
             <MindMapIconToolbar />
             {loadError && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm p-4">
-                <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {t('mindmap.canvas.loadFailed')}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {t('mindmap.canvas.loadFailedDescription', { value: loadError })}
-                  </p>
-                  <div className="mt-6 flex justify-end gap-3">
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+                <Card className="w-full max-w-sm">
+                  <CardHeader>
+                    <CardTitle>{t('mindmap.canvas.loadFailed')}</CardTitle>
+                    <CardDescription>
+                      {t('mindmap.canvas.loadFailedDescription', { value: loadError })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="justify-end gap-2">
                     <Button variant="outline" onClick={handleUseSnapshot}>
                       {t('mindmap.canvas.restoreFromSnapshot')}
                     </Button>
                     <Button onClick={handleUseDefaultTemplate}>
                       {t('mindmap.canvas.useDefaultTemplate')}
                     </Button>
-                  </div>
-                </div>
+                  </CardFooter>
+                </Card>
               </div>
             )}
             <MindMapScrollbar />
