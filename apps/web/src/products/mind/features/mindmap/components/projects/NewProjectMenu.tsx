@@ -115,7 +115,7 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
           }
         />
         <DropdownMenuContent align="start" className="min-w-[240px]">
-          <DropdownMenuItem onSelect={() => createBlank()}>
+          <DropdownMenuItem onClick={() => createBlank()}>
             <SparklesIcon className="mr-2 size-4" />
             <div className="flex flex-col">
               <span>{t('projects.newMenu.blank', '新建')}</span>
@@ -124,7 +124,7 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
               </span>
             </div>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void handleOpenExisting()}>
+          <DropdownMenuItem onClick={() => void handleOpenExisting()}>
             <FolderOpenIcon className="mr-2 size-4" />
             <div className="flex flex-col">
               <span>{t('projects.newMenu.open', '打开')}</span>
@@ -134,7 +134,7 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
             </div>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => handleImportClick('standard')}>
+          <DropdownMenuItem onClick={() => handleImportClick('standard')}>
             <FileUpIcon className="mr-2 size-4" />
             <div className="flex flex-col">
               <span>{t('projects.newMenu.importXmind', '导入 XMind')}</span>
@@ -143,7 +143,7 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
               </span>
             </div>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handleImportClick('zm')}>
+          <DropdownMenuItem onClick={() => handleImportClick('zm')}>
             <FileUpIcon className="mr-2 size-4" />
             <div className="flex flex-col">
               <span>
