@@ -44,8 +44,8 @@ import { HeaderTitle } from './HeaderTitle'
 import { CanvasTool } from './canvasTool/index.tsx'
 import { MindMapScrollbar } from './MindMapScrollbar.tsx'
 import { PreviewIndicator } from './PreviewIndicator.tsx'
-import { CollaborationCursorLayer } from './CollaborationCursorLayer'
 import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
+import { tabInstances } from '@/shared/tabs/instances'
 
 // 初始化插件
 initPlugins()
@@ -90,6 +90,15 @@ export function MindMapCanvas() {
 
   // 权限管理 - 从store获取权限状态
   const { hasPermission, canEdit } = usePermissionStore()
+
+  // 把当前实例注册到 tab-scoped 注册表, 让 WorkspaceShell 切 tab 时 swap 全局 store.
+  useEffect(() => {
+    if (!workspaceId) return
+    if (mindMap) tabInstances.register(workspaceId, mindMap)
+    return () => {
+      if (workspaceId) tabInstances.unregister(workspaceId)
+    }
+  }, [mindMap, workspaceId])
 
 
   const handleLoadError = useCallback(

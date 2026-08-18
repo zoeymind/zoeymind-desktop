@@ -1,15 +1,15 @@
 /**
- * WorkspaceShell —— tabs 主内容区.
+ * WorkspaceShell —— tabs 主内容区, VS Code 风格 keep-alive.
  *
- * Home 区 (ProjectListShell) 始终 mounted, 只是根据 activeId 决定 visible;
- * 每个 open editor tab 也 mounted 到自己的容器, 通过 CSS 显示/隐藏,
- * 达到 VS Code 风格的 keep-alive 效果.
+ * Home 区和每个 open editor tab 都常驻 DOM (via `hidden` 属性), 切 tab 不再 unmount.
  *
- * 注意: useMindMapStore 是全局单例, 只有 active tab 的 MindMapCanvas 通过
- * `isActive` prop 触发 setMindMap; 其它 tab 的 canvas 保留 DOM 但不占用全局
- * store 的 mindMap 引用.
+ * useMindMapStore 是全局单例, 直接挂多个 canvas 会互相踩. 解决:
+ *   - 每个 MindMapCanvas 挂载时把自己的 MindMap 实例 register 到 tabInstances Map
+ *   - WorkspaceShell 监听 activeId, 把 tabInstances[activeId] 塞回全局 store
+ *   - dirty state 同样按 tab 缓存 (tabDirty)
+ * 切 tab: 全局 store swap 一次, 不重载 canvas, 不弹 Loading.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PanelLeft } from 'lucide-react'
 import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
@@ -21,6 +21,8 @@ import {
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext } from '@/shared/native'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
+import { tabInstances, tabDirty } from '@/shared/tabs/instances'
+import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 
 const LOCAL_ORG_ID = 'local'
 
@@ -30,7 +32,7 @@ export function WorkspaceShell() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // URL <- activeId (deep-link 分享 / refresh 恢复)
+  // URL <- activeId (deep-link)
   useEffect(() => {
     const target =
       activeId === 'home'
@@ -38,10 +40,28 @@ export function WorkspaceShell() {
         : tabs.find(t => t.id === activeId)?.kind === 'draft'
           ? '/editor/new'
           : `/editor/${activeId}`
-    if (location.pathname !== target) {
-      navigate(target, { replace: true })
-    }
+    if (location.pathname !== target) navigate(target, { replace: true })
   }, [activeId, tabs, location.pathname, navigate])
+
+  // 切 tab: 从 tabInstances 恢复 active tab 的 mindMap + dirty 到全局 store.
+  // 离开的 tab 把当前 dirty 存进缓存.
+  const prevActiveRef = useRef<string | null>(null)
+  useEffect(() => {
+    const prev = prevActiveRef.current
+    if (prev && prev !== 'home' && prev !== activeId) {
+      tabDirty.set(prev, useMindMapStore.getState().isDirty)
+    }
+    if (activeId === 'home') {
+      useMindMapStore.setState({ mindMap: null, isDirty: false })
+    } else {
+      const instance = tabInstances.get(activeId) ?? null
+      useMindMapStore.setState({
+        mindMap: instance as never,
+        isDirty: tabDirty.get(activeId)
+      })
+    }
+    prevActiveRef.current = activeId
+  }, [activeId])
 
   return (
     <div className="relative h-full w-full">
@@ -70,11 +90,7 @@ function HomePane({ visible }: { visible: boolean }) {
   }, [])
 
   return (
-    <div
-      className="absolute inset-0 flex bg-background"
-      // 用 hidden 而非 display:none, 更语义化, tailwind 会加 display:none.
-      hidden={!visible}
-    >
+    <div className="absolute inset-0 flex bg-background" hidden={!visible}>
       <ProjectsSidebar
         activeView={activeView}
         activeFolderId={activeFolderId}
@@ -113,12 +129,8 @@ function HomePane({ visible }: { visible: boolean }) {
 }
 
 function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
-  // useMindMapStore 是全局单例, 同时挂多个 canvas 会互相踩 setMindMap.
-  // v1: 只有 active tab 挂完整子树, 切走时卸载 (~1s reload). 未来可以改成
-  // 每 tab 独立 mindmap-store + 全局代理才能真 keep-alive.
-  if (!visible) return null
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0" hidden={!visible}>
       <SaveFlowProvider projectId={tab.id}>
         <EditorPaneInner id={tab.id} />
       </SaveFlowProvider>
@@ -135,3 +147,4 @@ function EditorPaneInner({ id }: { id: string }) {
     </ProjectProvider>
   )
 }
+
