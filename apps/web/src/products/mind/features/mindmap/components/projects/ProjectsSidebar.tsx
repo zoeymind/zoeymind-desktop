@@ -40,6 +40,7 @@ import {
 } from '@/shared/organization'
 import { WorkspaceAvatar } from '@/shared/auth'
 import { AppLauncher } from '@/shared/app-shared'
+import { SettingsDialog } from '@/pages/SettingsDialog'
 import { NewProjectMenu } from './NewProjectMenu'
 import { SidebarAccountMenu } from './SidebarAccountMenu'
 import { SidebarFolders } from './SidebarFolders'
@@ -97,6 +98,7 @@ export function ProjectsSidebar({
   const { t } = useTranslation()
   const [settingsProjectId, setSettingsProjectId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   return (
     <>
@@ -222,14 +224,15 @@ export function ProjectsSidebar({
           </nav>
           {/* 底部: 设置 + 语言切换 + 主题切换 */}
           <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
-            <Link
-              to="/settings"
+            <button
+              type="button"
+              onClick={() => setShowSettings(true)}
               className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
               aria-label={t('common.settings', '设置')}
               title={t('common.settings', '设置')}
             >
               <Settings className="size-4" />
-            </Link>
+            </button>
             <div className="flex items-center gap-1">
               <LanguageSwitcher />
               <ThemeMenu />
@@ -253,6 +256,8 @@ export function ProjectsSidebar({
         onOpenChange={setCreateOpen}
         onCreated={id => onWorkspaceCreated?.(id)}
       />
+
+      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </>
   )
 }

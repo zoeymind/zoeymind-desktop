@@ -8,7 +8,6 @@ import {
   type ProjectView
 } from '@/products/mind/features/mindmap/components/projects/ProjectsSidebar'
 import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
-import { SettingsPage } from '@/pages/SettingsPage'
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import {
   UnsavedGuard,
@@ -139,7 +138,6 @@ export const router = createBrowserRouter([
       { index: true, element: <ProjectListShell /> },
       { path: 'editor/new', element: <EditorShellForDraft /> },
       { path: 'editor/:id', element: <EditorShell /> },
-      { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> }
     ]
   }
