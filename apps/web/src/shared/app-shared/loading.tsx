@@ -1,36 +1,53 @@
 /**
- * 全局 Loading 状态 Provider —— 桌面端保留 mindmap 编辑器加载动画能力。
- *
- * API 尽量与产品仓一致：`useLoading()` 返回 { showLoading, hideLoading, isLoading, tip }。
+ * 全局 Loading 状态 Provider —— 与产品仓一致的 API：
+ *   useLoading() → { loading, tip, progress, showLoading, hideLoading, updateProgress }
  */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
 interface LoadingContextValue {
+  loading: boolean
   isLoading: boolean
   tip: string | null
+  progress: number
   showLoading: (tip?: string) => void
   hideLoading: () => void
+  updateProgress: (progress: number) => void
 }
 
 const LoadingContext = createContext<LoadingContextValue | null>(null)
 
 export function LoadingProvider({ children }: { children: ReactNode }) {
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [tip, setTip] = useState<string | null>(null)
+  const [progress, setProgress] = useState(0)
 
   const showLoading = useCallback((next?: string) => {
     setTip(next ?? null)
-    setIsLoading(true)
+    setProgress(0)
+    setLoading(true)
   }, [])
 
   const hideLoading = useCallback(() => {
-    setIsLoading(false)
+    setLoading(false)
     setTip(null)
+    setProgress(0)
+  }, [])
+
+  const updateProgress = useCallback((next: number) => {
+    setProgress(Math.max(0, Math.min(100, next)))
   }, [])
 
   const value = useMemo<LoadingContextValue>(
-    () => ({ isLoading, tip, showLoading, hideLoading }),
-    [isLoading, tip, showLoading, hideLoading]
+    () => ({
+      loading,
+      isLoading: loading,
+      tip,
+      progress,
+      showLoading,
+      hideLoading,
+      updateProgress
+    }),
+    [loading, tip, progress, showLoading, hideLoading, updateProgress]
   )
 
   return <LoadingContext.Provider value={value}>{children}</LoadingContext.Provider>
