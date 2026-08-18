@@ -30,9 +30,16 @@ import {
   findByPath,
   registerProject,
   unregisterProject,
+  defaultVaultDir,
+  pendingProjects,
+  createUUID,
   type ZMindBundle,
   type ProjectRow
 } from './'
+import { exists, mkdir } from '@tauri-apps/plugin-fs'
+import { save as saveDialog } from '@tauri-apps/plugin-dialog'
+import { join } from '@tauri-apps/api/path'
+import { useNavigate } from 'react-router-dom'
 import { composePreviewWithLogo } from './preview'
 
 const RECOVERY_DEBOUNCE_MS = 5_000
@@ -73,6 +80,7 @@ function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
 export function useSaveFlow(projectId: string | null) {
   const setDirty = useMindMapStore(s => s.setDirty)
   const isDirty = useMindMapStore(s => s.isDirty)
+  const navigate = useNavigate()
 
   const stateRef = useRef<SaveFlowState>({
     source: null,
@@ -85,7 +93,7 @@ export function useSaveFlow(projectId: string | null) {
   // 首次挂载：解析 path
   useEffect(() => {
     let mounted = true
-    if (!projectId) return
+    if (!projectId || pendingProjects.isPending(projectId)) return
     void (async () => {
       const row = await getProject(projectId)
       if (!mounted || !row) return
@@ -136,22 +144,69 @@ export function useSaveFlow(projectId: string | null) {
   const save = useCallback(async () => {
     if (!projectId) return
     const state = stateRef.current
-    if (!state.source || !state.path) return
+    if (!state.source) return
 
-    // 生成 preview.png（若编辑器注册了 renderer） —— 引擎导出 PNG，
-    // 再交给 composePreviewWithLogo 加水印
+    // 未保存的新建：先弹保存对话框、写盘、入 SqlProjectRepo，再切换到真实 id
+    if (pendingProjects.isPending(projectId)) {
+      const dir = await defaultVaultDir()
+      if (!(await exists(dir))) await mkdir(dir, { recursive: true })
+      const defaultPath = await join(dir, `${state.source.name || 'Untitled'}.zmind`)
+      const picked = await saveDialog({
+        defaultPath,
+        filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
+      })
+      if (!picked) return
+
+      // preview
+      let previewPng: Uint8Array | null = state.source.previewPng ?? null
+      if (state.renderer) {
+        try {
+          const raw = await state.renderer()
+          if (raw) previewPng = await composePreviewWithLogo(raw)
+        } catch {
+          previewPng = state.source.previewPng ?? null
+        }
+      }
+
+      const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
+      await writeBundle(picked, bundle)
+
+      const collided = await findByPath(picked)
+      let realId: string
+      if (collided) {
+        realId = collided.id
+        await refreshProjectIndex(realId, {
+          name: state.source.name,
+          nodeCount: state.source.nodeCount ?? 0
+        })
+      } else {
+        realId = createUUID()
+        await registerProject({
+          id: realId,
+          path: picked,
+          name: state.source.name,
+          nodeCount: state.source.nodeCount ?? 0
+        })
+      }
+      pendingProjects.clear(projectId)
+      state.path = picked
+      setDirty(false)
+      // URL 从 unsaved-* 换成真实 id（replace，避免返回按钮回到临时 URL）
+      navigate(`/editor/${realId}`, { replace: true })
+      return
+    }
+
+    // 已入库：正常写回原路径
+    if (!state.path) return
     let previewPng: Uint8Array | null = state.source.previewPng ?? null
     if (state.renderer) {
       try {
         const raw = await state.renderer()
-        if (raw) {
-          previewPng = await composePreviewWithLogo(raw)
-        }
+        if (raw) previewPng = await composePreviewWithLogo(raw)
       } catch {
         previewPng = state.source.previewPng ?? null
       }
     }
-
     const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
     await writeBundle(state.path, bundle)
     await refreshProjectIndex(projectId, {

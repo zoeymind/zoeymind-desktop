@@ -17,6 +17,7 @@ import {
   createUUID,
   defaultVaultDir,
   listProjects,
+  pendingProjects,
   refreshProjectIndex,
   registerProject,
   setStarred,
@@ -149,34 +150,17 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
     })
     return items
   }, [rows, folderId, searchText, sortType])
-
   const createProject = useCallback(
     async (name?: string) => {
       if (creating) return
       setCreating(true)
       try {
         const title = name?.trim() || i18next.t('mindmap.editor.newProjectTitle')
-        const dir = await defaultVaultDir()
-        if (!(await exists(dir))) await mkdir(dir, { recursive: true })
-        const targetPath = await pickUniquePath(dir, sanitizeFilename(title))
-        const now = Date.now()
-        const nodeCount = countNodes(defaultMindmapData)
-        const bundle: ZMindBundle = {
-          tree: defaultMindmapData,
-          meta: { name: title, tags: [], createdAt: now, updatedAt: now, nodeCount }
-        }
-        await writeBundle(targetPath, bundle)
-        const id = createUUID()
-        await registerProject({
-          id,
-          path: targetPath,
-          name: title,
-          folderId: folderId ?? null,
-          nodeCount
-        })
-        await refreshProjects()
+        // 桌面端：新建不落盘、不入索引。只把 bundle 放内存暂存池，跳转编辑器；
+        // 首次 Ctrl+S 时才让用户选保存路径并入库。
+        const tempId = pendingProjects.stash({ title, tree: defaultMindmapData })
         onProjectsChanged?.()
-        navigate(`/editor/${id}`)
+        navigate(`/editor/${tempId}`)
       } catch (error) {
         logger.error('创建失败', error)
         toast.error(i18next.t('mindmap.editor.createFailed'))
@@ -184,7 +168,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
         setCreating(false)
       }
     },
-    [creating, folderId, navigate, onProjectsChanged, refreshProjects]
+    [creating, navigate, onProjectsChanged]
   )
 
   const renameProject = useCallback(

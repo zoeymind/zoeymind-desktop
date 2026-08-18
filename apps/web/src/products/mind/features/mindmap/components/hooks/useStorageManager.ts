@@ -14,7 +14,7 @@ import { logger } from '@zoeymind/logger'
 import { defaultData } from './useCanvasManager'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { getProject, readBundle, useSaveFlow } from '@/shared/native'
+import { getProject, readBundle, useSaveFlow, pendingProjects } from '@/shared/native'
 
 interface LoadedData {
   savedData: MindMapNodeTree | null
@@ -43,6 +43,15 @@ export function useStorageManager(): UseStorageManagerResult {
   const loadSavedData = useCallback(async (): Promise<LoadedData> => {
     if (!workspaceId) {
       return { savedData: defaultData, savedViewData: null }
+    }
+    // 未保存的新建项目 —— bundle 只在内存里，getProject 拿不到
+    if (pendingProjects.isPending(workspaceId)) {
+      const pending = pendingProjects.read(workspaceId)
+      if (!pending) {
+        return { savedData: defaultData, savedViewData: null }
+      }
+      nameRef.current = pending.title
+      return { savedData: pending.tree, savedViewData: null }
     }
     try {
       const row = await getProject(workspaceId)
