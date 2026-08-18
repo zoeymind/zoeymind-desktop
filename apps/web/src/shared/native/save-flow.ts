@@ -30,7 +30,8 @@ import {
   findByPath,
   registerProject,
   unregisterProject,
-  defaultVaultDir,
+  preferredSaveDir,
+  rememberSaveDir,
   pendingProjects,
   createUUID,
   type ZMindBundle,
@@ -149,9 +150,10 @@ export function useSaveFlow(projectId: string | null) {
 
     // 未保存的新建：先弹保存对话框、写盘、入 SqlProjectRepo，再切换到真实 id
     if (pendingProjects.isPending(projectId)) {
-      const dir = await defaultVaultDir()
+      const dir = await preferredSaveDir()
       if (!(await exists(dir))) await mkdir(dir, { recursive: true })
-      const defaultPath = await join(dir, `${state.source.name || 'Untitled'}.zmind`)
+      const safeName = (state.source.name || 'Untitled').replace(/[\\/:*?"<>|]/g, '_')
+      const defaultPath = await join(dir, `${safeName}.zmind`)
       const picked = await saveDialog({
         defaultPath,
         filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
@@ -191,6 +193,7 @@ export function useSaveFlow(projectId: string | null) {
       }
       pendingProjects.clear(projectId)
       state.path = picked
+      await rememberSaveDir(picked)
       setDirty(false)
       bumpProjects()
       navigate(`/editor/${realId}`, { replace: true })
