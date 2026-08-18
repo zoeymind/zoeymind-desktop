@@ -1,17 +1,14 @@
 /**
- * useFolders —— 桌面端本地版：文件夹是 SqlFolderRepo 里的虚拟标签。
- *
- * 与产品仓 tRPC 版接口对齐：{ folders, isLoading, refetch, invalidate,
- * createFolder, renameFolder, deleteFolder, isMutating }。
+ * useFolders —— 桌面端本地版：SqlFolderRepo。API 表面对齐 tRPC 版。
  */
 import { useCallback, useEffect, useState } from 'react'
 import { logger } from '@zoeymind/logger'
-import { createUUID } from '@/shared/app-shared'
 import {
   listFolders,
   createFolder as sqlCreateFolder,
   renameFolder as sqlRenameFolder,
   deleteFolder as sqlDeleteFolder,
+  createUUID,
   type FolderRow
 } from '@/shared/native'
 
@@ -37,16 +34,11 @@ export function useFolders() {
     void load()
   }, [load])
 
-  const refetch = load
-  const invalidate = load
-
   const createFolder = useCallback(
     async (name: string) => {
       setIsMutating(true)
       try {
-        const id = createUUID()
-        const sortOrder = folders.length
-        await sqlCreateFolder(id, name, sortOrder)
+        await sqlCreateFolder(createUUID(), name, folders.length)
         await load()
       } finally {
         setIsMutating(false)
@@ -84,8 +76,8 @@ export function useFolders() {
   return {
     folders,
     isLoading,
-    refetch,
-    invalidate,
+    refetch: load,
+    invalidate: load,
     createFolder,
     renameFolder,
     deleteFolder,

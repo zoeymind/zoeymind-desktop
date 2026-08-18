@@ -1,15 +1,5 @@
 /**
- * useCreateProject —— 桌面端本地版：新建 .zmind → 落磁盘 → 入索引 → 跳转编辑器。
- *
- * 与产品仓的云端版对齐 return 表面（creating / createBlank / createFromImport），
- * 但不再走 tRPC / sessionStorage handoff：新建时直接 pack 一个空白 bundle 写到
- * `<vaultDir>/<title>.zmind`，同时 register 到 SqlProjectRepo，然后 navigate 到
- * `/editor/:id`。
- *
- * 文件导入的解析器（xmind / markdown / zmxmind）复用产品仓的，只把落盘方式换成本地。
- *
- * 同名冲突：save-as 覆盖逻辑放在 editor 侧的手动 Save 流程里；本 hook 的新建走
- * "标题即文件名"的默认名，冲突时追加 `-2`/`-3`/... 直到不冲突。
+ * useCreateProject —— 桌面端本地版：新建 .zmind → 落磁盘 → 入索引 → 跳编辑器。
  */
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -37,6 +27,7 @@ export type ImportFormat = 'xmind-standard' | 'xmind-zm' | 'markdown'
 interface UseCreateProjectOptions {
   onCreated?: (newId: string) => void
   folderId?: string | null
+  workspaceId?: string | null
 }
 
 interface UseCreateProjectReturn {
@@ -48,7 +39,7 @@ interface UseCreateProjectReturn {
 function deriveTitleFromFilename(filename: string): string {
   const dot = filename.lastIndexOf('.')
   const base = dot > 0 ? filename.slice(0, dot) : filename
-  return base.trim() || i18next.t('mindmap.editor.newProjectTitle')
+  return base.trim() || i18next.t('mindmap.editor.newCloudProject')
 }
 
 function sanitizeFilename(name: string): string {
@@ -142,5 +133,9 @@ export function useCreateProject(opts: UseCreateProjectOptions = {}): UseCreateP
 
   return { creating, createBlank, createFromImport }
 }
+
+// PENDING_IMPORT_STORAGE_PREFIX 原云版用于 sessionStorage handoff；桌面端不用了但
+// 老代码里可能 import 这个常量，保留一个空串占位。
+export const PENDING_IMPORT_STORAGE_PREFIX = 'mindmap:pending-import:'
 
 export default useCreateProject

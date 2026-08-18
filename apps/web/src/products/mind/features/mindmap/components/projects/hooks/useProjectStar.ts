@@ -1,17 +1,18 @@
 /**
- * useProjectStar —— 桌面端本地版：直接调 SqlProjectRepo.setStarred。
+ * useProjectStar —— 桌面端本地版：SqlProjectRepo.setStarred。
  */
 import { logger } from '@zoeymind/logger'
 import { useState, useCallback } from 'react'
-import { setStarred, type ProjectRow } from '@/shared/native'
+import { setStarred } from '@/shared/native'
+import type { ProjectWithStats } from './useProjects'
 
 interface UseProjectStarProps {
-  project: ProjectRow
+  project: ProjectWithStats
   onUpdate?: () => void
 }
 
 export function useProjectStar({ project, onUpdate }: UseProjectStarProps) {
-  const [isStarred, setIsStarredState] = useState<boolean>(project.isStarred)
+  const [isStarred, setIsStarredState] = useState<boolean>(!!project.metadata?.starred)
 
   const toggleStar = useCallback(
     async (e?: React.MouseEvent) => {
