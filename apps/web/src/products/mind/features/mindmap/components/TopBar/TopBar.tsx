@@ -3,6 +3,7 @@ import { logger } from '@zoeymind/logger'
 import { useTranslation } from '@zoeymind/i18n'
 import React, { FC, useState, useRef, useEffect } from 'react'
 import { AlertTriangle, Flag } from 'lucide-react'
+import { HeaderSaveButton } from '../HeaderSaveButton'
 import { TopMoreDropDown } from './TopMoreDropDown'
 import { TopSearch } from './TopSearch'
 import { ShortcutModal } from './ShortcutModal'
@@ -354,6 +355,9 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
               />
             </PopoverContent>
           </Popover>
+
+          {/* 保存快捷入口 — 紧贴菜单右侧, File 菜单式布局 */}
+          <HeaderSaveButton />
 
           <div className="mx-1 h-4 w-px bg-border" />
 

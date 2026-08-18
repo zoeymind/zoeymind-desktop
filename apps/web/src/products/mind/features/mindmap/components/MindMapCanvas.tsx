@@ -38,8 +38,7 @@ import { Button } from '@zoeymind/ui'
 import type { default as MindMap } from 'simple-mind-map'
 import { isWaitingForCollaboration } from '@/products/mind/features/mindmap/types/mindmap-extensions'
 import { logger } from '@zoeymind/logger'
-import { Save } from 'lucide-react'
-import { useSaveFlowContext, pendingProjects } from '@/shared/native'
+// Save 按钮的位置在 TopBar 内 (菜单右侧), 由 TopBar 自身消费 HeaderSaveButton.
 import { MindMapIconToolbar } from './MindMapIconToolbar.tsx'
 import { CanvasTool } from './canvasTool/index.tsx'
 import { MindMapScrollbar } from './MindMapScrollbar.tsx'
@@ -450,11 +449,7 @@ export function MindMapCanvas() {
           {/* 编辑器 Header —— 把左上/右上原本的两个悬浮按钮组合成一条完整 Header,
               位于 TitleBar (32px) 之下. 面板内容 (Tags/Theme/AI) 仍走各自的 fixed 定位. */}
           <div className="relative z-30 flex h-10 items-center justify-between border-b bg-background/95 px-2 backdrop-blur">
-            <div className="flex items-center gap-0.5">
-              <HeaderSaveButton />
-              <div className="mx-1 h-4 w-px bg-border" />
-              <TopBar collaboration={collaboration} />
-            </div>
+            <TopBar collaboration={collaboration} />
             <div className="flex items-center gap-0.5">
               <LanguageSwitcher />
               <ThemeMenu />
@@ -508,42 +503,5 @@ export function MindMapCanvas() {
         </div>
       </AIChatProvider>
     </CommentProvider>
-  )
-}
-
-/**
- * Header 左侧的保存快捷入口 —— 单独抽出来是因为它需要 useSaveFlowContext,
- * 而 Provider 挂在 EditorShell 里, MindMapCanvas 内任何位置消费都行.
- *
- * 交互:
- *   - pending 新建: 点击 -> save-flow.save() 弹 native saveDialog 选路径
- *   - 已入库: 点击 -> 直接写回原路径, 提示 toast
- *   - 未 dirty & 已入库: 按钮变淡 (但仍可点, 允许强制回写)
- */
-function HeaderSaveButton(): React.JSX.Element {
-  const flow = useSaveFlowContext()
-  const { workspaceId } = useProjectContext()
-  const isDirty = useMindMapStore(s => s.isDirty)
-  const pending = !!workspaceId && pendingProjects.isPending(workspaceId)
-  const highlight = isDirty || pending
-  const handleClick = async () => {
-    try {
-      await flow.save()
-    } catch (error) {
-      logger.error('保存失败', error)
-      toast.error('保存失败')
-    }
-  }
-  return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      onClick={handleClick}
-      title="保存 (Cmd/Ctrl+S)"
-      className={highlight ? '' : 'text-muted-foreground'}
-      aria-label="save"
-    >
-      <Save className="size-4" />
-    </Button>
   )
 }
