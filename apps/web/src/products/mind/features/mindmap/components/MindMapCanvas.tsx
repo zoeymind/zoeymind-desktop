@@ -41,6 +41,7 @@ import { logger } from '@zoeymind/logger'
 // Save 按钮的位置在 TopBar 内 (菜单右侧), 由 TopBar 自身消费 HeaderSaveButton.
 import { MindMapIconToolbar } from './MindMapIconToolbar.tsx'
 import { HeaderTitle } from './HeaderTitle'
+import { CanvasTool } from './canvasTool/index.tsx'
 import { MindMapScrollbar } from './MindMapScrollbar.tsx'
 import { PreviewIndicator } from './PreviewIndicator.tsx'
 import { CollaborationCursorLayer } from './CollaborationCursorLayer'
