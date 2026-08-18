@@ -446,30 +446,19 @@ export function MindMapCanvas() {
   return (
     <CommentProvider value={commentContextValue}>
       <AIChatProvider>
-        <div className="flex flex-col h-screen">
-          {/* 编辑器 Header —— 把左上/右上原本的两个悬浮按钮组合成一条完整 Header,
-              位于 TitleBar (32px) 之下. 面板内容 (Tags/Theme/AI) 仍走各自的 fixed 定位. */}
-          <div className="relative z-30 flex h-10 items-center border-b bg-background/95 px-2 backdrop-blur">
-            <div className="flex flex-1 min-w-0 items-center gap-0.5">
-              <TopBar collaboration={collaboration} />
-            </div>
-            {/* 绝对居中的标题, 与左右两侧独立, 长度不影响两侧宽度 */}
-            <div className="pointer-events-none absolute inset-x-0 flex justify-center">
-              <div className="pointer-events-auto">
-                <HeaderTitle />
-              </div>
-            </div>
-            <div className="flex flex-1 min-w-0 items-center justify-end gap-0.5">
-              <LanguageSwitcher />
-              <ThemeMenu />
-              <div className="mx-1 h-4 w-px bg-border" />
-              <FormatPanel
-                ref={formatPanelRef}
-                onPreviewStateChange={handlePreviewStateChange}
-                setExitPreviewCallback={setExitPreviewCallback}
-              />
-            </div>
-          </div>
+        <div className="flex h-screen">
+          {/* 左侧 icon-only 活动条 —— 取代原顶部 Header. 上: TopBar (menu+save) / FormatPanel (tags/AI). 下: 语言 / 主题. */}
+          <aside className="z-30 flex w-12 shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-2">
+            <TopBar collaboration={collaboration} />
+            <FormatPanel
+              ref={formatPanelRef}
+              onPreviewStateChange={handlePreviewStateChange}
+              setExitPreviewCallback={setExitPreviewCallback}
+            />
+            <div className="flex-1" />
+            <LanguageSwitcher />
+            <ThemeMenu />
+          </aside>
           <div className="flex-1 relative">
             <div
               ref={containerRef}

@@ -89,7 +89,7 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
       <>
         <FloatingToolbar position="top-right">
           {/* 主工具栏 */}
-          <FloatingToolbarGroup>
+          <FloatingToolbarGroup orientation="vertical" className="gap-1">
             {showAiTab && (
               <>
                 <FloatingToolbarButton
@@ -106,7 +106,7 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
                     )}
                   </div>
                 </FloatingToolbarButton>
-                <FloatingToolbarSeparator />
+                <FloatingToolbarSeparator orientation="horizontal" />
               </>
             )}
 

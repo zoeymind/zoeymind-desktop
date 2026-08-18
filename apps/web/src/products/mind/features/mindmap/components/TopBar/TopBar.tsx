@@ -288,7 +288,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
     <>
       <FloatingToolbar position="top-left">
         {/* 主工具栏 */}
-        <FloatingToolbarGroup className="max-w-[440px] flex-nowrap">
+        <FloatingToolbarGroup orientation="vertical" className="flex-nowrap gap-1">
           {/* 使用shadcn DropdownMenu替换按钮 */}
           <Popover
             open={activeTab === 'search'}
