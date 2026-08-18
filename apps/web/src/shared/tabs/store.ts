@@ -66,11 +66,17 @@ export const useTabs = create<TabsState>()(
             return { ...state, activeId: existing.id }
           }
           if (tab.projectId) void touchLastOpenedSafe(tab.projectId)
+          // 新 tab: 标 loading=true (draft 除外, draft 立即就有数据), useStorageManager
+          // 初次 sync 完成后会 setLoading(false).
+          if (tab.kind !== 'draft') {
+            void import('./loading').then(m => m.useTabLoading.getState().setLoading(tab.id, true))
+          }
           return { tabs: [...state.tabs, tab], activeId: tab.id }
         })
       },
 
       closeTab: id => {
+        void import('./loading').then(m => m.useTabLoading.getState().clear(id))
         set(state => {
           const next = state.tabs.filter(t => t.id !== id)
           if (state.activeId !== id) return { ...state, tabs: next }

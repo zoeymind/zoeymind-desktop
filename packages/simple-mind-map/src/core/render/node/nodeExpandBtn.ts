@@ -79,7 +79,6 @@ function sumNode(data = []) {
 //  创建或更新展开收缩按钮内容
 function updateExpandBtnNode() {
   const { expand } = this.getData();
-  if (expand === this._lastExpandBtnType) return;
 
   this.createExpandNodeContent();
   const {
@@ -88,6 +87,13 @@ function updateExpandBtnNode() {
     expandBtnNumHandler,
     expandBtnSize,
   } = this.mindMap.opt;
+
+  // Reapply current preset tokens on every render; the button nodes are intentionally reused.
+  this.style.iconBtn(
+    this._openExpandNode,
+    this._closeExpandNode,
+    this._fillExpandNode,
+  );
 
   // Keep one stable circle as the hit target. WKWebView does not reliably re-hit-test
   // a stationary pointer after the element under it is removed and replaced.
@@ -107,7 +113,10 @@ function updateExpandBtnNode() {
       }
       this._openExpandNode.text(String(count));
     }
-    this._fillExpandNode.stroke({ color: expandBtnStyle.strokeColor });
+    this._fillExpandNode.stroke({
+      color: expandBtnStyle.strokeColor,
+      width: expandBtnStyle.strokeWidth,
+    });
     this._closeExpandNode.hide();
     this._openExpandNode.show();
     if (isShowExpandNum) {

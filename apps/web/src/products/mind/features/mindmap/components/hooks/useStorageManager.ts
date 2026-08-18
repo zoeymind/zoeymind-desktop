@@ -16,6 +16,7 @@ import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import { getProject, readBundle, pendingProjects, useOptionalSaveFlow } from '@/shared/native'
 import { useTabs } from '@/shared/tabs/store'
+import { useTabLoading } from '@/shared/tabs/loading'
 
 interface LoadedData {
   savedData: MindMapNodeTree | null
@@ -124,6 +125,8 @@ export function useStorageManager(): UseStorageManagerResult {
     // 初次挂载: 记 baseline (代表当前是干净态), 之后再判 dirty.
     const initTree = sync()
     lastCleanHashRef.current = treeHash(initTree)
+    // mindmap 首帧 setData 已完成 -> tab 从 loading 中撤下 (TabBar spinner 收起).
+    if (workspaceId) useTabLoading.getState().setLoading(workspaceId, false)
 
     const onChange = () => {
       const tree = sync()

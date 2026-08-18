@@ -17,12 +17,19 @@ import { toast } from '@/shared/app-shared'
 import { useSaveFlowContext, pendingProjects } from '@/shared/native'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
+import { useTabs } from '@/shared/tabs/store'
 
 export function HeaderSaveButton(): React.JSX.Element {
   const flow = useSaveFlowContext()
   const { workspaceId } = useProjectContext()
   const isDirty = useMindMapStore(s => s.isDirty)
-  const pending = !!workspaceId && pendingProjects.isPending(workspaceId)
+  // pending 语义: '真正的 draft', 与 TabBar.requestClose 对齐. draft 保存后 tab.kind
+  // 已翻 'file' 但 pendingProjects stash 仍保留 (给 useCanvasManager 用 workspaceId
+  // 读 tree), 若只看 pendingProjects 会把已保存 tab 误判为 pending.
+  const isDraftTab = useTabs(s =>
+    !!workspaceId && s.tabs.find(t => t.id === workspaceId)?.kind === 'draft'
+  )
+  const pending = isDraftTab && !!workspaceId && pendingProjects.isPending(workspaceId)
   const dirty = isDirty || pending
   const [saving, setSaving] = useState(false)
 

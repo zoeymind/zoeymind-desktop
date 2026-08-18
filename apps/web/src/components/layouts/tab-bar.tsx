@@ -10,7 +10,7 @@
  *   - overflow-x-auto, 滚动条隐藏.
  *   - 鼠标滚轮 (垂直) 转横向滚动.
  */
-import { Home, Plus, X } from 'lucide-react'
+import { Home, Loader2, Plus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import {
   Button,
@@ -24,6 +24,7 @@ import {
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
 import { pendingProjects } from '@/shared/native'
 import { tabDirty, tabSaveFns } from '@/shared/tabs/instances'
+import { useTabLoading } from '@/shared/tabs/loading'
 import { logger } from '@zoeymind/logger'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { defaultMindmapData } from '@zoeymind/shared'
@@ -37,6 +38,7 @@ export function TabBar() {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
   const liveDirty = useMindMapStore(s => s.isDirty)
+  const tabLoading = useTabLoading(s => s.loading)
 
   const onPlus = () => {
     const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
@@ -87,6 +89,7 @@ export function TabBar() {
               tab={tab}
               active={isActiveTab}
               dirty={dirty}
+              loading={tabLoading[tab.id] === true}
               onSelect={() => setActive(tab.id)}
               onClose={e => {
                 e.stopPropagation()
@@ -171,11 +174,12 @@ interface TabChipProps {
   tab: OpenTab
   active: boolean
   dirty: boolean
+  loading: boolean
   onSelect: () => void
   onClose: (e: React.MouseEvent) => void
 }
 
-function TabChip({ tab, active, dirty, onSelect, onClose }: TabChipProps) {
+function TabChip({ tab, active, dirty, loading, onSelect, onClose }: TabChipProps) {
   return (
     <div
       role="tab"
@@ -189,10 +193,11 @@ function TabChip({ tab, active, dirty, onSelect, onClose }: TabChipProps) {
       )}
       title={tab.title}
     >
-      <span className="truncate">{tab.title}</span>
+      {loading && <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />}
+      <span className="truncate">{loading ? '加载中…' : tab.title}</span>
       {/* dirty dot / close 二选一: 未 hover 时显示 dot, hover 时显示 x */}
       <span className="relative inline-flex size-5 items-center justify-center">
-        {dirty && (
+        {dirty && !loading && (
           <span
             aria-hidden
             className={cn(
