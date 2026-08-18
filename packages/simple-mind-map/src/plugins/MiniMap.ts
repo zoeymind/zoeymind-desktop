@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { isWhite, isTransparent, getVisibleColorFromTheme } from '../utils/index'
 
 // 小地图插件

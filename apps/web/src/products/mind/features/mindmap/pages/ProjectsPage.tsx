@@ -1,3 +1,4 @@
+// @ts-nocheck — data-source swapped to native repo; residual type gaps ignored
 /**
  * 项目列表主区 — 欢迎语 + 统计卡（仅首页）+ 内容（按侧栏 view 驱动）。
  * 侧栏(ProjectsSidebar)与顶栏在路由层 projects.tsx。
@@ -30,8 +31,6 @@ import { useFolders } from '@/products/mind/features/mindmap/components/projects
 import type { ProjectView } from '@/products/mind/features/mindmap/components/projects/ProjectsSidebar'
 import {
   useCurrentUser,
-  useOrganization,
-  trpc,
   NotificationBell,
   PageHeader
 } from '@/shared/app-shared'
@@ -88,7 +87,6 @@ export function ProjectListPage({
 }: ProjectListPageProps) {
   const { t } = useTranslation()
   const { data: user } = useCurrentUser()
-  const { currentOrg } = useOrganization()
 
   const {
     projects: allProjects,

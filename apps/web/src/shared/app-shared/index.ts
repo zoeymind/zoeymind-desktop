@@ -23,7 +23,9 @@ export const generateUUID: () => string = uuidV4
 /** sonner 直传，保持三行 API：toast() / toastLoading / dismissToast。 */
 export const toast = sonnerToast
 export const toastLoading = (message: string): string | number => sonnerToast.loading(message)
-export const dismissToast = (id?: string | number): void => sonnerToast.dismiss(id)
+export const dismissToast = (id?: string | number): void => {
+  sonnerToast.dismiss(id)
+}
 // eslint-disable-next-line react-refresh/only-export-components
 export function useToast(): { toast: typeof sonnerToast } {
   return { toast: sonnerToast }

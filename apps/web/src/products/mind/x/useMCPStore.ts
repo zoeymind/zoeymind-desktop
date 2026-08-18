@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * MCP 连接状态存储（仅内存）
  *

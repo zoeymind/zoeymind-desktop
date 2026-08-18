@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * MessageComposerBox - AI 对话消息组合框（唯一组件，两种状态）。
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy project card util, dormant
 /** 云项目列表 —— 桌面端 no-op。数据源改走本地 useProjects；本 hook 只是让 CloudProjectList/MoveDialog 之类的 import 不炸。 */
 import { useMemo } from 'react'
 

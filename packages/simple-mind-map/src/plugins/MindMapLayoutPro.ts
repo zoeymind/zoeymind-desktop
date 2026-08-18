@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { CONSTANTS } from '../constants/constant'
 
 // 该插件会向节点数据的data中添加dir字段

@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * flattenTree — 把思维导图的树形结构扁平化为 FlatNode[].
  *

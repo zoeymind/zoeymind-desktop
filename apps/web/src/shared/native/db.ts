@@ -26,7 +26,7 @@ export async function closeDB(): Promise<void> {
   dbPromise = null
 }
 
-export type Row = Record<string, unknown>
+export type Row = object
 
 export async function select<T extends Row = Row>(sql: string, args: unknown[] = []): Promise<T[]> {
   const db = await getDB()

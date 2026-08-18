@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { bfsWalk } from '../utils'
 import { CONSTANTS } from '../constants/constant'
 

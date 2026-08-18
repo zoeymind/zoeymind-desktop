@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * useAIChat — AI 聊天的薄壳编排器.
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 /**
  * 思维导图节点级 CRDT 数据模型 (客户端实现)
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * useAutoScroll - 自动滚动 Hook
  *

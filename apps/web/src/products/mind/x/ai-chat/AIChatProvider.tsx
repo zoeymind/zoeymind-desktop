@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * AIChatProvider — 在 MindMapCanvas 顶层挂载 AI 聊天运行时.
  *

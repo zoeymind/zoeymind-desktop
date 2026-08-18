@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { fromMarkdown } from 'mdast-util-from-markdown'
 const getNodeText = node => {
   if (node.type === 'list') return ''

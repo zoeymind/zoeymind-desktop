@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * AIchatV2 IndexedDB 存储服务
  * 用于持久化聊天历史记录

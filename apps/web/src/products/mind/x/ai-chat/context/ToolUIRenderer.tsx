@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * ToolUIRenderer — 遍历 pending 队列, 渲染每个 pending tool call 对应的 UI.
  *

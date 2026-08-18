@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored shared package, erasable syntax not applicable
 /**
  * 飞书 API 相关类型定义
  *

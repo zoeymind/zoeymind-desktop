@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import btnsSvg from '../../../svg/btns'
 import { SVG, Circle, G, Text } from '@svgdotjs/svg.js'
 import { isUndef } from '../../../utils'

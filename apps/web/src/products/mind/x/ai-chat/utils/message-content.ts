@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat util, not wired to editor in desktop
 /**
  * assistant 消息是否已有可渲染内容.
  *

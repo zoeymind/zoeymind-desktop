@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * ContextUsageIndicator - Context Token 使用率圆环进度条
  */

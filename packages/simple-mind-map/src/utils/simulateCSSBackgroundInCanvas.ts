@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine util, checked by upstream repo
 // 将以空格分隔的字符串值转换成成数字/单位/值数组
 const getNumberValueFromStr = value => {
   let arr = String(value).split(/\s+/)

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 //  设置数据
 function setData(data = {}) {
   this.mindMap.execCommand('SET_NODE_DATA', this, data)

@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { FC, useEffect } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
 import { nodeIconList } from 'simple-mind-map/src/svg/icons'

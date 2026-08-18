@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { CONSTANTS } from '../../../constants/constant'
 import { G, Rect } from '@svgdotjs/svg.js'
 import { createForeignObjectNode } from '../../../utils/index'

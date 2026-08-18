@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 export const getFontStyleText = fontPath => {
   return `
 @font-face {

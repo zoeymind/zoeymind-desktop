@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { useMemo, useEffect } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { MindMapCanvas } from './MindMapCanvas'

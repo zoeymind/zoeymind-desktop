@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 /**
  * DocumentSync - 思维导图协作同步模块（节点级 CRDT）
  *

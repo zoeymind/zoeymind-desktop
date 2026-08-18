@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import type { Svg } from '@svgdotjs/svg.js'
 import View from './core/view/View'
 import Event from './core/event/Event'

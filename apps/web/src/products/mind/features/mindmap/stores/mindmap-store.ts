@@ -18,12 +18,16 @@ interface MindMapState {
   // 项目标题 (用于同步到浏览器 Tab)
   title: string | null
 
+  // 桌面端脏态：画布变更未持久化到 .zmind
+  isDirty: boolean
+
   // Actions
   setMindMap: (mindMap: MindMapRef) => void
   setLoading: (loading: boolean) => void
   setLoadError: (error: string | null) => void
   setPreviewMode: (isPreview: boolean) => void
   setTitle: (title: string | null) => void
+  setDirty: (dirty: boolean) => void
 
   // 预览模式回调管理
   setExitPreviewCallback: (callback: ExitPreviewCallback) => void
@@ -46,6 +50,7 @@ export const useMindMapStore = create<MindMapState>()(
       isPreviewMode: false,
       exitPreviewCallback: null,
       title: null,
+      isDirty: false,
 
       // Actions
       setMindMap: mindMap => {
@@ -70,6 +75,10 @@ export const useMindMapStore = create<MindMapState>()(
 
       setTitle: title => {
         set({ title })
+      },
+
+      setDirty: dirty => {
+        set({ isDirty: dirty })
       },
 
       exitPreview: () => {

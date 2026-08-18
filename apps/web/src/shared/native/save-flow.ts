@@ -47,11 +47,10 @@ export interface BundleSource {
 }
 
 export type PreviewRenderer = () => Promise<Uint8Array | null>
-
 interface SaveFlowState {
   source: BundleSource | null
   path: string | null
-  timer: number | null
+  timer: ReturnType<typeof setTimeout> | null
   createdAt: number
   renderer: PreviewRenderer | null
 }

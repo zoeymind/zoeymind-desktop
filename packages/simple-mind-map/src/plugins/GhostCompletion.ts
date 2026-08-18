@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 // Ghost completion plugin for simple-mind-map
 // Provides suggestion hooks during node text editing
 

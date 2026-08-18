@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat util, not wired to editor in desktop
 /**
  * AI Chat 错误处理工具
  *

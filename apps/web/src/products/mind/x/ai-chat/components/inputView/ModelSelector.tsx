@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * ModelSelector - 模型选择器（DropdownMenu 下拉）。
  *

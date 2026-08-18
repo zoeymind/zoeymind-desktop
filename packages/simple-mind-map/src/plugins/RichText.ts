@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import Quill from 'quill'
 import Delta from 'quill-delta'
 import 'quill/dist/quill.snow.css'

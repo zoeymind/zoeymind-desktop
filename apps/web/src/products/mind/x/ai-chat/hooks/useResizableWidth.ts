@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * useResizableWidth — 单向 (left handle drag-left → 变宽) 浮动面板 resize hook.
  *

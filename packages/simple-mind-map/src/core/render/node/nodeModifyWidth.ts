@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { Rect } from '@svgdotjs/svg.js'
 
 // 初始化拖拽

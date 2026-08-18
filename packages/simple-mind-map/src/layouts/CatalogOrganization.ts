@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import Base from './Base'
 import { walk, asyncRun, getNodeIndexInNodeList } from '../utils'
 

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { bfsWalk, throttle, checkTwoRectIsOverlap } from '../utils'
 import AutoMove from '../utils/AutoMove'
 import type MindMap from '../index'

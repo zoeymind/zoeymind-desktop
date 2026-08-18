@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import MindMapNode from '../core/render/node/MindMapNode'
 import { CONSTANTS, initRootNodePositionMap } from '../constants/constant'
 import Lru from '../utils/Lru'

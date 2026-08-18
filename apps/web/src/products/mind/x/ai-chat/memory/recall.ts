@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * Recall 流程 — 给当前 user 输入找出 top-K 相关历史消息, 拼成给 AI 的 system 注入文本.
  *

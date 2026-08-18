@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 // 节点图片大小调整插件
 import { resizeImgSizeByOriginRatio } from '../utils/index'
 import btnsSvg from '../svg/btns'

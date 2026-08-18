@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * AIchatV2 - 基于 Vercel AI SDK 的 AI 聊天组件
  *

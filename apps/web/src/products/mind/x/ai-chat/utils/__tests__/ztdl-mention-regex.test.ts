@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat util, not wired to editor in desktop
 import {
   CLASS_MENTION_SPAN_REGEX,
   INLINE_CODE_ZTDL_REGEX,

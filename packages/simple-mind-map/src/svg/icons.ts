@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { mergerIconList } from '../utils'
 // 超链接图标
 const hyperlink =

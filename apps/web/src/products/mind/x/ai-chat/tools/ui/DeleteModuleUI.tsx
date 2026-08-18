@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 import { Flag, AlertTriangle } from 'lucide-react'
 import { i18next } from '@zoeymind/i18n'
 import type { ExecutionResult } from '../../../ai-chat/tools/types'

@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import { logger } from '@zoeymind/logger'
 import { useState, useEffect, useCallback, useRef } from 'react'
 

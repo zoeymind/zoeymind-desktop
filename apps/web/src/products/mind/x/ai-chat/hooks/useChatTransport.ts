@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * useChatTransport — 构造给 DefaultChatTransport 用的 customFetch.
  *

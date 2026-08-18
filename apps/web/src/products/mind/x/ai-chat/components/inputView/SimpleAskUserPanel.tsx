@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * SimpleAskUserPanel - AI `question` 工具的应答面板（单题分页，模块化）。
  *

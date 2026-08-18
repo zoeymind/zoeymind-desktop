@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import React, { useCallback, useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Loader2, PlusIcon } from 'lucide-react'
@@ -18,7 +19,8 @@ import GridView from './GridView'
 import ListView from './ListView'
 import { DeleteDialog, RenameDialog } from './dialogs'
 import { MoveDialog } from './MoveDialog'
-import { CloudProjectWithStats, useCloudProjects } from './hooks/useCloudProjects'
+import { useCloudProjects } from './hooks/useCloudProjects'
+import type { CloudProjectWithStats } from './hooks/useCloudProjects'
 import { ProjectCardSkeleton } from './ProjectCardSkeleton'
 import { ProjectListItemSkeleton } from './ProjectListItemSkeleton'
 

@@ -1,4 +1,4 @@
-import { FC, useMemo } from 'react'
+import { type FC, useMemo } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@zoeymind/ui'
 import { Badge } from '@zoeymind/ui'

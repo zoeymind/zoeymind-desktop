@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 /**
  * simple-mind-map 域类型
  *

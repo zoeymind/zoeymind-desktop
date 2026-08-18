@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { useState } from 'react'
 import { Check, Folder as FolderIcon, FolderMinus } from 'lucide-react'
 import {

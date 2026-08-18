@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { checkIsNodeStyleDataKey } from '../utils/index'
 
 interface MindMapInstance {

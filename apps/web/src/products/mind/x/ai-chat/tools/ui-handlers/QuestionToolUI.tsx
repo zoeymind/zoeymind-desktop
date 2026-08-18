@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * QuestionToolUI — 把 'question' 工具的 UI 注册收成一个 hook.
  *

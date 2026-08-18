@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * Embedder — 浏览器内嵌入向量生成 (基于 transformers.js).
  *

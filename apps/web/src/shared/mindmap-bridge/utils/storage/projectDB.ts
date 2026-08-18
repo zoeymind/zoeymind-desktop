@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant bridge IDB storage, replaced by src/shared/native/*
 /**
  * 项目管理数据库服务
  *

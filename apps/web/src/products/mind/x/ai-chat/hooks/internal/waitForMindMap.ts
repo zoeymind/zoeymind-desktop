@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * waitForMindMapInstance — 在 store 还没装载 mindMap 时, 等一段时间再 resolve.
  * 提取自原 useAIChat.ts.

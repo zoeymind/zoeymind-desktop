@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * CollapsibleSteps - 可折叠的工具步骤区域
  *

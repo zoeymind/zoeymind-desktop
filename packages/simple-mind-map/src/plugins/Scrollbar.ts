@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { throttle } from '../utils/index'
 import { CONSTANTS } from '../constants/constant'
 

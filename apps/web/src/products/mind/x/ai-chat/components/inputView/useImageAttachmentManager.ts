@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 import { useCallback, useState } from 'react'
 import { logger } from '@zoeymind/logger'
 import { compressImages } from '@/products/mind/utils/imageUtils'

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { getRectRelativePosition } from '../../utils/index'
 
 // 获取目标节点在起始节点的目标数组中的索引

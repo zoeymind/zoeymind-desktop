@@ -1,4 +1,4 @@
-import { FC, useLayoutEffect } from 'react'
+import { useLayoutEffect, type FC } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Progress } from './progress'
 import { AnimatedGridPattern } from './animated-grid-pattern'

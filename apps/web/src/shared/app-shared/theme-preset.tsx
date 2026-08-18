@@ -82,7 +82,7 @@ export function ThemeMenu(): ReactNode {
     >
       {presets.map(p => (
         <option key={p.id} value={p.id}>
-          {p.name}
+          {p.label}
         </option>
       ))}
     </select>

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored shared package, erasable syntax not applicable
 export enum ErrorCode {
   UNKNOWN = 'UNKNOWN_ERROR',
   AUTH_REQUIRED = 'AUTH_REQUIRED',

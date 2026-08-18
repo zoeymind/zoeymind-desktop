@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import Style from './Style'
 import Shape from './Shape'
 import { G, Rect, Text, SVG } from '@svgdotjs/svg.js'

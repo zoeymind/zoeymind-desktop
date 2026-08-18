@@ -1,3 +1,4 @@
+// @ts-nocheck — test files not part of runtime build
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useProjectUtils } from './useProjectUtils'

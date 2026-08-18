@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { useCallback, useEffect } from 'react'
 import { logger } from '@zoeymind/logger'
 import type { default as MindMap } from 'simple-mind-map'

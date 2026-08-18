@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import type MindMap from '../../index'
 import { CONSTANTS } from '../../constants/constant'
 

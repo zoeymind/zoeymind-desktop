@@ -1,5 +1,5 @@
 import { logger } from '@zoeymind/logger'
-import { FC } from 'react'
+import { type FC } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
 import { Search, Import, Upload, Trash2, ArrowLeft, Settings, Keyboard } from 'lucide-react'
 import {

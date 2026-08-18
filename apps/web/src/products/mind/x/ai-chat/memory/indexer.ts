@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * 索引器 — 把消息 embed 后存入 IndexedDB.
  *

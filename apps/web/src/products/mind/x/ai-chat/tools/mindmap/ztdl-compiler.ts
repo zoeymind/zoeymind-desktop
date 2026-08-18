@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * ZTDL 编译器 (Zoey Test DSL Compiler)
  *

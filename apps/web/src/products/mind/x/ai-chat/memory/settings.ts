@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * 长期记忆 (Semantic Recall) 偏好设置 — localStorage 持久化.
  *

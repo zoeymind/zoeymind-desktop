@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * useMindmapContextSync — 管理 MindmapContextManager 的生命周期 + 跨对话快照同步.
  *

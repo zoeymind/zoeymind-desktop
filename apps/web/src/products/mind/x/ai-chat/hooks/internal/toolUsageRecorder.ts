@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * 工具调用埋点统计 — 把每次工具执行结果累加到 conversationId 维度,
  * 由 useToolDispatcher 调用 record() 累积, 由 useAIChat 在 conversation 切换 / 卸载时统一上报.

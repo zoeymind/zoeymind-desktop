@@ -1,4 +1,4 @@
-import { ComponentPropsWithoutRef, useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ComponentPropsWithoutRef } from 'react'
 import { motion } from 'motion/react'
 
 import { cn } from './cn'

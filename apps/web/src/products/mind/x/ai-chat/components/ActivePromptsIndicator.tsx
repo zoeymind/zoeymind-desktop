@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * ActivePromptsIndicator — Sparkles 按钮 + Hover 展示当前已启用的 prompts 列表.
  *

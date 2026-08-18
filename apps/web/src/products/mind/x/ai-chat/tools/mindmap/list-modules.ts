@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 import type { Tool, ExecutionResult } from '../../../ai-chat/tools/types'
 import type { MindMapNodeTree } from './mindmap-node-tree'
 import { getMindMapSnapshot } from './mindmap-node-tree'

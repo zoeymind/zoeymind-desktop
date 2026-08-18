@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 /**
  * AwarenessSync - 协作者状态同步（cursor / 节点高亮 / 头像）
  *

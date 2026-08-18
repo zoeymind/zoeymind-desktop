@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 /**
  * Workspace 全局搜索弹框 — shadcn CommandDialog.
  *

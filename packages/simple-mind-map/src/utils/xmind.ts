@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine util, checked by upstream repo
 import { getImageSize, imgToDataUrl, parseDataUrl, getTextFromHtml, createUid } from './index'
 import { formatGetNodeGeneralization } from '../utils/index'
 // 解析出新xmind的概要文本

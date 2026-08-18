@@ -13,7 +13,7 @@
       "url": "http://lxqnsys.com/"
     }
   ],
-  "types": "./src/index.ts",
+  "types": "./src/index.d.ts",
   "license": "MIT",
   "repository": {
     "type": "git",

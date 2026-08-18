@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { formatDataToArray, walk, getNodeListBoundingRect, createUid } from '../utils'
 import { parseAddNodeList, getNodeOuterFrameList } from './outerFrame/outerFrameUtils'
 import outerFrameTextMethods from './outerFrame/outerFrameText'

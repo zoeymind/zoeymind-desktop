@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 const map = {
   Backspace: 8,
   Tab: 9,

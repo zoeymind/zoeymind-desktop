@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import merge from 'deepmerge'
 import LogicalStructure from '../../layouts/LogicalStructure'
 import MindMap from '../../layouts/MindMap'

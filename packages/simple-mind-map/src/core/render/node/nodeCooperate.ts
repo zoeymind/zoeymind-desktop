@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { Rect, G, Text } from '@svgdotjs/svg.js'
 import { generateColorByContent } from '../../../utils/index'
 

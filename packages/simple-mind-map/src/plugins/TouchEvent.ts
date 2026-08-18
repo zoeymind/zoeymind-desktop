@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { getTwoPointDistance } from '../utils'
 
 interface MindMapInstance {

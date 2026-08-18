@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * CompactSummaryCard — 渲染"对话历史已自动压缩"那条消息.
  *

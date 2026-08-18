@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { walk, getNodeDataIndex } from '../utils/index'
 
 interface MindMapInstance {

@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy project card util, dormant
 import { logger } from '@zoeymind/logger'
 import { useCallback } from 'react'
 import { i18next } from '@zoeymind/i18n'

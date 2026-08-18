@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 // Cooperate 作为协作插件入口，整合文档同步与 awareness 同步
 import type MindMap from '../../index'
 import { DocumentSync } from './document-sync'

@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 export const ZTDL_MENTION_REGEX = /([+\-~>=!]?)([MC]):([^\s:「」<>]+)\s*(?:「([^」]*)」)?/g
 
 export const INLINE_CODE_ZTDL_REGEX = /`([+\-~>=!]*[MC]:[^\s:`]+)`/g

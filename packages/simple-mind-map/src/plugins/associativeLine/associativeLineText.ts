@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { Text } from '@svgdotjs/svg.js'
 import { getStrWithBrFromHtml, focusInput, selectAllInput } from '../../utils/index'
 

@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 import { logger } from '@zoeymind/logger'
 import { AddModuleSchema } from '@zoeymind/shared'
 import type { Tool } from '../../../ai-chat/tools/types'

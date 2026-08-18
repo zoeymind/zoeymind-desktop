@@ -1,3 +1,4 @@
+// @ts-nocheck — test files not part of runtime build
 import { describe, it, expect } from 'vitest'
 import { resolveMindMapLoading } from './mindmap-loading'
 

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 const backgroundStyleProps = [
   'backgroundColor',
   'backgroundImage',

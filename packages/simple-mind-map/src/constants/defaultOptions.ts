@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { CONSTANTS } from './constant'
 export interface ExpandBtnStyle {
   color: string

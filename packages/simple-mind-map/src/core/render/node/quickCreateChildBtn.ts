@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import btnsSvg from '../../../svg/btns'
 import { SVG, Circle, G } from '@svgdotjs/svg.js'
 

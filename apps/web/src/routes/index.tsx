@@ -9,43 +9,44 @@ import {
 import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 
-/**
- * 列表页壳 —— 参照产品仓的 zoeymind/projects.tsx：左侧 ProjectsSidebar，
- * 右侧 ProjectListPage。桌面端零工作区/组织概念，workspaceId 用固定 'local'。
- */
+const LOCAL_ORG_ID = 'local'
+
 function ProjectListShell() {
-  const [view, setView] = useState<ProjectView>('all')
-  const [folderId, setFolderId] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<ProjectView>('all')
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
+  const [collapsed, setCollapsed] = useState(false)
   const [searchText, setSearchText] = useState('')
 
   const handleViewChange = useCallback((next: ProjectView) => {
-    setView(next)
-    setFolderId(null)
+    setActiveView(next)
+    setActiveFolderId(null)
   }, [])
 
   const handleSelectFolder = useCallback((id: string) => {
-    setView('folder')
-    setFolderId(id)
+    setActiveView('folder')
+    setActiveFolderId(id)
   }, [])
 
   return (
     <div className="flex h-screen w-full bg-background">
       <ProjectsSidebar
-        view={view}
+        activeView={activeView}
+        activeFolderId={activeFolderId}
         onViewChange={handleViewChange}
-        activeFolderId={folderId}
         onSelectFolder={handleSelectFolder}
-        workspaces={[]}
-        workspacesLoading={false}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed(v => !v)}
         activeWorkspaceId={null}
+        workspaces={[]}
         onSelectWorkspace={() => undefined}
+        onOpenSearch={() => undefined}
+        organizationId={LOCAL_ORG_ID}
         canCreateWorkspace={false}
-        onCreateWorkspace={() => undefined}
       />
       <div className="flex-1 min-w-0">
         <ProjectListPage
-          view={view}
-          folderId={folderId}
+          view={activeView}
+          folderId={activeFolderId}
           searchText={searchText}
           onClearSearch={() => setSearchText('')}
           workspaceId={null}
@@ -56,10 +57,6 @@ function ProjectListShell() {
   )
 }
 
-/**
- * 编辑器壳 —— URL: /editor/:id → ProjectProvider(workspaceId=id, cloudMode=false)
- * + 原 MindMapCanvas，样式完全跟产品仓一致。
- */
 function EditorShell() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -84,7 +81,6 @@ export const router = createBrowserRouter([
     ]
   },
   {
-    // 编辑器脱嵌路由：全屏无 MainLayout
     path: '/editor/:id',
     element: <EditorShell />
   }

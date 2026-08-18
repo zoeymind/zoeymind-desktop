@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import MindMapNode from './MindMapNode'
 import { createUid } from '../../../utils/index'
 

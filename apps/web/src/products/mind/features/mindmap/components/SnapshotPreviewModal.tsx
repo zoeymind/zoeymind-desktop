@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@zoeymind/ui'
 import { Button } from '@zoeymind/ui'

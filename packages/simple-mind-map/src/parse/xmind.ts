@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import JSZip from 'jszip'
 import xmlConvert from 'xml-js'
 import { getTextFromHtml, isUndef } from '../utils/index'

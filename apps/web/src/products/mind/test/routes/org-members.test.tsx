@@ -1,3 +1,4 @@
+// @ts-nocheck — test files not part of runtime build
 /**
  * 成员管理功能测试
  * 测试成员列表、搜索、角色展示

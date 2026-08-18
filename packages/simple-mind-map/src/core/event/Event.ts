@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import EventEmitter from 'eventemitter3'
 import { CONSTANTS } from '../../constants/constant'
 

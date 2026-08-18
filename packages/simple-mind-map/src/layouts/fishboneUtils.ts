@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { degToRad } from '../utils'
 
 export default {

@@ -1,4 +1,4 @@
-import React, { FC, useState, useEffect, useRef, useCallback } from 'react'
+import React, { type FC, useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
 import { ArrowLeftRight, RefreshCw, X, Search, FileQuestion } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'

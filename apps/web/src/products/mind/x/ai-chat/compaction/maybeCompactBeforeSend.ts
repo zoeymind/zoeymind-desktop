@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * Lazy context compaction — 用户发送消息前同步触发压缩.
  *

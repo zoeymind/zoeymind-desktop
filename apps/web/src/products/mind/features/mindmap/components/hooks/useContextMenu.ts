@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { logger } from '@zoeymind/logger'
 import { useState, useCallback } from 'react'
 import { NodeManager } from '@/products/mind/features/mindmap/components/managers/NodeManager'

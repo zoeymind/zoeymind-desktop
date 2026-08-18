@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import xmind from '../parse/xmind'
 
 //  导出XMind插件，需要通过Export插件使用

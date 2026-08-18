@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { keyMap } from './keyMap'
 import type MindMap from '../../index'
 

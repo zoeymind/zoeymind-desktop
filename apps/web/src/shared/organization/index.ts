@@ -1,11 +1,15 @@
 /**
  * organization shim —— 桌面端不做多租户/工作区切换。
- *
- * 仅保留一个稳定的"本地工作区"占位，让 `MoveDialog` 之类 `useCurrentWorkspace()`
- * 的取用不炸。桌面端没有真正的 workspace 概念，UI 应把 workspace 选择器彻底删掉。
+ * 保留最少 API 表面让 ProjectsSidebar / MoveDialog 等文件 import 不炸。
  */
+import type { ComponentType } from 'react'
 
 export interface LocalWorkspace {
+  id: string
+  name: string
+}
+
+export interface WorkspaceOption {
   id: string
   name: string
 }
@@ -34,3 +38,8 @@ export function useCurrentWorkspace(
     refetch: async () => undefined
   }
 }
+
+const NULL_COMPONENT: ComponentType<Record<string, unknown>> = () => null
+export const AppBrandBar = NULL_COMPONENT
+export const CreateProjectDialog = NULL_COMPONENT
+export const ProjectSettingsDialog = NULL_COMPONENT

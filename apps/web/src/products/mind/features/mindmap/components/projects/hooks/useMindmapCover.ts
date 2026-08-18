@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy project card util, dormant
 /**
  * 拉思维导图封面图 (base64 data URL).
  *

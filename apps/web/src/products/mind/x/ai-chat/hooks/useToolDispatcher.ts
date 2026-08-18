@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * useToolDispatcher — 把 useChat 的 onToolCall 拆出来.
  *

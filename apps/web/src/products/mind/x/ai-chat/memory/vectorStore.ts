@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * 向量检索 — 在 IndexedDB 全量 messageEmbeddings 上做 cosine top-K.
  *

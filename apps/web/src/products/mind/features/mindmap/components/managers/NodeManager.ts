@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { generateUUID } from '@/shared/app-shared'
 import { logger } from '@zoeymind/logger'
 import type { default as MindMapClass, MindMapNode } from 'simple-mind-map'

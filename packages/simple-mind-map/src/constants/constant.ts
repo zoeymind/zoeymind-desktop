@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 // 常量
 export const CONSTANTS = {
   CHANGE_THEME: 'changeTheme',

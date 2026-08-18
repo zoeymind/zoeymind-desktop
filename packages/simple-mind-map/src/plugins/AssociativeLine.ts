@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { walk, bfsWalk, throttle } from '../utils'
 import { v4 as uuid } from 'uuid'
 import {

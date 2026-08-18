@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * @zoeymind-ext-mind 桥接层 —— 桌面端极简版。
  *

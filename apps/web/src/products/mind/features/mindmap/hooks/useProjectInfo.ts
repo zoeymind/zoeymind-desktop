@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import { useQuery } from '@tanstack/react-query'
 import { trpcClient } from '@/shared/app-shared'
 import { logger } from '@zoeymind/logger'

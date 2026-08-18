@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat util, not wired to editor in desktop
 /**
  * tokenCounter — 用 js-tiktoken 给 UI 显示更准的 token 数.
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 import type { Tool } from '../../../ai-chat/tools/types'
 import { AddCasesSchema } from '@zoeymind/shared'
 import { parsePriorityFromText, createPriorityIcons } from './priority-label'

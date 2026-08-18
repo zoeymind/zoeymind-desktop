@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * CaseConfirmToolUI — add_cases / update_cases / delete_cases 工具的 review/confirm UI.
  *

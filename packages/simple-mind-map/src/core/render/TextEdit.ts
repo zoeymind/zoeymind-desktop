@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import type MindMap from '../../index'
 import type MindMapNode from '../render/node/MindMapNode'
 import type Render from './Render'

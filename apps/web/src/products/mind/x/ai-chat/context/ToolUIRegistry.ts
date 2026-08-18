@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * Tool UI Registry — 声明式注册"哪个工具弹什么 UI" + 自动接 respond 链路.
  *

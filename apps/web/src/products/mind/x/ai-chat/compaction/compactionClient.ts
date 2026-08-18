@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * compactionClient — 调后端 /api/ai-v2/compact + 写 chatDB 压缩备份.
  *

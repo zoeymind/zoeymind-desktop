@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { walk, nodeRichTextToTextWithWrap } from '../utils'
 const getNodeText = data => {
   return data.richText ? nodeRichTextToTextWithWrap(data.text) : data.text

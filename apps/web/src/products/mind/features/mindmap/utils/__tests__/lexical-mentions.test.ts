@@ -1,3 +1,4 @@
+// @ts-nocheck — test files not part of runtime build
 /**
  * lexical-mentions 序列化/反序列化往返测试。
  *

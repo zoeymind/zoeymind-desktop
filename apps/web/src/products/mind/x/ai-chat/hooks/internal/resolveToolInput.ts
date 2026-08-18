@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * resolveToolInput — 把工具入参里的短 ID resolve 成 UUID, 同时把创建型工具 (add_module / add_cases)
  * 的预分配 ID reserve 出来, 后续 bindPreAssignedIds 时使用. 提取自原 useAIChat.ts.

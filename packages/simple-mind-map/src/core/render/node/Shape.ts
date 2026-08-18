@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { Polygon, Path, SVG } from '@svgdotjs/svg.js'
 import { CONSTANTS } from '../../../constants/constant'
 

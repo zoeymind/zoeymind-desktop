@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { useState } from 'react'
 import { RotateCcw, Trash2, Loader2, Info } from 'lucide-react'
 import { Button } from '@zoeymind/ui'

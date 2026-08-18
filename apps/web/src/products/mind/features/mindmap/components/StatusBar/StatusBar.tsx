@@ -1,4 +1,4 @@
-import { FC } from 'react'
+import { type FC } from 'react'
 import { useMindMapModules } from '@/products/mind/features/mindmap/hooks/useMindMapModules'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'

@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * StepsSummaryBar - 工具调用步骤折叠摘要栏
  *

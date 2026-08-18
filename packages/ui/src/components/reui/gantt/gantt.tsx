@@ -11,7 +11,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type ComponentType,
   type ReactNode,
   type RefObject
 } from 'react'

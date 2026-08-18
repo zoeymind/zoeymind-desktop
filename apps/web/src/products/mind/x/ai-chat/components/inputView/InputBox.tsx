@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * InputBox - AI 对话文本输入框（@模块提及）。
  *

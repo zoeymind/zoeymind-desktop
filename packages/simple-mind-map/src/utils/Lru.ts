@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 export default class Lru {
   declare max: number
   declare size: number

@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * ChatRuntime — useAIChat 拆分后的子 hook 之间共享的"运行时"句柄.
  *

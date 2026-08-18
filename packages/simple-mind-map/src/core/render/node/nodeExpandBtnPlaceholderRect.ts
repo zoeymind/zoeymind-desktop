@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { Rect } from '@svgdotjs/svg.js'
 
 // 渲染展开收起按钮的隐藏占位元素

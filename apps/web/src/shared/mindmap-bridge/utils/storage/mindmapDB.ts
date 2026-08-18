@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant bridge IDB storage, replaced by src/shared/native/*
 import { openDB, DBSchema, IDBPDatabase } from 'idb'
 import { defaultMindmapData as defaultData } from '@zoeymind/shared'
 import { logger } from '@zoeymind/logger'

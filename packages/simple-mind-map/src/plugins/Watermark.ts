@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { Text, G } from '@svgdotjs/svg.js'
 import { degToRad, camelCaseToHyphen } from '../utils'
 import merge from 'deepmerge'

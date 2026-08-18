@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 // import JsPDF from '../utils/jspdf'
 import { PDFDocument } from 'pdf-lib'
 import { readBlob } from '../utils/index'

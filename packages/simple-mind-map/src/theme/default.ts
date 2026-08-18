@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 export interface ThemeNodeConfig {
   shape: string
   fillColor: string

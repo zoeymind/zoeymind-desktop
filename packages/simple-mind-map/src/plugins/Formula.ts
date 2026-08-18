@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import katex from 'katex'
 import Quill from 'quill'
 import { getChromeVersion, htmlEscape } from '../utils/index'

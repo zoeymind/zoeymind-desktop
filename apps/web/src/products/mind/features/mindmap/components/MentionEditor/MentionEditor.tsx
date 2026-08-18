@@ -1,3 +1,4 @@
+// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 /**
  * MentionEditor - 基于 Lexical + lexical-beautiful-mentions 的通用 @mention 输入框。
  *

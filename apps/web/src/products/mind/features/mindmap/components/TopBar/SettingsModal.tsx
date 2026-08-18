@@ -1,4 +1,4 @@
-import { FC, useState } from 'react'
+import { type FC, useState } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
 import {
   Dialog,

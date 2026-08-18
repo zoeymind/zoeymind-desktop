@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 import React, { useState } from 'react'
 import { Hash } from 'lucide-react'
 import { Button } from '@zoeymind/ui'

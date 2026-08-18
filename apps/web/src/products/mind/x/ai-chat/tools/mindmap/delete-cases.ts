@@ -1,3 +1,4 @@
+// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 import type { Tool, ExecutionResult } from '../../../ai-chat/tools/types'
 import { logger } from '@zoeymind/logger'
 import { buildMindMapUidIndex, type MindMapNodeTree } from './mindmap-node-tree'

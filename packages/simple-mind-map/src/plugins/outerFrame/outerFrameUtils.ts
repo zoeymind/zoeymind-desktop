@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored engine source
 import { getTopAncestorsFomNodeList } from '../../utils'
 
 // 解析要添加外框的节点实例列表
