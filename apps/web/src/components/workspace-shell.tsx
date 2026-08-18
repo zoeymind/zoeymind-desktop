@@ -53,19 +53,23 @@ export function WorkspaceShell() {
       tabDirty.set(prev, useMindMapStore.getState().isDirty)
     }
     if (activeId === 'home') {
-      // 回首页: 不动全局 mindMap (否则所有 hidden EditorPane 的 loading resolver
-      // 会看到 hasMindMap=false 集体 showLoading, 卡住). 直接把全局 loading 关掉.
+      // 回首页: 保留全局 mindMap 不动, 只关闭 loading 遮罩 (避免 hidden EditorPane
+      // 的 resolveMindMapLoading 看到 hasMindMap=false 触发 showLoading 循环).
       hideLoading()
     } else {
-      const instance = tabInstances.get(activeId) ?? null
-      useMindMapStore.setState({
-        mindMap: instance as never,
-        isDirty: tabDirty.get(activeId)
-      })
+      // 切到已有 canvas 实例的 tab: swap 到那个实例.
+      // 新 tab 首次挂载: tabInstances 里还没有实例, 保留全局 mindMap 不动,
+      // 等 EditorPane useCanvasManager 自己 setMindMap 上来.
+      const instance = tabInstances.get(activeId)
+      if (instance) {
+        useMindMapStore.setState({
+          mindMap: instance as never,
+          isDirty: tabDirty.get(activeId)
+        })
+      }
     }
     prevActiveRef.current = activeId
   }, [activeId, hideLoading])
-
   return (
     <div className="relative h-full w-full">
       <HomePane visible={activeId === 'home'} />

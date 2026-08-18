@@ -8,7 +8,6 @@
  * 一体按钮（整块可点击），点击直接展开菜单；没有再拆成"主按钮 + chevron"。
  */
 import { useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   ChevronDownIcon,
   FileUpIcon,
@@ -47,7 +46,6 @@ interface NewProjectMenuProps {
 
 export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const stdXmindInputRef = useRef<HTMLInputElement>(null)
   const zmXmindInputRef = useRef<HTMLInputElement>(null)
   const { creating, createBlank, createFromImport } = useCreateProject({ onCreated })
@@ -59,26 +57,29 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
         filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
       })
       if (!picked || typeof picked !== 'string') return
-      // 已登记就直接跳; 否则读文件 + 落索引.
+
+      const { useTabs } = await import('@/shared/tabs/store')
+      const { bumpProjects } = await import('@/shared/native')
+
+      // 已登记就直接激活对应 tab (openTab 会去重命中 projectId).
       const existing = await findByPath(picked)
       let id = existing?.id
+      let title = existing?.name ?? ''
       if (!id) {
         const bundle = await readBundle(picked)
         id = createUUID()
-        await registerProject({
-          id,
-          path: picked,
-          name: bundle.meta?.name || picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, ''),
-          nodeCount: 0
-        })
+        title =
+          bundle.meta?.name || picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '')
+        await registerProject({ id, path: picked, name: title, nodeCount: 0 })
+        bumpProjects()
       }
+      useTabs.getState().openTab({ id, kind: 'file', title, projectId: id })
       onCreated?.(id)
-      navigate(`/editor/${id}`)
     } catch (error) {
       logger.error('打开 .zmind 失败', error)
       toast.error(t('mindmap.editor.openFailed', '打开文件失败'))
     }
-  }, [navigate, onCreated, t])
+  }, [onCreated, t])
 
   const handleImportClick = useCallback((format: 'standard' | 'zm') => {
     const ref = format === 'zm' ? zmXmindInputRef : stdXmindInputRef
