@@ -51,31 +51,40 @@ export interface TrpcLike {
   [key: string]: TrpcLike
 }
 
+/**
+ * Stable singletons: 消费者做 useEffect deps 或 useMemo 时避免每次新对象引用
+ * 导致的死循环 (Maximum update depth). 桌面端 trpc 都是 no-op, 相同静态返回值
+ * 复用同一个 frozen 对象即可.
+ */
+const QUERY_SINGLETON: QueryResult = Object.freeze({
+  data: undefined,
+  isLoading: false,
+  isPending: false,
+  isFetching: false,
+  isSuccess: false,
+  isError: false,
+  error: null,
+  refetch: NOOP_ASYNC,
+  status: 'idle'
+}) as QueryResult
+
+const MUTATION_SINGLETON: MutationResult = Object.freeze({
+  mutate: NOOP,
+  mutateAsync: NOOP_ASYNC,
+  isPending: false,
+  isSuccess: false,
+  isError: false,
+  error: null,
+  reset: NOOP,
+  status: 'idle'
+}) as MutationResult
+
 function queryResult(): QueryResult {
-  return {
-    data: undefined,
-    isLoading: false,
-    isPending: false,
-    isFetching: false,
-    isSuccess: false,
-    isError: false,
-    error: null,
-    refetch: NOOP_ASYNC,
-    status: 'idle'
-  }
+  return QUERY_SINGLETON
 }
 
 function mutationResult(): MutationResult {
-  return {
-    mutate: NOOP,
-    mutateAsync: NOOP_ASYNC,
-    isPending: false,
-    isSuccess: false,
-    isError: false,
-    error: null,
-    reset: NOOP,
-    status: 'idle'
-  }
+  return MUTATION_SINGLETON
 }
 
 const LEAF_QUERY: Record<string, true> = {
