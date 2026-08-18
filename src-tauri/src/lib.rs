@@ -122,9 +122,10 @@ pub fn run() {
           // Windows: 禁用原生装饰, 用自定义标题栏
           let _ = window.set_decorations(false);
         }
-        // macOS titleBarStyle=Overlay + trafficLightPosition 都在 tauri.conf.json,
-        // 不在此处再运行时设 set_title_bar_style —— 会把 trafficLightPosition 重置到默认.
-        let _ = window;
+        // macOS titleBarStyle=Overlay + hiddenTitle=true + trafficLightPosition
+        // 都在 tauri.conf.json 编译期 embed 生效; 不再运行时调 setTitleBarStyle
+        // (会 reset traffic light position).
+        log::info!("tauri window ready: {:?}", window.label());
       }
 
       if cfg!(debug_assertions) {
