@@ -4,7 +4,6 @@ import { useTranslation } from '@zoeymind/i18n'
 import { useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Tags } from './Tags'
 import { ThemePanel } from './ThemePanel'
-import { CommentPanel } from './CommentPanel'
 import { AIFeaturePanel, useAIProcessing } from '@zoeymind-ext-mind'
 import { useFeature } from '@/shared/app-shared'
 import { MessageCircle, Sparkles } from 'lucide-react'
@@ -150,23 +149,6 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
             )}
 
 
-            <FloatingToolbarButton
-              active={activeTab === 'comment'}
-              onClick={() => toggleFormatTab('comment')}
-              title={t('mindmap.formatPanel.toolbar.comment')}
-            >
-              <div className="relative">
-                <MessageCircle className="size-5" />
-                {totalComments > 0 && (
-                  <Badge
-                    variant="default"
-                    className="absolute -top-1 -right-1 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] leading-none"
-                  >
-                    {totalComments > 99 ? '99+' : totalComments}
-                  </Badge>
-                )}
-              </div>
-            </FloatingToolbarButton>
           </FloatingToolbarGroup>
         </FloatingToolbar>
 
@@ -175,9 +157,6 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
         {canEdit && activeTab === 'theme' && <ThemePanel isActive={true} />}
         {/* AI 面板始终渲染, 内部用 display:none 收起 — 后台流不会被卸载中断 */}
         {showAiTab && <AIFeaturePanel isActive={activeTab === 'ai'} />}
-        {activeTab === 'comment' && (
-          <CommentPanel isActive={true} targetNodeUid={targetNodeUid} onClose={closeFormatTab} />
-        )}
       </>
     )
   }

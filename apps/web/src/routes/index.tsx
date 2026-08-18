@@ -89,12 +89,9 @@ export const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       { index: true, element: <ProjectListShell /> },
+      { path: 'editor/:id', element: <EditorShell /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> }
     ]
-  },
-  {
-    path: '/editor/:id',
-    element: <EditorShell />
   }
 ])

@@ -35,9 +35,10 @@ interface FloatingToolbarContentProps extends React.HTMLAttributes<HTMLDivElemen
 // 主工具栏容器
 const FloatingToolbar = React.forwardRef<HTMLDivElement, FloatingToolbarProps>(
   ({ position = 'top-left', children, className, ...props }, ref) => {
+    // 桌面端顶部 32px TitleBar 常驻, 悬浮工具栏统一让开; top-12 = 48px (16px 视觉呼吸).
     const positionClasses = {
-      'top-left': 'fixed top-4 left-4',
-      'top-right': 'fixed top-4 right-4',
+      'top-left': 'fixed top-12 left-4',
+      'top-right': 'fixed top-12 right-4',
       'bottom-left': 'fixed bottom-4 left-4',
       'bottom-right': 'fixed bottom-4 right-4',
       custom: ''
