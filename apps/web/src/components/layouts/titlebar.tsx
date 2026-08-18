@@ -36,13 +36,6 @@ export function TitleBar() {
       {/* macOS spacer: 让开系统红绿灯 (由 trafficLightPosition 精调居中) */}
       <div className={isMac ? 'h-full w-[72px] shrink-0' : 'h-full w-2 shrink-0'} data-tauri-drag-region />
 
-      {/* 品牌名 —— Home 图标左侧 */}
-      <div
-        data-tauri-drag-region
-        className="flex h-full items-center pl-2 pr-1 text-xs font-semibold tracking-tight text-foreground select-none"
-      >
-        ZoeyMind
-      </div>
       <div
         data-tauri-drag-region
         className="flex h-full min-w-0 max-w-[70%] flex-1 items-center"
