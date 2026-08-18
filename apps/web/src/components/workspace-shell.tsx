@@ -96,8 +96,12 @@ function HomePane({ visible }: { visible: boolean }) {
 }
 
 function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
+  // useMindMapStore 是全局单例, 同时挂多个 canvas 会互相踩 setMindMap.
+  // v1: 只有 active tab 挂完整子树, 切走时卸载 (~1s reload). 未来可以改成
+  // 每 tab 独立 mindmap-store + 全局代理才能真 keep-alive.
+  if (!visible) return null
   return (
-    <div className="absolute inset-0" hidden={!visible}>
+    <div className="absolute inset-0">
       <SaveFlowProvider projectId={tab.id}>
         <EditorPaneInner id={tab.id} />
       </SaveFlowProvider>

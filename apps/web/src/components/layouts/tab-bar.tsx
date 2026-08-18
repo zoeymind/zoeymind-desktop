@@ -10,10 +10,19 @@
  *   - TitleBar 里给一段拖拽 gap, 由 title-bar 保证; TabBar 内部按钮都禁止 drag.
  */
 import { Home, Plus, X } from 'lucide-react'
-import { useRef } from 'react'
-import { cn } from '@zoeymind/ui'
+import { useRef, useState } from 'react'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  cn
+} from '@zoeymind/ui'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
 import { pendingProjects } from '@/shared/native'
+import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { defaultMindmapData } from '@zoeymind/shared'
 import { i18next } from '@zoeymind/i18n'
 
@@ -23,6 +32,7 @@ export function TabBar() {
   const setActive = useTabs(s => s.setActive)
   const closeTab = useTabs(s => s.closeTab)
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
 
   const onPlus = () => {
     const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
@@ -39,35 +49,98 @@ export function TabBar() {
     el.scrollLeft += dy
   }
 
+  const requestClose = (tab: OpenTab) => {
+    const isActiveTab = activeId === tab.id
+    const dirty = isActiveTab && useMindMapStore.getState().isDirty
+    const pending = tab.kind === 'draft' && pendingProjects.isPending(tab.id)
+    if (dirty || pending) {
+      setPendingCloseId(tab.id)
+    } else {
+      closeTab(tab.id)
+    }
+  }
+
+  const pendingTab = pendingCloseId ? tabs.find(t => t.id === pendingCloseId) ?? null : null
+
   return (
-    <div
-      ref={scrollerRef}
-      onWheel={onWheel}
-      className="flex h-full min-w-0 items-end gap-0.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      <HomeChip active={activeId === 'home'} onClick={() => setActive('home')} />
-      {tabs.map(tab => (
-        <TabChip
-          key={tab.id}
-          tab={tab}
-          active={activeId === tab.id}
-          onSelect={() => setActive(tab.id)}
-          onClose={e => {
-            e.stopPropagation()
-            closeTab(tab.id)
+    <>
+      <div
+        ref={scrollerRef}
+        onWheel={onWheel}
+        className="flex h-full min-w-0 items-end gap-0.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <HomeChip active={activeId === 'home'} onClick={() => setActive('home')} />
+        {tabs.map(tab => (
+          <TabChip
+            key={tab.id}
+            tab={tab}
+            active={activeId === tab.id}
+            onSelect={() => setActive(tab.id)}
+            onClose={e => {
+              e.stopPropagation()
+              requestClose(tab)
+            }}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={onPlus}
+          aria-label="New tab"
+          title="新项目"
+          className="ml-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Plus className="size-3.5" />
+        </button>
+      </div>
+      {pendingTab && (
+        <CloseConfirmDialog
+          tab={pendingTab}
+          onCancel={() => setPendingCloseId(null)}
+          onDiscard={() => {
+            if (pendingTab.kind === 'draft') pendingProjects.clear(pendingTab.id)
+            useMindMapStore.getState().setDirty(false)
+            closeTab(pendingTab.id)
+            setPendingCloseId(null)
+          }}
+          onSave={() => {
+            // TabBar 拿不到 SaveFlowContext; 切到目标 tab, 让用户在编辑器里 Ctrl+S.
+            setActive(pendingTab.id)
+            setPendingCloseId(null)
           }}
         />
-      ))}
-      <button
-        type="button"
-        onClick={onPlus}
-        aria-label="New tab"
-        title="新项目"
-        className="ml-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-      >
-        <Plus className="size-3.5" />
-      </button>
-    </div>
+      )}
+    </>
+  )
+}
+
+interface CloseConfirmProps {
+  tab: OpenTab
+  onCancel: () => void
+  onDiscard: () => void
+  onSave: () => void | Promise<void>
+}
+
+function CloseConfirmDialog({ tab, onCancel, onDiscard, onSave }: CloseConfirmProps) {
+  return (
+    <Dialog open onOpenChange={next => (!next ? onCancel() : undefined)}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>关闭 “{tab.title}” 前保存吗?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          此 tab 有未保存的改动. 关闭后未保存内容会丢失.
+        </p>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel}>
+            取消
+          </Button>
+          <Button variant="outline" onClick={onDiscard}>
+            不保存
+          </Button>
+          <Button onClick={() => void onSave()}>保存</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
