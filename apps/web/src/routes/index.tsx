@@ -44,7 +44,10 @@ function RouteAdapter() {
         if (id) {
           const { getProject } = await import('@/shared/native')
           const row = await getProject(id)
-          s.openTab({ id, kind: 'file', title: row?.name ?? id })
+          const name = row?.path
+            ? (row.path.split(/[\\/]/).pop() ?? id).replace(/\.zmind$/i, '')
+            : id
+          s.openTab({ id, kind: 'file', title: name })
         }
       } else {
         s.setActive('home')

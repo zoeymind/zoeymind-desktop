@@ -23,10 +23,18 @@ export interface ProjectWithStats {
   stats: { nodeCount: number; size: number }
 }
 
+/** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
+function fileBasenameNoExt(p: string): string {
+  if (!p) return 'Untitled'
+  const last = p.split(/[\\/]/).pop() ?? ''
+  return last.replace(/\.zmind$/i, '') || 'Untitled'
+}
+
 function toWithStats(row: ProjectRow): ProjectWithStats {
   return {
     id: row.id,
-    name: row.name,
+    // 名字权威源永远是文件名 (foo.zmind -> foo), 忽略 DB 里可能残留的老 name.
+    name: fileBasenameNoExt(row.path),
     path: row.path,
     updatedAt: new Date(row.updatedAt),
     createdAt: new Date(row.createdAt),

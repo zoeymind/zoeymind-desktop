@@ -15,7 +15,6 @@ import * as pendingProjects from './pending-projects'
 import { defaultMindmapData } from '@zoeymind/shared'
 import { useTabs } from '@/shared/tabs/store'
 import { findByPath, registerProject, listProjects } from './projects-repo'
-import { readBundle } from './zmind-file'
 import { bumpProjects } from './projects-events'
 import { createUUID } from '@/shared/app-shared'
 
@@ -49,11 +48,10 @@ async function actionOpen(): Promise<void> {
     if (!picked || typeof picked !== 'string') return
     const existing = await findByPath(picked)
     let id = existing?.id
-    let name = existing?.name ?? ''
+    // 名字权威源: 文件名 (foo.zmind -> foo).
+    const name = picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '') || 'Untitled'
     if (!id) {
-      const bundle = await readBundle(picked)
       id = createUUID()
-      name = bundle.meta?.name || picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '')
       await registerProject({ id, path: picked, name, nodeCount: 0 })
       bumpProjects()
     }

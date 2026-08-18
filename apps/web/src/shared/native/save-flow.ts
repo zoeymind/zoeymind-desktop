@@ -46,6 +46,13 @@ import { composePreviewWithLogo } from './preview'
 
 const RECOVERY_DEBOUNCE_MS = 5_000
 
+/** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
+function fileBasenameNoExt(path: string): string {
+  if (!path) return 'Untitled'
+  const last = path.split(/[\\/]/).pop() ?? ''
+  return last.replace(/\.zmind$/i, '') || 'Untitled'
+}
+
 export interface BundleSource {
   tree: MindMapNodeTree
   view?: unknown
@@ -189,24 +196,27 @@ export function useSaveFlow(projectId: string | null) {
           previewPng = state.source.previewPng ?? null
         }
       }
+      // 名字权威源: 用户选的文件名 (foo.zmind -> foo)
+      const fileName = fileBasenameNoExt(picked)
+      const nextSource = { ...state.source, name: fileName, previewPng }
 
-      const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
+      const bundle = nowBundle(nextSource, state.createdAt)
       await writeBundle(picked, bundle)
 
       let realId: string
       if (collided) {
         realId = collided.id
         await refreshProjectIndex(realId, {
-          name: state.source.name,
-          nodeCount: state.source.nodeCount ?? 0
+          name: fileName,
+          nodeCount: nextSource.nodeCount ?? 0
         })
       } else {
         realId = createUUID()
         await registerProject({
           id: realId,
           path: picked,
-          name: state.source.name,
-          nodeCount: state.source.nodeCount ?? 0
+          name: fileName,
+          nodeCount: nextSource.nodeCount ?? 0
         })
       }
 
@@ -214,12 +224,14 @@ export function useSaveFlow(projectId: string | null) {
       // realProjectId, 之后再 save 走已入库分支, refreshProjectIndex 用真实 id.
       state.path = picked
       state.realProjectId = realId
+      state.source.name = fileName
       await rememberSaveDir(picked)
       setDirty(false)
       bumpProjects()
 
-      // 就地升级 tab: id 保持不变 -> EditorPane React key 稳定 -> 不 remount
-      useTabs.getState().promoteDraftInPlace(projectId, realId, state.source.name)
+      // 就地升级 tab: id 保持不变 -> EditorPane React key 稳定 -> 不 remount.
+      // 标题也切到文件名, 和卡片保持一致.
+      useTabs.getState().promoteDraftInPlace(projectId, realId, fileName)
       return
     }
 
@@ -234,11 +246,14 @@ export function useSaveFlow(projectId: string | null) {
         previewPng = state.source.previewPng ?? null
       }
     }
+    // 每次 save 都以当前 state.path 的文件名为准 (用户外部重命名文件 -> 下次 save 会自动同步 DB/tab)
+    const fileName = fileBasenameNoExt(state.path)
+    state.source.name = fileName
     const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
     await writeBundle(state.path, bundle)
     const effectiveId = state.realProjectId ?? projectId
     await refreshProjectIndex(effectiveId, {
-      name: state.source.name,
+      name: fileName,
       nodeCount: state.source.nodeCount ?? 0
     })
     await clearRecovery(effectiveId)
@@ -264,27 +279,34 @@ export function useSaveFlow(projectId: string | null) {
         await unregisterProject(collide.id)
       }
 
+      const fileName = fileBasenameNoExt(newPath)
+      state.source.name = fileName
       const bundle = nowBundle(state.source, state.createdAt)
       await writeBundle(newPath, bundle)
       state.path = newPath
 
-      // 若本项目已经登记，仅回写元数据；否则新登记一条
-      const own = await getProject(projectId)
+      // realProjectId 若已存在用它 (draft -> save -> saveAs 场景); 否则用 projectId.
+      const effectiveId = state.realProjectId ?? projectId
+      const own = await getProject(effectiveId)
       if (own) {
-        await refreshProjectIndex(projectId, {
-          name: state.source.name,
+        await refreshProjectIndex(effectiveId, {
+          name: fileName,
           nodeCount: state.source.nodeCount ?? 0
         })
       } else {
         await registerProject({
-          id: projectId,
+          id: effectiveId,
           path: newPath,
-          name: state.source.name,
+          name: fileName,
           nodeCount: state.source.nodeCount ?? 0
         })
       }
-      await clearRecovery(projectId)
+      await clearRecovery(effectiveId)
       setDirty(false)
+      bumpProjects()
+
+      // 同步 tab 标题到新文件名. draft tab (仍以 unsaved-* 为 id) 也要 renameTab.
+      useTabs.getState().renameTab(projectId, fileName)
     },
     [projectId, setDirty]
   )

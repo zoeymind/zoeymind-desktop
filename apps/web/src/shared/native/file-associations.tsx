@@ -17,7 +17,6 @@ import {
   bumpProjects,
   createUUID,
   findByPath,
-  readBundle,
   registerProject
 } from '@/shared/native'
 import { useTabs } from '@/shared/tabs/store'
@@ -26,11 +25,10 @@ async function openZmindPath(path: string): Promise<void> {
   try {
     const existing = await findByPath(path)
     let id = existing?.id
-    let name = existing?.name ?? ''
+    // 名字权威源: 文件名 (foo.zmind -> foo).
+    const name = path.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '') || 'Untitled'
     if (!id) {
-      const bundle = await readBundle(path)
       id = createUUID()
-      name = bundle.meta?.name || path.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '')
       await registerProject({ id, path, name, nodeCount: 0 })
       bumpProjects()
     }

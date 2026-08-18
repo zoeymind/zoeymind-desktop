@@ -44,7 +44,6 @@ import {
   bumpProjects,
   createUUID,
   findByPath,
-  readBundle,
   registerProject,
   useSaveFlowContext
 } from '@/shared/native'
@@ -113,11 +112,10 @@ export const TopMoreDropDown: FC<TopMoreDropDownProps> = ({
       if (!picked || typeof picked !== 'string') return
       const existing = await findByPath(picked)
       let id = existing?.id
-      let title = existing?.name ?? ''
+      // 名字权威源: 文件名 (foo.zmind -> foo), 不看 DB row.name 也不看 bundle.meta.name.
+      const title = picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '') || 'Untitled'
       if (!id) {
-        const bundle = await readBundle(picked)
         id = createUUID()
-        title = bundle.meta?.name || picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '')
         await registerProject({ id, path: picked, name: title, nodeCount: 0 })
         bumpProjects()
       }

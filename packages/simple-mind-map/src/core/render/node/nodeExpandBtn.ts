@@ -38,6 +38,28 @@ function createExpandNodeContent() {
   // 填充节点
   this._fillExpandNode = new Circle().size(expandBtnSize);
   this._fillExpandNode.x(0).y(-expandBtnSize / 2);
+  this._fillExpandNode.css({
+    cursor: "pointer",
+    "pointer-events": "all",
+  });
+  this._fillExpandNode.on("mouseenter", (e) => {
+    e.stopPropagation();
+    this._isMouseenter = true;
+  });
+  this._fillExpandNode.on("mouseleave", (e) => {
+    e.stopPropagation();
+    this._isMouseenter = false;
+    this.hideExpandBtn();
+  });
+  this._fillExpandNode.on("click", (e) => {
+    e.stopPropagation();
+    this._isMouseenter = true;
+    this.mindMap.execCommand("SET_NODE_EXPAND", this, !this.getData("expand"));
+    this.mindMap.emit("expand_btn_click", this);
+  });
+  this._fillExpandNode.on("dblclick", (e) => {
+    e.stopPropagation();
+  });
 
   // 设置样式
   this.style.iconBtn(
@@ -118,31 +140,7 @@ function renderExpandBtn() {
     this.group.add(this._expandBtn);
   } else {
     this._expandBtn = new G();
-    this._expandBtn.on("mouseenter", (e) => {
-      e.stopPropagation();
-      this._isMouseenter = true;
-      this._expandBtn.css({ cursor: "pointer" });
-    });
-    this._expandBtn.on("mouseleave", (e) => {
-      e.stopPropagation();
-      this._isMouseenter = false;
-      this._expandBtn.css({ cursor: "auto" });
-      this.hideExpandBtn();
-    });
-    this._expandBtn.on("click", (e) => {
-      e.stopPropagation();
-      this._isMouseenter = true;
-      // 展开收缩
-      this.mindMap.execCommand(
-        "SET_NODE_EXPAND",
-        this,
-        !this.getData("expand"),
-      );
-      this.mindMap.emit("expand_btn_click", this);
-    });
-    this._expandBtn.on("dblclick", (e) => {
-      e.stopPropagation();
-    });
+
     this._expandBtn.addClass("smm-expand-btn");
     this.group.add(this._expandBtn);
   }

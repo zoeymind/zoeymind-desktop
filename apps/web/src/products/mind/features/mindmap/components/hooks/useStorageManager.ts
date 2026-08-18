@@ -15,6 +15,7 @@ import { defaultData } from './useCanvasManager'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import { getProject, readBundle, pendingProjects, useOptionalSaveFlow } from '@/shared/native'
+import { useTabs } from '@/shared/tabs/store'
 
 interface LoadedData {
   savedData: MindMapNodeTree | null
@@ -26,6 +27,13 @@ interface UseStorageManagerResult {
   saveData: () => Promise<void>
 }
 
+
+/** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
+function fileBasename(path: string): string {
+  if (!path) return 'Untitled'
+  const last = path.split(/[\\/]/).pop() ?? ''
+  return last.replace(/\.zmind$/i, '') || 'Untitled'
+}
 function countNodes(tree: MindMapNodeTree | null | undefined): number {
   if (!tree) return 0
   const children = Array.isArray(tree.children) ? tree.children : []
@@ -64,7 +72,9 @@ export function useStorageManager(): UseStorageManagerResult {
         return { savedData: defaultData, savedViewData: null }
       }
       const bundle = await readBundle(row.path)
-      nameRef.current = bundle.meta.name || row.name
+      // 名字权威源: 文件名 (foo.zmind -> foo), 不看 bundle.meta.name 也不看 row.name.
+      // -> tab 标题 / 卡片 / 保存时写回都以文件名为准, 用户重命名 .zmind 打开即变.
+      nameRef.current = fileBasename(row.path)
       return { savedData: bundle.tree, savedViewData: bundle.view ?? null }
     } catch (error) {
       logger.error('读取 .zmind 失败', error)
@@ -97,6 +107,12 @@ export function useStorageManager(): UseStorageManagerResult {
 
     const sync = () => {
       const tree = mindMap.getData() as MindMapNodeTree
+      // tab 标题跟着文件名 (nameRef, 已由 loadSavedData 从 row.path basename 设置).
+      if (workspaceId) {
+        const s = useTabs.getState()
+        const cur = s.tabs.find(t => t.id === workspaceId)
+        if (cur && cur.title !== nameRef.current) s.renameTab(workspaceId, nameRef.current)
+      }
       flow.registerBundleSource({
         tree,
         name: nameRef.current,
