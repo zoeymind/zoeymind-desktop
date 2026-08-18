@@ -17,8 +17,7 @@ import { ThemeProvider } from '@zoeymind/ui'
 import { I18nProvider } from '@zoeymind/i18n'
 import { router } from '@/routes'
 import { appLocales } from '@/locales'
-import { LoadingProvider } from '@/shared/app-shared/loading'
-import { ThemePresetProvider } from '@/shared/app-shared/ThemePresetProvider'
+import { LoadingProvider, ThemePresetProvider } from '@/shared/app-shared'
 import { RecoveryDialog } from '@/pages/RecoveryDialog'
 
 const queryClient = new QueryClient({
