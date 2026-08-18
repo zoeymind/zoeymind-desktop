@@ -10,6 +10,7 @@ import {
 import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
+import { UnsavedGuard, useSaveFlow } from '@/shared/native'
 
 const LOCAL_ORG_ID = 'local'
 
@@ -72,6 +73,7 @@ function ProjectListShell() {
 function EditorShell() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const saveFlow = useSaveFlow(id ?? null)
   if (!id) {
     navigate('/', { replace: true })
     return null
@@ -79,6 +81,7 @@ function EditorShell() {
   return (
     <ProjectProvider key={id} workspaceId={id} cloudMode={false}>
       <MindMapCanvas />
+      <UnsavedGuard projectId={id} saveFlow={saveFlow} />
     </ProjectProvider>
   )
 }

@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Minus, Maximize2, X } from 'lucide-react'
-import { ThemeMenu, LanguageSwitcher } from '@/shared/app-shared'
+// TitleBar 保持极简: 只有拖拽区 + 系统窗控. 主题/语言按钮放到画布 Header 里.
 
 const appWindow = getCurrentWindow()
 
@@ -39,10 +39,6 @@ export function TitleBar() {
         data-tauri-drag-region
       >
         ZoeyMind
-      </div>
-      <div className="flex items-center gap-1 mr-2">
-        <LanguageSwitcher />
-        <ThemeMenu />
       </div>
       {!isMac && (
         <>

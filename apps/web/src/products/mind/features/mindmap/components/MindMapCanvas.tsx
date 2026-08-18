@@ -32,7 +32,7 @@ import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap
 import { useCommentStore } from '@/products/mind/features/mindmap/stores/comment-store'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import { useOrganization } from '@/shared/app-shared'
-import { toast, toastLoading, dismissToast } from '@/shared/app-shared'
+import { toast, toastLoading, dismissToast, ThemeMenu, LanguageSwitcher } from '@/shared/app-shared'
 import { useTranslation } from '@zoeymind/i18n'
 import { Button } from '@zoeymind/ui'
 import type { default as MindMap } from 'simple-mind-map'
@@ -449,11 +449,15 @@ export function MindMapCanvas() {
               位于 TitleBar (32px) 之下. 面板内容 (Tags/Theme/AI) 仍走各自的 fixed 定位. */}
           <div className="relative z-30 flex items-center justify-between gap-3 border-b bg-background/95 px-3 py-1.5 backdrop-blur">
             <TopBar collaboration={collaboration} />
-            <FormatPanel
-              ref={formatPanelRef}
-              onPreviewStateChange={handlePreviewStateChange}
-              setExitPreviewCallback={setExitPreviewCallback}
-            />
+            <div className="flex items-center gap-1">
+              <LanguageSwitcher />
+              <ThemeMenu />
+              <FormatPanel
+                ref={formatPanelRef}
+                onPreviewStateChange={handlePreviewStateChange}
+                setExitPreviewCallback={setExitPreviewCallback}
+              />
+            </div>
           </div>
           <div className="flex-1 relative">
             <div
