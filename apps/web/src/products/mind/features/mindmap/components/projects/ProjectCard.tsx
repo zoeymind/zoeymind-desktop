@@ -207,26 +207,53 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const handleMouseEnter = useCallback(() => setIsHovering(true), [])
   const handleMouseLeave = useCallback(() => setIsHovering(false), [])
 
+  // Reveal in Finder / Explorer / file manager. Tauri 内部按 OS 分派:
+  //   macOS   -> open -R <path>
+  //   Windows -> explorer /select,<path>
+  //   Linux   -> 桌面环境 file manager
+  const handleRevealInFinder = useCallback(async () => {
+    const path = (project as { path?: string }).path
+    if (!path) return
+    try {
+      const { revealItemInDir } = await import('@tauri-apps/plugin-opener')
+      await revealItemInDir(path)
+    } catch {
+      try {
+        const { openPath } = await import('@tauri-apps/plugin-opener')
+        const dir = path.replace(/[\\/][^\\/]+$/, '')
+        await openPath(dir)
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [project])
+
   // 项目统计数据 - 使用useMemo缓存计算结果
+  const formatSize = (b: number | undefined): string => {
+    if (!b || b <= 0) return '—'
+    if (b < 1024) return `${b} B`
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
+    return `${(b / 1024 / 1024).toFixed(1)} MB`
+  }
   const statsItems = React.useMemo(
     () => [
-      {
-        icon: MessageSquare,
-        value: stats.messageCount || 0,
-        tooltip: t('projects.card.messageCount')
-      },
-      {
-        icon: GitBranch,
-        value: project.nodeCount || (project.metadata?.nodeCount as number) || 0,
-        tooltip: t('projects.card.testCaseCount')
-      },
       {
         icon: History,
         value: getRelativeTime(project.updatedAt),
         tooltip: t('projects.card.lastUpdated')
+      },
+      {
+        icon: BrainCircuit,
+        value: getRelativeTime(project.createdAt),
+        tooltip: t('projects.card.createdAt', '创建时间')
+      },
+      {
+        icon: GitBranch,
+        value: formatSize(project.stats?.size),
+        tooltip: t('projects.card.fileSize', '文件大小')
       }
     ],
-    [stats.messageCount, project, getRelativeTime, t]
+    [project.updatedAt, project.createdAt, project.stats?.size, getRelativeTime, t]
   )
 
   // 卡片动画变体 - 移到组件外部避免重复创建
@@ -438,12 +465,15 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                       {isStarred ? t('projects.card.starRemove') : t('projects.card.starAdd')}
                     </span>
                   </DropdownMenuItem>
-                  {isCloudProject && permissionInfo.isOwner && (
-                    <DropdownMenuItem onClick={handleShare}>
-                      <Share2 className="mr-2 size-4" />
-                      <span>{t('projects.card.share')}</span>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem
+                    onClick={e => {
+                      e.stopPropagation()
+                      void handleRevealInFinder()
+                    }}
+                  >
+                    <FolderInput className="mr-2 size-4" />
+                    <span>{t('projects.card.revealInFolder', '打开所在文件夹')}</span>
+                  </DropdownMenuItem>
                   {permissionInfo.isOwner && (
                     <>
                       <DropdownMenuItem onClick={handleRename} data-testid="project-rename">

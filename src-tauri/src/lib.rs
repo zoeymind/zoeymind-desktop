@@ -114,6 +114,7 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       if let Some(window) = app.get_webview_window("main") {
         #[cfg(target_os = "macos")]
