@@ -1,17 +1,17 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { logger } from '@zoeymind/logger'
-import React from 'react'
-import { Compass, ZoomIn, ZoomOut, Hand } from 'lucide-react'
+import { logger } from "@zoeymind/logger"
+import React from "react"
+import { Compass, ZoomIn, ZoomOut, Hand } from "lucide-react"
 import {
   FloatingToolbar,
   FloatingToolbarGroup,
   FloatingToolbarSeparator,
-  FloatingToolbarButton
-} from '@zoeymind/ui'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@zoeymind/ui'
-import { usePanTool } from '@/products/mind/features/mindmap/components/hooks/usePanTool'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { useTranslation } from '@zoeymind/i18n'
+  FloatingToolbarButton,
+} from "@zoeymind/ui"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import { usePanTool } from "@/products/mind/features/mindmap/components/hooks/usePanTool"
+import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { useTranslation } from "@zoeymind/i18n"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface CanvasToolProps {}
@@ -30,9 +30,9 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
     try {
       // 使用思维导图的视图方法回到中心
       mindMap.view.reset()
-      logger.info('画布已回到中心')
+      logger.info("画布已回到中心")
     } catch (error) {
-      logger.error('回到画布中心失败:', error)
+      logger.error("回到画布中心失败:", error)
     }
   }
 
@@ -45,9 +45,9 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
       const centerX = window.innerWidth / 2
       const centerY = window.innerHeight / 2
       mindMap.view.enlarge(centerX, centerY, false)
-      logger.info('画布已放大')
+      logger.info("画布已放大")
     } catch (error) {
-      logger.error('放大画布失败:', error)
+      logger.error("放大画布失败:", error)
     }
   }
 
@@ -60,9 +60,9 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
       const centerX = window.innerWidth / 2
       const centerY = window.innerHeight / 2
       mindMap.view.narrow(centerX, centerY, false)
-      logger.info('画布已缩小')
+      logger.info("画布已缩小")
     } catch (error) {
-      logger.error('缩小画布失败:', error)
+      logger.error("缩小画布失败:", error)
     }
   }
 
@@ -78,7 +78,7 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="top">{t('mindmap.canvasTool.centerCanvas')}</TooltipContent>
+            <TooltipContent side="right">{t("mindmap.canvasTool.centerCanvas")}</TooltipContent>
           </Tooltip>
 
           <FloatingToolbarSeparator orientation="horizontal" />
@@ -95,10 +95,10 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="top">
-              {t('mindmap.canvasTool.panTool')}
+            <TooltipContent side="right">
+              {t("mindmap.canvasTool.panTool")}
               <br />
-              {t('mindmap.canvasTool.panToolShortcut')}
+              {t("mindmap.canvasTool.panToolShortcut")}
             </TooltipContent>
           </Tooltip>
 
@@ -112,7 +112,7 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="top">{t('mindmap.canvasTool.zoomIn')}</TooltipContent>
+            <TooltipContent side="right">{t("mindmap.canvasTool.zoomIn")}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -123,7 +123,7 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="top">{t('mindmap.canvasTool.zoomOut')}</TooltipContent>
+            <TooltipContent side="right">{t("mindmap.canvasTool.zoomOut")}</TooltipContent>
           </Tooltip>
         </FloatingToolbarGroup>
       </FloatingToolbar>

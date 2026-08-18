@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Folder as FolderIcon, FolderPlus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { useState } from "react"
+import { Folder as FolderIcon, FolderPlus, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import {
   cn,
   DropdownMenu,
@@ -13,11 +13,11 @@ import {
   DialogDescription,
   DialogFooter,
   Button,
-  Checkbox
-} from '@zoeymind/ui'
-import { useTranslation } from '@zoeymind/i18n'
-import { useFolders, type FolderItem } from './hooks/useFolders'
-import { RenameDialog } from './dialogs'
+  Checkbox,
+} from "@zoeymind/ui"
+import { useTranslation } from "@zoeymind/i18n"
+import { useFolders, type FolderItem } from "./hooks/useFolders"
+import { RenameDialog } from "./dialogs"
 
 interface SidebarFoldersProps {
   /** 当前是否处于「文件夹」视图 */
@@ -42,22 +42,24 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
     <div className="px-2">
       <div className="mt-3 mb-1 flex items-center justify-between px-2.5">
         <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-          {t('projects.sidebar.groupPersonal')}
+          {t("projects.sidebar.groupPersonal")}
         </span>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => setCreateOpen(true)}
-          aria-label={t('projects.home.newFolder')}
+          aria-label={t("projects.home.newFolder")}
           data-testid="new-folder"
-          className="text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground"
         >
           <FolderPlus className="size-4" />
-        </button>
+        </Button>
       </div>
 
       {folders.length === 0 ? (
         <p className="px-2.5 py-1 text-xs text-muted-foreground/70">
-          {t('projects.home.noFolders')}
+          {t("projects.home.noFolders")}
         </p>
       ) : (
         folders.map(f => {
@@ -68,16 +70,17 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
               data-testid="folder-row"
               data-folder-name={f.name}
               className={cn(
-                'group flex items-center rounded-md',
-                isActive ? 'bg-accent' : 'hover:bg-accent/50'
+                "group flex items-center rounded-md",
+                isActive ? "bg-accent" : "hover:bg-accent/50"
               )}
             >
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => onSelectFolder(f.id)}
                 className={cn(
-                  'flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-sm',
-                  isActive ? 'font-medium text-accent-foreground' : 'text-muted-foreground'
+                  "h-auto min-w-0 flex-1 justify-start gap-2.5 px-2.5 py-2 text-sm hover:bg-transparent",
+                  isActive ? "font-medium text-accent-foreground" : "text-muted-foreground"
                 )}
               >
                 <FolderIcon className="size-4 shrink-0" />
@@ -85,37 +88,39 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
                 {f.mindmapCount > 0 && (
                   <span className="text-xs text-muted-foreground/70">{f.mindmapCount}</span>
                 )}
-              </button>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   nativeButton
                   render={
-                    <button
+                    <Button
                       type="button"
-                      className="mr-1 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent group-hover:opacity-100"
-                      aria-label={t('projects.home.rename')}
+                      variant="ghost"
+                      size="icon-xs"
+                      className="mr-1 text-muted-foreground opacity-0 group-hover:opacity-100"
+                      aria-label={t("projects.home.rename")}
                       data-testid="folder-menu"
                     >
                       <MoreHorizontal className="size-4" />
-                    </button>
+                    </Button>
                   }
                 />
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => setRenameTarget(f)}
                     data-testid="folder-rename"
-                    className="cursor-pointer gap-2"
+                    className="gap-2"
                   >
                     <Pencil className="size-4" />
-                    {t('projects.home.rename')}
+                    {t("projects.home.rename")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setDeleteTarget(f)}
                     data-testid="folder-delete"
-                    className="cursor-pointer gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                    className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
                   >
                     <Trash2 className="size-4" />
-                    {t('common.delete')}
+                    {t("common.delete")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -128,8 +133,8 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
         open={createOpen}
         onOpenChange={setCreateOpen}
         currentName=""
-        title={t('projects.home.newFolder')}
-        description={t('projects.home.newFolderDesc')}
+        title={t("projects.home.newFolder")}
+        description={t("projects.home.newFolderDesc")}
         onConfirm={async name => {
           await createFolder(name)
         }}
@@ -139,8 +144,8 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
       <RenameDialog
         open={!!renameTarget}
         onOpenChange={open => !open && setRenameTarget(null)}
-        currentName={renameTarget?.name ?? ''}
-        title={t('projects.home.renameFolder')}
+        currentName={renameTarget?.name ?? ""}
+        title={t("projects.home.renameFolder")}
         onConfirm={async name => {
           if (renameTarget) await renameFolder(renameTarget.id, name)
         }}
@@ -159,14 +164,14 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>
-              {t('projects.home.deleteFolderTitle', { itemName: deleteTarget?.name ?? '' })}
+              {t("projects.home.deleteFolderTitle", { itemName: deleteTarget?.name ?? "" })}
             </DialogTitle>
             <DialogDescription>
               {deleteContents
-                ? t('projects.home.deleteFolderWithContentsDesc', {
-                    n: deleteTarget?.mindmapCount ?? 0
+                ? t("projects.home.deleteFolderWithContentsDesc", {
+                    n: deleteTarget?.mindmapCount ?? 0,
                   })
-                : t('projects.home.deleteFolderDesc')}
+                : t("projects.home.deleteFolderDesc")}
             </DialogDescription>
           </DialogHeader>
 
@@ -178,7 +183,7 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
                 className="mt-0.5"
               />
               <span>
-                {t('projects.home.deleteFolderContents', { n: deleteTarget.mindmapCount })}
+                {t("projects.home.deleteFolderContents", { n: deleteTarget.mindmapCount })}
               </span>
             </label>
           )}
@@ -191,7 +196,7 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
                 setDeleteContents(false)
               }}
             >
-              {t('common.cancel')}
+              {t("common.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -203,7 +208,7 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
                 setDeleteContents(false)
               }}
             >
-              {t('common.delete')}
+              {t("common.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

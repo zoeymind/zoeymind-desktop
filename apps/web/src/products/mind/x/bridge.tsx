@@ -1,33 +1,76 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx wires real AI chat + provider)
+// @ts-nocheck — dormant AI chat / MCP module
 /**
- * @zoeymind-ext-mind 桥接层 —— 桌面端把产品仓 AI Chat 面板真正接进来。
+ * @zoeymind-ext-mind 桥接层 ——
  *
- * `AIFeaturePanel` = 完整的 `AIchatV2` 面板 (右侧可拖拽宽度、历史、设置、
- * MessageView/InputView), 模型没配置时它自身有空状态; 有配置时可对话.
- * `AIChatProvider` = `apps/desktop/.../products/mind/x/ai-chat/AIChatProvider`
- * 已在 Canvas 顶层挂 useChat + runtime, 桥接层直接透传.
+ * AI Chat 尚未在桌面端接后端 (no /api/ai-v2/chat). 现在直接挂 AIchatV2 会:
+ *   - useConversationLifecycle 拉 IndexedDB 建对话
+ *   - useChat (AI SDK) 内部初始化流控/事件, 加上未接的 transport 反复重试
+ *   - useMCPTools / trpc.mcp / trpc.models 各种 hook 效应
+ * 组合起来在开发端触发 Maximum update depth (setState 竞态).
+ *
+ * 桌面端 AI 后端真正接入前, `AIFeaturePanel` 只显示一个"AI 未配置 · 前往设置"
+ * 的**静态空状态**面板 (无 hooks 副作用). 等配置好模型后再切回真实 AIchatV2.
  */
-export { AIChatProvider } from './ai-chat/AIChatProvider'
-export { AIchatV2 as AIFeaturePanel } from './ai-chat/index'
-export { attachGhostCompletion } from './plugins/ghost-completion'
+import type { ReactNode } from 'react'
+import { Sparkles } from 'lucide-react'
+import { Button } from '@zoeymind/ui'
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function AIChatProvider({ children }: { children: ReactNode }): JSX.Element {
+  // 不再挂真实的 useAIChat/useChat 运行时, 避免它内部 setState 循环.
+  return <>{children}</>
+}
+
+interface AIFeaturePanelProps {
+  isActive?: boolean
+}
+
+export function AIFeaturePanel({ isActive }: AIFeaturePanelProps): JSX.Element | null {
+  if (!isActive) return null
+  return (
+    <div
+      className="fixed top-12 right-4 z-10 flex h-[calc(100vh-96px)] w-[360px] flex-col rounded-lg border bg-card text-card-foreground shadow-lg"
+    >
+      <div className="flex items-center gap-2 border-b px-4 py-3">
+        <Sparkles className="size-4 text-primary" />
+        <span className="text-sm font-medium">AI Chat</span>
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+          <Sparkles className="size-6 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium">AI 尚未接入</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            桌面端 AI 后端还没实现,
+            <br />
+            配置好模型 + 后端后再启用面板.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            // 打开侧栏设置 Dialog (点击 sidebar 底部齿轮同款入口).
+            window.dispatchEvent(new CustomEvent('zm:open-settings'))
+          }}
+        >
+          前往设置
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export function AIStatusBadge(): null {
   return null
 }
 
-// FormatPanel 用它判断 AI 是否在跑; 真实状态由 useAIChatRuntime 提供,
-// 这里给一个最简读法 —— 若 store 没同步值, 一律 false.
-import { useAIChatRuntime } from './ai-chat/context/AIChatRuntimeContext'
 export function useAIProcessing(): boolean {
-  try {
-    const runtime = useAIChatRuntime()
-    const status = runtime?.status
-    return status === 'submitted' || status === 'streaming'
-  } catch {
-    return false
-  }
+  return false
 }
 
 export function resolveMindmapShortId(nodeId: string): string {
   return nodeId
 }
+
+export { attachGhostCompletion } from './plugins/ghost-completion'

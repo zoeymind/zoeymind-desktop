@@ -7,7 +7,7 @@ import { defaultMindmapData, MAX_NODE_COUNT } from '@zoeymind/shared'
 import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import { useThemePreset } from '@/shared/app-shared'
-import { useTheme } from '@zoeymind/ui'
+import { colorToHsl, useTheme } from '@zoeymind/ui'
 
 const PERFORMANCE_MODE_KEY = 'mind-map-performance-mode'
 const PERFORMANCE_CONFIG_KEY = 'mind-map-performance-config'
@@ -18,10 +18,7 @@ export const defaultData = defaultMindmapData
 
 function readThemeToken(styles: CSSStyleDeclaration, name: string, fallback: string): string {
   const value = styles.getPropertyValue(name).trim()
-  if (!value) return fallback
-  return value.startsWith('hsl(') || value.startsWith('#') || value.startsWith('rgb(')
-    ? value
-    : `hsl(${value})`
+  return colorToHsl(value || fallback)
 }
 
 interface AppPresetMindmapStyles {
