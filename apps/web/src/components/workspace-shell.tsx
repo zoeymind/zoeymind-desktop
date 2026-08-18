@@ -23,7 +23,7 @@ import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext } from '@/shared/nat
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
 import { tabInstances, tabDirty } from '@/shared/tabs/instances'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-
+import { useLoading } from '@/shared/app-shared'
 const LOCAL_ORG_ID = 'local'
 
 export function WorkspaceShell() {
@@ -46,13 +46,16 @@ export function WorkspaceShell() {
   // 切 tab: 从 tabInstances 恢复 active tab 的 mindMap + dirty 到全局 store.
   // 离开的 tab 把当前 dirty 存进缓存.
   const prevActiveRef = useRef<string | null>(null)
+  const { hideLoading } = useLoading()
   useEffect(() => {
     const prev = prevActiveRef.current
     if (prev && prev !== 'home' && prev !== activeId) {
       tabDirty.set(prev, useMindMapStore.getState().isDirty)
     }
     if (activeId === 'home') {
-      useMindMapStore.setState({ mindMap: null, isDirty: false })
+      // 回首页: 不动全局 mindMap (否则所有 hidden EditorPane 的 loading resolver
+      // 会看到 hasMindMap=false 集体 showLoading, 卡住). 直接把全局 loading 关掉.
+      hideLoading()
     } else {
       const instance = tabInstances.get(activeId) ?? null
       useMindMapStore.setState({
@@ -61,7 +64,7 @@ export function WorkspaceShell() {
       })
     }
     prevActiveRef.current = activeId
-  }, [activeId])
+  }, [activeId, hideLoading])
 
   return (
     <div className="relative h-full w-full">
