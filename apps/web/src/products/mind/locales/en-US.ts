@@ -549,7 +549,10 @@ export default {
     editor: {
       documentTitle: 'Document title',
       loadingOrg: 'Loading organization info...',
-      newCloudProject: 'New cloud project'
+      newCloudProject: 'New cloud project',
+      newProjectTitle: 'Untitled mind map',
+      createFailed: 'Create failed',
+      importFailed: 'Import failed'
     },
     formatPanel: {
       aiPanel: {

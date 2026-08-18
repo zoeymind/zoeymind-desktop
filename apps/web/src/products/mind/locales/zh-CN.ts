@@ -534,7 +534,10 @@ export default {
     editor: {
       documentTitle: '文档标题',
       loadingOrg: '加载组织信息...',
-      newCloudProject: '新的云项目'
+      newCloudProject: '新的云项目',
+      newProjectTitle: '未命名思维导图',
+      createFailed: '新建失败',
+      importFailed: '导入失败'
     },
     formatPanel: {
       aiPanel: {

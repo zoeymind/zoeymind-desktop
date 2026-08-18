@@ -16,6 +16,7 @@ export * from './mcp-repo'
 export * from './mcp-spawn'
 export * from './save-flow'
 export { UnsavedGuard } from './unsaved-guard'
+export { SaveFlowProvider, useSaveFlowContext, useOptionalSaveFlow } from './save-flow-context'
 
 export * as pendingProjects from './pending-projects'
 // 便利再导出：native 侧 hook 大多同时要 UUID，避免调用方两条 import

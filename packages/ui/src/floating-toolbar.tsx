@@ -99,11 +99,11 @@ const FloatingToolbarButton = React.forwardRef<HTMLButtonElement, FloatingToolba
   ({ active = false, variant = 'default', size = 'md', className, ...props }, ref) => (
     <Button
       ref={ref}
-      // 三种 variant 都用 ghost 底 + 状态高亮; outline 变体给一点 border.
       variant={variant === 'outline' ? 'outline' : 'ghost'}
       size={SIZE_MAP[size]}
       data-active={active || undefined}
       className={cn(
+        '[&_svg]:size-4',
         active && 'bg-accent text-accent-foreground',
         className
       )}

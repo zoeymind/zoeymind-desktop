@@ -14,7 +14,7 @@ import { logger } from '@zoeymind/logger'
 import { defaultData } from './useCanvasManager'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { getProject, readBundle, useSaveFlow, pendingProjects } from '@/shared/native'
+import { getProject, readBundle, pendingProjects, useOptionalSaveFlow } from '@/shared/native'
 
 interface LoadedData {
   savedData: MindMapNodeTree | null
@@ -37,7 +37,7 @@ function countNodes(tree: MindMapNodeTree | null | undefined): number {
 export function useStorageManager(): UseStorageManagerResult {
   const { workspaceId } = useProjectContext()
   const { mindMap } = useMindMapStore()
-  const flow = useSaveFlow(workspaceId ?? null)
+  const flow = useOptionalSaveFlow(workspaceId ?? null)
   const nameRef = useRef<string>('')
 
   const loadSavedData = useCallback(async (): Promise<LoadedData> => {
