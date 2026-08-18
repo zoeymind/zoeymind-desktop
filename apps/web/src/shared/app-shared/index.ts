@@ -12,10 +12,13 @@
  */
 
 import type { ReactNode } from 'react'
+import { v4 as uuidV4 } from 'uuid'
+import { toast as sonnerToast } from 'sonner'
 
 // ── 1. 纯前端实用工具 ─────────────────────────────
 export { cn } from '@zoeymind/ui'
-export { v4 as createUUID, v4 as generateUUID } from 'uuid'
+export const createUUID: () => string = uuidV4
+export const generateUUID: () => string = uuidV4
 
 /** sonner 直传，保持三行 API：toast() / toastLoading / dismissToast。 */
 export const toast = sonnerToast

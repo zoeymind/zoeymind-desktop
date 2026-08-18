@@ -1,0 +1,20 @@
+# 桌面端 Cargo 国内镜像：ustc（若不可用换 tuna / rsproxy / aliyun）
+[source.crates-io]
+replace-with = "ustc"
+
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+
+[source.rsproxy]
+registry = "sparse+https://rsproxy.cn/index/"
+
+[source.tuna]
+registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
+
+# HTTPS 拉取时使用系统证书，规避个别镜像 TLS 校验问题
+[http]
+check-revoke = false
+
+[net]
+retry = 3
+git-fetch-with-cli = true
