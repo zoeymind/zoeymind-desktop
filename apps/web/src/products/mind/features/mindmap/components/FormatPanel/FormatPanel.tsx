@@ -3,7 +3,6 @@ import { logger } from '@zoeymind/logger'
 import { useTranslation } from '@zoeymind/i18n'
 import { useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Tags } from './Tags'
-import { ThemePanel } from './ThemePanel'
 import { AIFeaturePanel, useAIProcessing } from '@zoeymind-ext-mind'
 import { useFeature } from '@/shared/app-shared'
 import { MessageCircle, Sparkles } from 'lucide-react'
@@ -126,27 +125,6 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
               </FloatingToolbarButton>
             )}
 
-            {canEdit && (
-              <FloatingToolbarButton
-                active={activeTab === 'theme'}
-                onClick={() => toggleFormatTab('theme')}
-                title={t('common.themePreset')}
-              >
-                <svg
-                  className="size-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
-              </FloatingToolbarButton>
-            )}
 
 
           </FloatingToolbarGroup>
@@ -154,7 +132,6 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
 
         {/* 面板内容 - 直接渲染，不包裹在FloatingToolbarContent中 */}
         {canEdit && activeTab === 'tags' && <Tags isActive={true} />}
-        {canEdit && activeTab === 'theme' && <ThemePanel isActive={true} />}
         {/* AI 面板始终渲染, 内部用 display:none 收起 — 后台流不会被卸载中断 */}
         {showAiTab && <AIFeaturePanel isActive={activeTab === 'ai'} />}
       </>

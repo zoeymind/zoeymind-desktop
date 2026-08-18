@@ -445,6 +445,16 @@ export function MindMapCanvas() {
     <CommentProvider value={commentContextValue}>
       <AIChatProvider>
         <div className="flex flex-col h-screen">
+          {/* 编辑器 Header —— 把左上/右上原本的两个悬浮按钮组合成一条完整 Header,
+              位于 TitleBar (32px) 之下. 面板内容 (Tags/Theme/AI) 仍走各自的 fixed 定位. */}
+          <div className="relative z-30 flex items-center justify-between gap-3 border-b bg-background/95 px-3 py-1.5 backdrop-blur">
+            <TopBar collaboration={collaboration} />
+            <FormatPanel
+              ref={formatPanelRef}
+              onPreviewStateChange={handlePreviewStateChange}
+              setExitPreviewCallback={setExitPreviewCallback}
+            />
+          </div>
           <div className="flex-1 relative">
             <div
               ref={containerRef}
@@ -452,17 +462,11 @@ export function MindMapCanvas() {
               className="absolute inset-0"
               style={{ visibility: loading ? 'hidden' : 'visible' }}
             />
-            <TopBar collaboration={collaboration} />
             <MindMapDropdown
               formatPanelRef={formatPanelRef}
               copyXMindDataToClipboard={copyXMindDataToClipboard}
             />
             <MindMapIconToolbar />
-            <FormatPanel
-              ref={formatPanelRef}
-              onPreviewStateChange={handlePreviewStateChange}
-              setExitPreviewCallback={setExitPreviewCallback}
-            />
             {loadError && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm p-4">
                 <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">

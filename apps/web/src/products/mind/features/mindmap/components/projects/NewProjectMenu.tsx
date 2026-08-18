@@ -40,10 +40,10 @@ interface NewProjectMenuProps {
 // 列表层导入仅支持 .xmind（标准）和 .md。zmxmind 留给 editor 内导入做格式选择。
 const IMPORT_ACCEPT = '.xmind,.md'
 
-export function NewProjectMenu({ onCreated, workspaceId }: NewProjectMenuProps) {
+export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { creating, createBlank, createFromImport } = useCreateProject({ onCreated, workspaceId })
+  const { creating, createBlank, createFromImport } = useCreateProject({ onCreated })
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click()

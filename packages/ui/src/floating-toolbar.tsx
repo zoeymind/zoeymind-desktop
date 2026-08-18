@@ -35,10 +35,10 @@ interface FloatingToolbarContentProps extends React.HTMLAttributes<HTMLDivElemen
 // 主工具栏容器
 const FloatingToolbar = React.forwardRef<HTMLDivElement, FloatingToolbarProps>(
   ({ position = 'top-left', children, className, ...props }, ref) => {
-    // 桌面端顶部 32px TitleBar 常驻, 悬浮工具栏统一让开; top-12 = 48px (16px 视觉呼吸).
+    // 桌面端顶部改成整条 Header 行由父容器 flex 布局, top-left/top-right 不再自绝对定位.
     const positionClasses = {
-      'top-left': 'fixed top-12 left-4',
-      'top-right': 'fixed top-12 right-4',
+      'top-left': '',
+      'top-right': '',
       'bottom-left': 'fixed bottom-4 left-4',
       'bottom-right': 'fixed bottom-4 right-4',
       custom: ''
@@ -68,7 +68,8 @@ const FloatingToolbarGroup = React.forwardRef<HTMLDivElement, FloatingToolbarGro
       <div
         ref={ref}
         className={cn(
-          'flex items-center gap-2 p-2 bg-black/30 backdrop-blur-md rounded-lg shadow-lg text-white',
+          // Header 内嵌样式: 透明底 + foreground 色, 不再自带 pill 阴影.
+          'flex items-center gap-1 text-foreground',
           orientation === 'vertical' && 'flex-col',
           className
         )}
@@ -88,7 +89,7 @@ const FloatingToolbarSeparator = React.forwardRef<HTMLDivElement, FloatingToolba
       <div
         ref={ref}
         className={cn(
-          orientation === 'vertical' ? 'w-px h-6 bg-white/30' : 'h-px w-6 bg-white/30',
+          orientation === 'vertical' ? 'w-px h-6 bg-border' : 'h-px w-6 bg-border',
           className
         )}
         {...props}
@@ -102,14 +103,14 @@ FloatingToolbarSeparator.displayName = 'FloatingToolbarSeparator'
 const FloatingToolbarButton = React.forwardRef<HTMLButtonElement, FloatingToolbarButtonProps>(
   ({ active = false, variant = 'default', size = 'md', children, className, ...props }, ref) => {
     const variantClasses = {
-      default: 'hover:bg-white/20 transition-colors',
-      outline: 'border border-white/30 hover:bg-white/10 transition-colors',
-      ghost: 'hover:bg-white/10 transition-colors'
+      default: 'hover:bg-muted transition-colors',
+      outline: 'border border-border hover:bg-muted transition-colors',
+      ghost: 'hover:bg-muted transition-colors'
     }
 
     const sizeClasses = {
-      sm: 'p-0.5',
-      md: 'p-1',
+      sm: 'p-1',
+      md: 'p-1.5',
       lg: 'p-2'
     }
 
@@ -118,10 +119,10 @@ const FloatingToolbarButton = React.forwardRef<HTMLButtonElement, FloatingToolba
         type="button"
         ref={ref}
         className={cn(
-          'rounded-lg',
+          'rounded-md',
           variantClasses[variant],
           sizeClasses[size],
-          active ? 'bg-white/70 text-black' : 'text-white',
+          active ? 'bg-primary/10 text-primary' : 'text-foreground',
           className
         )}
         {...props}

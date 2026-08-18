@@ -1,12 +1,13 @@
 /**
  * 自定义 TitleBar —— macOS Overlay 样式下用于填补拖拽区。
  *
- * 桌面端零个人账号：不显示头像/账号菜单；仅提供拖拽 + 最小化/最大化/关闭（Windows/Linux）。
+ * 桌面端零个人账号：不显示头像/账号菜单；只放通用主题切换 + 语言切换 +
+ * (非 macOS) 系统窗控按钮。
  */
 import { useEffect, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Minus, Maximize2, X, Settings } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Minus, Maximize2, X } from 'lucide-react'
+import { ThemeMenu, LanguageSwitcher } from '@/shared/app-shared'
 
 const appWindow = getCurrentWindow()
 
@@ -19,7 +20,6 @@ async function detectPlatform(): Promise<'macos' | 'windows' | 'linux'> {
 
 export function TitleBar() {
   const [platform, setPlatform] = useState<'macos' | 'windows' | 'linux'>('macos')
-  const navigate = useNavigate()
 
   useEffect(() => {
     void detectPlatform().then(setPlatform)
@@ -40,13 +40,10 @@ export function TitleBar() {
       >
         ZoeyMind
       </div>
-      <button
-        onClick={() => navigate('/settings')}
-        className="mr-1 p-1.5 text-muted-foreground hover:bg-muted rounded"
-        aria-label="settings"
-      >
-        <Settings className="size-3.5" />
-      </button>
+      <div className="flex items-center gap-1 mr-2">
+        <LanguageSwitcher />
+        <ThemeMenu />
+      </div>
       {!isMac && (
         <>
           <button onClick={() => appWindow.minimize()} className="p-1.5 hover:bg-muted">
