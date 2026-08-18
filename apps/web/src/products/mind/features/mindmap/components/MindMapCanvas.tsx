@@ -34,7 +34,7 @@ import { useProjectContext } from '@/products/mind/features/mindmap/contexts/Pro
 import { useOrganization } from '@/shared/app-shared'
 import { toast, toastLoading, dismissToast, ThemeMenu, LanguageSwitcher } from '@/shared/app-shared'
 import { useTranslation } from '@zoeymind/i18n'
-import { Button, Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@zoeymind/ui'
+import { Button, LoadErrorScreen } from '@zoeymind/ui'
 import type { default as MindMap } from 'simple-mind-map'
 import { isWaitingForCollaboration } from '@/products/mind/features/mindmap/types/mindmap-extensions'
 import { logger } from '@zoeymind/logger'
@@ -484,24 +484,14 @@ export function MindMapCanvas() {
             />
             <MindMapIconToolbar />
             {loadError && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
-                <Card className="w-full max-w-sm">
-                  <CardHeader>
-                    <CardTitle>{t('mindmap.canvas.loadFailed')}</CardTitle>
-                    <CardDescription>
-                      {t('mindmap.canvas.loadFailedDescription', { value: loadError })}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardFooter className="justify-end gap-2">
-                    <Button variant="outline" onClick={handleUseSnapshot}>
-                      {t('mindmap.canvas.restoreFromSnapshot')}
-                    </Button>
-                    <Button onClick={handleUseDefaultTemplate}>
-                      {t('mindmap.canvas.useDefaultTemplate')}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </div>
+              <LoadErrorScreen
+                title={t('mindmap.canvas.loadFailed')}
+                description={loadError}
+                secondaryLabel={t('mindmap.canvas.restoreFromSnapshot')}
+                onSecondary={handleUseSnapshot}
+                primaryLabel={t('mindmap.canvas.useDefaultTemplate')}
+                onPrimary={handleUseDefaultTemplate}
+              />
             )}
             <MindMapScrollbar />
             <PreviewIndicator />

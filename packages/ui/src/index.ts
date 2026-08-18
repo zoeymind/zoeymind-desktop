@@ -80,6 +80,7 @@ export * from './sortingTabs'
 export * from './spinner'
 export * from './settings-shell'
 export * from './ThemeToggle'
+export * from './load-error-screen'
 
 // Pages
 export * from './pages'

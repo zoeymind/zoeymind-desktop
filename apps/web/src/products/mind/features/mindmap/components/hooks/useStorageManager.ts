@@ -68,7 +68,12 @@ export function useStorageManager(): UseStorageManagerResult {
       return { savedData: bundle.tree, savedViewData: bundle.view ?? null }
     } catch (error) {
       logger.error('读取 .zmind 失败', error)
-      return { savedData: defaultData, savedViewData: null }
+      // 抛给 useCanvasManager.onLoadError -> setLoadError, 触发 LoadErrorScreen.
+      throw new Error(
+        error instanceof Error && error.message
+          ? `无法读取 .zmind 文件: ${error.message}`
+          : '无法读取 .zmind 文件, 可能已损坏'
+      )
     }
   }, [workspaceId])
 
