@@ -1,0 +1,77 @@
+'use client'
+
+import type { Table } from '@tanstack/react-table'
+import { Settings2 } from 'lucide-react'
+import * as React from 'react'
+import { useTranslation } from '@zoeymind/i18n'
+import { Button } from '#components/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '#components/command'
+import { Popover, PopoverContent, PopoverTrigger } from '#components/popover'
+import { cn } from '#lib/utils'
+
+interface DataTableViewOptionsProps<TData> extends React.ComponentProps<typeof PopoverContent> {
+  table: Table<TData>
+  disabled?: boolean
+}
+
+export function DataTableViewOptions<TData>({
+  table,
+  disabled,
+  className,
+  ...props
+}: DataTableViewOptionsProps<TData>) {
+  const { t } = useTranslation()
+  const columns = React.useMemo(
+    () =>
+      table
+        .getAllColumns()
+        .filter(column => typeof column.accessorFn !== 'undefined' && column.getCanHide()),
+    [table]
+  )
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        nativeButton
+        render={
+          <Button
+            aria-label={t('common.table.toggleColumns')}
+            role="combobox"
+            variant="outline"
+            className="ml-auto hidden h-8 font-normal lg:flex"
+            disabled={disabled}
+          >
+            <Settings2 className="text-muted-foreground" />
+            {t('common.table.viewColumns')}
+          </Button>
+        }
+      />
+      <PopoverContent className={cn('w-44 p-0', className)} {...props}>
+        <Command>
+          <CommandInput placeholder={t('common.table.searchColumns')} />
+          <CommandList>
+            <CommandEmpty>{t('common.table.noColumnsFound')}</CommandEmpty>
+            <CommandGroup>
+              {columns.map(column => (
+                <CommandItem
+                  key={column.id}
+                  data-checked={column.getIsVisible()}
+                  onSelect={() => column.toggleVisibility(!column.getIsVisible())}
+                >
+                  <span className="truncate">{column.columnDef.meta?.label ?? column.id}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}

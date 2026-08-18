@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Overview/Introduction" />
+
+# @zoeymind/ui
+
+共享 UI 组件库 —— 基于 shadcn/Radix + Tailwind v4。
+
+## 使用
+
+```tsx
+import { Button, Badge, Card } from '@zoeymind/ui'
+```
+
+barrel 见 `packages/ui/src/index.ts`（64+ 组件）。
+
+## 主题
+
+- 语义 CSS 变量：`bg-primary` / `text-muted-foreground` / `border` / `text-destructive`
+- 深色主题：切换右上角工具栏（`class="dark"` 加在 `<html>`）
+
+## 分类
+
+- **Primitives** — Button / Badge / Input / Card 等原子组件
+- **Overlay** — Dialog / Sheet / Drawer / Popover / Toast
+- **Data Display** — Table / Skeleton / Empty
+- **Navigation** — Tabs / Sidebar / Breadcrumb / Menubar
+- **Custom Widgets** — CodeEditor / Loading / MotionTabs 等自研组件

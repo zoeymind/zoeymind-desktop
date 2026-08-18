@@ -1,20 +1,20 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "deskapp",
+  "productName": "ZoeyMind",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.zoeymind.desktop",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "../apps/web/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "beforeDevCommand": "pnpm --filter @zoeymind-desktop/web dev",
+    "beforeBuildCommand": "pnpm --filter @zoeymind-desktop/web build"
   },
   "app": {
     "windows": [
       {
-        "title": "deskapp",
-        "width": 800,
-        "height": 600,
+        "title": "ZoeyMind",
+        "width": 1280,
+        "height": 800,
         "resizable": true,
         "fullscreen": false
       }

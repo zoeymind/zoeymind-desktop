@@ -1,0 +1,14 @@
+/**
+ * shared/native —— 桌面端所有 native 依赖的入口 (SQLite / fs / dialog / shell)。
+ * 前端其它地方一律通过本文件 import，不直接 import @tauri-apps/*，
+ * 便于测试和替换。
+ */
+export * from './db'
+export * from './paths'
+export * from './zmind-file'
+export * from './chat-repo'
+export * from './models-config'
+export * from './preview'
+export * from './recovery'
+export * from './folders-repo'
+export * from './projects-repo'

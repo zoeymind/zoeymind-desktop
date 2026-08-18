@@ -1,0 +1,52 @@
+{
+  "name": "@zoeymind/logger",
+  "version": "1.0.0",
+  "description": "通用彩色日志库，支持浏览器和Node.js环境",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "chalk": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.3",
+    "eslint": "^9.17.0",
+    "globals": "^15.15.0",
+    "typescript-eslint": "^8.29.1",
+    "tsx": "^4.19.2",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "logger",
+    "console",
+    "colors",
+    "browser",
+    "nodejs",
+    "typescript"
+  ]
+}

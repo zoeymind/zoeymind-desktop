@@ -1,0 +1,59 @@
+{
+  "name": "simple-mind-map",
+  "version": "0.14.0-fix.1",
+  "type": "module",
+  "description": "一个简单的web在线思维导图",
+  "authors": [
+    {
+      "name": "街角小林",
+      "email": "1013335014@qq.com"
+    },
+    {
+      "name": "理想青年实验室",
+      "url": "http://lxqnsys.com/"
+    }
+  ],
+  "types": "./src/index.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wanglin2/mind-map"
+  },
+  "scripts": {
+    "lint": "echo 'simple-mind-map: no js source to lint (all migrated to ts)'",
+    "format": "prettier --write .",
+    "types": "npx -p typescript tsc index.js --declaration --allowJs --emitDeclarationOnly --outDir types --target es2017 --skipLibCheck & node ./bin/createPluginsTypeFiles.js",
+    "build:types": "npm run types",
+    "build": "tsc -p tsconfig.json"
+  },
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "dependencies": {
+    "@svgdotjs/svg.js": "3.2.0",
+    "deepmerge": "^1.5.2",
+    "eventemitter3": "^4.0.7",
+    "jszip": "^3.10.1",
+    "katex": "^0.16.8",
+    "mdast-util-from-markdown": "^1.3.0",
+    "pdf-lib": "^1.17.1",
+    "quill": "^2.0.3",
+    "tern": "^0.24.3",
+    "uuid": "^9.0.0",
+    "ws": "^7.5.9",
+    "xml-js": "^1.6.11",
+    "yjs": "^13.6.8"
+  },
+  "keywords": [
+    "javascript",
+    "svg",
+    "mind-map",
+    "mindMap",
+    "MindMap"
+  ],
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "globals": "^15.15.0",
+    "quill-delta": "^5.1.0",
+    "typescript": "^5.6.0"
+  }
+}

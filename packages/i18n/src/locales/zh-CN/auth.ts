@@ -1,0 +1,138 @@
+/**
+ * @zoeymind/i18n core resources — auth (zh-CN)
+ */
+export default {
+  welcomeBack: '欢迎回来',
+  login: '登录',
+  ssoForcedHint: '此邮箱必须通过 {{name}} 登录',
+  ssoLoginWith: '通过 {{name}} 登录',
+  ssoCodeLoginTitle: '企业码登录',
+  ssoCodeLoginTrigger: '使用企业码登录',
+  ssoCodeLoginDesc: '输入公司分发的企业码, 直接跳转到你们的 SSO 登录页。',
+  ssoCodePlaceholder: '例如: acme',
+  ssoCodeContinue: '继续',
+  ssoCodeInvalid: '未找到该企业码, 请与 IT 管理员确认。',
+  ssoRememberedHint: '上次通过 {{name}} 登录',
+  ssoRememberedContinue: '使用 {{name}} 继续',
+  ssoRememberedForget: '不, 换其他方式',
+  ssoSwitchTrigger: '换个方式登录',
+  ssoErrorFallback: 'SSO 登录失败: {{code}}。请与 IT 管理员确认企业码或联系 IT 管理员。',
+  ssoPickProviderHint: '选择一种登录方式',
+  ssoTypeFeishu: '飞书',
+  ssoTypeWecom: '企业微信',
+  ssoTypeDingtalk: '钉钉',
+  ssoTypeOidc: 'OIDC',
+  ssoTypeSaml: 'SAML',
+  ssoTypeGeneric: 'SSO',
+  register: {
+    consent: {
+      prefix: '我已阅读并同意',
+      terms: '《用户协议》',
+      and: '和',
+      privacy: '《隐私政策》'
+    },
+    stepEmail: {
+      title: '创建账户',
+      subtitle: '输入您的邮箱开始注册',
+      sending: '发送中...',
+      sendFailed: '发送验证码失败',
+      inviteCode: '邀请码',
+      inviteCodePlaceholder: '输入邀请码',
+      inviteRequired: '注册需要有效邀请码',
+      inviteInvalid: '邀请码无效或已过期'
+    },
+    stepCode: {
+      verifying: '验证中...',
+      verify: '验证',
+      resend: '重新发送验证码',
+      resent: '验证码已重新发送',
+      resendFailed: '重发失败',
+      codeError: '验证码错误',
+      codeLength: '验证码为 6 位数字'
+    },
+    stepPassword: {
+      title: '设置密码',
+      subtitle: '设置您的姓名和登录密码',
+      displayName: '显示名',
+      displayNamePlaceholder: '您的姓名',
+      passwordPlaceholder: '至少 6 位',
+      confirmPasswordPlaceholder: '再次输入',
+      saving: '保存中...',
+      submit: '完成注册',
+      success: '注册完成！',
+      setPasswordFailed: '设置密码失败',
+      nameRequired: '请输入姓名',
+      nameMaxLength: '姓名最多 50 个字符',
+      passwordMaxLength: '密码最多 50 个字符'
+    }
+  },
+  forgotPassword: '忘记密码?',
+  email: '邮箱',
+  identifier: '账号',
+  identifierPlaceholder: '邮箱或用户名',
+  identifierRequired: '请输入邮箱或用户名',
+  identifierInvalid: '邮箱格式错误, 或用户名只允许字母/数字/下划线/连字符 (3-32)',
+  emailRequiredPlaceholder: '请输入邮箱地址',
+  passwordPlaceholder: '请输入密码',
+  loginSubtitle: '登录到您的思维导图账户',
+  signingIn: '登录中...',
+  redirecting: '跳转中...',
+  agreement: '点击"继续"即表示您同意我们的<terms>服务条款</terms>和<privacy>隐私政策</privacy>。',
+  password: '密码',
+  confirmPassword: '确认密码',
+  verificationCode: '验证码',
+  sendCode: '发送验证码',
+  sendingCode: '发送中…',
+  resendCode: '重新发送',
+  resendIn: '{{seconds}} 秒后可重发',
+  backToLogin: '返回登录',
+  noAccount: '还没有账号?',
+  haveAccount: '已有账号?',
+  signUp: '立即注册',
+  signIn: '立即登录',
+  or: '或',
+  loginWithGoogle: '使用 Google 登录',
+  loginWithGithub: '使用 GitHub 登录',
+  loginFailed: '登录失败,请稍后重试',
+  invalidEmail: '请输入有效的邮箱地址',
+  passwordTooShort: '密码至少 6 位',
+  passwordMismatch: '两次密码不一致',
+  emailNotRegistered: '该邮箱未注册,请检查邮箱地址或前往注册',
+  codeSent: '验证码已发送至 {{email}}',
+  checkSpam: '未收到? 请检查垃圾邮件箱',
+  verifyEmail: '验证邮箱',
+  forgot: {
+    email: {
+      title: '忘记密码',
+      subtitle: '输入你的邮箱,我们将发送验证码',
+      sendFailed: '发送失败,请稍后重试'
+    },
+    code: {
+      title: '输入验证码',
+      subtitlePrefix: '验证码已发送至 ',
+      invalidLength: '验证码为 6 位数字',
+      resendFailed: '重发失败'
+    },
+    password: {
+      title: '设置新密码',
+      subtitle: '请输入新密码',
+      newPasswordLabel: '新密码',
+      newPasswordPlaceholder: '至少 6 位',
+      confirmLabel: '确认密码',
+      confirmPlaceholder: '再次输入',
+      submit: '重置密码',
+      submitting: '提交中…',
+      back: '返回上一步',
+      passwordMin: '密码至少 6 位',
+      passwordMax: '密码最多 50 位',
+      passwordMismatch: '两次密码不一致',
+      resetFailed: '重置失败',
+      resetFailedInvalid: '重置失败,验证码错误或已过期'
+    },
+    success: {
+      title: '密码重置成功',
+      subtitle: '请使用新密码登录',
+      backToLogin: '返回登录'
+    }
+  }
+} as const
