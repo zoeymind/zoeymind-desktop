@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { logger } from '@zoeymind/logger'
 import { i18next } from '@zoeymind/i18n'
 import { useLoading } from '@/shared/app-shared'
-import { listProjects, type ProjectRow } from '@/shared/native'
+import { listProjects, useProjectsEvents, type ProjectRow } from '@/shared/native'
 
 export type SortType = 'recent' | 'created' | 'name' | 'starred'
 
@@ -44,6 +44,7 @@ export function useProjects() {
   const [searchText, setSearchText] = useState('')
   const [sortType, setSortType] = useState<SortType>('recent')
   const { showLoading, hideLoading } = useLoading()
+  const bumpCount = useProjectsEvents(s => s.bumpCount)
 
   useEffect(() => {
     const controller = { isMounted: true }
@@ -67,7 +68,7 @@ export function useProjects() {
     return () => {
       controller.isMounted = false
     }
-  }, [showLoading, hideLoading])
+  }, [showLoading, hideLoading, bumpCount])
 
   const refreshProjects = useCallback(async () => {
     try {

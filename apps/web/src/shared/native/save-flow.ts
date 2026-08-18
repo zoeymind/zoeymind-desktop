@@ -36,6 +36,7 @@ import {
   type ZMindBundle,
   type ProjectRow
 } from './'
+import { bumpProjects } from './projects-events'
 import { exists, mkdir } from '@tauri-apps/plugin-fs'
 import { save as saveDialog } from '@tauri-apps/plugin-dialog'
 import { join } from '@tauri-apps/api/path'
@@ -191,7 +192,7 @@ export function useSaveFlow(projectId: string | null) {
       pendingProjects.clear(projectId)
       state.path = picked
       setDirty(false)
-      // URL 从 unsaved-* 换成真实 id（replace，避免返回按钮回到临时 URL）
+      bumpProjects()
       navigate(`/editor/${realId}`, { replace: true })
       return
     }
@@ -219,6 +220,7 @@ export function useSaveFlow(projectId: string | null) {
       state.timer = null
     }
     setDirty(false)
+    bumpProjects()
   }, [projectId, setDirty])
 
   const saveAs = useCallback(

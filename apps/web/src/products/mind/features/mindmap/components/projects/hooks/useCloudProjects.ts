@@ -21,6 +21,7 @@ import {
   refreshProjectIndex,
   registerProject,
   setStarred,
+  useProjectsEvents,
   unregisterProject,
   writeBundle,
   type ProjectRow,
@@ -114,6 +115,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
     []
   )
 
+  const bumpCount = useProjectsEvents(s => s.bumpCount)
   useEffect(() => {
     let mounted = true
     setLoading(true)
@@ -128,7 +130,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [bumpCount])
 
   const projects = useMemo(() => {
     let items = rows.map(toCloud)
