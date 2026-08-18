@@ -136,12 +136,13 @@ function renderExpandBtn() {
   if (this.getChildrenLength() <= 0 || this.isRoot) {
     return;
   }
-  if (this._expandBtn) {
-    this.group.add(this._expandBtn);
-  } else {
+  if (!this._expandBtn) {
     this._expandBtn = new G();
-
     this._expandBtn.addClass("smm-expand-btn");
+    this.group.add(this._expandBtn);
+  } else if (!this._showExpandBtn) {
+    // Reattach only after removeExpandBtn(). Re-adding an attached SVG group moves it in
+    // the DOM and WKWebView will not hit-test it again until the pointer moves away.
     this.group.add(this._expandBtn);
   }
   this._showExpandBtn = true;

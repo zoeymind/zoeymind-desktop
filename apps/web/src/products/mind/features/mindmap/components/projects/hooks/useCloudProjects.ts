@@ -46,10 +46,18 @@ export interface CloudProjectWithStats {
   size: number
 }
 
+/** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
+function fileBasenameNoExt(p: string): string {
+  if (!p) return 'Untitled'
+  const last = p.split(/[\\/]/).pop() ?? ''
+  return last.replace(/\.zmind$/i, '') || 'Untitled'
+}
+
 function toCloud(row: ProjectRow): CloudProjectWithStats {
   return {
     id: row.id,
-    name: row.name,
+    // 名字权威源: 文件名 (foo.zmind -> foo), 忽略 DB row.name 可能残留的老值.
+    name: fileBasenameNoExt(row.path),
     path: row.path,
     updatedAt: new Date(row.updatedAt).toISOString(),
     createdAt: new Date(row.createdAt).toISOString(),
