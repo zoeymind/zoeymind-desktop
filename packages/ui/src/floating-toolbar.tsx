@@ -1,143 +1,121 @@
 import React from 'react'
 import { cn } from './cn'
+import { Button, type ButtonProps } from './button'
+
+/**
+ * FloatingToolbar 现在是"Header 内联工具栏"的极薄包装 —— 保留 API 表面
+ * (旧代码继续能用), 内部一律走通用 `Button` (`variant="ghost"`, 默认 `size="icon-sm"`).
+ * 之前的黑底白字 pill 样式退役.
+ */
 
 interface FloatingToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'custom'
-  children: React.ReactNode
-  className?: string
 }
 
 interface FloatingToolbarGroupProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode
-  className?: string
   orientation?: 'horizontal' | 'vertical'
 }
 
 interface FloatingToolbarSeparatorProps extends React.HTMLAttributes<HTMLDivElement> {
   orientation?: 'horizontal' | 'vertical'
-  className?: string
 }
 
-interface FloatingToolbarButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface FloatingToolbarButtonProps extends Omit<ButtonProps, 'variant' | 'size'> {
   active?: boolean
+  /** 兼容旧 API: 'default' | 'outline' | 'ghost'; 内部映射到通用 Button variant. */
   variant?: 'default' | 'outline' | 'ghost'
+  /** 兼容旧 API: 'sm' | 'md' | 'lg'; 内部映射到通用 Button size. */
   size?: 'sm' | 'md' | 'lg'
-  children: React.ReactNode
-  className?: string
 }
 
 interface FloatingToolbarContentProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode
-  className?: string
   isActive?: boolean
 }
 
-// 主工具栏容器
-const FloatingToolbar = React.forwardRef<HTMLDivElement, FloatingToolbarProps>(
-  ({ position = 'top-left', children, className, ...props }, ref) => {
-    // 桌面端顶部改成整条 Header 行由父容器 flex 布局, top-left/top-right 不再自绝对定位.
-    const positionClasses = {
-      'top-left': '',
-      'top-right': '',
-      'bottom-left': 'fixed bottom-4 left-4',
-      'bottom-right': 'fixed bottom-4 right-4',
-      custom: ''
-    }
+const positionClasses = {
+  'top-left': '',
+  'top-right': '',
+  'bottom-left': 'fixed bottom-4 left-4',
+  'bottom-right': 'fixed bottom-4 right-4',
+  custom: ''
+} as const
 
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'flex flex-col gap-2 z-10',
-          position !== 'custom' ? positionClasses[position] : '',
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    )
-  }
+const FloatingToolbar = React.forwardRef<HTMLDivElement, FloatingToolbarProps>(
+  ({ position = 'top-left', children, className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        'flex items-center gap-0.5 z-10',
+        position !== 'custom' ? positionClasses[position] : '',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
 )
 FloatingToolbar.displayName = 'FloatingToolbar'
 
-// 工具栏组
 const FloatingToolbarGroup = React.forwardRef<HTMLDivElement, FloatingToolbarGroupProps>(
-  ({ children, className, orientation = 'horizontal', ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'flex items-center gap-0.5 text-foreground',
-          orientation === 'vertical' && 'flex-col',
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    )
-  }
+  ({ children, className, orientation = 'horizontal', ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        'flex items-center gap-0.5 text-foreground',
+        orientation === 'vertical' && 'flex-col',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
 )
 FloatingToolbarGroup.displayName = 'FloatingToolbarGroup'
 
-// 工具栏分隔符
 const FloatingToolbarSeparator = React.forwardRef<HTMLDivElement, FloatingToolbarSeparatorProps>(
-  ({ orientation = 'vertical', className, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          orientation === 'vertical' ? 'w-px h-6 bg-border' : 'h-px w-6 bg-border',
-          className
-        )}
-        {...props}
-      />
-    )
-  }
+  ({ orientation = 'vertical', className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        orientation === 'vertical' ? 'w-px h-4 bg-border mx-1' : 'h-px w-4 bg-border my-1',
+        className
+      )}
+      {...props}
+    />
+  )
 )
 FloatingToolbarSeparator.displayName = 'FloatingToolbarSeparator'
 
-// 工具栏按钮
+// 旧 sm/md/lg 语义 → 通用 Button 尺寸
+const SIZE_MAP: Record<NonNullable<FloatingToolbarButtonProps['size']>, ButtonProps['size']> = {
+  sm: 'icon-xs',
+  md: 'icon-sm',
+  lg: 'icon'
+}
+
 const FloatingToolbarButton = React.forwardRef<HTMLButtonElement, FloatingToolbarButtonProps>(
-  ({ active = false, variant = 'default', size = 'md', children, className, ...props }, ref) => {
-    const variantClasses = {
-      default: 'hover:bg-muted transition-colors',
-      outline: 'border border-border hover:bg-muted transition-colors',
-      ghost: 'hover:bg-muted transition-colors'
-    }
-
-    const sizeClasses = {
-      sm: 'p-0.5',
-      md: 'p-1',
-      lg: 'p-1.5'
-    }
-
-    return (
-      <button
-        type="button"
-        ref={ref}
-        className={cn(
-          'rounded-md',
-          variantClasses[variant],
-          sizeClasses[size],
-          active ? 'bg-primary/10 text-primary' : 'text-foreground',
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  }
+  ({ active = false, variant = 'default', size = 'md', className, ...props }, ref) => (
+    <Button
+      ref={ref}
+      // 三种 variant 都用 ghost 底 + 状态高亮; outline 变体给一点 border.
+      variant={variant === 'outline' ? 'outline' : 'ghost'}
+      size={SIZE_MAP[size]}
+      data-active={active || undefined}
+      className={cn(
+        active && 'bg-accent text-accent-foreground',
+        className
+      )}
+      {...props}
+    />
+  )
 )
 FloatingToolbarButton.displayName = 'FloatingToolbarButton'
 
-// 弹出内容区域
 const FloatingToolbarContent = React.forwardRef<HTMLDivElement, FloatingToolbarContentProps>(
   ({ children, className, isActive = false, ...props }, ref) => {
     if (!isActive) return null
-
     return (
       <div
         ref={ref}

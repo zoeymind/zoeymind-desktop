@@ -68,7 +68,7 @@ export function LanguageSwitcher({ variant = 'icon', className }: LanguageSwitch
         render={
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
             className={className}
             aria-label={t('language.switch')}
           >

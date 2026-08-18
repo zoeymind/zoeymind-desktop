@@ -447,7 +447,7 @@ export function MindMapCanvas() {
         <div className="flex flex-col h-screen">
           {/* 编辑器 Header —— 把左上/右上原本的两个悬浮按钮组合成一条完整 Header,
               位于 TitleBar (32px) 之下. 面板内容 (Tags/Theme/AI) 仍走各自的 fixed 定位. */}
-          <div className="relative z-30 flex h-9 items-center justify-between border-b bg-background/95 px-2 backdrop-blur [&_svg]:size-4 [&_button]:h-7">
+          <div className="relative z-30 flex h-10 items-center justify-between border-b bg-background/95 px-2 backdrop-blur">
             <TopBar collaboration={collaboration} />
             <div className="flex items-center gap-0.5">
               <LanguageSwitcher />
