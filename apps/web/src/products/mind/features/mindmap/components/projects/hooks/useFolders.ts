@@ -1,45 +1,94 @@
-import { trpc, useOrganization } from '@/shared/app-shared'
-
-export interface FolderItem {
-  id: string
-  name: string
-  sortOrder: number
-  createdAt: string | Date
-  mindmapCount: number
-}
-
 /**
- * 文件夹列表 + 增删改（组织级，扁平）。
- * 读用 react-query hook（自动缓存/失效），写用 mutation 成功后 invalidate。
+ * useFolders —— 桌面端本地版：文件夹是 SqlFolderRepo 里的虚拟标签。
+ *
+ * 与产品仓 tRPC 版接口对齐：{ folders, isLoading, refetch, invalidate,
+ * createFolder, renameFolder, deleteFolder, isMutating }。
  */
-export function useFolders() {
-  const { currentOrg } = useOrganization()
-  const utils = trpc.useUtils()
-  const orgId = currentOrg?.id ?? ''
+import { useCallback, useEffect, useState } from 'react'
+import { logger } from '@zoeymind/logger'
+import { createUUID } from '@/shared/app-shared'
+import {
+  listFolders,
+  createFolder as sqlCreateFolder,
+  renameFolder as sqlRenameFolder,
+  deleteFolder as sqlDeleteFolder,
+  type FolderRow
+} from '@/shared/native'
 
-  const listQuery = trpc.mindmap.folder.list.useQuery(
-    { organizationId: orgId },
-    { enabled: !!orgId }
+export type FolderItem = FolderRow
+
+export function useFolders() {
+  const [folders, setFolders] = useState<FolderRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isMutating, setIsMutating] = useState(false)
+
+  const load = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      setFolders(await listFolders())
+    } catch (error) {
+      logger.error('load folders failed:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const refetch = load
+  const invalidate = load
+
+  const createFolder = useCallback(
+    async (name: string) => {
+      setIsMutating(true)
+      try {
+        const id = createUUID()
+        const sortOrder = folders.length
+        await sqlCreateFolder(id, name, sortOrder)
+        await load()
+      } finally {
+        setIsMutating(false)
+      }
+    },
+    [folders.length, load]
   )
 
-  const invalidate = () => utils.mindmap.folder.list.invalidate()
+  const renameFolder = useCallback(
+    async (folderId: string, name: string) => {
+      setIsMutating(true)
+      try {
+        await sqlRenameFolder(folderId, name)
+        await load()
+      } finally {
+        setIsMutating(false)
+      }
+    },
+    [load]
+  )
 
-  const createMutation = trpc.mindmap.folder.create.useMutation({ onSuccess: invalidate })
-  const renameMutation = trpc.mindmap.folder.rename.useMutation({ onSuccess: invalidate })
-  const deleteMutation = trpc.mindmap.folder.delete.useMutation({ onSuccess: invalidate })
-
-  const folders = (listQuery.data?.data ?? []) as FolderItem[]
+  const deleteFolder = useCallback(
+    async (folderId: string, deleteContents = false) => {
+      setIsMutating(true)
+      try {
+        await sqlDeleteFolder(folderId, deleteContents)
+        await load()
+      } finally {
+        setIsMutating(false)
+      }
+    },
+    [load]
+  )
 
   return {
     folders,
-    isLoading: listQuery.isLoading,
-    refetch: listQuery.refetch,
+    isLoading,
+    refetch,
     invalidate,
-    createFolder: (name: string) => createMutation.mutateAsync({ organizationId: orgId, name }),
-    renameFolder: (folderId: string, name: string) =>
-      renameMutation.mutateAsync({ folderId, name }),
-    deleteFolder: (folderId: string, deleteContents = false) =>
-      deleteMutation.mutateAsync({ folderId, deleteContents }),
-    isMutating: createMutation.isPending || renameMutation.isPending || deleteMutation.isPending
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    isMutating
   }
 }

@@ -1,60 +1,35 @@
+/**
+ * useProjectStar —— 桌面端本地版：直接调 SqlProjectRepo.setStarred。
+ */
 import { logger } from '@zoeymind/logger'
 import { useState, useCallback } from 'react'
-import { projectDB } from '@/shared/mindmap-bridge'
-import type { ProjectWithStats } from '@/shared/mindmap-bridge'
+import { setStarred, type ProjectRow } from '@/shared/native'
 
 interface UseProjectStarProps {
-  project: ProjectWithStats
+  project: ProjectRow
   onUpdate?: () => void
 }
 
-/**
- * 项目星标状态管理hook
- * 处理项目的收藏/取消收藏逻辑
- *
- * @param project 项目数据
- * @param onUpdate 状态更新回调
- * @returns 收藏相关状态和方法
- */
 export function useProjectStar({ project, onUpdate }: UseProjectStarProps) {
-  const [isStarred, setIsStarred] = useState<boolean>(!!project.metadata?.starred)
+  const [isStarred, setIsStarredState] = useState<boolean>(project.isStarred)
 
-  /**
-   * 切换项目收藏状态
-   * @param e 可选的事件对象
-   */
   const toggleStar = useCallback(
     async (e?: React.MouseEvent) => {
-      if (e) {
-        e.stopPropagation()
-      }
-
-      const newStarredState = !isStarred
-      setIsStarred(newStarredState)
-
-      // 更新项目元数据，使用不改变时间戳的方法
+      if (e) e.stopPropagation()
+      const next = !isStarred
+      setIsStarredState(next)
       try {
-        await projectDB.updateProjectMetadata(project.id, {
-          starred: newStarredState
-        })
-
-        // 通知父组件更新列表（用于重新排序）
-        if (onUpdate) {
-          onUpdate()
-        }
+        await setStarred(project.id, next)
+        onUpdate?.()
       } catch (error) {
         logger.error('更新收藏状态失败:', error)
-        // 恢复状态
-        setIsStarred(!newStarredState)
+        setIsStarredState(!next)
       }
     },
-    [isStarred, project, onUpdate]
+    [isStarred, project.id, onUpdate]
   )
 
-  return {
-    isStarred,
-    toggleStar
-  }
+  return { isStarred, toggleStar }
 }
 
 export default useProjectStar

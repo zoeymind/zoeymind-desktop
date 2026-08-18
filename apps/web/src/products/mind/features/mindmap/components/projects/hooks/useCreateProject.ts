@@ -1,179 +1,146 @@
 /**
- * 创建云端项目的通用 hook（两种入口：空白 + 文件导入）。
+ * useCreateProject —— 桌面端本地版：新建 .zmind → 落磁盘 → 入索引 → 跳转编辑器。
  *
- * 设计目标
- * --------
- * - 把"创建项目"和"加载已有项目"两个阶段彻底分离：
- *   创建阶段在列表层完成（`creating` state 弹独立 Dialog），
- *   只有拿到真实 id 才跳转编辑器并让编辑器走自己的"加载"流程。
+ * 与产品仓的云端版对齐 return 表面（creating / createBlank / createFromImport），
+ * 但不再走 tRPC / sessionStorage handoff：新建时直接 pack 一个空白 bundle 写到
+ * `<vaultDir>/<title>.zmind`，同时 register 到 SqlProjectRepo，然后 navigate 到
+ * `/editor/:id`。
  *
- * - 文件导入复用：先解析 → mindmap.create → 把解析结果放进 sessionStorage
- *   （key = {@link PENDING_IMPORT_STORAGE_PREFIX} + newId），编辑器挂载后由
- *   `useCanvasData` 检测并通过 `mindMap.updateData(data)` 注入到画布。
+ * 文件导入的解析器（xmind / markdown / zmxmind）复用产品仓的，只把落盘方式换成本地。
  *
- * - 错误处理走 vanilla 合约：mutation 是 `trpcClient.xxx.mutate` 不经过
- *   react-query mutationCache，由本 hook 自己 catch + toast。
+ * 同名冲突：save-as 覆盖逻辑放在 editor 侧的手动 Save 流程里；本 hook 的新建走
+ * "标题即文件名"的默认名，冲突时追加 `-2`/`-3`/... 直到不冲突。
  */
 import { useCallback, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate } from 'react-router-dom'
 import { logger } from '@zoeymind/logger'
-import { trpcClient, toast, useOrganization } from '@/shared/app-shared'
+import { toast } from '@/shared/app-shared'
 import { i18next } from '@zoeymind/i18n'
 import type { MindMapNodeTree } from 'simple-mind-map'
+import { defaultMindmapData } from '@zoeymind/shared'
+import { exists, mkdir } from '@tauri-apps/plugin-fs'
+import { join } from '@tauri-apps/api/path'
 
 import { parseXMindFile } from '@/products/mind/features/mindmap/utils/xmindParser'
 import { parseZMXmindFile } from '@/products/mind/features/mindmap/utils/ZMXMindImporter'
 import { parseMarkdownFile } from '@/products/mind/features/mindmap/utils/markdownParser'
+import {
+  createUUID,
+  defaultVaultDir,
+  registerProject,
+  writeBundle,
+  type ZMindBundle
+} from '@/shared/native'
 
-/** sessionStorage 中"待导入数据"的 key 前缀 — 编辑器侧读完即清。 */
-export const PENDING_IMPORT_STORAGE_PREFIX = 'mindmap:pending-import:'
-
-/** UI 支持的导入文件类型。MVP：xmind（标准）/ md。后续可加 zmxmind。 */
 export type ImportFormat = 'xmind-standard' | 'xmind-zm' | 'markdown'
 
 interface UseCreateProjectOptions {
-  /** 创建成功（或导入成功）后的副作用，例如刷新列表 / 计数。 */
   onCreated?: (newId: string) => void
-  /** 当前项目空间 ID; 传了则新 mindmap 挂在这个 workspace 下 */
-  workspaceId?: string | null
+  folderId?: string | null
 }
 
 interface UseCreateProjectReturn {
-  /** 是否有创建（含导入）正在进行中 —— 用于上层弹 Dialog 或禁用入口。 */
   creating: boolean
-  /** 创建一个空白项目。 */
   createBlank: () => Promise<void>
-  /**
-   * 从文件创建项目。文件类型根据扩展名识别（.xmind/.md）。
-   * `xmindFormat` 仅在 .xmind 时生效，默认 standard。
-   */
   createFromImport: (file: File, xmindFormat?: 'standard' | 'zm') => Promise<void>
 }
 
-/** 从完整文件名（含扩展名）截取项目标题。 */
 function deriveTitleFromFilename(filename: string): string {
   const dot = filename.lastIndexOf('.')
   const base = dot > 0 ? filename.slice(0, dot) : filename
-  return base.trim() || i18next.t('mindmap.editor.newCloudProject')
+  return base.trim() || i18next.t('mindmap.editor.newProjectTitle')
 }
 
-/** 把 parsed 数据塞进 sessionStorage，由编辑器在挂载后自行消费。 */
-function stashPendingImport(newId: string, data: MindMapNodeTree): void {
-  try {
-    sessionStorage.setItem(`${PENDING_IMPORT_STORAGE_PREFIX}${newId}`, JSON.stringify(data))
-  } catch (error) {
-    // sessionStorage 写失败（quota / privacy 模式）— 至少不要让创建跟着崩。
-    logger.error('暂存待导入数据到 sessionStorage 失败:', error)
-  }
+function sanitizeFilename(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'Untitled'
 }
 
-/** 按扩展名/格式解析文件为 `MindMapNodeTree`。 */
-async function parseImportFile(
-  file: File,
-  xmindFormat: 'standard' | 'zm'
-): Promise<MindMapNodeTree | null> {
-  const name = file.name.toLowerCase()
-  if (name.endsWith('.xmind')) {
-    if (xmindFormat === 'zm') {
-      return parseZMXmindFile(file)
-    }
-    return (await parseXMindFile(file)) as MindMapNodeTree | null
+async function pickUniquePath(dir: string, baseName: string): Promise<string> {
+  const first = await join(dir, `${baseName}.zmind`)
+  if (!(await exists(first))) return first
+  for (let i = 2; i < 1000; i++) {
+    const candidate = await join(dir, `${baseName}-${i}.zmind`)
+    if (!(await exists(candidate))) return candidate
   }
-  if (name.endsWith('.md')) {
-    return (await parseMarkdownFile(file)) as MindMapNodeTree | null
-  }
-  return null
+  throw new Error('cannot pick unique filename')
 }
 
-export function useCreateProject({
-  onCreated,
-  workspaceId
-}: UseCreateProjectOptions = {}): UseCreateProjectReturn {
-  const { currentOrg } = useOrganization()
-  const navigate = useNavigate()
+function countNodes(tree: MindMapNodeTree): number {
+  const children = Array.isArray(tree.children) ? tree.children : []
+  let total = 1
+  for (const child of children) total += countNodes(child)
+  return total
+}
+
+async function persistNewProject(
+  title: string,
+  tree: MindMapNodeTree,
+  folderId: string | null
+): Promise<string> {
+  const dir = await defaultVaultDir()
+  if (!(await exists(dir))) await mkdir(dir, { recursive: true })
+  const targetPath = await pickUniquePath(dir, sanitizeFilename(title))
+  const now = Date.now()
+  const nodeCount = countNodes(tree)
+  const bundle: ZMindBundle = {
+    tree,
+    meta: { name: title, tags: [], createdAt: now, updatedAt: now, nodeCount }
+  }
+  await writeBundle(targetPath, bundle)
+  const id = createUUID()
+  await registerProject({ id, path: targetPath, name: title, folderId, nodeCount })
+  return id
+}
+
+export function useCreateProject(opts: UseCreateProjectOptions = {}): UseCreateProjectReturn {
   const [creating, setCreating] = useState(false)
-
-  /** 公共后段：拿到 newId 后回调列表 + 跳编辑器。 */
-  const navigateToEditor = useCallback(
-    (newId: string) => {
-      if (!currentOrg) return
-      onCreated?.(newId)
-      navigate({
-        to: '/org/$orgId/zoeymind/editor/$id',
-        params: { orgId: currentOrg.id, id: newId }
-      })
-    },
-    [currentOrg, navigate, onCreated]
-  )
+  const navigate = useNavigate()
 
   const createBlank = useCallback(async () => {
-    if (!currentOrg || creating) return
+    if (creating) return
     setCreating(true)
     try {
-      // workspaceId 未选 (view=mine 或未挑 workspace) → null-project 建"我的图"
-      const created = await trpcClient.mindmap.create.mutate({
-        title: i18next.t('mindmap.editor.newCloudProject'),
-        description: '',
-        tags: [],
-        organizationId: currentOrg.id,
-        workspaceId: workspaceId ?? null
-      })
-      navigateToEditor(created.mindmap.id as string)
+      const title = i18next.t('mindmap.editor.newProjectTitle')
+      const id = await persistNewProject(title, defaultMindmapData, opts.folderId ?? null)
+      opts.onCreated?.(id)
+      navigate(`/editor/${id}`)
     } catch (error) {
-      logger.error('创建云项目失败:', error)
-      toast({
-        variant: 'destructive',
-        description:
-          error instanceof Error
-            ? error.message
-            : i18next.t('projects.actions.createFailedFallback')
-      })
+      logger.error('创建空白项目失败', error)
+      toast.error(i18next.t('mindmap.editor.createFailed'))
     } finally {
       setCreating(false)
     }
-  }, [creating, currentOrg, navigateToEditor, workspaceId])
+  }, [creating, navigate, opts])
 
   const createFromImport = useCallback(
     async (file: File, xmindFormat: 'standard' | 'zm' = 'standard') => {
-      if (!currentOrg || creating) return
+      if (creating) return
       setCreating(true)
       try {
-        const parsed = await parseImportFile(file, xmindFormat)
-        if (!parsed) {
-          toast({
-            variant: 'destructive',
-            description: i18next.t('projects.import.parseFailed', { name: file.name })
-          })
-          return
+        const lower = file.name.toLowerCase()
+        let parsed: MindMapNodeTree
+        if (lower.endsWith('.md') || lower.endsWith('.markdown')) {
+          parsed = await parseMarkdownFile(file)
+        } else if (lower.endsWith('.xmind')) {
+          parsed = xmindFormat === 'zm' ? await parseZMXmindFile(file) : await parseXMindFile(file)
+        } else {
+          throw new Error('unsupported file type')
         }
         const title = deriveTitleFromFilename(file.name)
-        const created = await trpcClient.mindmap.create.mutate({
-          title,
-          description: '',
-          tags: [],
-          organizationId: currentOrg.id,
-          workspaceId: workspaceId ?? null
-        })
-        const newId = created.mindmap.id as string
-        stashPendingImport(newId, parsed)
-        toast({
-          variant: 'success',
-          description: i18next.t('projects.import.success', { name: title })
-        })
-        navigateToEditor(newId)
+        const id = await persistNewProject(title, parsed, opts.folderId ?? null)
+        opts.onCreated?.(id)
+        navigate(`/editor/${id}`)
       } catch (error) {
-        logger.error('导入并创建云项目失败:', error)
-        toast({
-          variant: 'destructive',
-          description:
-            error instanceof Error ? error.message : i18next.t('projects.import.failedFallback')
-        })
+        logger.error('导入失败', error)
+        toast.error(i18next.t('mindmap.editor.importFailed'))
       } finally {
         setCreating(false)
       }
     },
-    [creating, currentOrg, navigateToEditor, workspaceId]
+    [creating, navigate, opts]
   )
 
   return { creating, createBlank, createFromImport }
 }
+
+export default useCreateProject

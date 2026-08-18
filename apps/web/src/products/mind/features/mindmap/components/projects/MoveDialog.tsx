@@ -17,7 +17,7 @@ import { WorkspaceAvatar } from '@/shared/auth'
 import { useCurrentWorkspace } from '@/shared/organization'
 import { useTranslation } from '@zoeymind/i18n'
 import { useFolders } from './hooks/useFolders'
-import type { CloudProjectWithStats } from './hooks/useCloudProjects'
+import type { ProjectRow as CloudProjectWithStats } from '@/shared/native'
 
 interface MoveDialogProps {
   open: boolean
