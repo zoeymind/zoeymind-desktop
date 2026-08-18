@@ -63,8 +63,9 @@ export const router = createBrowserRouter([
     path: '/',
     element: <MainLayout />,
     children: [
-      // 只挂一个路由 element -> path 变化不会 unmount/remount WorkspaceShell.
-      // /editor/new / /editor/:id / / 全部落到同一个 RouteAdapter, 由 tabs store 决定内容.
+      { index: true, element: <RouteAdapter /> },
+      { path: 'editor/new', element: <RouteAdapter /> },
+      { path: 'editor/:id', element: <RouteAdapter /> },
       { path: '*', element: <RouteAdapter /> }
     ]
   }

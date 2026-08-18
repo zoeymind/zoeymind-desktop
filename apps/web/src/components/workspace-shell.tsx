@@ -32,16 +32,13 @@ export function WorkspaceShell() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // URL <- activeId (deep-link)
+  // URL <- activeId (deep-link). 用 activeId 本身当 URL 段, 与 tab.kind 无关 ->
+  // draft 保存后 kind 从 'draft' 翻 'file' 但 tab.id (=activeId) 不变, URL 也不变,
+  // 不会触发 React Router 换 route element -> WorkspaceShell 不 remount, 不闪.
   useEffect(() => {
-    const target =
-      activeId === 'home'
-        ? '/'
-        : tabs.find(t => t.id === activeId)?.kind === 'draft'
-          ? '/editor/new'
-          : `/editor/${activeId}`
+    const target = activeId === 'home' ? '/' : `/editor/${activeId}`
     if (location.pathname !== target) navigate(target, { replace: true })
-  }, [activeId, tabs, location.pathname, navigate])
+  }, [activeId, location.pathname, navigate])
 
   // 切 tab: 从 tabInstances 恢复 active tab 的 mindMap + dirty 到全局 store.
   // 离开的 tab 把当前 dirty 存进缓存.

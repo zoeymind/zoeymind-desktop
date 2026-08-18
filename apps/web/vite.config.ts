@@ -15,10 +15,6 @@ export default defineConfig({
     alias: [
       { find: '@', replacement: path.resolve(__dirname, './src') },
       {
-        find: /^simple-mind-map$/,
-        replacement: path.resolve(__dirname, '../../packages/simple-mind-map/src/index.ts')
-      },
-      {
         find: '@zoeymind-ext-mind',
         replacement: path.resolve(__dirname, './src/products/mind/x/index.ts')
       },
