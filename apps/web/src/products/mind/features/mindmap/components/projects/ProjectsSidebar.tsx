@@ -31,6 +31,7 @@ import { cn, Button } from '@zoeymind/ui'
 import { useState } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
 import { LanguageSwitcher, ThemeMenu } from '@/shared/app-shared'
+import { Link } from 'react-router-dom'
 import {
   AppBrandBar,
   CreateProjectDialog,
@@ -219,10 +220,20 @@ export function ProjectsSidebar({
             />
 
           </nav>
-          {/* 底部: 语言切换 + 主题切换 */}
+          {/* 底部: 设置 + 语言切换 + 主题切换 */}
           <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
-            <LanguageSwitcher />
-            <ThemeMenu />
+            <Link
+              to="/settings"
+              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+              aria-label={t('common.settings', '设置')}
+              title={t('common.settings', '设置')}
+            >
+              <Settings className="size-4" />
+            </Link>
+            <div className="flex items-center gap-1">
+              <LanguageSwitcher />
+              <ThemeMenu />
+            </div>
           </div>
 
         </div>

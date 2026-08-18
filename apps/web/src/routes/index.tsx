@@ -8,6 +8,7 @@ import {
   type ProjectView
 } from '@/products/mind/features/mindmap/components/projects/ProjectsSidebar'
 import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 
 const LOCAL_ORG_ID = 'local'
@@ -88,6 +89,7 @@ export const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       { index: true, element: <ProjectListShell /> },
+      { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> }
     ]
   },
