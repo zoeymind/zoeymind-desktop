@@ -27,7 +27,11 @@ import {
   clearRecovery,
   refreshProjectIndex,
   getProject,
-  type ZMindBundle
+  findByPath,
+  registerProject,
+  unregisterProject,
+  type ZMindBundle,
+  type ProjectRow
 } from './'
 
 const RECOVERY_DEBOUNCE_MS = 5_000
@@ -135,14 +139,39 @@ export function useSaveFlow(projectId: string | null) {
   }, [projectId, setDirty])
 
   const saveAs = useCallback(
-    async (newPath: string) => {
+    async (newPath: string, opts?: { onCollide?: (row: ProjectRow) => Promise<boolean> }) => {
       if (!projectId) return
       const state = stateRef.current
       if (!state.source) return
+
+      // 若目标路径已被另一条记录占用，问调用方（UI 侧）弹框确认覆盖
+      const collide = await findByPath(newPath)
+      if (collide && collide.id !== projectId) {
+        const ok = opts?.onCollide ? await opts.onCollide(collide) : true
+        if (!ok) return
+        await unregisterProject(collide.id)
+      }
+
       const bundle = nowBundle(state.source, state.createdAt)
       await writeBundle(newPath, bundle)
       state.path = newPath
-      // 注意：调用方需要负责索引层的 UPSERT（同 path 覆盖 vs 新路径新建）
+
+      // 若本项目已经登记，仅回写元数据；否则新登记一条
+      const own = await getProject(projectId)
+      if (own) {
+        await refreshProjectIndex(projectId, {
+          name: state.source.name,
+          nodeCount: state.source.nodeCount ?? 0
+        })
+      } else {
+        await registerProject({
+          id: projectId,
+          path: newPath,
+          name: state.source.name,
+          nodeCount: state.source.nodeCount ?? 0
+        })
+      }
+      await clearRecovery(projectId)
       setDirty(false)
     },
     [projectId, setDirty]
