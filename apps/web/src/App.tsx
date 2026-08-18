@@ -20,7 +20,8 @@ import { router } from "@/routes"
 import { appLocales } from "@/locales"
 import { LoadingProvider, ThemePresetProvider, useLoading } from "@/shared/app-shared"
 import { RecoveryDialog } from "@/pages/RecoveryDialog"
-import { FileAssociationsListener } from "@/shared/native"
+import { FileAssociationsListener, setupAppMenu } from "@/shared/native"
+import { useEffect } from "react"
 import logoLightUrl from "@/assets/logo.svg?url"
 import logoDarkUrl from "@/assets/logo-dark.svg?url"
 
@@ -38,6 +39,10 @@ function InnerApp() {
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
   const loadingLogoUrl = resolvedTheme === "dark" ? logoDarkUrl : logoLightUrl
+  useEffect(() => {
+    const teardown = setupAppMenu()
+    return teardown
+  }, [])
   return (
     <>
       <RouterProvider router={router} />

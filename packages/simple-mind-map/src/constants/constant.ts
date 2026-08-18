@@ -237,8 +237,9 @@ export const cssContent: string = `
     opacity: 1;
     stroke-width: 2;
   }
-  .smm-text-node-wrap, .smm-expand-btn-text {
+  .smm-node, .smm-text-node-wrap, .smm-richtext-node-wrap, .smm-expand-btn-text {
     user-select: none;
+    -webkit-user-select: none;
   }
 `
 // html自闭合标签列表

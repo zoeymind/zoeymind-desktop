@@ -12,10 +12,20 @@ export default defineConfig({
     watch: { ignored: ['**/src-tauri/**'] }
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@zoeymind-ext-mind': path.resolve(__dirname, './src/products/mind/x/index.ts'),
-      '@tanstack/react-router': path.resolve(__dirname, './src/shared/tanstack-router-shim.tsx')
-    }
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+      {
+        find: /^simple-mind-map$/,
+        replacement: path.resolve(__dirname, '../../packages/simple-mind-map/src/index.ts')
+      },
+      {
+        find: '@zoeymind-ext-mind',
+        replacement: path.resolve(__dirname, './src/products/mind/x/index.ts')
+      },
+      {
+        find: '@tanstack/react-router',
+        replacement: path.resolve(__dirname, './src/shared/tanstack-router-shim.tsx')
+      }
+    ]
   }
 })

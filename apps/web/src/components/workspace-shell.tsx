@@ -19,7 +19,7 @@ import {
   type ProjectView
 } from '@/products/mind/features/mindmap/components/projects/ProjectsSidebar'
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext } from '@/shared/native'
+import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext, setMenuSaveFlow } from '@/shared/native'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
 import { tabInstances, tabDirty } from '@/shared/tabs/instances'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
@@ -139,14 +139,23 @@ function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
   return (
     <div className="absolute inset-0" hidden={!visible}>
       <SaveFlowProvider projectId={tab.id}>
-        <EditorPaneInner id={tab.id} />
+        <EditorPaneInner id={tab.id} visible={visible} />
       </SaveFlowProvider>
     </div>
   )
 }
 
-function EditorPaneInner({ id }: { id: string }) {
+function EditorPaneInner({ id, visible }: { id: string; visible: boolean }) {
   const saveFlow = useSaveFlowContext()
+  // Active tab 时把 saveFlow 暴露给顶部 macOS 原生菜单 (File > Save / Save As).
+  useEffect(() => {
+    if (!visible) return
+    setMenuSaveFlow({
+      save: () => saveFlow.save(),
+      saveAs: (path: string) => saveFlow.saveAs(path)
+    })
+    return () => setMenuSaveFlow(null)
+  }, [visible, saveFlow])
   return (
     <ProjectProvider key={id} workspaceId={id} cloudMode={false}>
       <MindMapCanvas />
