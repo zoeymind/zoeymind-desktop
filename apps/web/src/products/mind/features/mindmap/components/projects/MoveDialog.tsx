@@ -1,23 +1,32 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { useState } from 'react'
-import { Check, Folder as FolderIcon, FolderMinus } from 'lucide-react'
+/**
+ * MoveDialog —— 桌面端简化版: 只支持"移动到某个文件夹".
+ *
+ * 云版本的"跨 workspace 移动"下线 (桌面端无 workspace 概念).
+ * 移动 = 真 fs.rename 到 `~/Documents/ZoeyMind/<folderName>/`, projects_index
+ * 的 path + folder_id 同步更新, 列表刷新.
+ *
+ * 交互:
+ *   - 顶部标题 + 项目名副标题
+ *   - 中间 radio 列表: (无文件夹) + 所有 folders
+ *   - 底部 取消 / 移动 主操作按钮
+ */
+import { useEffect, useState } from 'react'
+import { Check, Folder as FolderIcon, FolderMinus, Loader2 } from 'lucide-react'
 import {
+  Button,
   cn,
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
-  DialogTitle,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent
+  DialogTitle
 } from '@zoeymind/ui'
-import { trpcClient, toast, useOrganization } from '@/shared/app-shared'
-import { WorkspaceAvatar } from '@/shared/auth'
-import { useCurrentWorkspace } from '@/shared/organization'
+import { toast } from '@/shared/app-shared'
 import { useTranslation } from '@zoeymind/i18n'
 import { useFolders } from './hooks/useFolders'
+import { moveProjectToFolder, bumpProjects } from '@/shared/native'
 import type { CloudProjectWithStats } from './hooks/useCloudProjects'
 
 interface MoveDialogProps {
@@ -27,148 +36,116 @@ interface MoveDialogProps {
   onMoved?: () => void
 }
 
-const rowClass =
-  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-left transition-colors hover:bg-accent disabled:opacity-50'
-
-/**
- * 思维导图「移动到…」弹框 — 两个 tab:
- *   - 移动到文件夹 (folder 组织级共享, 不跨 workspace 保留)
- *   - 移动到项目空间 (workspace/project, 同一组织内跨 workspace)
- *
- * 不支持跨组织 (team) 移动: 权限/协作者会失联, 用户如果需要请复制导出.
- */
 export function MoveDialog({ open, onOpenChange, project, onMoved }: MoveDialogProps) {
   const { t } = useTranslation()
   const { folders } = useFolders()
-  const { currentOrg } = useOrganization()
-  const { list: workspaces } = useCurrentWorkspace(currentOrg?.id ?? null, currentOrg?.role)
+  const currentFolderId = project?.folderId ?? null
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(currentFolderId)
   const [busy, setBusy] = useState(false)
+
+  // Dialog 每次打开时同步选中当前项目所在文件夹.
+  useEffect(() => {
+    if (open) setSelectedFolderId(currentFolderId)
+  }, [open, currentFolderId])
 
   if (!project) return null
 
-  const currentProjectId = project.workspaceId ?? null
-  const otherWorkspaces = workspaces.filter(w => w.id !== currentProjectId)
+  const changed = selectedFolderId !== currentFolderId
 
-  const moveToFolder = async (folderId: string | null) => {
-    if (busy) return
+  const handleConfirm = async () => {
+    if (!changed || busy) return
     setBusy(true)
     try {
-      await trpcClient.mindmap.moveToFolder.mutate({ mindmapId: project.id, folderId })
-      toast({ description: t('projects.home.moveSuccess'), variant: 'success' })
+      await moveProjectToFolder(project.id, selectedFolderId)
+      bumpProjects()
+      toast.success(t('projects.home.moveSuccess', '已移动'))
       onMoved?.()
       onOpenChange(false)
-    } catch (e) {
-      toast({
-        title: t('projects.home.moveTo'),
-        description: e instanceof Error ? e.message : '',
-        variant: 'destructive'
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const moveToProject = async (targetId: string, targetName: string) => {
-    if (busy) return
-    setBusy(true)
-    try {
-      await trpcClient.mindmap.moveToProject.mutate({
-        mindmapId: project.id,
-        workspaceId: targetId
-      })
-      toast({
-        description: t('projects.home.moveProjectSuccess', { name: targetName }),
-        variant: 'success'
-      })
-      onMoved?.()
-      onOpenChange(false)
-    } catch (e) {
-      toast({
-        title: t('projects.home.moveTo'),
-        description: e instanceof Error ? e.message : '',
-        variant: 'destructive'
-      })
+    } catch (error) {
+      toast.error(
+        typeof error === 'object' && error !== null && 'message' in error
+          ? String((error as { message: string }).message)
+          : t('projects.home.moveFailed', '移动失败')
+      )
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px]">
+    <Dialog open={open} onOpenChange={o => (!busy ? onOpenChange(o) : undefined)}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('projects.home.moveTo')}</DialogTitle>
-          <DialogDescription className="truncate">{project.title}</DialogDescription>
+          <DialogTitle>{t('projects.home.moveTo', '移动到')}</DialogTitle>
+          <DialogDescription className="truncate">
+            {project.name ?? project.title ?? ''}
+          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="folder">
-          <TabsList className="w-full">
-            <TabsTrigger value="folder" className="flex-1">
-              {t('projects.home.moveToFolder')}
-            </TabsTrigger>
-            <TabsTrigger value="project" className="flex-1">
-              {t('projects.home.moveToProject')}
-            </TabsTrigger>
-          </TabsList>
+        <div className="max-h-72 space-y-1 overflow-y-auto py-1">
+          <FolderRow
+            icon={FolderMinus}
+            label={t('projects.home.moveOutFolder', '无文件夹 (根目录)')}
+            active={selectedFolderId === null}
+            onSelect={() => setSelectedFolderId(null)}
+          />
+          {folders.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              {t('projects.home.noFolderToMove', '暂无文件夹, 请先在侧栏创建一个.')}
+            </p>
+          ) : (
+            folders.map(f => (
+              <FolderRow
+                key={f.id}
+                icon={FolderIcon}
+                label={f.name}
+                active={selectedFolderId === f.id}
+                onSelect={() => setSelectedFolderId(f.id)}
+              />
+            ))
+          )}
+        </div>
 
-          <TabsContent value="folder" className="mt-3 max-h-72 space-y-1 overflow-y-auto">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => moveToFolder(null)}
-              className={cn(rowClass, !project.folderId && 'bg-accent/60')}
-            >
-              <FolderMinus className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1 truncate">{t('projects.home.moveOutFolder')}</span>
-              {!project.folderId && <Check className="size-4 shrink-0 text-primary" />}
-            </button>
-            {folders.length === 0 ? (
-              <p className="px-2.5 py-2 text-xs text-muted-foreground">
-                {t('projects.home.noFolderToMove')}
-              </p>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+            {t('common.cancel', '取消')}
+          </Button>
+          <Button onClick={handleConfirm} disabled={!changed || busy}>
+            {busy ? (
+              <>
+                <Loader2 className="mr-1 size-3.5 animate-spin" />
+                {t('common.processing', '处理中...')}
+              </>
             ) : (
-              folders.map(f => (
-                <button
-                  key={f.id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => moveToFolder(f.id)}
-                  className={cn(rowClass, project.folderId === f.id && 'bg-accent/60')}
-                >
-                  <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 truncate">{f.name}</span>
-                  {project.folderId === f.id && <Check className="size-4 shrink-0 text-primary" />}
-                </button>
-              ))
+              t('projects.home.moveTo', '移动到')
             )}
-          </TabsContent>
-
-          <TabsContent value="project" className="mt-3 max-h-72 space-y-1 overflow-y-auto">
-            {otherWorkspaces.length === 0 ? (
-              <p className="px-2.5 py-2 text-xs text-muted-foreground">
-                {t('projects.home.noOtherProject')}
-              </p>
-            ) : (
-              otherWorkspaces.map(w => {
-                const canEdit = w.myRole !== 'VIEWER'
-                return (
-                  <button
-                    key={w.id}
-                    type="button"
-                    disabled={busy || !canEdit}
-                    onClick={() => moveToProject(w.id, w.name)}
-                    className={rowClass}
-                    title={canEdit ? undefined : t('projects.home.noEditPermission', '无编辑权限')}
-                  >
-                    <WorkspaceAvatar workspace={w} size="sm" />
-                    <span className="flex-1 truncate">{w.name}</span>
-                  </button>
-                )
-              })
-            )}
-          </TabsContent>
-        </Tabs>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+interface FolderRowProps {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  active: boolean
+  onSelect: () => void
+}
+
+function FolderRow({ icon: Icon, label, active, onSelect }: FolderRowProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-left transition-colors',
+        active ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+      )}
+    >
+      <Icon className="size-4 shrink-0 text-muted-foreground" />
+      <span className="flex-1 truncate">{label}</span>
+      {active && <Check className="size-4 shrink-0 text-primary" />}
+    </button>
   )
 }
