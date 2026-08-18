@@ -33,6 +33,7 @@ import {
   type ZMindBundle,
   type ProjectRow
 } from './'
+import { composePreviewWithLogo } from './preview'
 
 const RECOVERY_DEBOUNCE_MS = 5_000
 
@@ -45,11 +46,14 @@ export interface BundleSource {
   nodeCount?: number
 }
 
+export type PreviewRenderer = () => Promise<Uint8Array | null>
+
 interface SaveFlowState {
   source: BundleSource | null
   path: string | null
   timer: number | null
   createdAt: number
+  renderer: PreviewRenderer | null
 }
 
 function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
@@ -71,7 +75,13 @@ export function useSaveFlow(projectId: string | null) {
   const setDirty = useMindMapStore(s => s.setDirty)
   const isDirty = useMindMapStore(s => s.isDirty)
 
-  const stateRef = useRef<SaveFlowState>({ source: null, path: null, timer: null, createdAt: Date.now() })
+  const stateRef = useRef<SaveFlowState>({
+    source: null,
+    path: null,
+    timer: null,
+    createdAt: Date.now(),
+    renderer: null
+  })
 
   // 首次挂载：解析 path
   useEffect(() => {
@@ -120,11 +130,30 @@ export function useSaveFlow(projectId: string | null) {
     scheduleRecovery()
   }, [scheduleRecovery, setDirty])
 
+  const registerPreviewRenderer = useCallback((renderer: PreviewRenderer | null) => {
+    stateRef.current.renderer = renderer
+  }, [])
+
   const save = useCallback(async () => {
     if (!projectId) return
     const state = stateRef.current
     if (!state.source || !state.path) return
-    const bundle = nowBundle(state.source, state.createdAt)
+
+    // 生成 preview.png（若编辑器注册了 renderer） —— 引擎导出 PNG，
+    // 再交给 composePreviewWithLogo 加水印
+    let previewPng: Uint8Array | null = state.source.previewPng ?? null
+    if (state.renderer) {
+      try {
+        const raw = await state.renderer()
+        if (raw) {
+          previewPng = await composePreviewWithLogo(raw)
+        }
+      } catch {
+        previewPng = state.source.previewPng ?? null
+      }
+    }
+
+    const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
     await writeBundle(state.path, bundle)
     await refreshProjectIndex(projectId, {
       name: state.source.name,
@@ -220,10 +249,19 @@ export function useSaveFlow(projectId: string | null) {
       isDirty,
       markDirty,
       registerBundleSource,
+      registerPreviewRenderer,
       save,
       saveAs,
       discardAndClose
     }),
-    [isDirty, markDirty, registerBundleSource, save, saveAs, discardAndClose]
+    [
+      isDirty,
+      markDirty,
+      registerBundleSource,
+      registerPreviewRenderer,
+      save,
+      saveAs,
+      discardAndClose
+    ]
   )
 }

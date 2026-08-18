@@ -27,6 +27,8 @@ import {
 } from 'lucide-react'
 import MindMap from 'simple-mind-map'
 import type { MindMapNodeTree } from 'simple-mind-map'
+import Export from 'simple-mind-map/src/plugins/Export'
+
 import { useTranslation } from '@zoeymind/i18n'
 import { logger } from '@zoeymind/logger'
 import { toast } from '@/shared/app-shared'
@@ -38,6 +40,9 @@ import {
   useSaveFlow
 } from '@/shared/native'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+
+// 注册导出插件（引擎全局静态列表；对同一插件多次调用会去重）
+MindMap.usePlugin?.(Export)
 
 /**
  * simple-mind-map 引擎的部分公共表面在打包出的 `.d.ts` 里没导出，桌面端在
@@ -51,6 +56,9 @@ interface MindMapCommandAPI {
     narrow?: () => void
     reset?: () => void
     fit?: () => void
+  }
+  doExport?: {
+    png?: (name?: string, transparent?: boolean, ...args: unknown[]) => Promise<string | Blob>
   }
 }
 
@@ -150,6 +158,24 @@ export function MindMapEditorPage() {
       })
     }
     sync()
+
+    // 注册 preview renderer：把 mindmap 渲染成 PNG bytes，交给 save-flow 合成 logo 水印
+    const api = mm as unknown as MindMapCommandAPI
+    flow.registerPreviewRenderer(async () => {
+      if (!api.doExport?.png) return null
+      try {
+        // Export 插件的 png(name, transparent, ...) 返回一个 dataURL 字符串
+        const dataUrl = await api.doExport.png('preview', true)
+        if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null
+        const base64 = dataUrl.substring(dataUrl.indexOf(',') + 1)
+        const bin = atob(base64)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        return bytes
+      } catch {
+        return null
+      }
+    })
 
     const onChange = () => {
       sync()
