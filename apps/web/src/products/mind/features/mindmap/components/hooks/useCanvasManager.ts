@@ -57,6 +57,7 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
   const accent = readThemeToken(styles, '--accent', secondary)
   const accentForeground = readThemeToken(styles, '--accent-foreground', secondaryForeground)
   const border = readThemeToken(styles, '--border', '#e5e5e5')
+  const input = readThemeToken(styles, '--input', border)
   const mutedForeground = readThemeToken(styles, '--muted-foreground', '#666666')
   const ring = readThemeToken(styles, '--ring', primary)
 
@@ -102,7 +103,7 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
       second: {
         fillColor: secondary,
         color: secondaryForeground,
-        borderColor: border,
+        borderColor: input,
         borderWidth: 1,
         borderRadius: 8,
         startColor: secondary,
@@ -112,7 +113,7 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
       node: {
         fillColor: card,
         color: cardForeground,
-        borderColor: border,
+        borderColor: input,
         borderWidth: 1,
         borderRadius: 8,
         startColor: card,

@@ -14,12 +14,14 @@ export function colorToHsl(value: string): string {
   const h = hsl.h ?? 0
   const s = (hsl.s ?? 0) * 100
   const l = (hsl.l ?? 0) * 100
+  const alpha = hsl.alpha
 
   const formatNumber = (num: number) => {
     return num % 1 === 0 ? num.toString() : num.toFixed(4)
   }
+  const alphaSuffix = alpha === undefined || alpha >= 1 ? '' : ` / ${formatNumber(alpha)}`
 
-  return `hsl(${formatNumber(h)} ${formatNumber(s)}% ${formatNumber(l)}%)`
+  return `hsl(${formatNumber(h)} ${formatNumber(s)}% ${formatNumber(l)}%${alphaSuffix})`
 }
 
 /**
