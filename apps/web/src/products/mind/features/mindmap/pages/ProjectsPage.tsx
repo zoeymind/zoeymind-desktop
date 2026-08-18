@@ -90,35 +90,29 @@ export function ProjectListPage({
   const { data: user } = useCurrentUser()
   const { currentOrg } = useOrganization()
 
-  const { sortType, handleSortChange: setSortType } = useProjects()
+  const {
+    projects: allProjects,
+    refreshProjects,
+    sortType,
+    handleSortChange: setSortType
+  } = useProjects()
   const { viewType, toggleViewType } = useViewType()
   const { folders } = useFolders()
 
   const [showWelcome, setShowWelcome] = useState(() => !hasDismissedWelcome())
 
   // ─── 统计 ───────────────────────────────────────
-  const myQuery = trpc.mindmap.list.useQuery(
-    {
-      organizationId: currentOrg?.id ?? '',
-      page: 1,
-      limit: 200,
-      workspaceId: workspaceId ?? undefined
-    },
-    { enabled: !!currentOrg?.id }
-  )
-  const sharedStatsQuery = trpc.mindmap.listSharedWithMe.useQuery()
-
-  const myProjects = myQuery.data?.success ? myQuery.data.data : []
-  const totalCount = myQuery.data?.pagination?.total ?? myProjects.length
+  // 桌面端本地版：数据源改走 useProjects()（native SqlProjectRepo）；
+  const totalCount = allProjects.length
   const weekStart = startOfWeek()
-  const weekCount = myProjects.filter(p => new Date(p.createdAt) >= weekStart).length
-  const favCount = myProjects.filter(p => p.isFavorited).length
-  const sharedCount = sharedStatsQuery.data?.data?.length ?? 0
+  const weekCount = allProjects.filter(p => p.createdAt.getTime() >= weekStart.getTime()).length
+  const favCount = allProjects.filter(p => p.metadata?.starred).length
+  const sharedCount = 0
 
   const handleProjectsChanged = useCallback(() => {
     onProjectsChanged?.()
-    void myQuery.refetch()
-  }, [onProjectsChanged, myQuery])
+    void refreshProjects()
+  }, [onProjectsChanged, refreshProjects])
 
   const closeWelcome = useCallback(() => {
     setShowWelcome(false)
