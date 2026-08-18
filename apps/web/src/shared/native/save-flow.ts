@@ -59,6 +59,8 @@ export type PreviewRenderer = () => Promise<Uint8Array | null>
 interface SaveFlowState {
   source: BundleSource | null
   path: string | null
+  /** draft 保存成功后写入的真实 project id; 之后 refresh/clearRecovery 都用它 */
+  realProjectId: string | null
   timer: ReturnType<typeof setTimeout> | null
   createdAt: number
   renderer: PreviewRenderer | null
@@ -86,6 +88,7 @@ export function useSaveFlow(projectId: string | null) {
   const stateRef = useRef<SaveFlowState>({
     source: null,
     path: null,
+    realProjectId: null,
     timer: null,
     createdAt: Date.now(),
     renderer: null
@@ -147,8 +150,10 @@ export function useSaveFlow(projectId: string | null) {
     const state = stateRef.current
     if (!state.source) return
 
-    // draft (unsaved-*): 先弹 saveDialog, 检查目标是否已被别的 tab 占用, 通过后写盘 + 入库
-    if (pendingProjects.isPending(projectId)) {
+    // draft 首次保存: state.path 尚为 null -> 弹 saveDialog. 一旦 state.path
+    // 记下真实路径 (即使 pendingProjects.isPending 仍 true), 之后再 save 走已入库
+    // 分支, 不再弹框.
+    if (pendingProjects.isPending(projectId) && !state.path) {
       const dir = await preferredSaveDir()
       if (!(await exists(dir))) await mkdir(dir, { recursive: true })
       const safeName = (state.source.name || 'Untitled').replace(/[\\/:*?"<>|]/g, '_')
@@ -205,9 +210,10 @@ export function useSaveFlow(projectId: string | null) {
         })
       }
 
-      // pending stash 保留 (仍以 draft id 作为 workspaceId 供 useCanvasManager 使用),
-      // state.path 记录真实路径, 之后再次 save 就走 "已入库" 分支.
+      // pending stash 保留 (draft id 仍是 workspaceId), 但 state 记下真实路径 +
+      // realProjectId, 之后再 save 走已入库分支, refreshProjectIndex 用真实 id.
       state.path = picked
+      state.realProjectId = realId
       await rememberSaveDir(picked)
       setDirty(false)
       bumpProjects()
@@ -230,11 +236,12 @@ export function useSaveFlow(projectId: string | null) {
     }
     const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
     await writeBundle(state.path, bundle)
-    await refreshProjectIndex(projectId, {
+    const effectiveId = state.realProjectId ?? projectId
+    await refreshProjectIndex(effectiveId, {
       name: state.source.name,
       nodeCount: state.source.nodeCount ?? 0
     })
-    await clearRecovery(projectId)
+    await clearRecovery(effectiveId)
     if (state.timer) {
       clearTimeout(state.timer)
       state.timer = null

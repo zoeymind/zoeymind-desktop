@@ -21,7 +21,7 @@ import {
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext, setMenuSaveFlow } from '@/shared/native'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
-import { tabInstances, tabDirty } from '@/shared/tabs/instances'
+import { tabInstances, tabDirty, tabSaveFns } from '@/shared/tabs/instances'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { useLoading } from '@/shared/app-shared'
 const LOCAL_ORG_ID = 'local'
@@ -144,6 +144,15 @@ function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
 
 function EditorPaneInner({ id, visible }: { id: string; visible: boolean }) {
   const saveFlow = useSaveFlowContext()
+  // 每个 tab 都注册自己的 save 句柄, 供 CloseConfirmDialog / TabBar 关闭时调用
+  // (不能只依赖 setMenuSaveFlow, 那个只映射当前 active tab).
+  useEffect(() => {
+    tabSaveFns.register(id, {
+      save: () => saveFlow.save(),
+      saveAs: (path: string) => saveFlow.saveAs(path)
+    })
+    return () => tabSaveFns.unregister(id)
+  }, [id, saveFlow])
   // Active tab 时把 saveFlow 暴露给顶部 macOS 原生菜单 (File > Save / Save As).
   useEffect(() => {
     if (!visible) return

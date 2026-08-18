@@ -15,19 +15,18 @@ function createExpandNodeContent() {
     // 展开的节点
     this._openExpandNode = new Text();
     this._openExpandNode.addClass("smm-expand-btn-text");
-    // Align the numeric label to the circle's local center.
     this._openExpandNode.attr({
       "text-anchor": "middle",
-      "dominant-baseline": "central",
-      x: expandBtnSize / 2,
-      y: 0,
+      "dominant-baseline": "middle",
     });
+    this._openExpandNode.css({ "pointer-events": "none" });
   } else {
     this._openExpandNode = SVG(open || btnsSvg.open);
     (
       this._openExpandNode as unknown as { size(w: number, h: number): unknown }
     ).size(expandBtnSize, expandBtnSize);
     this._openExpandNode.x(0).y(-expandBtnSize / 2);
+    this._openExpandNode.css({ "pointer-events": "none" });
   }
   // 收起的节点
   this._closeExpandNode = SVG(close || btnsSvg.close);
@@ -35,6 +34,7 @@ function createExpandNodeContent() {
     this._closeExpandNode as unknown as { size(w: number, h: number): unknown }
   ).size(expandBtnSize, expandBtnSize);
   this._closeExpandNode.x(0).y(-expandBtnSize / 2);
+  this._closeExpandNode.css({ "pointer-events": "none" });
   // 填充节点
   this._fillExpandNode = new Circle().size(expandBtnSize);
   this._fillExpandNode.x(0).y(-expandBtnSize / 2);
@@ -56,46 +56,48 @@ function sumNode(data = []) {
 
 //  创建或更新展开收缩按钮内容
 function updateExpandBtnNode() {
-  let { expand } = this.getData();
-  // 如果本次和上次的展开状态一样则返回
+  const { expand } = this.getData();
   if (expand === this._lastExpandBtnType) return;
-  if (this._expandBtn) {
-    this._expandBtn.clear();
-  }
+
   this.createExpandNodeContent();
-  let node;
-  if (expand === false) {
-    node = this._openExpandNode;
-    this._lastExpandBtnType = false;
-  } else {
-    node = this._closeExpandNode;
-    this._lastExpandBtnType = true;
+  const {
+    isShowExpandNum,
+    expandBtnStyle,
+    expandBtnNumHandler,
+    expandBtnSize,
+  } = this.mindMap.opt;
+
+  // Keep one stable circle as the hit target. WKWebView does not reliably re-hit-test
+  // a stationary pointer after the element under it is removed and replaced.
+  if (this._lastExpandBtnType === null) {
+    this._expandBtn
+      .add(this._fillExpandNode)
+      .add(this._openExpandNode)
+      .add(this._closeExpandNode);
   }
 
-  if (this._expandBtn) {
-    // 如果是收起按钮加上边框
-    let { isShowExpandNum, expandBtnStyle, expandBtnNumHandler } =
-      this.mindMap.opt;
+  if (expand === false) {
     if (isShowExpandNum) {
-      if (!expand) {
-        // 数字按钮添加边框
-        this._fillExpandNode.stroke({
-          color: expandBtnStyle.strokeColor,
-        });
-        // 计算子节点数量
-        let count = this.sumNode(this.nodeData.children || []);
-        if (typeof expandBtnNumHandler === "function") {
-          const res = expandBtnNumHandler(count, this);
-          if (!isUndef(res)) {
-            count = res;
-          }
-        }
-        node.text(String(count));
-      } else {
-        this._fillExpandNode.stroke("none");
+      let count = this.sumNode(this.nodeData.children || []);
+      if (typeof expandBtnNumHandler === "function") {
+        const res = expandBtnNumHandler(count, this);
+        if (!isUndef(res)) count = res;
       }
+      this._openExpandNode.text(String(count));
     }
-    this._expandBtn.add(this._fillExpandNode).add(node);
+    this._fillExpandNode.stroke({ color: expandBtnStyle.strokeColor });
+    this._closeExpandNode.hide();
+    this._openExpandNode.show();
+    if (isShowExpandNum) {
+      // Center after attachment so WKWebView can measure the rendered glyph bbox.
+      this._openExpandNode.center(expandBtnSize / 2, 0);
+    }
+    this._lastExpandBtnType = false;
+  } else {
+    if (isShowExpandNum) this._fillExpandNode.stroke("none");
+    this._openExpandNode.hide();
+    this._closeExpandNode.show();
+    this._lastExpandBtnType = true;
   }
 }
 
@@ -116,20 +118,20 @@ function renderExpandBtn() {
     this.group.add(this._expandBtn);
   } else {
     this._expandBtn = new G();
-    this._expandBtn.on("mouseover", (e) => {
+    this._expandBtn.on("mouseenter", (e) => {
       e.stopPropagation();
-      this._expandBtn.css({
-        cursor: "pointer",
-      });
+      this._isMouseenter = true;
+      this._expandBtn.css({ cursor: "pointer" });
     });
-    this._expandBtn.on("mouseout", (e) => {
+    this._expandBtn.on("mouseleave", (e) => {
       e.stopPropagation();
-      this._expandBtn.css({
-        cursor: "auto",
-      });
+      this._isMouseenter = false;
+      this._expandBtn.css({ cursor: "auto" });
+      this.hideExpandBtn();
     });
     this._expandBtn.on("click", (e) => {
       e.stopPropagation();
+      this._isMouseenter = true;
       // 展开收缩
       this.mindMap.execCommand(
         "SET_NODE_EXPAND",

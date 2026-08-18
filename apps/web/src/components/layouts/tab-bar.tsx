@@ -23,7 +23,8 @@ import {
 } from '@zoeymind/ui'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
 import { pendingProjects } from '@/shared/native'
-import { tabDirty } from '@/shared/tabs/instances'
+import { tabDirty, tabSaveFns } from '@/shared/tabs/instances'
+import { logger } from '@zoeymind/logger'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { defaultMindmapData } from '@zoeymind/shared'
 import { i18next } from '@zoeymind/i18n'
@@ -115,8 +116,25 @@ export function TabBar() {
             closeTab(pendingTab.id)
             setPendingCloseId(null)
           }}
-          onSave={() => {
+          onSave={async () => {
+            // 关闭前保存: 先切到该 tab (draft 需要 pop saveDialog),
+            // save() 成功后再关. 用户取消 saveDialog 或写盘失败 -> 不关 tab.
             setActive(pendingTab.id)
+            const handle = tabSaveFns.get(pendingTab.id)
+            if (!handle) return
+            try {
+              await handle.save()
+            } catch (error) {
+              logger.error('close-save failed', error)
+              return
+            }
+            // save() 内部 pending draft 用户取消 saveDialog 时 return void, 不 throw.
+            // 若仍 dirty (未真的写盘) -> 保守起见不关. 判据: 全局 isDirty 是否已 false.
+            if (useMindMapStore.getState().isDirty) {
+              setPendingCloseId(null)
+              return
+            }
+            closeTab(pendingTab.id)
             setPendingCloseId(null)
           }}
         />
