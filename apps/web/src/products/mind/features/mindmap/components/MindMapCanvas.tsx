@@ -40,7 +40,7 @@ import { isWaitingForCollaboration } from '@/products/mind/features/mindmap/type
 import { logger } from '@zoeymind/logger'
 // Save 按钮的位置在 TopBar 内 (菜单右侧), 由 TopBar 自身消费 HeaderSaveButton.
 import { MindMapIconToolbar } from './MindMapIconToolbar.tsx'
-import { CanvasTool } from './canvasTool/index.tsx'
+import { HeaderTitle } from './HeaderTitle'
 import { MindMapScrollbar } from './MindMapScrollbar.tsx'
 import { PreviewIndicator } from './PreviewIndicator.tsx'
 import { CollaborationCursorLayer } from './CollaborationCursorLayer'
@@ -448,9 +448,17 @@ export function MindMapCanvas() {
         <div className="flex flex-col h-screen">
           {/* 编辑器 Header —— 把左上/右上原本的两个悬浮按钮组合成一条完整 Header,
               位于 TitleBar (32px) 之下. 面板内容 (Tags/Theme/AI) 仍走各自的 fixed 定位. */}
-          <div className="relative z-30 flex h-10 items-center justify-between border-b bg-background/95 px-2 backdrop-blur">
-            <TopBar collaboration={collaboration} />
-            <div className="flex items-center gap-0.5">
+          <div className="relative z-30 flex h-10 items-center border-b bg-background/95 px-2 backdrop-blur">
+            <div className="flex flex-1 min-w-0 items-center gap-0.5">
+              <TopBar collaboration={collaboration} />
+            </div>
+            {/* 绝对居中的标题, 与左右两侧独立, 长度不影响两侧宽度 */}
+            <div className="pointer-events-none absolute inset-x-0 flex justify-center">
+              <div className="pointer-events-auto">
+                <HeaderTitle />
+              </div>
+            </div>
+            <div className="flex flex-1 min-w-0 items-center justify-end gap-0.5">
               <LanguageSwitcher />
               <ThemeMenu />
               <div className="mx-1 h-4 w-px bg-border" />
