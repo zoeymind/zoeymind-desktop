@@ -129,6 +129,33 @@ export function useStorageManager(): UseStorageManagerResult {
     }
   }, [mindMap, flow])
 
+
+  /**
+   * 注册预览图渲染器 —— save-flow 在写盘时按需调用, 得到 canvas.toDataURL png,
+   * 转 Uint8Array 交给 writeBundle 塞到 .zmind bundle 里.
+   */
+  useEffect(() => {
+    if (!mindMap) return
+    const renderer = async (): Promise<Uint8Array | null> => {
+      try {
+        const doExport = (mindMap as unknown as { doExport?: { png: (name: string, transparent?: boolean) => Promise<string> } }).doExport
+        if (!doExport?.png) return null
+        const dataUrl = await doExport.png('preview', true)
+        if (typeof dataUrl !== 'string') return null
+        const base64 = dataUrl.split(',')[1]
+        if (!base64) return null
+        const bin = atob(base64)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        return bytes
+      } catch (error) {
+        logger.warn('生成预览 PNG 失败', error)
+        return null
+      }
+    }
+    flow.registerPreviewRenderer(renderer)
+    return () => flow.registerPreviewRenderer(null)
+  }, [mindMap, flow])
   // 老 API 兼容：saveData() → 转发到 save-flow.save()
   const saveData = useCallback(async () => {
     await flow.save()
