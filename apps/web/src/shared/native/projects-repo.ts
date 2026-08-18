@@ -176,6 +176,66 @@ export async function touchLastOpened(id: string): Promise<void> {
   await execute(`UPDATE projects_index SET last_opened_at = $1 WHERE id = $2`, [Date.now(), id])
 }
 
+/**
+ * 移动项目文件到文件夹 —— 真的 fs.rename, projects_index.path/folder_id 同步.
+ *
+ * 目标目录:
+ *   folderId=null   → preferredSaveDir (~/Documents/ZoeyMind)
+ *   folderId=<id>   → preferredSaveDir/<folderName>
+ * 目录不存在会自动创建. 目标已有同名文件 → 附 `-N` 后缀.
+ */
+export async function moveProjectToFolder(
+  id: string,
+  folderId: string | null
+): Promise<void> {
+  const row = await getProject(id)
+  if (!row) return
+  if (row.folderId === (folderId ?? null)) return
+
+  const { rename, exists, mkdir } = await import('@tauri-apps/plugin-fs')
+  const { join } = await import('@tauri-apps/api/path')
+  const { preferredSaveDir } = await import('./paths')
+
+  const base = await preferredSaveDir()
+  let targetDir = base
+  if (folderId) {
+    const fRows = await select<{ name: string }>(
+      `SELECT name FROM folders WHERE id = $1`,
+      [folderId]
+    )
+    const folderName = fRows[0]?.name
+    if (folderName) targetDir = await join(base, folderName)
+  }
+  if (!(await exists(targetDir))) await mkdir(targetDir, { recursive: true })
+
+  // 拼目标 path (原文件名不变); 冲突则加 -N.
+  const filename = row.path.replace(/^.*[\\/]/, '')
+  let target = await join(targetDir, filename)
+  if (row.path !== target && (await exists(target))) {
+    const dot = filename.lastIndexOf('.')
+    const stem = dot > 0 ? filename.slice(0, dot) : filename
+    const ext = dot > 0 ? filename.slice(dot) : ''
+    for (let n = 1; n < 999; n++) {
+      const candidate = await join(targetDir, `${stem}-${n}${ext}`)
+      if (!(await exists(candidate))) {
+        target = candidate
+        break
+      }
+    }
+  }
+
+  if (row.path !== target) {
+    await rename(row.path, target)
+  }
+
+  await execute(
+    `UPDATE projects_index
+       SET path = $1, folder_id = $2, updated_at = $3
+     WHERE id = $4`,
+    [target, folderId, Date.now(), id]
+  )
+}
+
 /** 从索引里删记录；不删磁盘 .zmind 文件（用户可能想留着自己管理）。 */
 export async function unregisterProject(id: string): Promise<void> {
   await execute(`DELETE FROM projects_index WHERE id = $1`, [id])

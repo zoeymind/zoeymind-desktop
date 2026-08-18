@@ -1,13 +1,13 @@
 /**
- * 自定义 TitleBar —— macOS Overlay 样式下用于填补拖拽区。
+ * TitleBar —— 40px 高, 浏览器风格:
+ *   [macOS 红绿灯 spacer] [TabBar (flex-1, 内部横向滚动)] [drag spacer] [系统按钮]
  *
- * 桌面端零个人账号：不显示头像/账号菜单；只放通用主题切换 + 语言切换 +
- * (非 macOS) 系统窗控按钮。
+ * 拖拽区仅在 tabs 之后剩下的空白区域, 保证 tab 数量少 / 空闲区域时都能拖窗.
  */
 import { useEffect, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Minus, Maximize2, X } from 'lucide-react'
-// TitleBar 保持极简: 只有拖拽区 + 系统窗控. 主题/语言按钮放到画布 Header 里.
+import { TabBar } from './tab-bar'
 
 const appWindow = getCurrentWindow()
 
@@ -20,28 +20,29 @@ async function detectPlatform(): Promise<'macos' | 'windows' | 'linux'> {
 
 export function TitleBar() {
   const [platform, setPlatform] = useState<'macos' | 'windows' | 'linux'>('macos')
-
   useEffect(() => {
     void detectPlatform().then(setPlatform)
   }, [])
-
   const isMac = platform === 'macos'
 
   return (
     <div
       data-tauri-drag-region
-      className="fixed inset-x-0 top-0 z-40 flex h-8 items-center border-b bg-background/80 backdrop-blur"
+      className="fixed inset-x-0 top-0 z-40 flex h-10 items-end border-b bg-muted/40 backdrop-blur"
     >
-      {/* macOS: 左边留出原生红绿灯位置；其它平台左对齐产品名 */}
-      <div className={isMac ? 'w-20' : 'w-4'} data-tauri-drag-region />
-      <div
-        className="flex-1 text-center text-xs font-medium text-muted-foreground select-none"
-        data-tauri-drag-region
-      >
-        ZoeyMind
+      {/* 平台 spacer: macOS 让开红绿灯 */}
+      <div className={isMac ? 'w-20 shrink-0' : 'w-2 shrink-0'} data-tauri-drag-region />
+
+      {/* Tabs 区: 最多占 70%, 内部横向滚动. min-w-0 让 flex 允许收缩 */}
+      <div className="flex h-full min-w-0 max-w-[70%] flex-1 items-end">
+        <TabBar />
       </div>
+
+      {/* 剩余 drag 空间: flex-1, 保证有一大段能拖窗口 */}
+      <div className="flex h-full min-w-8 flex-1" data-tauri-drag-region />
+
       {!isMac && (
-        <>
+        <div className="flex h-full items-center">
           <button onClick={() => appWindow.minimize()} className="p-1.5 hover:bg-muted">
             <Minus className="size-3.5" />
           </button>
@@ -54,7 +55,7 @@ export function TitleBar() {
           >
             <X className="size-3.5" />
           </button>
-        </>
+        </div>
       )}
     </div>
   )
