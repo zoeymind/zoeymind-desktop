@@ -23,14 +23,46 @@ export {
 } from './ai-chat/tools/mindmap/priority-label'
 
 
-// === 桌面端 dormant stub ===
-// 老组件（ProjectCard / ProjectListItem / SnapshotPanel / mindMapExporter / useStorageManager）
-// 里对 projectDB / useProjectManager 的引用未迁移；这里给一个空实现兜底避免
-// vite pre-transform 时 barrel 缺 export 报错。现役 UI 不再使用这两条路径。
-export const projectDB: Record<string, () => Promise<null>> = new Proxy(
-  {},
-  { get: () => async () => null }
-)
+// === 桌面端 projectDB 桥接 ===
+// 老 TopBar / ProjectCard 里读 `projectDB.getProject(id)` 取标题、`updateProject` 改标题.
+// 桌面端把这层桥回真实数据源:
+//   - pending (未保存新建) -> pendingProjects.read
+//   - 已入库                -> SqlProjectRepo (getProject)
+//   - updateProject         -> SqlProjectRepo.refreshProjectIndex + pendingProjects 侧同步
+// 之前是 Proxy 全 no-op, 直接返回 null, 导致 TopBar 拿不到标题, 新建项目
+// 顶栏永远显示 "无标题".
+import { getProject, refreshProjectIndex, pendingProjects } from '@/shared/native'
+
+export const projectDB = {
+  getProject: async (id: string) => {
+    if (!id) return null
+    if (pendingProjects.isPending(id)) {
+      const p = pendingProjects.read(id)
+      return p
+        ? { id, name: p.title, updatedAt: p.createdAt, createdAt: p.createdAt }
+        : null
+    }
+    const row = await getProject(id)
+    return row
+      ? { id: row.id, name: row.name, updatedAt: row.updatedAt, createdAt: row.createdAt }
+      : null
+  },
+  updateProject: async (id: string, patch: { name?: string; nodeCount?: number }) => {
+    if (!id) return false
+    if (pendingProjects.isPending(id)) {
+      if (patch.name) pendingProjects.rename(id, patch.name)
+      return true
+    }
+    await refreshProjectIndex(id, {
+      name: patch.name,
+      nodeCount: patch.nodeCount
+    })
+    return true
+  },
+  // 剩余方法 (getProjectStats / snapshots.* 等) 仍 no-op — dormant UI 用不到.
+  snapshots: new Proxy({}, { get: () => async () => null })
+} as unknown as Record<string, unknown>
+
 export const useProjectManager = () => ({
   getProjectStats: () => ({ nodeCount: 0, chatCount: 0, updatedAt: Date.now() }),
   refreshProjectStats: () => undefined

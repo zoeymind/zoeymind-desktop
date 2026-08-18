@@ -10,7 +10,6 @@ import { logger } from '@zoeymind/logger'
 import { toast } from '@/shared/app-shared'
 import { i18next } from '@zoeymind/i18n'
 import type { MindMapNodeTree } from 'simple-mind-map'
-import { defaultMindmapData } from '@zoeymind/shared'
 
 import { parseXMindFile } from '@/products/mind/features/mindmap/utils/xmindParser'
 import { parseZMXmindFile } from '@/products/mind/features/mindmap/utils/ZMXMindImporter'
@@ -35,9 +34,6 @@ function deriveTitleFromFilename(filename: string): string {
   return base.trim() || i18next.t('mindmap.editor.newProjectTitle') || '未命名'
 }
 
-function defaultTitle(): string {
-  return i18next.t('mindmap.editor.newProjectTitle') || '未命名思维导图'
-}
 
 export function useCreateProject(opts: UseCreateProjectOptions = {}): UseCreateProjectReturn {
   const [creating, setCreating] = useState(false)
@@ -52,18 +48,20 @@ export function useCreateProject(opts: UseCreateProjectOptions = {}): UseCreateP
     [navigate, opts]
   )
 
+  // 新建空白 -> /editor/new (VS Code 风格 draft 路由). draft 内 stash 由 EditorShellForDraft 挂载时创建.
   const createBlank = useCallback(async () => {
     if (creating) return
     setCreating(true)
     try {
-      stashAndOpen(defaultTitle(), defaultMindmapData)
+      opts.onCreated?.('new')
+      navigate('/editor/new')
     } catch (error) {
-      logger.error('新建暂存失败', error)
+      logger.error('新建跳转失败', error)
       toast.error(i18next.t('mindmap.editor.createFailed'))
     } finally {
       setCreating(false)
     }
-  }, [creating, stashAndOpen])
+  }, [creating, navigate, opts])
 
   const createFromImport = useCallback(
     async (file: File, xmindFormat: 'standard' | 'zm' = 'standard') => {

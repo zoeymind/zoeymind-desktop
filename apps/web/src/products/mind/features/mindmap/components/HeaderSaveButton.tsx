@@ -1,13 +1,14 @@
 /**
- * Header 保存快捷按钮 —— File 菜单右侧的固定入口。
+ * Header 保存快捷按钮 —— File 菜单右侧的固定入口, 带"未保存"红点.
  *
- * 消费 SaveFlowContext (由 EditorShell 挂 Provider), 与 useStorageManager 共享
- * 同一份 stateRef, 确保 registerBundleSource 写入的 tree 和这里的 save() 是同一份.
+ * Dirty 判定 (对标 VS Code / Xmind / Photoshop):
+ *   - `useMindMapStore.isDirty` = true         → 画布改动未落盘
+ *   - `pendingProjects.isPending(workspaceId)` → 新建项目还没首次保存
+ * 命中任一即视为脏, 按钮右上角显示一个 primary 色小圆点.
  *
- * 交互:
- *   - pending 新建 -> flow.save() 弹 native saveDialog 选 .zmind 落盘路径
- *   - 已入库    -> 直接写回原路径
- *   - dirty 或 pending 时按钮亮起, 否则淡化
+ * 消费 SaveFlowContext (由 EditorShell 挂 Provider), 与 useStorageManager
+ * 共享同一份 stateRef, 确保 registerBundleSource 写入的 tree 和这里的
+ * save() 是同一份.
  */
 import { Save } from 'lucide-react'
 import { Button } from '@zoeymind/ui'
@@ -22,7 +23,7 @@ export function HeaderSaveButton(): React.JSX.Element {
   const { workspaceId } = useProjectContext()
   const isDirty = useMindMapStore(s => s.isDirty)
   const pending = !!workspaceId && pendingProjects.isPending(workspaceId)
-  const highlight = isDirty || pending
+  const dirty = isDirty || pending
 
   const handleClick = async () => {
     try {
@@ -38,11 +39,18 @@ export function HeaderSaveButton(): React.JSX.Element {
       variant="ghost"
       size="icon-sm"
       onClick={handleClick}
-      title="保存 (Cmd/Ctrl+S)"
-      className={highlight ? '' : 'text-muted-foreground'}
+      title={dirty ? '保存 · 未保存的改动 (Cmd/Ctrl+S)' : '保存 (Cmd/Ctrl+S)'}
+      className={`relative ${dirty ? '' : 'text-muted-foreground'}`}
       aria-label="save"
+      data-dirty={dirty || undefined}
     >
       <Save className="size-4" />
+      {dirty && (
+        <span
+          className="pointer-events-none absolute right-1 top-1 size-1.5 rounded-full bg-primary shadow-[0_0_0_2px_var(--background)]"
+          aria-hidden
+        />
+      )}
     </Button>
   )
 }

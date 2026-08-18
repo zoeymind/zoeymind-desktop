@@ -359,54 +359,6 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
           {/* 保存快捷入口 — 紧贴菜单右侧, File 菜单式布局 */}
           <HeaderSaveButton />
 
-          <div className="mx-1 h-4 w-px bg-border" />
-
-          {/* 项目标题或本地标题 */}
-          {isEditing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              defaultValue={displayTitle}
-              onBlur={handleTitleSave}
-              onKeyDown={handleKeyDown}
-              className="bg-transparent text-sm text-foreground font-medium outline-none border-none flex-1 min-w-0 max-w-[200px]"
-              aria-label={t('mindmap.topbar.title.editTitle')}
-              title={t('mindmap.topbar.title.editTitle')}
-              placeholder={t('mindmap.topbar.title.placeholder')}
-            />
-          ) : (
-            <span
-              onDoubleClick={canEdit ? handleTitleEdit : undefined}
-              className={cn(
-                'text-sm text-foreground font-medium truncate flex-1',
-                canEdit ? 'cursor-text' : 'cursor-default'
-              )}
-              title={
-                canEdit
-                  ? t('mindmap.topbar.title.doubleClickHint', { value: displayTitle })
-                  : displayTitle
-              }
-            >
-              {displayTitle}
-            </span>
-          )}
-
-          {collaborationCluster && <div className="w-px h-4 bg-border" />}
-          {collaborationCluster}
-
-          {/* 分享按钮 */}
-          {/* 只读用户申请编辑 */}
-          {cloudMode && workspaceId && hasPermission && !canEdit && (
-            <RequestEditButton mindmapId={workspaceId} />
-          )}
-
-          {cloudMode && workspaceId && (
-            <ShareButton
-              workspaceId={workspaceId}
-              projectTitle={displayTitle}
-              cloudMode={cloudMode}
-            />
-          )}
         </FloatingToolbarGroup>
       </FloatingToolbar>
 

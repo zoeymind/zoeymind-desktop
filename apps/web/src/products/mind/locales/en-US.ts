@@ -1044,8 +1044,14 @@ export default {
     },
     newMenu: {
       trigger: 'New project',
-      blank: 'Blank',
+      blank: 'New',
       blankDesc: 'Start with an empty mind map',
+      open: 'Open',
+      openDesc: 'Pick a .zmind file from disk',
+      importXmind: 'Import XMind',
+      importXmindDesc: 'Import a standard XMind file',
+      importMsXmind: 'Import MeterSphere XMind',
+      importMsXmindDesc: 'Import MeterSphere test-case format',
       import: 'Import file',
       importDesc: 'Create from XMind / Markdown'
     },

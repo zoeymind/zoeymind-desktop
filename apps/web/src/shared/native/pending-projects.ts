@@ -41,3 +41,10 @@ export function read(id: string): PendingProject | undefined {
 export function clear(id: string): void {
   store.delete(id)
 }
+
+/** pending 项目改标题 — 供 TopBar 双击编辑标题 flow. */
+export function rename(id: string, name: string): void {
+  const p = store.get(id)
+  if (!p) return
+  store.set(id, { ...p, title: name })
+}

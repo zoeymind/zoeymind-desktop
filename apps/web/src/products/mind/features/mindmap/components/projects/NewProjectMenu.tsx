@@ -1,19 +1,21 @@
 /**
- * 项目列表头部「新建项目」按钮 + 下拉菜单（新建空白 / 导入文件）。
+ * 侧栏「新项目」按钮 + 下拉：
+ *   - 新建   → pendingProjects.stash + 跳编辑器
+ *   - 打开   → tauri open 对话框选 .zmind → registerProject + 跳编辑器
+ *   - 导入 xmind             → parseXMindFile
+ *   - 导入 metersphere xmind → parseZMXmindFile
  *
- * 这是项目创建的**主入口**，老的 CreateCard 已经删除。
- * "创建中" 视觉来自本组件内部的 Dialog（与全屏 Loading 区分）。
- *
- * 导入仅在前端解析：
- *   1. 选文件 → parseXMindFile / parseMarkdownFile
- *   2. mindmap.create 拿 newId
- *   3. sessionStorage 暂存解析结果（key 见 `useCreateProject` 中的常量）
- *   4. navigate /editor/<newId>
- *   5. editor 端的 `useCanvasData` 在画布 ready 后读取并 `mindMap.updateData(data)`，
- *      再清掉 sessionStorage。
+ * 一体按钮（整块可点击），点击直接展开菜单；没有再拆成"主按钮 + chevron"。
  */
 import { useCallback, useRef } from 'react'
-import { ChevronDownIcon, FileUpIcon, PlusIcon, SparklesIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import {
+  ChevronDownIcon,
+  FileUpIcon,
+  FolderOpenIcon,
+  PlusIcon,
+  SparklesIcon
+} from 'lucide-react'
 import {
   Button,
   Dialog,
@@ -27,99 +29,153 @@ import {
   DropdownMenuTrigger
 } from '@zoeymind/ui'
 import { useTranslation } from '@zoeymind/i18n'
+import { logger } from '@zoeymind/logger'
+import { toast } from '@/shared/app-shared'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 
 import { useCreateProject } from './hooks/useCreateProject'
+import {
+  createUUID,
+  findByPath,
+  readBundle,
+  registerProject
+} from '@/shared/native'
 
 interface NewProjectMenuProps {
-  /** 触发 onCreated 回调，让父级（项目列表）刷新计数/数据。 */
   onCreated?: (newId: string) => void
-  /** 当前项目空间; 新建 mindmap 会挂到此 workspace */
-  workspaceId?: string | null
 }
-
-// 列表层导入仅支持 .xmind（标准）和 .md。zmxmind 留给 editor 内导入做格式选择。
-const IMPORT_ACCEPT = '.xmind,.md'
 
 export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
   const { t } = useTranslation()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate()
+  const stdXmindInputRef = useRef<HTMLInputElement>(null)
+  const zmXmindInputRef = useRef<HTMLInputElement>(null)
   const { creating, createBlank, createFromImport } = useCreateProject({ onCreated })
 
-  const handleImportClick = useCallback(() => {
-    fileInputRef.current?.click()
+  const handleOpenExisting = useCallback(async () => {
+    try {
+      const picked = await openDialog({
+        multiple: false,
+        filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
+      })
+      if (!picked || typeof picked !== 'string') return
+      // 已登记就直接跳; 否则读文件 + 落索引.
+      const existing = await findByPath(picked)
+      let id = existing?.id
+      if (!id) {
+        const bundle = await readBundle(picked)
+        id = createUUID()
+        await registerProject({
+          id,
+          path: picked,
+          name: bundle.meta?.name || picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, ''),
+          nodeCount: 0
+        })
+      }
+      onCreated?.(id)
+      navigate(`/editor/${id}`)
+    } catch (error) {
+      logger.error('打开 .zmind 失败', error)
+      toast.error(t('mindmap.editor.openFailed', '打开文件失败'))
+    }
+  }, [navigate, onCreated, t])
+
+  const handleImportClick = useCallback((format: 'standard' | 'zm') => {
+    const ref = format === 'zm' ? zmXmindInputRef : stdXmindInputRef
+    ref.current?.click()
   }, [])
 
-  const handleFileChange = useCallback(
+  const handleFile =
+    (format: 'standard' | 'zm') =>
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0]
-      // 立刻清空 value，确保选同名文件第二次也能触发 change。
       event.target.value = ''
       if (!file) return
-      await createFromImport(file)
-    },
-    [createFromImport]
-  )
+      await createFromImport(file, format)
+    }
 
   return (
     <>
-      <div className="flex w-full" data-tour="new-project-menu">
-        <Button
-          disabled={creating}
-          className="flex-1 justify-center rounded-r-none"
-          data-testid="new-mindmap"
-          onClick={() => createBlank()}
-        >
-          <PlusIcon className="mr-1.5 size-4" />
-          {t('projects.newMenu.trigger')}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            nativeButton
-            render={
-              <Button
-                disabled={creating}
-                className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                aria-label={t('projects.newMenu.trigger')}
-              >
-                <ChevronDownIcon className="size-4 opacity-80" />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end" className="min-w-[220px]">
-            <DropdownMenuItem onSelect={() => createBlank()}>
-              <SparklesIcon className="mr-2 size-4" />
-              <div className="flex flex-col">
-                <span>{t('projects.newMenu.blank')}</span>
-                <span className="text-xs text-muted-foreground">
-                  {t('projects.newMenu.blankDesc')}
-                </span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleImportClick}>
-              <FileUpIcon className="mr-2 size-4" />
-              <div className="flex flex-col">
-                <span>{t('projects.newMenu.import')}</span>
-                <span className="text-xs text-muted-foreground">
-                  {t('projects.newMenu.importDesc')}
-                </span>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          nativeButton
+          render={
+            <Button
+              disabled={creating}
+              className="w-full justify-between"
+              data-testid="new-mindmap"
+              data-tour="new-project-menu"
+            >
+              <span className="flex items-center">
+                <PlusIcon className="mr-1.5 size-4" />
+                {t('projects.newMenu.trigger', '新项目')}
+              </span>
+              <ChevronDownIcon className="size-4 opacity-80" />
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="start" className="min-w-[240px]">
+          <DropdownMenuItem onSelect={() => createBlank()}>
+            <SparklesIcon className="mr-2 size-4" />
+            <div className="flex flex-col">
+              <span>{t('projects.newMenu.blank', '新建')}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('projects.newMenu.blankDesc', '创建一个空白思维导图')}
+              </span>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => void handleOpenExisting()}>
+            <FolderOpenIcon className="mr-2 size-4" />
+            <div className="flex flex-col">
+              <span>{t('projects.newMenu.open', '打开')}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('projects.newMenu.openDesc', '从磁盘选择一个 .zmind 文件')}
+              </span>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => handleImportClick('standard')}>
+            <FileUpIcon className="mr-2 size-4" />
+            <div className="flex flex-col">
+              <span>{t('projects.newMenu.importXmind', '导入 XMind')}</span>
+              <span className="text-xs text-muted-foreground">
+                {t('projects.newMenu.importXmindDesc', '导入标准 XMind 文件')}
+              </span>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => handleImportClick('zm')}>
+            <FileUpIcon className="mr-2 size-4" />
+            <div className="flex flex-col">
+              <span>
+                {t('projects.newMenu.importMsXmind', '导入 MeterSphere XMind')}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t('projects.newMenu.importMsXmindDesc', '导入 MeterSphere 用例格式')}
+              </span>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      {/* 隐藏的文件选择器，dropdown 里点"导入"时触发 click。 */}
+      {/* 隐藏的文件选择器 */}
       <input
-        ref={fileInputRef}
+        ref={stdXmindInputRef}
         type="file"
-        accept={IMPORT_ACCEPT}
+        accept=".xmind"
         className="hidden"
-        onChange={handleFileChange}
-        aria-label={t('projects.newMenu.import')}
+        onChange={handleFile('standard')}
+        aria-label={t('projects.newMenu.importXmind', '导入 XMind')}
+      />
+      <input
+        ref={zmXmindInputRef}
+        type="file"
+        accept=".xmind"
+        className="hidden"
+        onChange={handleFile('zm')}
+        aria-label={t('projects.newMenu.importMsXmind', '导入 MeterSphere XMind')}
       />
 
-      {/* 创建中 Dialog —— 与 editor 的全屏 Loading 在视觉上分开。 */}
+      {/* 创建中 Dialog */}
       <Dialog
         open={creating}
         onOpenChange={(_, details) => {
@@ -130,7 +186,6 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
       >
         <DialogContent className="sm:max-w-[380px] [&>button]:hidden">
           <div className="flex flex-col items-center gap-5 py-6">
-            {/* 品牌化动画 — 旋转环 + 呼吸中心图标，替代单调 spinner */}
             <div className="relative flex size-16 items-center justify-center">
               <div className="absolute inset-0 rounded-full border-2 border-primary/15" />
               <div
@@ -141,7 +196,6 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
                 <SparklesIcon className="size-4 text-primary" />
               </div>
             </div>
-
             <div className="space-y-1.5 text-center">
               <DialogTitle className="text-base font-semibold tracking-tight">
                 {t('projects.actions.creatingTitle')}
@@ -150,8 +204,6 @@ export function NewProjectMenu({ onCreated }: NewProjectMenuProps) {
                 {t('projects.actions.creatingDesc')}
               </DialogDescription>
             </div>
-
-            {/* 进度暗示 — 三点跳动，告诉用户后台在推进 */}
             <div className="flex items-center gap-1.5" aria-hidden>
               {[0, 1, 2].map(i => (
                 <span

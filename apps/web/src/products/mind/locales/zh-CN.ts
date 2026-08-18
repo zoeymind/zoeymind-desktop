@@ -1013,9 +1013,15 @@ export default {
       failedFallback: '导入失败，请稍后重试'
     },
     newMenu: {
-      trigger: '新建项目',
-      blank: '新建空白',
+      trigger: '新项目',
+      blank: '新建',
       blankDesc: '从空白思维导图开始',
+      open: '打开',
+      openDesc: '从磁盘选择一个 .zmind 文件',
+      importXmind: '导入 XMind',
+      importXmindDesc: '导入标准 XMind 文件',
+      importMsXmind: '导入 MeterSphere XMind',
+      importMsXmindDesc: '导入 MeterSphere 用例格式',
       import: '导入文件',
       importDesc: '从 XMind / Markdown 文件创建'
     },

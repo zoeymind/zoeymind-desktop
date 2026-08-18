@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PanelLeft } from 'lucide-react'
 import { MainLayout } from '@/components/layouts/main-layout'
 import { ProjectListPage } from '@/products/mind/features/mindmap/pages/ProjectsPage'
@@ -10,7 +10,14 @@ import {
 import { MindMapCanvas } from '@/products/mind/features/mindmap/components/MindMapCanvas'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ProjectProvider } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { UnsavedGuard, SaveFlowProvider, useSaveFlowContext } from '@/shared/native'
+import {
+  UnsavedGuard,
+  SaveFlowProvider,
+  useSaveFlowContext,
+  pendingProjects
+} from '@/shared/native'
+import { defaultMindmapData } from '@zoeymind/shared'
+import { i18next } from '@zoeymind/i18n'
 
 const LOCAL_ORG_ID = 'local'
 
@@ -46,7 +53,6 @@ function ProjectListShell() {
         organizationId={LOCAL_ORG_ID}
         canCreateWorkspace={false}
       />
-      {/* 侧栏收起时的展开按钮 —— 悬浮在主区左上角 */}
       {collapsed && (
         <button
           onClick={() => setCollapsed(false)}
@@ -80,6 +86,10 @@ function EditorInner({ id }: { id: string }) {
   )
 }
 
+/**
+ * 已保存项目路由 —— id 是 SqlProjectRepo 里的 uuid.
+ * URL 例: /editor/9f2b...
+ */
 function EditorShell() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -94,12 +104,40 @@ function EditorShell() {
   )
 }
 
+/**
+ * 新建 / draft 路由 —— 每次进来创建一个内存 stash 条目, editor 使用它作为 workspaceId.
+ * URL 保持 /editor/new (VS Code 风格), 内部 tempId 仅内存态, refresh 不保留.
+ */
+function EditorShellForDraft() {
+  const navigate = useNavigate()
+  // 只在首次挂载时 stash 一份, 避免 React StrictMode 双跑造成两份.
+  const draftIdRef = useRef<string | null>(null)
+  if (draftIdRef.current === null) {
+    const title =
+      i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图') || '未命名思维导图'
+    draftIdRef.current = pendingProjects.stash({ title, tree: defaultMindmapData })
+  }
+  const draftId = draftIdRef.current
+
+  // Refresh 后如果 stash 已经不在 (页面 reload), 兜底回列表.
+  useEffect(() => {
+    if (!pendingProjects.isPending(draftId)) navigate('/', { replace: true })
+  }, [draftId, navigate])
+
+  return (
+    <SaveFlowProvider projectId={draftId}>
+      <EditorInner id={draftId} />
+    </SaveFlowProvider>
+  )
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
     children: [
       { index: true, element: <ProjectListShell /> },
+      { path: 'editor/new', element: <EditorShellForDraft /> },
       { path: 'editor/:id', element: <EditorShell /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/" replace /> }
