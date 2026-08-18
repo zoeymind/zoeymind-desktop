@@ -1,46 +1,32 @@
-import { createContext, useContext, ReactNode } from 'react'
-import { logger } from '@zoeymind/logger'
+/**
+ * ProjectContext —— 桌面端只承载"当前打开的 .zmind 项目标识"。
+ *
+ * 云版本还带 cloudMode / permission；桌面端一律本地，去掉。
+ * `projectId` = SqlProjectRepo 里的 id；`path` = 磁盘绝对路径（读/写 .zmind）。
+ */
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 
 interface ProjectContextValue {
+  /** 兼容原编辑器 hook 里的 `workspaceId` 命名，实际语义 = projectId。 */
   workspaceId: string
-  cloudMode: boolean
+  path: string | null
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null)
 
-/**
- * ProjectProvider - 为 MindMap 页面提供项目级作用域
- *
- * 通过 Context 注入 workspaceId 和 cloudMode 到页面范围
- * 当 workspaceId 变化时,整个 Provider 会重新挂载(通过 key={workspaceId})
- * 所有子组件会自动重新初始化,实现状态隔离
- */
-export function ProjectProvider({
-  workspaceId,
-  cloudMode,
-  children
-}: {
+interface ProjectProviderProps {
   workspaceId: string
-  cloudMode: boolean
+  path: string | null
   children: ReactNode
-}) {
-  logger.debug('ProjectProvider: 初始化', { workspaceId, cloudMode })
-
-  return (
-    <ProjectContext.Provider value={{ workspaceId, cloudMode }}>{children}</ProjectContext.Provider>
-  )
 }
 
-/**
- * useProjectContext - 获取当前页面的项目上下文
- *
- * @returns { workspaceId, cloudMode }
- * @throws 如果在 ProjectProvider 外部使用会抛出错误
- */
+export function ProjectProvider({ workspaceId, path, children }: ProjectProviderProps) {
+  const value = useMemo(() => ({ workspaceId, path }), [workspaceId, path])
+  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
+}
+
 export function useProjectContext(): ProjectContextValue {
-  const context = useContext(ProjectContext)
-  if (!context) {
-    throw new Error('useProjectContext must be used within ProjectProvider')
-  }
-  return context
+  const ctx = useContext(ProjectContext)
+  if (!ctx) throw new Error('useProjectContext must be inside <ProjectProvider>')
+  return ctx
 }

@@ -1,136 +1,68 @@
-import { useEffect, useState } from "react"
-import { Link, useLocation } from "react-router-dom"
-import { getCurrentWindow } from "@tauri-apps/api/window"
-import { Minus, Maximize2, X, Settings, Moon, Sun } from "lucide-react"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { getPlatform } from "@/lib/platform"
-import { useAppStore } from "@/stores/use-app-store"
+/**
+ * 自定义 TitleBar —— macOS Overlay 样式下用于填补拖拽区。
+ *
+ * 桌面端零个人账号：不显示头像/账号菜单；仅提供拖拽 + 最小化/最大化/关闭（Windows/Linux）。
+ */
+import { useEffect, useState } from 'react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { Minus, Maximize2, X, Settings } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const appWindow = getCurrentWindow()
 
+async function detectPlatform(): Promise<'macos' | 'windows' | 'linux'> {
+  const ua = navigator.userAgent.toLowerCase()
+  if (ua.includes('mac')) return 'macos'
+  if (ua.includes('win')) return 'windows'
+  return 'linux'
+}
+
 export function TitleBar() {
-  const location = useLocation()
-  const [platform, setPlatform] = useState<"macos" | "windows" | "linux">("macos")
-  const { theme, setTheme } = useAppStore()
+  const [platform, setPlatform] = useState<'macos' | 'windows' | 'linux'>('macos')
+  const navigate = useNavigate()
 
   useEffect(() => {
-    getPlatform().then(setPlatform)
+    void detectPlatform().then(setPlatform)
   }, [])
 
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === "dark") {
-      root.classList.add("dark")
-    } else {
-      root.classList.remove("dark")
-    }
-  }, [theme])
-
-  const handleMinimize = () => {
-    appWindow.minimize()
-  }
-
-  const handleMaximize = () => {
-    appWindow.toggleMaximize()
-  }
-
-  const handleClose = () => {
-    appWindow.close()
-  }
-
-  const isMacOS = platform === "macos"
-  const isWindows = platform === "windows"
+  const isMac = platform === 'macos'
 
   return (
     <div
       data-tauri-drag-region
-      className="fixed top-0 left-0 right-0 z-50 flex h-8 select-none items-center justify-between border-b bg-background/95 backdrop-blur-md"
+      className="fixed inset-x-0 top-0 z-40 flex h-8 items-center border-b bg-background/80 backdrop-blur"
     >
-      {/* 左侧：macOS 原生按钮区域 */}
-      {isMacOS && <div data-tauri-drag-region className="w-[70px]" />}
-
-      {/* 中间：导航链接 */}
-      <div data-tauri-drag-region className="flex flex-1 items-center pl-4">
-        <nav className="flex gap-4">
-          <Link
-            to="/"
-            className={cn(
-              "text-sm font-medium transition-colors hover:text-foreground/80",
-              location.pathname === "/" ? "text-foreground" : "text-muted-foreground"
-            )}
-          >
-            首页
-          </Link>
-          <Link
-            to="/todos"
-            className={cn(
-              "text-sm font-medium transition-colors hover:text-foreground/80",
-              location.pathname === "/todos" ? "text-foreground" : "text-muted-foreground"
-            )}
-          >
-            Todos
-          </Link>
-          <Link
-            to="/about"
-            className={cn(
-              "text-sm font-medium transition-colors hover:text-foreground/80",
-              location.pathname === "/about" ? "text-foreground" : "text-muted-foreground"
-            )}
-          >
-            关于
-          </Link>
-        </nav>
+      {/* macOS: 左边留出原生红绿灯位置；其它平台左对齐产品名 */}
+      <div className={isMac ? 'w-20' : 'w-4'} data-tauri-drag-region />
+      <div
+        className="flex-1 text-center text-xs font-medium text-muted-foreground select-none"
+        data-tauri-drag-region
+      >
+        ZoeyMind
       </div>
-
-      {/* 右侧：操作按钮和 Windows 窗口控制按钮 */}
-      <div data-tauri-drag-region className="flex items-center gap-1.5 pr-2">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-5 w-5 rounded-sm"
-          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-        >
-          {theme === "light" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="h-5 w-5 rounded-sm"
-          onClick={() => toast.info("未开发")}
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </Button>
-        {isWindows && (
-          <>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-5 w-5 rounded-sm"
-              onClick={handleMinimize}
-            >
-              <Minus className="h-2.5 w-2.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-5 w-5 rounded-sm"
-              onClick={handleMaximize}
-            >
-              <Maximize2 className="h-2.5 w-2.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="h-5 w-5 rounded-sm hover:bg-destructive hover:text-destructive-foreground"
-              onClick={handleClose}
-            >
-              <X className="h-2.5 w-2.5" />
-            </Button>
-          </>
-        )}
-      </div>
+      <button
+        onClick={() => navigate('/settings')}
+        className="mr-1 p-1.5 text-muted-foreground hover:bg-muted rounded"
+        aria-label="settings"
+      >
+        <Settings className="size-3.5" />
+      </button>
+      {!isMac && (
+        <>
+          <button onClick={() => appWindow.minimize()} className="p-1.5 hover:bg-muted">
+            <Minus className="size-3.5" />
+          </button>
+          <button onClick={() => appWindow.toggleMaximize()} className="p-1.5 hover:bg-muted">
+            <Maximize2 className="size-3.5" />
+          </button>
+          <button
+            onClick={() => appWindow.close()}
+            className="p-1.5 hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </>
+      )}
     </div>
   )
 }
