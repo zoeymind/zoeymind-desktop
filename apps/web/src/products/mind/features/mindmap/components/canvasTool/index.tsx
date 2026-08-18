@@ -68,8 +68,8 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
 
   return (
     <TooltipProvider>
-      <FloatingToolbar position="custom" className="fixed bottom-10 left-4">
-        <FloatingToolbarGroup>
+      <FloatingToolbar position="custom" className="contents">
+        <FloatingToolbarGroup orientation="vertical" className="gap-1">
           <Tooltip>
             <TooltipTrigger
               render={
@@ -81,7 +81,7 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
             <TooltipContent side="top">{t('mindmap.canvasTool.centerCanvas')}</TooltipContent>
           </Tooltip>
 
-          <FloatingToolbarSeparator />
+          <FloatingToolbarSeparator orientation="horizontal" />
 
           <Tooltip>
             <TooltipTrigger
@@ -102,7 +102,7 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
             </TooltipContent>
           </Tooltip>
 
-          <FloatingToolbarSeparator />
+          <FloatingToolbarSeparator orientation="horizontal" />
 
           <Tooltip>
             <TooltipTrigger

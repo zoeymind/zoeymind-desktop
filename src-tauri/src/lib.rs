@@ -117,17 +117,14 @@ pub fn run() {
     .plugin(tauri_plugin_opener::init())
     .setup(|app| {
       if let Some(window) = app.get_webview_window("main") {
-        #[cfg(target_os = "macos")]
-        {
-          // macOS: Overlay 样式，保留原生按钮
-          let _ = window.set_title_bar_style(tauri::TitleBarStyle::Overlay);
-        }
-
         #[cfg(target_os = "windows")]
         {
-          // Windows: 禁用原生装饰，使用自定义标题栏
+          // Windows: 禁用原生装饰, 用自定义标题栏
           let _ = window.set_decorations(false);
         }
+        // macOS titleBarStyle=Overlay + trafficLightPosition 都在 tauri.conf.json,
+        // 不在此处再运行时设 set_title_bar_style —— 会把 trafficLightPosition 重置到默认.
+        let _ = window;
       }
 
       if cfg!(debug_assertions) {

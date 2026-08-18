@@ -456,6 +456,8 @@ export function MindMapCanvas() {
               setExitPreviewCallback={setExitPreviewCallback}
             />
             <div className="flex-1" />
+            <CanvasTool />
+            <div className="my-1 h-px w-4 bg-border" />
             <LanguageSwitcher />
             <ThemeMenu />
           </aside>
@@ -491,7 +493,6 @@ export function MindMapCanvas() {
                 </div>
               </div>
             )}
-            <CanvasTool />
             <MindMapScrollbar />
             <PreviewIndicator />
             <CollaborationCursorLayer containerRef={containerRef} collaboration={collaboration} />
