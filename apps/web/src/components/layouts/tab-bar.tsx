@@ -129,7 +129,7 @@ function HomeChip({ active, onClick }: { active: boolean; onClick: () => void })
       type="button"
       onClick={onClick}
       data-tauri-drag-region="false"
-      className={cn(chipBase, active ? chipActive : chipInactive, 'px-3')}
+      className={cn(chipBase, active ? chipActive : chipInactive, 'px-2.5')}
       aria-label="Home"
       title="Home"
     >
