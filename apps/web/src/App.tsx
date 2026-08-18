@@ -37,6 +37,7 @@ export default function App() {
           <ThemePresetProvider>
             <LoadingProvider>
               <RouterProvider router={router} />
+              <RecoveryDialog />
               <Toaster position="top-right" richColors />
             </LoadingProvider>
           </ThemePresetProvider>
