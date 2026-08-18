@@ -44,6 +44,7 @@ import { HeaderTitle } from './HeaderTitle'
 import { CanvasTool } from './canvasTool/index.tsx'
 import { MindMapScrollbar } from './MindMapScrollbar.tsx'
 import { PreviewIndicator } from './PreviewIndicator.tsx'
+import { CollaborationCursorLayer } from './CollaborationCursorLayer'
 import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
 import { tabInstances } from '@/shared/tabs/instances'
 
