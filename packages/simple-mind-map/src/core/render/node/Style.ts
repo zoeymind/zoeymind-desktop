@@ -334,10 +334,11 @@ class Style {
 
   //  图标按钮
   iconBtn(openNode, closeNode, fillNode) {
-    this.iconNode(openNode)
-    this.iconNode(closeNode)
     const expandBtnStyle = (this.ctx.mindMap.opt as Record<string, unknown>)
       .expandBtnStyle as Record<string, unknown>
+    this.iconNode(openNode, expandBtnStyle.color)
+    this.iconNode(closeNode, expandBtnStyle.color)
+    openNode.font({ size: expandBtnStyle.fontSize })
     fillNode.fill({ color: expandBtnStyle.fill })
     fillNode.stroke({
       color: expandBtnStyle.strokeColor,

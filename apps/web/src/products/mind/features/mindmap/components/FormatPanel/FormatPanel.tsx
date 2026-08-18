@@ -16,7 +16,8 @@ import {
   FloatingToolbarSeparator,
   FloatingToolbarButton,
 } from "@zoeymind/ui"
-import { Badge, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import { Badge, Tooltip, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
 
 interface FormatPanelProps {
   onPreviewStateChange?: (isPreview: boolean) => void
@@ -112,9 +113,9 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
                         </FloatingToolbarButton>
                       }
                     />
-                    <TooltipContent side="right">
+                    <EditorSidebarTooltipContent>
                       {t("mindmap.formatPanel.toolbar.aiAssistant")}
-                    </TooltipContent>
+                    </EditorSidebarTooltipContent>
                   </Tooltip>
                   <FloatingToolbarSeparator orientation="horizontal" />
                 </>
@@ -143,9 +144,9 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
                       </FloatingToolbarButton>
                     }
                   />
-                  <TooltipContent side="right">
+                  <EditorSidebarTooltipContent>
                     {t("mindmap.formatPanel.toolbar.tags")}
-                  </TooltipContent>
+                  </EditorSidebarTooltipContent>
                 </Tooltip>
               )}
             </FloatingToolbarGroup>

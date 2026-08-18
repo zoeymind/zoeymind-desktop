@@ -1,42 +1,46 @@
-import { useLayoutEffect, type FC } from 'react'
-import { Loader2 } from 'lucide-react'
-import { Progress } from './progress'
-import { AnimatedGridPattern } from './animated-grid-pattern'
-import { useTheme } from './hooks/useTheme'
+import { useLayoutEffect, type FC } from "react";
+import { Loader2 } from "lucide-react";
+import { Progress } from "./progress";
+import { AnimatedGridPattern } from "./animated-grid-pattern";
 
 interface LoadingProps {
-  tip: string
-  className?: string
-  show: boolean
-  progress?: number // 可选的进度值 (0-100)
+  tip: string;
+  className?: string;
+  show: boolean;
+  progress?: number; // 可选的进度值 (0-100)
+  logoSrc?: string;
 }
 
 // 全局标记，确保样式只插入一次
-let stylesInjected = false
+let stylesInjected = false;
 
-export const Loading: FC<LoadingProps> = ({ tip, className = '', show, progress }) => {
-  const { resolvedTheme } = useTheme()
-
+export const Loading: FC<LoadingProps> = ({
+  tip,
+  className = "",
+  show,
+  progress,
+  logoSrc,
+}) => {
   // 检查是否是思维导图相关的loading
   const isMindMapLoading =
-    tip.includes('思维导图') ||
-    tip.includes('云端文档') ||
-    tip.includes('协作') ||
-    tip.includes('同步') ||
-    tip.includes('初始化云端画布') ||
-    tip.includes('准备协作环境') ||
-    tip.includes('建立实时协作连接')
+    tip.includes("思维导图") ||
+    tip.includes("云端文档") ||
+    tip.includes("协作") ||
+    tip.includes("同步") ||
+    tip.includes("初始化云端画布") ||
+    tip.includes("准备协作环境") ||
+    tip.includes("建立实时协作连接");
 
   // 是否显示进度条：传入了progress值 或者 是思维导图相关loading
-  const showProgress = typeof progress === 'number' || isMindMapLoading
+  const showProgress = typeof progress === "number" || isMindMapLoading;
   // 进度值：优先使用传入的progress，否则默认为0
-  const progressValue = typeof progress === 'number' ? progress : 0
+  const progressValue = typeof progress === "number" ? progress : 0;
 
   // 使用useLayoutEffect避免闪烁，并优化样式注入
   useLayoutEffect(() => {
-    if (!stylesInjected && typeof document !== 'undefined') {
-      const style = document.createElement('style')
-      style.id = 'loading-animations'
+    if (!stylesInjected && typeof document !== "undefined") {
+      const style = document.createElement("style");
+      style.id = "loading-animations";
       style.textContent = `
         @keyframes logo-float {
           0%, 100% {
@@ -77,15 +81,15 @@ export const Loading: FC<LoadingProps> = ({ tip, className = '', show, progress 
           /* 提升渲染优先级 */
           contain: layout style paint;
         }
-      `
-      document.head.appendChild(style)
-      stylesInjected = true
+      `;
+      document.head.appendChild(style);
+      stylesInjected = true;
     }
-  }, [])
+  }, []);
 
   // 如果不需要显示，直接返回null避免渲染
   if (!show) {
-    return null
+    return null;
   }
 
   return (
@@ -95,12 +99,14 @@ export const Loading: FC<LoadingProps> = ({ tip, className = '', show, progress 
         fixed inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center
         bg-background
         z-30 transition-all duration-300 ease-out
-        ${show ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}
+        ${show ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"}
         ${className}
       `}
       style={{
-        transform: show ? 'translate3d(0,0,0) scale(1)' : 'translate3d(0,0,0) scale(0.98)',
-        isolation: 'isolate'
+        transform: show
+          ? "translate3d(0,0,0) scale(1)"
+          : "translate3d(0,0,0) scale(0.98)",
+        isolation: "isolate",
       }}
     >
       {/* Animated Grid Pattern 背景 - 只在显示时渲染 */}
@@ -115,22 +121,25 @@ export const Loading: FC<LoadingProps> = ({ tip, className = '', show, progress 
         />
       )}
       <div className="flex flex-col items-center relative z-10">
-        {/* 品牌 Logo — 无框版（透明底，贴合页面背景）。亮暗两版标记配色不同，
-            按 resolvedTheme 换文件：只渲染一张，不用 dark: 双图切换。 */}
-        <div className="mb-8">
-          <img
-            src={`/brand/logo-color-${resolvedTheme}.svg`}
-            alt="ZoeyMind"
-            className="h-14 w-auto"
-            loading="eager"
-            decoding="sync"
-          />
-        </div>
+        {/* 品牌 Logo 由宿主应用传入，避免 UI 包依赖不存在的静态资源目录。 */}
+        {logoSrc && (
+          <div className="logo-container mb-8">
+            <img
+              src={logoSrc}
+              alt="ZoeyMind"
+              className="h-14 w-auto"
+              loading="eager"
+              decoding="sync"
+            />
+          </div>
+        )}
 
         {/* 加载图标和提示文字 */}
         <div className="flex items-center gap-3 mb-6">
           <Loader2 className="size-5 animate-spin text-primary" />
-          <div className="text-muted-foreground font-medium text-base select-none">{tip}</div>
+          <div className="text-muted-foreground font-medium text-base select-none">
+            {tip}
+          </div>
         </div>
 
         {/* 显示进度条 */}
@@ -144,5 +153,5 @@ export const Loading: FC<LoadingProps> = ({ tip, className = '', show, progress 
         )}
       </div>
     </div>
-  )
-}
+  );
+};

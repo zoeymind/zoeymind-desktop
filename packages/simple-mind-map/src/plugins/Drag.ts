@@ -141,6 +141,8 @@ class Drag extends Base {
     if (this.mindMap.opt.readonly || e.which !== 1 || node.isGeneralization || node.isRoot) {
       return
     }
+    // Prevent the browser from starting a native text selection before the drag threshold is reached.
+    e.preventDefault()
     this.isMousedown = true
     // 记录鼠标按下时的节点
     this.mousedownNode = node

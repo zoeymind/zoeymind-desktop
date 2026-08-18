@@ -7,26 +7,26 @@
  * 所有子元素 h-full items-center, 让 tab / 图标视觉上填满整个 titlebar 高度.
  * macOS 红绿灯位置由 tauri.conf.json trafficLightPosition {x:12, y:13} 精调.
  */
-import { useEffect, useState } from 'react'
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Minus, Maximize2, X } from 'lucide-react'
-import { TabBar } from './tab-bar'
+import { useEffect, useState } from "react"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import { Minus, Maximize2, X } from "lucide-react"
+import { TabBar } from "./tab-bar"
 
 const appWindow = getCurrentWindow()
 
-async function detectPlatform(): Promise<'macos' | 'windows' | 'linux'> {
+async function detectPlatform(): Promise<"macos" | "windows" | "linux"> {
   const ua = navigator.userAgent.toLowerCase()
-  if (ua.includes('mac')) return 'macos'
-  if (ua.includes('win')) return 'windows'
-  return 'linux'
+  if (ua.includes("mac")) return "macos"
+  if (ua.includes("win")) return "windows"
+  return "linux"
 }
 
 export function TitleBar() {
-  const [platform, setPlatform] = useState<'macos' | 'windows' | 'linux'>('macos')
+  const [platform, setPlatform] = useState<"macos" | "windows" | "linux">("macos")
   useEffect(() => {
     void detectPlatform().then(setPlatform)
   }, [])
-  const isMac = platform === 'macos'
+  const isMac = platform === "macos"
 
   return (
     <div
@@ -34,12 +34,12 @@ export function TitleBar() {
       className="fixed inset-x-0 top-0 z-[100] flex h-10 items-center border-b bg-muted/60 backdrop-blur"
     >
       {/* macOS spacer: 让开系统红绿灯 (由 trafficLightPosition 精调居中) */}
-      <div className={isMac ? 'h-full w-[88px] shrink-0' : 'h-full w-2 shrink-0'} data-tauri-drag-region />
-
       <div
+        className={isMac ? "h-full w-[88px] shrink-0" : "h-full w-2 shrink-0"}
         data-tauri-drag-region
-        className="flex h-full min-w-0 max-w-[70%] flex-1 items-center"
-      >
+      />
+
+      <div data-tauri-drag-region className="flex h-full min-w-0 max-w-[70%] flex-1 items-center">
         <TabBar />
       </div>
 

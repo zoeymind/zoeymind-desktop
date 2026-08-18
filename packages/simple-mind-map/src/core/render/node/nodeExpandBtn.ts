@@ -15,12 +15,12 @@ function createExpandNodeContent() {
     // 展开的节点
     this._openExpandNode = new Text()
     this._openExpandNode.addClass('smm-expand-btn-text')
-    // 文本垂直居中
+    // Align the numeric label to the circle's local center.
     this._openExpandNode.attr({
       'text-anchor': 'middle',
-      'dominant-baseline': 'middle',
+      'dominant-baseline': 'central',
       x: expandBtnSize / 2,
-      y: 2
+      y: 0
     })
   } else {
     this._openExpandNode = SVG(open || btnsSvg.open)

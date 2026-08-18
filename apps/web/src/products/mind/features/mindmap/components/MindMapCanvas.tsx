@@ -1,58 +1,58 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { useCallback, useRef, useMemo, useEffect } from 'react'
-import { MindMapDropdown } from './MindMapDropdown.tsx'
-import { FormatPanel, type FormatPanelRef } from './FormatPanel/FormatPanel.tsx'
-import { TopBar } from './TopBar/TopBar.tsx'
-import { StatusBar } from './StatusBar/StatusBar'
-import { useEventManager } from './hooks/useEventManager.ts'
-import { useNodeLimitGuard } from './hooks/useNodeLimitGuard.ts'
-import { useStorageManager } from './hooks/useStorageManager.ts'
-import { useCloudStorageManager } from './hooks/useCloudStorageManager.ts'
-import { useShortcutManager } from './hooks/useShortcutManager.ts'
-import { useViewManager } from './hooks/useViewManager.ts'
-import { useCanvasManager, defaultData } from './hooks/useCanvasManager.ts'
-import type { MindMapSavedData } from './hooks/useCanvasManager.ts'
-import { useIconToolbarManager } from './hooks/useIconToolbarManager.ts'
-import { useConvertMindMap } from './hooks/useConvertMindMap.ts'
-import { useCollaborationManager } from './hooks/useCollaborationManager'
-import { resolveMindMapLoading } from './hooks/mindmap-loading'
-import { initPlugins, setCurrentOrganizationId } from './managers/PluginManager.ts'
-import { useCurrentUser } from '@/shared/app-shared'
-import { useCommentYJS } from '@/products/mind/features/mindmap/hooks/useCommentYJS'
-import { AIChatProvider, resolveMindmapShortId } from '@zoeymind-ext-mind'
+import { useCallback, useRef, useMemo, useEffect } from "react"
+import { MindMapDropdown } from "./MindMapDropdown.tsx"
+import { FormatPanel, type FormatPanelRef } from "./FormatPanel/FormatPanel.tsx"
+import { TopBar } from "./TopBar/TopBar.tsx"
+import { StatusBar } from "./StatusBar/StatusBar"
+import { useEventManager } from "./hooks/useEventManager.ts"
+import { useNodeLimitGuard } from "./hooks/useNodeLimitGuard.ts"
+import { useStorageManager } from "./hooks/useStorageManager.ts"
+import { useCloudStorageManager } from "./hooks/useCloudStorageManager.ts"
+import { useShortcutManager } from "./hooks/useShortcutManager.ts"
+import { useViewManager } from "./hooks/useViewManager.ts"
+import { useCanvasManager, defaultData } from "./hooks/useCanvasManager.ts"
+import type { MindMapSavedData } from "./hooks/useCanvasManager.ts"
+import { useIconToolbarManager } from "./hooks/useIconToolbarManager.ts"
+import { useConvertMindMap } from "./hooks/useConvertMindMap.ts"
+import { useCollaborationManager } from "./hooks/useCollaborationManager"
+import { resolveMindMapLoading } from "./hooks/mindmap-loading"
+import { initPlugins, setCurrentOrganizationId } from "./managers/PluginManager.ts"
+import { useCurrentUser } from "@/shared/app-shared"
+import { useCommentYJS } from "@/products/mind/features/mindmap/hooks/useCommentYJS"
+import { AIChatProvider, resolveMindmapShortId } from "@zoeymind-ext-mind"
 import {
   CommentProvider,
-  type CommentContextValue
-} from '@/products/mind/features/mindmap/contexts/CommentContext'
-import { EMPTY_SNAPSHOT } from '@/products/mind/features/mindmap/services/comment-service'
-import { useLoading } from '@/shared/app-shared'
-import { trpcClient } from '@/shared/app-shared'
-import { useUIStore } from '@/products/mind/stores'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { useCommentStore } from '@/products/mind/features/mindmap/stores/comment-store'
-import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { useOrganization } from '@/shared/app-shared'
-import { toast, toastLoading, dismissToast, ThemeMenu, LanguageSwitcher } from '@/shared/app-shared'
-import { useTranslation } from '@zoeymind/i18n'
-import { Button, LoadErrorScreen } from '@zoeymind/ui'
-import type { default as MindMap } from 'simple-mind-map'
-import { isWaitingForCollaboration } from '@/products/mind/features/mindmap/types/mindmap-extensions'
-import { logger } from '@zoeymind/logger'
+  type CommentContextValue,
+} from "@/products/mind/features/mindmap/contexts/CommentContext"
+import { EMPTY_SNAPSHOT } from "@/products/mind/features/mindmap/services/comment-service"
+import { useLoading } from "@/shared/app-shared"
+import { trpcClient } from "@/shared/app-shared"
+import { useUIStore } from "@/products/mind/stores"
+import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { useCommentStore } from "@/products/mind/features/mindmap/stores/comment-store"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
+import { useOrganization } from "@/shared/app-shared"
+import { toast, toastLoading, dismissToast, ThemeMenu, LanguageSwitcher } from "@/shared/app-shared"
+import { useTranslation } from "@zoeymind/i18n"
+import { Button, LoadErrorScreen } from "@zoeymind/ui"
+import type { default as MindMap } from "simple-mind-map"
+import { isWaitingForCollaboration } from "@/products/mind/features/mindmap/types/mindmap-extensions"
+import { logger } from "@zoeymind/logger"
 // Save 按钮的位置在 TopBar 内 (菜单右侧), 由 TopBar 自身消费 HeaderSaveButton.
-import { MindMapIconToolbar } from './MindMapIconToolbar.tsx'
-import { HeaderTitle } from './HeaderTitle'
-import { CanvasTool } from './canvasTool/index.tsx'
-import { MindMapScrollbar } from './MindMapScrollbar.tsx'
-import { PreviewIndicator } from './PreviewIndicator.tsx'
-import { CollaborationCursorLayer } from './CollaborationCursorLayer'
-import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
-import { tabInstances } from '@/shared/tabs/instances'
+import { MindMapIconToolbar } from "./MindMapIconToolbar.tsx"
+import { HeaderTitle } from "./HeaderTitle"
+import { CanvasTool } from "./canvasTool/index.tsx"
+import { MindMapScrollbar } from "./MindMapScrollbar.tsx"
+import { PreviewIndicator } from "./PreviewIndicator.tsx"
+import { CollaborationCursorLayer } from "./CollaborationCursorLayer"
+import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
+import { tabInstances } from "@/shared/tabs/instances"
 
 // 初始化插件
 initPlugins()
 
 // 协作同步中 Toast 的固定 id：toast.loading 原位更新避免重复弹
-const MINDMAP_SYNC_TOAST_ID = 'mindmap-collab-sync'
+const MINDMAP_SYNC_TOAST_ID = "mindmap-collab-sync"
 
 export function MindMapCanvas() {
   // 🎯 记录页面组件开始时间，用于计算总加载耗时（只在首次渲染时设置）
@@ -101,11 +101,10 @@ export function MindMapCanvas() {
     }
   }, [mindMap, workspaceId])
 
-
   const handleLoadError = useCallback(
     (error: unknown) => {
       hideLoading()
-      const fallback = t('mindmap.canvas.loadFailed')
+      const fallback = t("mindmap.canvas.loadFailed")
       const message = error instanceof Error ? error.message || fallback : fallback
       setLoadError(message)
     },
@@ -113,7 +112,7 @@ export function MindMapCanvas() {
   )
 
   const handleUseDefaultTemplate = useCallback(() => {
-    showLoading(t('mindmap.canvas.loadingDefaultTemplate'))
+    showLoading(t("mindmap.canvas.loadingDefaultTemplate"))
     setLoadError(null)
     setForceDefaultTemplate(true)
     setMindMap(null)
@@ -121,8 +120,8 @@ export function MindMapCanvas() {
 
   const handleUseSnapshot = useCallback(() => {
     toast({
-      title: t('mindmap.canvas.snapshotComingSoonTitle'),
-      description: t('mindmap.canvas.snapshotComingSoonDescription')
+      title: t("mindmap.canvas.snapshotComingSoonTitle"),
+      description: t("mindmap.canvas.snapshotComingSoonDescription"),
     })
   }, [toast, t])
 
@@ -143,7 +142,7 @@ export function MindMapCanvas() {
   // 根据云模式选择不同的存储管理器
   const { loadSavedData: loadLocalSavedData, saveData: saveLocalData } = useStorageManager()
   const { saveData: saveCloudData, uploadPreviewThrottled } = useCloudStorageManager(mindMap, {
-    collaborative: cloudMode
+    collaborative: cloudMode,
   })
 
   const saveData = cloudMode ? saveCloudData : saveLocalData
@@ -169,7 +168,7 @@ export function MindMapCanvas() {
       ? {
           id: user.id,
           name: user.name || undefined,
-          avatar: user.avatar || undefined
+          avatar: user.avatar || undefined,
         }
       : undefined
   }, [user])
@@ -188,7 +187,7 @@ export function MindMapCanvas() {
         try {
           updateProgress(30)
           const yDocResponse = await trpcClient.mindmap.content.getYDocBinary.query({
-            mindmapId: workspaceId
+            mindmapId: workspaceId,
           })
           updateProgress(50)
 
@@ -206,9 +205,9 @@ export function MindMapCanvas() {
               savedData: {
                 ...defaultData,
                 __initialYDocState: binary,
-                __hasRealData: true
+                __hasRealData: true,
               } as MindMapSavedData,
-              savedViewData: null
+              savedViewData: null,
             }
           }
 
@@ -217,13 +216,13 @@ export function MindMapCanvas() {
             return {
               savedData: {
                 ...defaultData,
-                __waitForCollaboration: true
+                __waitForCollaboration: true,
               } as MindMapSavedData,
-              savedViewData: null
+              savedViewData: null,
             }
           }
         } catch (error) {
-          logger.warn('HTTP获取YDoc数据失败，使用默认数据等待WebSocket同步', error)
+          logger.warn("HTTP获取YDoc数据失败，使用默认数据等待WebSocket同步", error)
         }
       }
 
@@ -232,9 +231,9 @@ export function MindMapCanvas() {
       return {
         savedData: {
           ...defaultData,
-          __waitForCollaboration: true
+          __waitForCollaboration: true,
         } as MindMapSavedData,
-        savedViewData: null
+        savedViewData: null,
       }
     }
     updateProgress(40)
@@ -242,14 +241,14 @@ export function MindMapCanvas() {
     updateProgress(50)
     return {
       savedData: result.savedData as MindMapSavedData,
-      savedViewData: result.savedViewData
+      savedViewData: result.savedViewData,
     }
   }, [forceDefaultTemplate, cloudMode, workspaceId, loadLocalSavedData, trpcClient, updateProgress])
 
   // MindMap状态设置函数
   const setMindMapReact = useCallback(
     (mindMapOrUpdater: MindMap | null | ((prev: MindMap | null) => MindMap | null)) => {
-      if (typeof mindMapOrUpdater === 'function') {
+      if (typeof mindMapOrUpdater === "function") {
         setMindMap(mindMapOrUpdater(mindMap))
       } else {
         setMindMap(mindMapOrUpdater)
@@ -285,7 +284,7 @@ export function MindMapCanvas() {
       service: commentData.service ?? null,
       comments: commentData.comments ?? EMPTY_SNAPSHOT.comments,
       stats: commentData.stats ?? EMPTY_SNAPSHOT.stats,
-      totalComments: commentData.totalComments ?? 0
+      totalComments: commentData.totalComments ?? 0,
     }),
     [commentData.service, commentData.comments, commentData.stats, commentData.totalComments]
   )
@@ -316,10 +315,10 @@ export function MindMapCanvas() {
       }
     }
 
-    mindMap.on('node_comment_label_click', handleCommentLabelClick)
+    mindMap.on("node_comment_label_click", handleCommentLabelClick)
 
     return () => {
-      mindMap.off('node_comment_label_click', handleCommentLabelClick)
+      mindMap.off("node_comment_label_click", handleCommentLabelClick)
     }
   }, [mindMap, handleNodeCommentClick])
 
@@ -327,9 +326,9 @@ export function MindMapCanvas() {
   useEffect(() => {
     if (mindMap && cloudMode && !canEdit && hasPermission) {
       toast({
-        title: t('mindmap.canvas.readOnlyModeTitle'),
-        description: t('mindmap.canvas.readOnlyModeDescription'),
-        variant: 'default'
+        title: t("mindmap.canvas.readOnlyModeTitle"),
+        description: t("mindmap.canvas.readOnlyModeDescription"),
+        variant: "default",
       })
     }
   }, [mindMap, cloudMode, canEdit, hasPermission, toast, t])
@@ -361,17 +360,17 @@ export function MindMapCanvas() {
         ? {
             status: collaboration.status,
             synced: collaboration.synced,
-            initialSyncDone: collaboration.initialSyncDone
+            initialSyncDone: collaboration.initialSyncDone,
           }
         : null,
-      waitingForCollaboration: mindMap ? isWaitingForCollaboration(mindMap) : false
+      waitingForCollaboration: mindMap ? isWaitingForCollaboration(mindMap) : false,
     })
 
-    if (decision.kind === 'hide') {
+    if (decision.kind === "hide") {
       hideLoading()
       return
     }
-    if (decision.kind === 'show') {
+    if (decision.kind === "show") {
       showLoading(t(decision.tipKey), decision.progress)
       return
     }
@@ -393,16 +392,16 @@ export function MindMapCanvas() {
     showLoading,
     hideLoading,
     updateProgress,
-    t
+    t,
   ])
 
   // 轻量"同步中" Toast：首次同步完成后用右上角 sonner 提示；连接恢复后自动收起。
   // 不再覆盖全局 Loading，画布保持原样。
   useEffect(() => {
     if (!cloudMode || !collaboration?.initialSyncDone) return
-    const syncing = collaboration.status !== 'connected' || !collaboration.synced
+    const syncing = collaboration.status !== "connected" || !collaboration.synced
     if (syncing) {
-      toastLoading(t('mindmap.canvas.syncingIndicator'), MINDMAP_SYNC_TOAST_ID)
+      toastLoading(t("mindmap.canvas.syncingIndicator"), MINDMAP_SYNC_TOAST_ID)
     } else {
       dismissToast(MINDMAP_SYNC_TOAST_ID)
     }
@@ -440,65 +439,66 @@ export function MindMapCanvas() {
       if (mindMap && nodeId) {
         try {
           nodeId = resolveMindmapShortId(nodeId)
-          mindMap.execCommand('GO_TARGET_NODE', nodeId)
+          mindMap.execCommand("GO_TARGET_NODE", nodeId)
         } catch (error) {
-          logger.error('[MindMapCanvas] GO_TARGET_NODE执行失败:', error)
+          logger.error("[MindMapCanvas] GO_TARGET_NODE执行失败:", error)
         }
       }
     }
 
-    window.addEventListener('mindmap:goToNode', handleGoToNode)
+    window.addEventListener("mindmap:goToNode", handleGoToNode)
     return () => {
-      window.removeEventListener('mindmap:goToNode', handleGoToNode)
+      window.removeEventListener("mindmap:goToNode", handleGoToNode)
     }
   }, [mindMap])
 
   return (
     <CommentProvider value={commentContextValue}>
       <AIChatProvider>
-        <div className="flex h-screen">
-          {/* 左侧 icon-only 活动条 —— 取代原顶部 Header. 上: TopBar (menu+save) / FormatPanel (tags/AI). 下: 语言 / 主题. */}
-          <aside className="z-30 flex w-12 shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-2">
-            <TopBar collaboration={collaboration} />
-            <FormatPanel
-              ref={formatPanelRef}
-              onPreviewStateChange={handlePreviewStateChange}
-              setExitPreviewCallback={setExitPreviewCallback}
-            />
-            <div className="flex-1" />
-            <CanvasTool />
-            <div className="my-1 h-px w-4 bg-border" />
-            <LanguageSwitcher />
-            <ThemeMenu />
-          </aside>
-          <div className="flex-1 relative">
-            <div
-              ref={containerRef}
-              key="mind-map-container"
-              className="absolute inset-0"
-              style={{ visibility: loading ? 'hidden' : 'visible' }}
-            />
-            <MindMapDropdown
-              formatPanelRef={formatPanelRef}
-              copyXMindDataToClipboard={copyXMindDataToClipboard}
-            />
-            <MindMapIconToolbar />
-            {loadError && (
-              <LoadErrorScreen
-                title={t('mindmap.canvas.loadFailed')}
-                description={loadError}
-                secondaryLabel={t('mindmap.canvas.restoreFromSnapshot')}
-                onSecondary={handleUseSnapshot}
-                primaryLabel={t('mindmap.canvas.useDefaultTemplate')}
-                onPrimary={handleUseDefaultTemplate}
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1">
+            {/* 左侧 icon-only 活动条 —— 取代原顶部 Header. 上: TopBar (menu+save) / FormatPanel (tags/AI). 下: 语言 / 主题. */}
+            <aside className="z-30 flex w-12 shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-2">
+              <TopBar collaboration={collaboration} />
+              <FormatPanel
+                ref={formatPanelRef}
+                onPreviewStateChange={handlePreviewStateChange}
+                setExitPreviewCallback={setExitPreviewCallback}
               />
-            )}
-            <MindMapScrollbar />
-            <PreviewIndicator />
-            <CollaborationCursorLayer containerRef={containerRef} collaboration={collaboration} />
-            <StatusBar />
-
+              <div className="flex-1" />
+              <CanvasTool />
+              <div className="my-1 h-px w-4 bg-border" />
+              <LanguageSwitcher />
+              <ThemeMenu />
+            </aside>
+            <div className="relative min-w-0 flex-1">
+              <div
+                ref={containerRef}
+                key="mind-map-container"
+                className="absolute inset-0"
+                style={{ visibility: loading ? "hidden" : "visible" }}
+              />
+              <MindMapDropdown
+                formatPanelRef={formatPanelRef}
+                copyXMindDataToClipboard={copyXMindDataToClipboard}
+              />
+              <MindMapIconToolbar />
+              {loadError && (
+                <LoadErrorScreen
+                  title={t("mindmap.canvas.loadFailed")}
+                  description={loadError}
+                  secondaryLabel={t("mindmap.canvas.restoreFromSnapshot")}
+                  onSecondary={handleUseSnapshot}
+                  primaryLabel={t("mindmap.canvas.useDefaultTemplate")}
+                  onPrimary={handleUseDefaultTemplate}
+                />
+              )}
+              <MindMapScrollbar />
+              <PreviewIndicator />
+              <CollaborationCursorLayer containerRef={containerRef} collaboration={collaboration} />
+            </div>
           </div>
+          <StatusBar />
         </div>
       </AIChatProvider>
     </CommentProvider>

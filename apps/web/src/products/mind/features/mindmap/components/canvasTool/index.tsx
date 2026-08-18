@@ -8,7 +8,8 @@ import {
   FloatingToolbarSeparator,
   FloatingToolbarButton,
 } from "@zoeymind/ui"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import { Tooltip, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
 import { usePanTool } from "@/products/mind/features/mindmap/components/hooks/usePanTool"
 import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
 import { useTranslation } from "@zoeymind/i18n"
@@ -78,7 +79,9 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="right">{t("mindmap.canvasTool.centerCanvas")}</TooltipContent>
+            <EditorSidebarTooltipContent>
+              {t("mindmap.canvasTool.centerCanvas")}
+            </EditorSidebarTooltipContent>
           </Tooltip>
 
           <FloatingToolbarSeparator orientation="horizontal" />
@@ -95,11 +98,11 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="right">
+            <EditorSidebarTooltipContent>
               {t("mindmap.canvasTool.panTool")}
               <br />
               {t("mindmap.canvasTool.panToolShortcut")}
-            </TooltipContent>
+            </EditorSidebarTooltipContent>
           </Tooltip>
 
           <FloatingToolbarSeparator orientation="horizontal" />
@@ -112,7 +115,9 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="right">{t("mindmap.canvasTool.zoomIn")}</TooltipContent>
+            <EditorSidebarTooltipContent>
+              {t("mindmap.canvasTool.zoomIn")}
+            </EditorSidebarTooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -123,7 +128,9 @@ export const CanvasTool: React.FC<CanvasToolProps> = () => {
                 </FloatingToolbarButton>
               }
             />
-            <TooltipContent side="right">{t("mindmap.canvasTool.zoomOut")}</TooltipContent>
+            <EditorSidebarTooltipContent>
+              {t("mindmap.canvasTool.zoomOut")}
+            </EditorSidebarTooltipContent>
           </Tooltip>
         </FloatingToolbarGroup>
       </FloatingToolbar>

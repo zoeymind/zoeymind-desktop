@@ -1,10 +1,10 @@
-import { type FC } from 'react'
-import { useMindMapModules } from '@/products/mind/features/mindmap/hooks/useMindMapModules'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
-import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { TestCaseStats } from './TestCaseStats'
-import { PermissionIndicator } from './PermissionIndicator'
+import { type FC } from "react"
+import { useMindMapModules } from "@/products/mind/features/mindmap/hooks/useMindMapModules"
+import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
+import { TestCaseStats } from "./TestCaseStats"
+import { PermissionIndicator } from "./PermissionIndicator"
 
 export const StatusBar: FC = () => {
   const { workspaceId, cloudMode } = useProjectContext()
@@ -17,7 +17,7 @@ export const StatusBar: FC = () => {
   const showPermission = cloudMode && workspaceId && role && !isOwner
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-6 bg-black/20 backdrop-blur-md border-t border-white/10 flex items-center justify-between px-4 z-10 text-white/80 text-xs">
+    <footer className="flex h-6 shrink-0 items-center justify-between border-t border-border bg-muted px-4 text-xs text-muted-foreground">
       {/* 左侧信息区 */}
       <div className="flex items-center gap-4">
         {/* 用例数量统计 */}
@@ -33,6 +33,6 @@ export const StatusBar: FC = () => {
       </div>
       {/* 右侧 — 暂留, 后续放真正的工具入口 */}
       <div className="flex items-center gap-3" />
-    </div>
+    </footer>
   )
 }

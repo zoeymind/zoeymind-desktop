@@ -26,7 +26,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@zoeymind/ui"
-import { Button, cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import { Button, cn, Tooltip, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import {
+  EditorSidebarTooltipContent,
+  EDITOR_SIDEBAR_CONTENT_OFFSET,
+} from "../EditorSidebarTooltipContent"
 import { useCanvasData } from "@/products/mind/features/mindmap/hooks/useCanvasData"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zoeymind/ui"
 import { useMindMapModules } from "@/products/mind/features/mindmap/hooks/useMindMapModules"
@@ -299,7 +303,9 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
             >
               <DropdownMenu
                 open={activeTab === "menu"}
-                onOpenChange={open => setActiveTab(open ? "menu" : null)}
+                onOpenChange={open =>
+                  setActiveTab(current => (open ? "menu" : current === "menu" ? null : current))
+                }
               >
                 <Tooltip>
                   <TooltipTrigger
@@ -333,31 +339,35 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
                       />
                     }
                   />
-                  <TooltipContent side="right">
+                  <EditorSidebarTooltipContent>
                     {t("mindmap.topbar.title.moreOptions")}
-                  </TooltipContent>
+                  </EditorSidebarTooltipContent>
                 </Tooltip>
                 <DropdownMenuContent
+                  side="right"
                   align="start"
-                  sideOffset={10}
+                  sideOffset={EDITOR_SIDEBAR_CONTENT_OFFSET}
                   className="w-56"
-                  // onCloseAutoFocus: base-ui 无对应 prop; 关闭后焦点回到 trigger 是默认行为.
-                  // 如果需要阻止焦点返回, 用 Popup finalFocus={false} (需底层直接暴露)
                 >
                   <TopMoreDropDown
                     isActive={activeTab === "menu"}
                     cloudMode={cloudMode}
-                    onShowSearch={() => togglePanel("search")}
+                    onShowSearch={() => setActiveTab("search")}
                     onShowSettings={() => setIsSettingsModalOpen(true)}
                     onShowShortcuts={handleShowShortcuts}
-                    onClose={() => togglePanel(null)}
+                    onClose={() => setActiveTab(null)}
                     onImport={handleOpenFileInput}
                     onClear={openClearDialog}
                     onExport={handleExportData}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
-              <PopoverContent align="start" sideOffset={10} className="w-[320px] p-0">
+              <PopoverContent
+                side="right"
+                align="start"
+                sideOffset={EDITOR_SIDEBAR_CONTENT_OFFSET}
+                className="w-[320px] p-0"
+              >
                 <TopSearch
                   isActive={activeTab === "search"}
                   onClose={handleCloseSearch}

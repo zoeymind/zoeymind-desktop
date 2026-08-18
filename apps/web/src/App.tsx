@@ -11,33 +11,44 @@
  *   <Loading>             → 全局 loading 遮罩 (读 LoadingProvider)
  *   <Toaster>             → sonner 通知
  */
-import { RouterProvider } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
-import { Loading, ThemeProvider } from '@zoeymind/ui'
-import { I18nProvider, useTranslation } from '@zoeymind/i18n'
-import { router } from '@/routes'
-import { appLocales } from '@/locales'
-import { LoadingProvider, ThemePresetProvider, useLoading } from '@/shared/app-shared'
-import { RecoveryDialog } from '@/pages/RecoveryDialog'
+import { RouterProvider } from "react-router-dom"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { Toaster } from "sonner"
+import { Loading, ThemeProvider, useTheme } from "@zoeymind/ui"
+import { I18nProvider, useTranslation } from "@zoeymind/i18n"
+import { router } from "@/routes"
+import { appLocales } from "@/locales"
+import { LoadingProvider, ThemePresetProvider, useLoading } from "@/shared/app-shared"
+import { RecoveryDialog } from "@/pages/RecoveryDialog"
+import { FileAssociationsListener } from "@/shared/native"
+import logoLightUrl from "@/assets/logo.svg?url"
+import logoDarkUrl from "@/assets/logo-dark.svg?url"
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30_000,
-      retry: false
-    }
-  }
+      retry: false,
+    },
+  },
 })
 
 function InnerApp() {
   const { loading, tip, progress } = useLoading()
   const { t } = useTranslation()
+  const { resolvedTheme } = useTheme()
+  const loadingLogoUrl = resolvedTheme === "dark" ? logoDarkUrl : logoLightUrl
   return (
     <>
       <RouterProvider router={router} />
       <RecoveryDialog />
-      <Loading show={loading} tip={tip ?? t('common.loading', '加载中...')} progress={progress} />
+      <FileAssociationsListener />
+      <Loading
+        show={loading}
+        tip={tip ?? t("common.loading", "加载中...")}
+        progress={progress}
+        logoSrc={loadingLogoUrl}
+      />
       <Toaster position="top-right" richColors />
     </>
   )

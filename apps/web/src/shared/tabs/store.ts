@@ -37,6 +37,16 @@ interface TabsState {
   goHome: () => void
 }
 
+// 触发 SqlProjectRepo.touchLastOpened; 失败不影响 UI (静默).
+async function touchLastOpenedSafe(projectId: string): Promise<void> {
+  try {
+    const { touchLastOpened } = await import('@/shared/native')
+    await touchLastOpened(projectId)
+  } catch {
+    /* ignore */
+  }
+}
+
 export const useTabs = create<TabsState>()(
   persist(
     set => ({
@@ -45,13 +55,17 @@ export const useTabs = create<TabsState>()(
 
       openTab: tab => {
         set(state => {
-          // openTab 语义: 已有同 id 就直接激活; 也匹配 projectId 命中 (从卡片重新点开)
           const existing = state.tabs.find(
             t =>
               t.id === tab.id ||
               (tab.projectId && (t.projectId === tab.projectId || t.id === tab.projectId))
           )
-          if (existing) return { ...state, activeId: existing.id }
+          if (existing) {
+            // 命中已开 tab: 激活并 touch last_opened_at (最近列表用).
+            if (existing.projectId) void touchLastOpenedSafe(existing.projectId)
+            return { ...state, activeId: existing.id }
+          }
+          if (tab.projectId) void touchLastOpenedSafe(tab.projectId)
           return { tabs: [...state.tabs, tab], activeId: tab.id }
         })
       },

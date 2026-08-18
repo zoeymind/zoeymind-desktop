@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 fn migrations() -> Vec<Migration> {
@@ -106,6 +106,23 @@ fn migrations() -> Vec<Migration> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    // Single-instance: OS 双击 .zmind (macOS: fileAssociations 转 open event;
+    // Windows/Linux: argv). 第二次启动时把路径 emit 到前端 'zm:open-file' 事件,
+    // 由 useTabs.openTab 命中已有 tab 就激活, 否则新开.
+    .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+      log::info!("second instance launched, argv={:?}", argv);
+      // argv[0] 是 exe 路径, argv[1..] 是文件参数
+      let paths: Vec<&str> = argv.iter().skip(1).map(|s| s.as_str()).collect();
+      if !paths.is_empty() {
+        let _ = app.emit("zm:open-file", &paths);
+      }
+      // 把窗口拉到前台
+      if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.set_focus();
+        let _ = w.unminimize();
+      }
+    }))
     .plugin(
       tauri_plugin_sql::Builder::default()
         .add_migrations("sqlite:app.db", migrations())
