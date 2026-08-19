@@ -3,7 +3,6 @@
   "release-type": "simple",
   "include-v-in-tag": true,
   "versioning": "always-bump-patch",
-  "release-as": "0.1.0",
   "packages": {
     ".": {
       "include-component-in-tag": false,

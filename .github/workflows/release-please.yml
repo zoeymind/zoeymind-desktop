@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      artifact-run-id:
+        description: Successful build run to publish without rebuilding
+        required: false
+        type: string
+      release-tag:
+        description: Existing draft release tag used with artifact-run-id
+        required: false
+        type: string
 
 concurrency:
   group: release-${{ github.ref }}
@@ -16,6 +25,7 @@ permissions:
 
 jobs:
   prepare:
+    if: github.event_name != 'workflow_dispatch' || inputs.artifact-run-id == ''
     runs-on: ubuntu-24.04
     outputs:
       release-created: ${{ steps.release.outputs.release_created }}
@@ -133,10 +143,40 @@ jobs:
 
       - name: Generate checksums
         working-directory: dist
-        run: sha256sum ./* > SHA256SUMS.txt
+        run: find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
 
       - name: Upload release assets
-        run: gh release upload "$RELEASE_TAG" ./dist/* --clobber --repo "${{ github.repository }}"
+        run: find ./dist -type f -exec gh release upload "$RELEASE_TAG" '{}' --clobber --repo "${{ github.repository }}" \;
+
+      - name: Publish release
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest --repo "${{ github.repository }}"
+
+  recover:
+    name: Publish existing build artifacts
+    if: github.event_name == 'workflow_dispatch' && inputs.artifact-run-id != '' && inputs.release-tag != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release-tag }}
+    steps:
+      - name: Download successful installers
+        uses: actions/download-artifact@v5
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.artifact-run-id }}
+          pattern: zoeymind-*
+          path: dist
+
+      - name: Generate checksums
+        working-directory: dist
+        run: find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+
+      - name: Upload release assets
+        run: find ./dist -type f -exec gh release upload "$RELEASE_TAG" '{}' --clobber --repo "${{ github.repository }}" \;
 
       - name: Publish release
         run: gh release edit "$RELEASE_TAG" --draft=false --latest --repo "${{ github.repository }}"
