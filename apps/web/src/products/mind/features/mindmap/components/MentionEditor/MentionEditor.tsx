@@ -11,6 +11,7 @@
  */
 
 import React, { forwardRef, useCallback, useMemo, useRef } from 'react'
+import { logger } from '@zoeymind/logger'
 import { User } from 'lucide-react'
 import {
   $getRoot,
@@ -145,9 +146,15 @@ const ControlledValuePlugin: React.FC<{ value: string }> = ({ value }) => {
   const [editor] = useLexicalComposerContext()
   const lastSyncedRef = useRef<string | null>(null)
 
-  if (lastSyncedRef.current === null) {
-    lastSyncedRef.current = value
-  } else if (lastSyncedRef.current !== value) {
+  // 首次挂载: 只是登记, 不动 editor (initialConfig 里 editorState 已经根据 value 建过树)
+  if (lastSyncedRef.current === null) lastSyncedRef.current = value
+
+  // 后续同步走 useEffect: 避免渲染阶段调 editor.update.
+  // 关键 gate: editor.isComposing() 期间跳过 - IME 正在写 DOM,
+  // 我们再 clear+rebuild 就会撞 selection offset 引发 $validatePoint 报错.
+  React.useEffect(() => {
+    if (lastSyncedRef.current === value) return
+    if (editor.isComposing?.()) return
     const current = $readEditorMarkup(editor.getEditorState())
     if (current !== value) {
       editor.update(() => {
@@ -159,7 +166,7 @@ const ControlledValuePlugin: React.FC<{ value: string }> = ({ value }) => {
       })
     }
     lastSyncedRef.current = value
-  }
+  }, [editor, value])
 
   return null
 }
@@ -282,8 +289,13 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
         },
         nodes: [BeautifulMentionNode],
         editable: !disabled,
+        // Lexical 会把可恢复错误 ($validatePoint 之类, 常发生在 IME 期间
+        // DOM 领先 model 时) 派到这里. 之前 throw 直接崩掉 editor state,
+        // 导致 caret 塌到段首、DOM 里 IME 残字回不去 model. 只 warn.
         onError: (error: Error) => {
-          throw error
+          logger.warn('[MentionEditor] Lexical recoverable error', {
+            message: error.message
+          })
         },
         editorState: () => {
           const root = $getRoot()
