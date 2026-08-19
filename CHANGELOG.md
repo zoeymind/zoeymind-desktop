@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/zoeymind/zoeymind-desktop/compare/v0.1.0...v0.1.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* **release:** 支持复用构建产物恢复发布 ([1871d83](https://github.com/zoeymind/zoeymind-desktop/commit/1871d838952517fd68462eef0b0f64fc25aac6df))
+
 ## 0.1.0 (2026-08-19)
 
 
