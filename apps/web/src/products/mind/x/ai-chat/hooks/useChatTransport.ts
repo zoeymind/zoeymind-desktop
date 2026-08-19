@@ -137,14 +137,18 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
       }
       // 桌面端: 不走网络. 从 body 里挑 provider + model, 用 tauri chat_stream
       // 拉 SSE, 转成 AI SDK v6 UI Message Stream 返回给 useChat.
-      return await runLocalStream(newBody)
+      return await runLocalStream(newBody, init?.signal ?? undefined)
     }
   }, [runtime, currentOrgId])
 }
 
 // ============ 桌面端本地流实现 ============
 
-import { loadModelsConfig, streamChat, type StreamChatMessage } from '@/shared/native'
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse
+} from 'ai'
+import { loadModelsConfig, streamChat, type StreamChatMessage, type StreamChatHandle } from '@/shared/native'
 import { createUUID } from '@/shared/app-shared'
 
 interface UIMessagePart {
@@ -174,28 +178,24 @@ function flattenParts(msg: UIMessageIn): string {
     .join('\n')
 }
 
-function encodeSse(chunk: unknown): Uint8Array {
-  const line = `data: ${JSON.stringify(chunk)}\n\n`
-  return new TextEncoder().encode(line)
-}
-
 /**
- * 从 useChat body 拉 provider/model, 用 tauri invoke chat_stream 拿 SSE,
- * 把 delta 转成 AI SDK v6 UI Message Stream chunks (text-start / text-delta / text-end
- * / finish) 输出 Response.
+ * 桌面端: useChat 里的 customFetch 最后统一调这个. 走 tauri chat_stream native
+ * reqwest 拉服务商的 SSE, 用 AI SDK 官方 createUIMessageStream + writer 转成
+ * v6 UI Message Stream Response 交回 useChat.
  *
- * body 结构 (AI SDK v6 sendMessage):
- *   { id: '...', messages: UIMessage[], model?: string }
- * 我们额外接受 body.provider (可选) 或从 models.json 按 model.name 反查 provider.
+ * 中止: init.signal 由 useChat.stop() 触发 -> abort streamChat handle,
+ * 让 Rust 侧任务真的取消, 不再吐 delta.
  */
-async function runLocalStream(body: {
-  messages: UIMessageIn[]
-  model?: string
-  userPrompt?: string
-  mindmapContextText?: string
-}): Promise<Response> {
+async function runLocalStream(
+  body: {
+    messages: UIMessageIn[]
+    model?: string
+    userPrompt?: string
+    mindmapContextText?: string
+  },
+  signal?: AbortSignal
+): Promise<Response> {
   const cfg = await loadModelsConfig()
-  // 优先取 body.model, 没传就用 defaults.chat, 再没有就取第一个 cfg.models.
   const modelName =
     body.model ??
     cfg.defaults.chat ??
@@ -209,7 +209,16 @@ async function runLocalStream(body: {
     : undefined
 
   if (!entry || !provider) {
-    return sseErrorResponse('未配置任何模型: 请到设置 -> 模型 勾选一个')
+    return createUIMessageStreamResponse({
+      stream: createUIMessageStream({
+        execute: ({ writer }) => {
+          writer.write({
+            type: 'error',
+            errorText: '未配置任何模型: 请到设置 -> 模型 勾选一个'
+          })
+        }
+      })
+    })
   }
 
   const chatMessages: StreamChatMessage[] = []
@@ -221,72 +230,62 @@ async function runLocalStream(body: {
     chatMessages.push({ role: m.role, content: text })
   }
 
-  const textId = `text-${createUUID()}`
-  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
+  const textId = `t-${createUUID()}`
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      controllerRef = controller
-      controller.enqueue(encodeSse({ type: 'start' }))
-      controller.enqueue(encodeSse({ type: 'start-step' }))
-      controller.enqueue(encodeSse({ type: 'text-start', id: textId }))
+  const stream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      writer.write({ type: 'start' })
+      writer.write({ type: 'start-step' })
+      writer.write({ type: 'text-start', id: textId })
+
+      let handle: StreamChatHandle | null = null
+      let doneResolve: (() => void) | null = null
+      const done = new Promise<void>(resolve => {
+        doneResolve = resolve
+      })
+
+      // useChat.stop() 触发的 abort -> 立即中断 Rust 侧任务
+      const onAbort = () => {
+        void handle?.abort()
+        writer.write({ type: 'abort', reason: 'user' })
+        writer.write({ type: 'finish' })
+        doneResolve?.()
+      }
+      signal?.addEventListener('abort', onAbort, { once: true })
 
       try {
-        await streamChat({
+        handle = await streamChat({
           provider,
           model: entry.name,
           messages: chatMessages,
           onDelta: (text: string) => {
-            controller.enqueue(
-              encodeSse({ type: 'text-delta', id: textId, delta: text })
-            )
+            writer.write({ type: 'text-delta', id: textId, delta: text })
           },
           onDone: () => {
-            controller.enqueue(encodeSse({ type: 'text-end', id: textId }))
-            controller.enqueue(encodeSse({ type: 'finish-step' }))
-            controller.enqueue(encodeSse({ type: 'finish' }))
-            controller.close()
+            writer.write({ type: 'text-end', id: textId })
+            writer.write({ type: 'finish-step' })
+            writer.write({ type: 'finish' })
+            doneResolve?.()
           },
           onError: (msg: string) => {
-            controller.enqueue(encodeSse({ type: 'error', errorText: msg }))
-            controller.close()
+            writer.write({ type: 'error', errorText: msg })
+            writer.write({ type: 'finish-step' })
+            writer.write({ type: 'finish' })
+            doneResolve?.()
           }
         })
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        controller.enqueue(encodeSse({ type: 'error', errorText: msg }))
-        controller.close()
+        writer.write({ type: 'error', errorText: msg })
+        writer.write({ type: 'finish-step' })
+        writer.write({ type: 'finish' })
+        doneResolve?.()
       }
-    },
-    cancel() {
-      // useChat.stop() 走这里; onError/onDone 未触发时 controllerRef 已 null.
-      controllerRef = null
+
+      await done
+      signal?.removeEventListener('abort', onAbort)
     }
   })
 
-  return new Response(stream, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'x-vercel-ai-ui-message-stream': 'v1'
-    }
-  })
-}
-
-function sseErrorResponse(message: string): Response {
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(encodeSse({ type: 'start' }))
-      controller.enqueue(encodeSse({ type: 'error', errorText: message }))
-      controller.close()
-    }
-  })
-  return new Response(body, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'x-vercel-ai-ui-message-stream': 'v1'
-    }
-  })
+  return createUIMessageStreamResponse({ stream })
 }
