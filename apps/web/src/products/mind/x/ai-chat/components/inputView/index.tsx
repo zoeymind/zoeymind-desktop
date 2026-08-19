@@ -47,7 +47,8 @@ export const InputView: React.FC<InputViewProps> = ({
 
   // 判断当前模型是否支持视觉功能
   const currentModel = models.find(m => m.id === selectedModel)
-  const supportsVision = currentModel?.hasVision ?? false
+  // 桌面端图片附件始终开放, 不按模型 vision 能力 gate
+  const supportsVision = true
 
   const { isCompressing, addImageFiles } = useImageAttachmentManager({
     supportsVision,
