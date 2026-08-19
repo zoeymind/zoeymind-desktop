@@ -31,38 +31,35 @@ export function TitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="fixed inset-x-0 top-0 z-[100] flex h-10 items-center border-b bg-muted/60 backdrop-blur"
+      className="fixed inset-x-0 top-0 z-[100] flex h-20 items-stretch bg-muted/60 backdrop-blur"
     >
-      {/* macOS spacer: 让开系统红绿灯 (由 trafficLightPosition 精调居中) */}
+      {/* macOS spacer: 让开系统红绿灯 (trafficLightPosition 需要跟 h-20 一起调 y) */}
       <div
         className={isMac ? "h-full w-[88px] shrink-0" : "h-full w-2 shrink-0"}
         data-tauri-drag-region
       />
 
-      <div data-tauri-drag-region className="flex h-full min-w-0 max-w-[70%] flex-1 items-center">
+      <div data-tauri-drag-region className="flex h-full min-w-0 flex-1 items-stretch">
         <TabBar />
       </div>
 
-      {/* 剩余可拖窗空白 */}
-      <div className="flex h-full min-w-8 flex-1" data-tauri-drag-region />
-
       {!isMac && (
-        <div className="flex h-full items-center">
+        <div className="flex h-full items-start pt-2">
           <button
             onClick={() => appWindow.minimize()}
-            className="flex h-full items-center px-3 hover:bg-muted"
+            className="flex h-8 items-center px-3 hover:bg-muted"
           >
             <Minus className="size-3.5" />
           </button>
           <button
             onClick={() => appWindow.toggleMaximize()}
-            className="flex h-full items-center px-3 hover:bg-muted"
+            className="flex h-8 items-center px-3 hover:bg-muted"
           >
             <Maximize2 className="size-3.5" />
           </button>
           <button
             onClick={() => appWindow.close()}
-            className="flex h-full items-center px-3 hover:bg-destructive hover:text-destructive-foreground"
+            className="flex h-8 items-center px-3 hover:bg-destructive hover:text-destructive-foreground"
           >
             <X className="size-3.5" />
           </button>

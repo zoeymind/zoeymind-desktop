@@ -34,6 +34,8 @@ interface TabsState {
    * 这样 EditorPane 的 React key 稳定, 保存后不 remount / 不 flash.
    */
   promoteDraftInPlace: (tabId: string, projectId: string, title?: string) => void
+  /** 拖拽重排后按新 id 顺序应用. 未在 ids 中的 tab 忽略, ids 中不存在的 id 忽略. */
+  reorderTabs: (ids: string[]) => void
   goHome: () => void
 }
 
@@ -101,7 +103,21 @@ export const useTabs = create<TabsState>()(
               ? { ...t, kind: 'file', projectId, title: title ?? t.title }
               : t
           )
-        }))
+        })),
+
+      reorderTabs: ids =>
+        set(state => {
+          const byId = new Map(state.tabs.map(t => [t.id, t]))
+          const reordered = ids.flatMap(id => {
+            const t = byId.get(id)
+            return t ? [t] : []
+          })
+          // ids 中不含的 tab (理论上不应出现) 追加保底.
+          for (const t of state.tabs) {
+            if (!ids.includes(t.id)) reordered.push(t)
+          }
+          return { tabs: reordered }
+        })
     }),
     {
       name: 'zoeymind:tabs',

@@ -1,17 +1,19 @@
 /**
- * TabBar —— 浏览器 / VS Code 风格文档 tab 条.
+ * TabBar —— beUI MorphingTabs + Home 独立 chip + '+' 按钮.
  *
- * 布局:
- *   [Home] [tab · x] [tab · x] ... [+]
- * 每个元素撑满整个 titlebar 高度 (h-full = 40px), 内部 items-center 竖向居中.
- * 活动 tab 用底部一条 primary 色下划线 + 背景色区分.
+ * 布局 (titlebar 高 80px):
+ *   [Home][MorphingTabs (项目 tabs)][+]
  *
- * 溢出策略:
- *   - overflow-x-auto, 滚动条隐藏.
- *   - 鼠标滚轮 (垂直) 转横向滚动.
+ * Home / '+' 独立于 MorphingTabs, 不参与拖拽重排; MorphingTabs 只装项目 tabs,
+ * 提供液态过渡 (active tab 底部弧形融进画布) + spring 拖拽重排 + 自适应宽度.
+ *
+ * items[i].content 一律 null: 真正 content 由 WorkspaceShell 的 EditorPane 在下方
+ * 挂载, MorphingTabs 只做 tab strip. classNames.content='hidden' 隐藏其自带面板;
+ * classNames.activeTab='!text-background' 让液态 SVG 的 fill 用主题 background 色,
+ * 视觉上和下面画布连成一片.
  */
-import { Home, Loader2, Plus, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Home, Loader2, Plus } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import {
   Button,
   Dialog,
@@ -29,13 +31,14 @@ import { logger } from '@zoeymind/logger'
 import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
 import { defaultMindmapData } from '@zoeymind/shared'
 import { i18next } from '@zoeymind/i18n'
+import { MorphingTabs, type MorphingTabsItem } from '@/components/motion/morphing-tabs'
 
 export function TabBar() {
   const tabs = useTabs(s => s.tabs)
   const activeId = useTabs(s => s.activeId)
   const setActive = useTabs(s => s.setActive)
   const closeTab = useTabs(s => s.closeTab)
-  const scrollerRef = useRef<HTMLDivElement>(null)
+  const reorderTabs = useTabs(s => s.reorderTabs)
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
   const liveDirty = useMindMapStore(s => s.isDirty)
   const tabLoading = useTabLoading(s => s.loading)
@@ -46,15 +49,9 @@ export function TabBar() {
     useTabs.getState().openTab({ id, kind: 'draft', title })
   }
 
-  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    const el = scrollerRef.current
-    if (!el) return
-    const dy = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX
-    if (dy === 0) return
-    el.scrollLeft += dy
-  }
-
-  const requestClose = (tab: OpenTab) => {
+  const requestClose = (id: string) => {
+    const tab = tabs.find(t => t.id === id)
+    if (!tab) return
     const isActiveTab = activeId === tab.id
     const dirty = isActiveTab && useMindMapStore.getState().isDirty
     const pending = tab.kind === 'draft' && pendingProjects.isPending(tab.id)
@@ -67,48 +64,64 @@ export function TabBar() {
 
   const pendingTab = pendingCloseId ? tabs.find(t => t.id === pendingCloseId) ?? null : null
 
+  // MorphingTabs items: 每个 tab 的 label = 文件名 (或"加载中…"), content=null.
+  const morphItems: MorphingTabsItem[] = useMemo(
+    () =>
+      tabs.map(tab => {
+        const loading = tabLoading[tab.id] === true
+        const isActiveTab = activeId === tab.id
+        const dirty =
+          tab.kind === 'draft' ||
+          (isActiveTab ? liveDirty : tabDirty.get(tab.id))
+        return {
+          id: tab.id,
+          label: loading ? '加载中…' : tab.title || '无标题',
+          icon: loading ? (
+            <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          ) : dirty ? (
+            <span
+              aria-hidden
+              className="inline-block size-2 rounded-full bg-foreground/70"
+            />
+          ) : null,
+          content: null
+        }
+      }),
+    [tabs, tabLoading, activeId, liveDirty]
+  )
+
   return (
     <>
-      <div
-        ref={scrollerRef}
-        onWheel={onWheel}
-        data-tauri-drag-region
-        className="flex h-full min-w-0 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
+      <div className="flex h-full w-full min-w-0 items-stretch">
         <HomeChip active={activeId === 'home'} onClick={() => setActive('home')} />
-        {tabs.map(tab => {
-          const isActiveTab = activeId === tab.id
-          const dirty =
-            tab.kind === 'draft' ||
-            (isActiveTab
-              ? liveDirty
-              : tabDirty.get(tab.id))
-          return (
-            <TabChip
-              key={tab.id}
-              tab={tab}
-              active={isActiveTab}
-              dirty={dirty}
-              loading={tabLoading[tab.id] === true}
-              onSelect={() => setActive(tab.id)}
-              onClose={e => {
-                e.stopPropagation()
-                requestClose(tab)
+
+        <div className="flex min-w-0 flex-1 items-stretch" data-tauri-drag-region>
+          {tabs.length > 0 && (
+            <MorphingTabs
+              items={morphItems}
+              value={activeId === 'home' ? null : (activeId ?? null)}
+              onValueChange={id => {
+                if (id) setActive(id)
+              }}
+              onOrderChange={ids => reorderTabs(ids)}
+              onClose={requestClose}
+              ariaLabel="项目 tabs"
+              className="!rounded-none !bg-transparent !overflow-visible !text-foreground shrink-0 min-w-0 flex-1"
+              classNames={{
+                root: '!rounded-none !bg-transparent !overflow-visible !text-foreground',
+                rail: 'items-stretch',
+                tab: '!text-foreground',
+                activeTab: '!text-background',
+                label: '!text-foreground',
+                content: 'hidden'
               }}
             />
-          )
-        })}
-        <button
-          type="button"
-          onClick={onPlus}
-          aria-label="New tab"
-          title="新项目"
-          data-tauri-drag-region="false"
-          className="flex h-full items-center justify-center px-2.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-        >
-          <Plus className="size-4" />
-        </button>
+          )}
+        </div>
+
+        <PlusChip onClick={onPlus} />
       </div>
+
       {pendingTab && (
         <CloseConfirmDialog
           tab={pendingTab}
@@ -120,8 +133,6 @@ export function TabBar() {
             setPendingCloseId(null)
           }}
           onSave={async () => {
-            // 关闭前保存: 先切到该 tab (draft 需要 pop saveDialog),
-            // save() 成功后再关. 用户取消 saveDialog 或写盘失败 -> 不关 tab.
             setActive(pendingTab.id)
             const handle = tabSaveFns.get(pendingTab.id)
             if (!handle) return
@@ -131,8 +142,6 @@ export function TabBar() {
               logger.error('close-save failed', error)
               return
             }
-            // save() 内部 pending draft 用户取消 saveDialog 时 return void, 不 throw.
-            // 若仍 dirty (未真的写盘) -> 保守起见不关. 判据: 全局 isDirty 是否已 false.
             if (useMindMapStore.getState().isDirty) {
               setPendingCloseId(null)
               return
@@ -146,81 +155,40 @@ export function TabBar() {
   )
 }
 
-const chipBase =
-  'group relative inline-flex h-full shrink-0 cursor-pointer items-center gap-1.5 border-r border-border/40 px-3 text-xs transition-colors'
-
-const chipActive =
-  'bg-background text-foreground border-r-transparent after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary'
-
-const chipInactive =
-  'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-
+// Home chip: 独立于 MorphingTabs, 高度对齐 tab (56px, marginTop 24 = 走 tab 视觉中线).
 function HomeChip({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       data-tauri-drag-region="false"
-      className={cn(chipBase, active ? chipActive : chipInactive, 'px-2.5')}
       aria-label="Home"
       title="Home"
+      className={cn(
+        'group relative mt-6 h-14 shrink-0 inline-flex items-center px-4 text-xs',
+        'rounded-l-3xl transition-colors',
+        active
+          ? 'bg-background text-foreground z-20'
+          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+      )}
     >
       <Home className="size-4" />
     </button>
   )
 }
 
-interface TabChipProps {
-  tab: OpenTab
-  active: boolean
-  dirty: boolean
-  loading: boolean
-  onSelect: () => void
-  onClose: (e: React.MouseEvent) => void
-}
-
-function TabChip({ tab, active, dirty, loading, onSelect, onClose }: TabChipProps) {
+function PlusChip({ onClick }: { onClick: () => void }) {
   return (
-    <div
-      role="tab"
-      aria-selected={active}
-      onClick={onSelect}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="New tab"
+      title="新项目"
       data-tauri-drag-region="false"
-      className={cn(
-        chipBase,
-        active ? chipActive : chipInactive,
-        'max-w-[220px] pr-1'
-      )}
-      title={tab.title}
+      className="mt-6 h-14 shrink-0 inline-flex items-center justify-center px-3 text-muted-foreground hover:bg-muted/40 hover:text-foreground rounded-r-3xl transition-colors"
     >
-      {loading && <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />}
-      <span className="truncate">{loading ? '加载中…' : tab.title}</span>
-      {/* dirty dot / close 二选一: 未 hover 时显示 dot, hover 时显示 x */}
-      <span className="relative inline-flex size-5 items-center justify-center">
-        {dirty && !loading && (
-          <span
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute inline-block size-1.5 rounded-full bg-foreground/70 transition-opacity',
-              'group-hover:opacity-0'
-            )}
-          />
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close tab"
-          className={cn(
-            'inline-flex size-5 items-center justify-center rounded hover:bg-muted transition-opacity',
-            dirty
-              ? 'opacity-0 group-hover:opacity-100'
-              : !active && 'opacity-0 group-hover:opacity-100'
-          )}
-        >
-          <X className="size-3" />
-        </button>
-      </span>
-    </div>
+      <Plus className="size-4" />
+    </button>
   )
 }
 
@@ -239,13 +207,13 @@ function CloseConfirmDialog({ tab, onCancel, onDiscard, onSave }: CloseConfirmPr
           <DialogTitle>关闭 “{tab.title}” 前保存吗?</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          此 tab 有未保存的改动. 关闭后未保存内容会丢失.
+          未保存的改动会丢失. 保存后再关闭, 或直接放弃.
         </p>
-        <DialogFooter className="flex flex-row justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onCancel}>
             取消
           </Button>
-          <Button variant="outline" onClick={onDiscard}>
+          <Button variant="destructive" onClick={onDiscard}>
             不保存
           </Button>
           <Button onClick={() => void onSave()}>保存</Button>
