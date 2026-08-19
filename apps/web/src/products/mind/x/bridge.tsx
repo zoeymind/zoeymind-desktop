@@ -5,10 +5,9 @@
  *   - hooks/useChatTransport.ts: fetch() -> runLocalStream() (native reqwest 拉流,
  *     转 AI SDK v6 UI Message Stream chunks)
  *   - hooks/useModelSelector.ts: trpc.models.list -> loadModelsConfig()
- *
- * 其它 UI (MessageView / InputView / SettingsDialog / History) 全部保留原样.
  */
 // @ts-nocheck
+import React, { Component, type ReactNode } from 'react'
 import { AIchatV2 } from './ai-chat'
 import { AIChatProvider as OriginalAIChatProvider } from './ai-chat/AIChatProvider'
 
@@ -16,12 +15,62 @@ interface AIFeaturePanelProps {
   isActive?: boolean
 }
 
+class AIChatErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // 把 componentStack 完整打印, 便于定位 Maximum update depth 里的具体 Hook
+    // eslint-disable-next-line no-console
+    console.error(
+      '[AIChatErrorBoundary]',
+      error?.message,
+      '\ncomponentStack:',
+      info.componentStack,
+      '\nfullError:',
+      error
+    )
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="fixed top-12 right-4 z-10 w-[380px] rounded-lg border border-destructive bg-card p-4 text-xs shadow-lg">
+          <div className="mb-2 font-semibold text-destructive">
+            AI 面板崩溃 (Error Boundary)
+          </div>
+          <div className="mb-2 whitespace-pre-wrap text-muted-foreground">
+            {this.state.error.message}
+          </div>
+          <button
+            className="rounded bg-primary px-3 py-1 text-xs text-primary-foreground"
+            onClick={() => this.setState({ error: null })}
+          >
+            重试
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export function AIChatProvider(props: { children: React.ReactNode }): JSX.Element {
   return <OriginalAIChatProvider {...props} />
 }
 
 export function AIFeaturePanel({ isActive }: AIFeaturePanelProps): JSX.Element | null {
-  return <AIchatV2 isActive={isActive} />
+  return (
+    <AIChatErrorBoundary>
+      <AIchatV2 isActive={isActive} />
+    </AIChatErrorBoundary>
+  )
 }
 
 export function AIStatusBadge(): null {
