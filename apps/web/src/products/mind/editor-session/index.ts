@@ -15,7 +15,3 @@ export {
   projectSessionRegistry,
   type ProjectSessionRegistry,
 } from "./project-session-registry"
-export {
-  activateLegacyProjectSession,
-  startLegacyProjectSessionAdapter,
-} from "./legacy-project-session-adapter"

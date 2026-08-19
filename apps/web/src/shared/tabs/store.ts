@@ -9,14 +9,15 @@
  *     用 tab.id 作为稳定 workspaceId, 因此保存后不 remount.
  *   - Home 是隐式的固定位, 不在 tabs 数组里 (activeId === 'home').
  */
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { create } from "zustand"
+import { persist } from "zustand/middleware"
+import { useTabLoading } from "./loading"
 
-export type TabId = string | 'home'
+export type TabId = string | "home"
 
 export interface OpenTab {
   id: string
-  kind: 'draft' | 'file'
+  kind: "draft" | "file"
   title: string
   /** 已保存/已入库项目在 SqlProjectRepo 里的 uuid; draft 未定. */
   projectId?: string
@@ -42,7 +43,7 @@ interface TabsState {
 // 触发 SqlProjectRepo.touchLastOpened; 失败不影响 UI (静默).
 async function touchLastOpenedSafe(projectId: string): Promise<void> {
   try {
-    const { touchLastOpened } = await import('@/shared/native')
+    const { touchLastOpened } = await import("@/shared/native")
     await touchLastOpened(projectId)
   } catch {
     /* ignore */
@@ -53,9 +54,10 @@ export const useTabs = create<TabsState>()(
   persist(
     set => ({
       tabs: [],
-      activeId: 'home',
+      activeId: "home",
 
       openTab: tab => {
+        let opened = false
         set(state => {
           const existing = state.tabs.find(
             t =>
@@ -63,46 +65,40 @@ export const useTabs = create<TabsState>()(
               (tab.projectId && (t.projectId === tab.projectId || t.id === tab.projectId))
           )
           if (existing) {
-            // 命中已开 tab: 激活并 touch last_opened_at (最近列表用).
             if (existing.projectId) void touchLastOpenedSafe(existing.projectId)
             return { ...state, activeId: existing.id }
           }
+          opened = true
           if (tab.projectId) void touchLastOpenedSafe(tab.projectId)
-          // 新 tab: 标 loading=true (draft 除外, draft 立即就有数据), useStorageManager
-          // 初次 sync 完成后会 setLoading(false).
-          if (tab.kind !== 'draft') {
-            void import('./loading').then(m => m.useTabLoading.getState().setLoading(tab.id, true))
-          }
           return { tabs: [...state.tabs, tab], activeId: tab.id }
         })
+        if (opened) useTabLoading.getState().setLoading(tab.id, true)
       },
 
       closeTab: id => {
-        void import('./loading').then(m => m.useTabLoading.getState().clear(id))
+        useTabLoading.getState().clear(id)
         set(state => {
           const next = state.tabs.filter(t => t.id !== id)
           if (state.activeId !== id) return { ...state, tabs: next }
-          const fallback: TabId = next.length > 0 ? next[next.length - 1].id : 'home'
+          const fallback: TabId = next.length > 0 ? next[next.length - 1].id : "home"
           return { tabs: next, activeId: fallback }
         })
       },
 
       setActive: id => set({ activeId: id }),
 
-      goHome: () => set({ activeId: 'home' }),
+      goHome: () => set({ activeId: "home" }),
 
       renameTab: (id, title) =>
         set(state => ({
-          tabs: state.tabs.map(t => (t.id === id ? { ...t, title } : t))
+          tabs: state.tabs.map(t => (t.id === id ? { ...t, title } : t)),
         })),
 
       promoteDraftInPlace: (tabId, projectId, title) =>
         set(state => ({
           tabs: state.tabs.map(t =>
-            t.id === tabId
-              ? { ...t, kind: 'file', projectId, title: title ?? t.title }
-              : t
-          )
+            t.id === tabId ? { ...t, kind: "file", projectId, title: title ?? t.title } : t
+          ),
         })),
 
       reorderTabs: ids =>
@@ -117,17 +113,17 @@ export const useTabs = create<TabsState>()(
             if (!ids.includes(t.id)) reordered.push(t)
           }
           return { tabs: reordered }
-        })
+        }),
     }),
     {
-      name: 'zoeymind:tabs',
+      name: "zoeymind:tabs",
       version: 2,
       // draft 不能持久化: pendingProjects 只在内存, 重启后 tempId 失效.
       // 已保存 tab 有 projectId, 重启后能恢复 (通过 projectId 读 SqlProjectRepo).
       partialize: state => ({
-        tabs: state.tabs.filter(t => t.kind === 'file' && !!t.projectId),
-        activeId: state.activeId === 'home' ? 'home' : state.activeId
-      })
+        tabs: state.tabs.filter(t => t.kind === "file" && !!t.projectId),
+        activeId: state.activeId === "home" ? "home" : state.activeId,
+      }),
     }
   )
 )

@@ -13,7 +13,7 @@
  * 视觉上和下面画布连成一片.
  */
 import { Home, Loader2, Plus } from "lucide-react"
-import { useMemo, useState, useSyncExternalStore } from "react"
+import { useState, useSyncExternalStore } from "react"
 import {
   Button,
   Dialog,
@@ -67,33 +67,31 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
   const pendingTab = pendingCloseId ? (tabs.find(t => t.id === pendingCloseId) ?? null) : null
 
   // MorphingTabs items: 每个 tab 的 label = 文件名 (或"加载中…"), content=null.
-  const morphItems: MorphingTabsItem[] = useMemo(
-    () => [
-      {
-        id: "home",
-        label: "",
-        icon: <Home className="size-3.5" />,
+  const morphItems: MorphingTabsItem[] = [
+    {
+      id: "home",
+      label: "",
+      icon: <Home className="size-3.5" />,
+      content: null,
+      pinned: true,
+    },
+    ...tabs.map(tab => {
+      const loading = tabLoading[tab.id] === true
+      const dirty =
+        tab.kind === "draft" || (projectSessionRegistry.get(tab.id)?.getState().dirty ?? false)
+      return {
+        id: tab.id,
+        label: loading ? "加载中…" : tab.title || "无标题",
+        icon: loading ? (
+          <Loader2 className="size-3 animate-spin text-muted-foreground" />
+        ) : dirty ? (
+          <span aria-hidden className="inline-block size-1.5 rounded-full bg-foreground/70" />
+        ) : null,
         content: null,
-        pinned: true,
-      },
-      ...tabs.map(tab => {
-        const loading = tabLoading[tab.id] === true
-        const dirty =
-          tab.kind === "draft" || (projectSessionRegistry.get(tab.id)?.getState().dirty ?? false)
-        return {
-          id: tab.id,
-          label: loading ? "加载中…" : tab.title || "无标题",
-          icon: loading ? (
-            <Loader2 className="size-3 animate-spin text-muted-foreground" />
-          ) : dirty ? (
-            <span aria-hidden className="inline-block size-1.5 rounded-full bg-foreground/70" />
-          ) : null,
-          content: null,
-        }
-      }),
-    ],
-    [tabs, tabLoading, sessionRevision]
-  )
+      }
+    }),
+  ]
+  void sessionRevision
 
   return (
     <>

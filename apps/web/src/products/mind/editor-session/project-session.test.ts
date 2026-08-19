@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { createProjectSessionStore } from "./project-session-store"
-import { createProjectSessionRegistry, projectSessionRegistry } from "./project-session-registry"
-import {
-  activateLegacyProjectSession,
-  startLegacyProjectSessionAdapter,
-} from "./legacy-project-session-adapter"
-import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { createProjectSessionRegistry } from "./project-session-registry"
 
 describe("Project Editor Session", () => {
   it("keeps runtime state isolated between open projects", () => {
@@ -72,27 +67,5 @@ describe("Project Editor Session", () => {
     expect(notify).toHaveBeenCalledTimes(4)
     expect(registry.getRevision()).toBe(4)
     unsubscribe()
-  })
-
-  it("mirrors legacy runtime changes only into the active session", () => {
-    const projectA = createProjectSessionStore("project-a")
-    const projectB = createProjectSessionStore("project-b")
-    projectSessionRegistry.register(projectA)
-    projectSessionRegistry.register(projectB)
-    activateLegacyProjectSession("project-a")
-    const stop = startLegacyProjectSessionAdapter()
-    useMindMapStore.getState().setLoading(true)
-    useMindMapStore.getState().setDirty(true)
-
-    expect(projectA.getState().dirty).toBe(true)
-    expect(projectB.getState().dirty).toBe(false)
-
-    expect(projectA.getState().lifecycle).toBe("loading")
-    stop()
-    projectSessionRegistry.unregister("project-a")
-    activateLegacyProjectSession(null)
-    projectSessionRegistry.unregister("project-b")
-    useMindMapStore.getState().setDirty(false)
-    useMindMapStore.getState().setLoading(false)
   })
 })

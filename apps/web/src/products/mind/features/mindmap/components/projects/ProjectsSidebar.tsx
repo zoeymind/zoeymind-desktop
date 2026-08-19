@@ -16,30 +16,17 @@
  *
  * 通知铃在页面 PageHeader 右上, 不在 sidebar 内.
  */
-import {
-  LayoutGrid,
-  Star,
-  Share2,
-  Trash2,
-  Search as SearchIcon,
-  PanelLeftClose,
-  Plus,
-  User,
-} from "lucide-react"
+import { LayoutGrid, Star, Search as SearchIcon, PanelLeftClose, Plus } from "lucide-react"
 import { cn, Button } from "@zoeymind/ui"
 import { useState } from "react"
 import { useTranslation } from "@zoeymind/i18n"
-import { Link } from "react-router-dom"
 import {
-  AppBrandBar,
   CreateProjectDialog,
   ProjectSettingsDialog,
   type WorkspaceOption,
 } from "@/shared/organization"
 import { WorkspaceAvatar } from "@/shared/auth"
-import { AppLauncher } from "@/shared/app-shared"
 import { NewProjectMenu } from "./NewProjectMenu"
-import { SidebarAccountMenu } from "./SidebarAccountMenu"
 import { SidebarFolders } from "./SidebarFolders"
 import { SearchShortcutHint } from "./WorkspaceSearchDialog"
 import brandLogo from "@/assets/logo.svg?url"
@@ -237,7 +224,6 @@ export function ProjectsSidebar({
         onOpenChange={setCreateOpen}
         onCreated={id => onWorkspaceCreated?.(id)}
       />
-
     </>
   )
 }

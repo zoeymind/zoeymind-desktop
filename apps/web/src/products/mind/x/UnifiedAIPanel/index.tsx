@@ -5,19 +5,19 @@
  * 使用 AIchatV2（基于 Vercel AI SDK）
  */
 
-import React from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import { Sparkles, GripVertical, Plus, History, Settings } from 'lucide-react'
-import { AIchatV2 } from '../ai-chat'
-import { ContextUsageIndicator } from '../ai-chat/components/ContextUsageIndicator'
-import { ChatHistoryPanel } from '../ai-chat/components/historyView/ChatHistoryPanel'
-import { logger } from '@zoeymind/logger'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import { useAIChatV2Store } from '../ai-chat/stores/useAIChatV2Store'
-import { useAIChatRuntime } from '../ai-chat/context/AIChatRuntimeContext'
-import { useModelSelector } from '../ai-chat/hooks/useModelSelector'
-import { useResizableWidth } from '../ai-chat/hooks/useResizableWidth'
-import { cn } from '@/shared/app-shared'
+import React from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { Sparkles, GripVertical, Plus, History, Settings } from "lucide-react"
+import { AIchatV2 } from "../ai-chat"
+import { ContextUsageIndicator } from "../ai-chat/components/ContextUsageIndicator"
+import { ChatHistoryPanel } from "../ai-chat/components/historyView/ChatHistoryPanel"
+import { logger } from "@zoeymind/logger"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import { useAIChatV2Store } from "../ai-chat/stores/useAIChatV2Store"
+import { useAIChatRuntime } from "../ai-chat/context/AIChatRuntimeContext"
+import { useModelSelector } from "../ai-chat/hooks/useModelSelector"
+import { useResizableWidth } from "../ai-chat/hooks/useResizableWidth"
+import { cn } from "@/shared/app-shared"
 interface UnifiedAIPanelProps {
   isActive?: boolean
 }
@@ -31,11 +31,11 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
   const {
     width,
     isDragging,
-    onMouseDown: handleMouseDown
+    onMouseDown: handleMouseDown,
   } = useResizableWidth({
     initial: 400,
     min: MIN_WIDTH,
-    max: MAX_WIDTH
+    max: MAX_WIDTH,
   })
 
   const {
@@ -45,10 +45,10 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
     totalTokenUsage,
     createNewConversation,
     loadConversation,
-    setShowSettings
+    setShowSettings,
   } = useAIChatV2Store()
   const runtime = useAIChatRuntime()
-  const isProcessing = runtime.status === 'submitted' || runtime.status === 'streaming'
+  const isProcessing = runtime.status === "submitted" || runtime.status === "streaming"
   const { models, selectedModel } = useModelSelector()
 
   const handleCreateNewConversation = async () => {
@@ -57,7 +57,7 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
       await createNewConversation((mindMap as { workspaceId?: string } | null)!.workspaceId!)
       setShowHistory(false)
     } catch (error) {
-      logger.error('UnifiedAIPanel: 创建新对话失败', error)
+      logger.error("UnifiedAIPanel: 创建新对话失败", error)
     }
   }
 
@@ -70,7 +70,7 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
       await loadConversation(conversationId)
       setShowHistory(false)
     } catch (error) {
-      logger.error('UnifiedAIPanel: 选择对话失败', error)
+      logger.error("UnifiedAIPanel: 选择对话失败", error)
     }
   }
 
@@ -78,16 +78,16 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
   // fetch 不被中断, 后台继续跑. 用户切去做别的, Agent 继续工作, 重开面板看到完成态.
   return (
     <div
-      className="fixed top-[68px] right-4 bg-card rounded-lg shadow-lg z-10 h-[calc(100vh-100px)] border border-border"
-      style={{ width: `${width}px`, display: isActive ? 'block' : 'none' }}
+      className="fixed top-[var(--mind-floating-top,68px)] right-[var(--mind-floating-right,16px)] bottom-[var(--mind-floating-bottom,32px)] z-10 max-w-[var(--mind-floating-max-width,calc(100vw-32px))] overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+      style={{ width: `${width}px`, display: isActive ? "block" : "none" }}
     >
       <div className="flex flex-col h-full text-sm">
         {/* Header */}
         <div className="relative flex items-center px-3 py-2 border-b border-border">
           <div
             className={cn(
-              'flex items-center justify-center size-5 mr-2 cursor-ew-resize rounded hover:bg-muted transition-colors',
-              isDragging ? 'bg-muted' : 'bg-muted/50'
+              "flex items-center justify-center size-5 mr-2 cursor-ew-resize rounded hover:bg-muted transition-colors",
+              isDragging ? "bg-muted" : "bg-muted/50"
             )}
             onMouseDown={handleMouseDown}
           >
@@ -114,7 +114,7 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
               type="button"
               onClick={() => setShowSettings(true)}
               className="flex items-center justify-center size-6 rounded hover:bg-muted transition-colors"
-              title={t('mindmap.aiChat.input.caseReviewSettings')}
+              title={t("mindmap.aiChat.input.caseReviewSettings")}
             >
               <Settings className="size-3 text-muted-foreground" />
             </button>
@@ -123,13 +123,13 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
               onClick={handleCreateNewConversation}
               disabled={isProcessing}
               className={cn(
-                'flex items-center justify-center size-6 rounded hover:bg-muted transition-colors',
-                isProcessing && 'opacity-40 cursor-not-allowed hover:bg-transparent'
+                "flex items-center justify-center size-6 rounded hover:bg-muted transition-colors",
+                isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
               )}
               title={
                 isProcessing
-                  ? t('mindmap.aiChat.core.newConversationDisabledWhileProcessing')
-                  : t('mindmap.formatPanel.aiPanel.newConversation')
+                  ? t("mindmap.aiChat.core.newConversationDisabledWhileProcessing")
+                  : t("mindmap.formatPanel.aiPanel.newConversation")
               }
               data-tour="ai-panel-new-conversation"
             >
@@ -140,14 +140,14 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
               onClick={toggleHistory}
               disabled={isProcessing}
               className={cn(
-                'flex items-center justify-center size-6 rounded hover:bg-muted transition-colors',
-                showHistory && 'bg-muted',
-                isProcessing && 'opacity-40 cursor-not-allowed hover:bg-transparent'
+                "flex items-center justify-center size-6 rounded hover:bg-muted transition-colors",
+                showHistory && "bg-muted",
+                isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
               )}
               title={
                 isProcessing
-                  ? t('mindmap.aiChat.core.historyDisabledWhileProcessing')
-                  : t('mindmap.formatPanel.aiPanel.history')
+                  ? t("mindmap.aiChat.core.historyDisabledWhileProcessing")
+                  : t("mindmap.formatPanel.aiPanel.history")
               }
               data-tour="ai-panel-history"
             >
@@ -162,7 +162,7 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
               setShowHistory(false)
             }}
             workspaceId={
-              (mindMap as { workspaceId?: string } | null)?.workspaceId || 'default-project'
+              (mindMap as { workspaceId?: string } | null)?.workspaceId || "default-project"
             }
             onSelectConversation={handleSelectConversation}
             currentConversationId={currentConversationId}

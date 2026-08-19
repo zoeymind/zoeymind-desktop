@@ -1,7 +1,7 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import React from 'react'
-import { X } from 'lucide-react'
-import { useTranslation } from '@zoeymind/i18n'
+import React from "react"
+import { X } from "lucide-react"
+import { useTranslation } from "@zoeymind/i18n"
 
 interface PanelLayoutProps {
   title?: string
@@ -19,14 +19,14 @@ export const PanelLayout: React.FC<PanelLayoutProps> = ({
   children,
   isActive,
   onClose,
-  className = '',
-  customHeader
+  className = "",
+  customHeader,
 }) => {
   const { t } = useTranslation()
   if (!isActive) return null
 
   return (
-    <div className="fixed top-[68px] right-4 bg-card rounded-lg shadow-lg w-[320px] z-10 bottom-[30px] border border-border">
+    <div className="fixed top-[var(--mind-floating-top,68px)] right-[var(--mind-floating-right,16px)] bottom-[var(--mind-floating-bottom,30px)] z-10 w-[min(320px,var(--mind-floating-max-width,320px))] overflow-hidden rounded-lg border border-border bg-card shadow-lg">
       <div className="flex flex-col h-full">
         {/* 头部 */}
         {customHeader ? (
@@ -42,7 +42,7 @@ export const PanelLayout: React.FC<PanelLayoutProps> = ({
                 type="button"
                 onClick={onClose}
                 className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
-                title={t('mindmap.formatPanel.panelLayout.closeTitle', { title })}
+                title={t("mindmap.formatPanel.panelLayout.closeTitle", { title })}
               >
                 <X className="size-4" />
               </button>

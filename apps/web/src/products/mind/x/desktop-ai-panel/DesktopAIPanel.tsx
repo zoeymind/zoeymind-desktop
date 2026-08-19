@@ -13,8 +13,16 @@
  *   sendMessage -> appendMessage(user) -> streamChat -> onDelta 累积 ->
  *   onDone appendMessage(assistant) -> 清空 streaming state
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { ChevronDown, Loader2, MessageSquarePlus, Send, Sparkles, StopCircle, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react"
+import {
+  ChevronDown,
+  Loader2,
+  MessageSquarePlus,
+  Send,
+  Sparkles,
+  StopCircle,
+  Trash2,
+} from "lucide-react"
 import {
   Button,
   DropdownMenu,
@@ -24,9 +32,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Textarea,
-  cn
-} from '@zoeymind/ui'
-import { logger } from '@zoeymind/logger'
+  cn,
+} from "@zoeymind/ui"
+import { logger } from "@zoeymind/logger"
 import {
   chatRepo,
   loadModelsConfig,
@@ -35,10 +43,10 @@ import {
   type ChatMessageRow,
   type ModelsConfig,
   type ModelProvider,
-  type StreamChatHandle
-} from '@/shared/native'
-import { toast } from '@/shared/app-shared'
-import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
+  type StreamChatHandle,
+} from "@/shared/native"
+import { toast } from "@/shared/app-shared"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 
 interface DesktopAIPanelProps {
   isActive?: boolean
@@ -49,9 +57,10 @@ interface ModelOption {
   provider: ModelProvider
   modelName: string
   label: string
+  maxOutputTokens?: number
 }
 
-const LAST_MODEL_KEY = 'zm.desktopChat.lastModelKey'
+const LAST_MODEL_KEY = "zm.desktopChat.lastModelKey"
 
 export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement | null {
   const { workspaceId } = useProjectContext()
@@ -62,7 +71,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
   const [streaming, setStreaming] = useState<string | null>(null) // in-progress assistant text
   const [sending, setSending] = useState(false)
   const [modelKey, setModelKey] = useState<string | null>(null)
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState("")
   const streamHandleRef = useRef<StreamChatHandle | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
 
@@ -95,15 +104,16 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
   const modelOptions: ModelOption[] = useMemo(() => {
     if (!cfg) return []
     return cfg.models.flatMap(m => {
-      const provider = cfg.providers.find(p => p.id === m.provider)
+      const provider = cfg.providers.find(p => p.id === m.providerId)
       if (!provider) return []
       return [
         {
           key: `${provider.id}::${m.name}`,
           provider,
           modelName: m.name,
-          label: m.name
-        }
+          label: m.alias,
+          maxOutputTokens: m.maxOutputTokens,
+        },
       ]
     })
   }, [cfg])
@@ -114,13 +124,13 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
       setModelKey(null)
       return
     }
-    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(LAST_MODEL_KEY) : null
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_MODEL_KEY) : null
     const found = saved && modelOptions.find(o => o.key === saved)
     setModelKey(found ? found.key : modelOptions[0].key)
   }, [modelOptions])
 
   useEffect(() => {
-    if (modelKey && typeof localStorage !== 'undefined') {
+    if (modelKey && typeof localStorage !== "undefined") {
       localStorage.setItem(LAST_MODEL_KEY, modelKey)
     }
   }, [modelKey])
@@ -147,24 +157,11 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
     return groups
   }, [modelOptions])
 
-  const providerLabel = (kind: ModelProvider['kind']): string => {
-    switch (kind) {
-      case 'openai':
-        return 'OpenAI'
-      case 'anthropic':
-        return 'Anthropic'
-      case 'openai-compatible':
-        return 'OpenAI 兼容'
-      case 'ollama':
-        return 'Ollama'
-      case 'gemini':
-        return 'Google Gemini'
-    }
-  }
+  const providerLabel = (provider: ModelProvider): string => provider.name
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (currentConvId) return currentConvId
-    const conv = await chatRepo.createConversation(workspaceId ?? null, '新对话')
+    const conv = await chatRepo.createConversation(workspaceId ?? null, "新对话")
     setConversations(prev => [conv, ...prev])
     setCurrentConvId(conv.id)
     return conv.id
@@ -174,54 +171,49 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
     const text = input.trim()
     if (!text) return
     if (!currentModel) {
-      toast.error('请先在设置里配置并勾选模型')
+      toast.error("请先在设置里配置并勾选模型")
       return
     }
 
     setSending(true)
-    setInput('')
-    let assistantAccum = ''
+    setInput("")
+    let assistantAccum = ""
     try {
       const convId = await ensureConversation()
-      const userMsg = await chatRepo.appendMessage(convId, 'user', text)
+      const userMsg = await chatRepo.appendMessage(convId, "user", text)
       setMessages(prev => [...prev, userMsg])
-      setStreaming('')
+      setStreaming("")
 
       // 第一次发送: 用 user 首句前 30 字自动改标题
       if (messages.length === 0) {
         const title = text.slice(0, 30)
         await chatRepo.renameConversation(convId, title)
-        setConversations(prev =>
-          prev.map(c => (c.id === convId ? { ...c, title } : c))
-        )
+        setConversations(prev => prev.map(c => (c.id === convId ? { ...c, title } : c)))
       }
 
       // Build message history (with the new user msg)
-      const history: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
+      const history: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
         ...messages
-          .filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'system')
+          .filter(m => m.role === "user" || m.role === "assistant" || m.role === "system")
           .map(m => ({
-            role: m.role as 'user' | 'assistant' | 'system',
-            content: m.content
+            role: m.role as "user" | "assistant" | "system",
+            content: m.content,
           })),
-        { role: 'user' as const, content: text }
+        { role: "user" as const, content: text },
       ]
 
       const handle = await streamChat({
         provider: currentModel.provider,
         model: currentModel.modelName,
         messages: history,
+        maxTokens: currentModel.maxOutputTokens,
         onDelta: delta => {
           assistantAccum += delta
           setStreaming(assistantAccum)
         },
         onDone: async () => {
           const finalText = assistantAccum
-          const assistantMsg = await chatRepo.appendMessage(
-            convId,
-            'assistant',
-            finalText
-          )
+          const assistantMsg = await chatRepo.appendMessage(convId, "assistant", finalText)
           setMessages(prev => [...prev, assistantMsg])
           setStreaming(null)
           setSending(false)
@@ -229,11 +221,11 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
         },
         onError: msg => {
           toast.error(`AI 响应失败: ${msg}`)
-          logger.error('desktop chat error', msg)
+          logger.error("desktop chat error", msg)
           setStreaming(null)
           setSending(false)
           streamHandleRef.current = null
-        }
+        },
       })
       streamHandleRef.current = handle
     } catch (err) {
@@ -250,7 +242,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
     await handle.abort()
     // 抢救: 若已经积累了部分文本, 存下来
     if (streaming && streaming.length > 0 && currentConvId) {
-      const msg = await chatRepo.appendMessage(currentConvId, 'assistant', streaming)
+      const msg = await chatRepo.appendMessage(currentConvId, "assistant", streaming)
       setMessages(prev => [...prev, msg])
     }
     setStreaming(null)
@@ -259,7 +251,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
   }, [currentConvId, streaming])
 
   const newConversation = useCallback(async () => {
-    const conv = await chatRepo.createConversation(workspaceId ?? null, '新对话')
+    const conv = await chatRepo.createConversation(workspaceId ?? null, "新对话")
     setConversations(prev => [conv, ...prev])
     setCurrentConvId(conv.id)
     setMessages([])
@@ -278,7 +270,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
   )
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
       void sendMessage()
     }
@@ -292,7 +284,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
   return (
     <div
       className={cn(
-        'fixed top-12 right-4 z-10 flex h-[calc(100vh-96px)] w-[380px] flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-lg'
+        "fixed top-12 right-4 z-10 flex h-[calc(100vh-96px)] w-[380px] flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-lg"
       )}
     >
       {/* Header */}
@@ -301,18 +293,13 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
         <ConversationPicker
           conversations={conversations}
           currentId={currentConvId}
-          currentTitle={currentConv?.title ?? '新对话'}
+          currentTitle={currentConv?.title ?? "新对话"}
           onSelect={setCurrentConvId}
           onNew={newConversation}
           onDelete={removeConversation}
         />
         <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          title="新建会话"
-          onClick={newConversation}
-        >
+        <Button variant="ghost" size="icon-xs" title="新建会话" onClick={newConversation}>
           <MessageSquarePlus className="size-3.5" />
         </Button>
       </div>
@@ -324,16 +311,14 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
             <Sparkles className="size-8 text-muted-foreground/60" />
             <p className="text-xs text-muted-foreground">
               和 AI 讨论你的思维导图.
-              {!hasModels && ' 先到设置配置模型.'}
+              {!hasModels && " 先到设置配置模型."}
             </p>
           </div>
         )}
         {messages.map(m => (
           <MessageBubble key={m.id} role={m.role} content={m.content} />
         ))}
-        {streaming !== null && (
-          <MessageBubble role="assistant" content={streaming} streaming />
-        )}
+        {streaming !== null && <MessageBubble role="assistant" content={streaming} streaming />}
       </div>
 
       {/* Input */}
@@ -345,7 +330,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
             providers={cfg?.providers ?? []}
             providerLabel={providerLabel}
             currentKey={modelKey}
-            currentLabel={currentModel?.label ?? '选择模型'}
+            currentLabel={currentModel?.label ?? "选择模型"}
             onSelect={setModelKey}
           />
         </div>
@@ -353,7 +338,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder={hasModels ? '发消息 (Cmd/Ctrl+Enter)' : '先在设置里配置模型'}
+          placeholder={hasModels ? "发消息 (Cmd/Ctrl+Enter)" : "先在设置里配置模型"}
           className="min-h-16 resize-none"
           disabled={!hasModels}
         />
@@ -382,13 +367,13 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
 function MessageBubble({
   role,
   content,
-  streaming
+  streaming,
 }: {
-  role: ChatMessageRow['role']
+  role: ChatMessageRow["role"]
   content: string
   streaming?: boolean
 }): ReactElement {
-  if (role === 'user') {
+  if (role === "user") {
     return (
       <div className="flex justify-end">
         <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-xs leading-relaxed text-primary-foreground">
@@ -401,8 +386,8 @@ function MessageBubble({
     <div className="flex justify-start">
       <div
         className={cn(
-          'max-w-[85%] rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed text-foreground',
-          streaming && 'ring-1 ring-primary/30'
+          "max-w-[85%] rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed text-foreground",
+          streaming && "ring-1 ring-primary/30"
         )}
       >
         <MarkdownishText content={content} />
@@ -420,8 +405,8 @@ function MarkdownishText({ content }: { content: string }): ReactElement {
   return (
     <>
       {parts.map((part, i) => {
-        if (part.startsWith('```') && part.endsWith('```')) {
-          const inner = part.slice(3, -3).replace(/^[\w-]*\n/, '')
+        if (part.startsWith("```") && part.endsWith("```")) {
+          const inner = part.slice(3, -3).replace(/^[\w-]*\n/, "")
           return (
             <pre
               key={i}
@@ -456,7 +441,7 @@ function ConversationPicker({
   currentTitle,
   onSelect,
   onNew,
-  onDelete
+  onDelete,
 }: ConversationPickerProps): ReactElement {
   return (
     <DropdownMenu>
@@ -466,7 +451,7 @@ function ConversationPicker({
             className="flex min-w-0 flex-1 items-center gap-1 truncate rounded px-1.5 py-0.5 text-xs hover:bg-muted/60"
             title="切换会话"
           >
-            <span className="truncate font-medium">{currentTitle || '新对话'}</span>
+            <span className="truncate font-medium">{currentTitle || "新对话"}</span>
             <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
           </button>
         }
@@ -474,19 +459,14 @@ function ConversationPicker({
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel className="text-xs">会话</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {conversations.length === 0 && (
-          <DropdownMenuItem disabled>无会话</DropdownMenuItem>
-        )}
+        {conversations.length === 0 && <DropdownMenuItem disabled>无会话</DropdownMenuItem>}
         {conversations.map(c => (
           <DropdownMenuItem
             key={c.id}
             onClick={() => onSelect(c.id)}
-            className={cn(
-              'flex items-center gap-2 text-xs',
-              c.id === currentId && 'bg-muted'
-            )}
+            className={cn("flex items-center gap-2 text-xs", c.id === currentId && "bg-muted")}
           >
-            <span className="flex-1 truncate">{c.title || '未命名'}</span>
+            <span className="flex-1 truncate">{c.title || "未命名"}</span>
             <button
               className="text-muted-foreground hover:text-destructive"
               onClick={e => {
@@ -513,7 +493,7 @@ interface ModelPickerProps {
   options: ModelOption[]
   groups: Map<string, ModelOption[]>
   providers: ModelProvider[]
-  providerLabel: (kind: ModelProvider['kind']) => string
+  providerLabel: (provider: ModelProvider) => string
   currentKey: string | null
   currentLabel: string
   onSelect: (key: string) => void
@@ -526,7 +506,7 @@ function ModelPicker({
   providerLabel,
   currentKey,
   currentLabel,
-  onSelect
+  onSelect,
 }: ModelPickerProps): ReactElement {
   return (
     <DropdownMenu>
@@ -542,25 +522,20 @@ function ModelPicker({
         }
       />
       <DropdownMenuContent align="start" className="max-h-96 w-64 overflow-y-auto">
-        {options.length === 0 && (
-          <DropdownMenuItem disabled>请先在设置里勾选模型</DropdownMenuItem>
-        )}
+        {options.length === 0 && <DropdownMenuItem disabled>请先在设置里勾选模型</DropdownMenuItem>}
         {providers.map(p => {
           const opts = groups.get(p.id) ?? []
           if (opts.length === 0) return null
           return (
             <div key={p.id}>
               <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {providerLabel(p.kind)}
+                {providerLabel(p)}
               </DropdownMenuLabel>
               {opts.map(o => (
                 <DropdownMenuItem
                   key={o.key}
                   onClick={() => onSelect(o.key)}
-                  className={cn(
-                    'font-mono text-xs',
-                    o.key === currentKey && 'bg-muted'
-                  )}
+                  className={cn("font-mono text-xs", o.key === currentKey && "bg-muted")}
                 >
                   {o.label}
                 </DropdownMenuItem>

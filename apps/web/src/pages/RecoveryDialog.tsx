@@ -9,9 +9,19 @@
  *
  * 弹框会一次展示所有异常 recovery，用户可逐项处理，处理完自动关闭。
  */
-import { useEffect, useState } from 'react'
-import { router } from '@/routes'
-import { toast, createUUID } from '@/shared/app-shared'
+import { useEffect, useState } from "react"
+import { Clock3, FileWarning, FolderOpen, Trash2 } from "lucide-react"
+import { useLocale, useTranslation } from "@zoeymind/i18n"
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@zoeymind/ui"
+import { router } from "@/routes"
+import { toast, createUUID } from "@/shared/app-shared"
 import {
   listRecoveries,
   readRecoveryBundle,
@@ -21,15 +31,17 @@ import {
   findByPath,
   refreshProjectIndex,
   defaultVaultDir,
-  type RecoveryDescriptor
-} from '@/shared/native'
-import { exists, mkdir } from '@tauri-apps/plugin-fs'
-import { save as saveDialog } from '@tauri-apps/plugin-dialog'
-import { join } from '@tauri-apps/api/path'
+  type RecoveryDescriptor,
+} from "@/shared/native"
+import { exists, mkdir } from "@tauri-apps/plugin-fs"
+import { save as saveDialog } from "@tauri-apps/plugin-dialog"
+import { join } from "@tauri-apps/api/path"
 
 export function RecoveryDialog() {
+  const { t } = useTranslation()
+  const locale = useLocale()
   const [items, setItems] = useState<RecoveryDescriptor[] | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -48,19 +60,19 @@ export function RecoveryDialog() {
   }
 
   const handleReopen = async (desc: RecoveryDescriptor) => {
-    setBusy(true)
+    setBusyId(desc.projectId)
     try {
       const bundle = await readRecoveryBundle(desc.projectId)
-      if (!bundle) throw new Error('recovery bundle missing')
+      if (!bundle) throw new Error("recovery bundle missing")
 
       let targetPath = desc.sourcePath
       if (!targetPath || !(await exists(targetPath))) {
         const picked = await saveDialog({
-          defaultPath: await join(await defaultVaultDir(), `${desc.name || 'recovered'}.zmind`),
-          filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
+          defaultPath: await join(await defaultVaultDir(), `${desc.name || "recovered"}.zmind`),
+          filters: [{ name: "ZoeyMind", extensions: ["zmind"] }],
         })
         if (!picked) {
-          setBusy(false)
+          setBusyId(null)
           return
         }
         targetPath = picked
@@ -73,7 +85,7 @@ export function RecoveryDialog() {
       if (existing) {
         await refreshProjectIndex(existing.id, {
           name: bundle.meta.name,
-          nodeCount: bundle.meta.nodeCount
+          nodeCount: bundle.meta.nodeCount,
         })
       } else {
         id = createUUID()
@@ -83,72 +95,95 @@ export function RecoveryDialog() {
           id,
           path: targetPath,
           name: bundle.meta.name,
-          nodeCount: bundle.meta.nodeCount
+          nodeCount: bundle.meta.nodeCount,
         })
       }
 
       await clearRecovery(desc.projectId)
-      toast.success('已恢复')
+      toast.success(t("recovery.restored"))
       closeIfEmpty((items ?? []).filter(i => i.projectId !== desc.projectId))
       await router.navigate(`/editor/${id}`)
     } catch (error) {
-      toast.error(`恢复失败: ${(error as Error).message}`)
+      toast.error(t("recovery.restoreFailed", { message: (error as Error).message }))
     } finally {
-      setBusy(false)
+      setBusyId(null)
     }
   }
 
   const handleDiscard = async (desc: RecoveryDescriptor) => {
-    setBusy(true)
+    setBusyId(desc.projectId)
     try {
       await clearRecovery(desc.projectId)
       closeIfEmpty((items ?? []).filter(i => i.projectId !== desc.projectId))
     } finally {
-      setBusy(false)
+      setBusyId(null)
     }
   }
 
   if (!items || items.length === 0) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-[540px] max-h-[80vh] overflow-y-auto rounded-lg bg-background shadow-lg">
-        <div className="border-b p-4">
-          <h2 className="font-semibold">检测到 {items.length} 个未保存的编辑</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            上次异常关闭时留下了容灾快照。可以选择恢复到原位置，或直接丢弃。
-          </p>
-        </div>
-        <ul className="divide-y">
-          {items.map(desc => (
-            <li key={desc.projectId} className="p-4">
-              <div className="font-medium">{desc.name || '(未命名)'}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground truncate">
-                {desc.sourcePath ?? '源文件已丢失，将走另存为'}
-              </div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                快照时间：{new Date(desc.savedAt).toLocaleString()}
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  disabled={busy}
-                  onClick={() => void handleReopen(desc)}
-                  className="rounded bg-primary px-3 py-1 text-xs text-primary-foreground disabled:opacity-60"
-                >
-                  恢复
-                </button>
-                <button
-                  disabled={busy}
-                  onClick={() => void handleDiscard(desc)}
-                  className="rounded border px-3 py-1 text-xs disabled:opacity-60"
-                >
-                  丢弃
-                </button>
-              </div>
-            </li>
-          ))}
+    <Dialog open>
+      <DialogContent size="lg" showCloseButton={false} className="gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b px-6 py-5 text-left">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <FileWarning className="size-5" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <DialogTitle>{t("recovery.title", { count: items.length })}</DialogTitle>
+              <DialogDescription className="text-pretty">
+                {t("recovery.description")}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+        <ul className="max-h-[min(60vh,28rem)] divide-y overflow-y-auto">
+          {items.map(desc => {
+            const busy = busyId !== null
+            return (
+              <li key={desc.projectId} className="flex items-center gap-4 px-6 py-4">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="truncate font-medium">{desc.name || t("recovery.untitled")}</p>
+                  <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                    <FolderOpen className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {desc.sourcePath ?? t("recovery.sourceMissing")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock3 className="size-3.5" aria-hidden="true" />
+                    <time dateTime={new Date(desc.savedAt).toISOString()}>
+                      {new Intl.DateTimeFormat(locale, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      }).format(new Date(desc.savedAt))}
+                    </time>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void handleDiscard(desc)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 aria-hidden="true" />
+                    {t("recovery.discard")}
+                  </Button>
+                  <Button size="sm" disabled={busy} onClick={() => void handleReopen(desc)}>
+                    {busyId === desc.projectId ? t("recovery.restoring") : t("recovery.restore")}
+                  </Button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
-      </div>
-    </div>
+        <p className="border-t bg-muted/30 px-6 py-3 text-xs text-muted-foreground">
+          {t("recovery.discardWarning")}
+        </p>
+      </DialogContent>
+    </Dialog>
   )
 }

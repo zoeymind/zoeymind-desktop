@@ -71,7 +71,7 @@ function PresetOption({ preset, active, onSelect }: PresetOptionProps) {
   )
 }
 
-function ThemeModeToggle() {
+export function ThemeModeToggle() {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
 
@@ -98,7 +98,7 @@ function ThemeModeToggle() {
   )
 }
 
-function PresetGrid() {
+export function ThemePresetGrid() {
   const { presetId, setPreset } = useThemePreset()
 
   return (
@@ -116,7 +116,7 @@ function PresetGrid() {
 }
 
 function ThemeContent({ scroll = false }: { scroll?: boolean }) {
-  const presets = <PresetGrid />
+  const presets = <ThemePresetGrid />
 
   return (
     <div className="flex min-h-0 flex-col gap-2.5 p-2.5">

@@ -24,6 +24,7 @@ import {
   useProjectSessionStore,
 } from "@/products/mind/editor-session"
 import { reconcileEditorPaneOrder } from "@/products/mind/editor-session/editor-pane-order"
+import { getPanePresentationClass } from "@/products/mind/editor-session/editor-pane-presentation"
 const LOCAL_ORG_ID = "local"
 
 export function WorkspaceShell() {
@@ -89,11 +90,7 @@ function HomePane({ visible }: { visible: boolean }) {
 
   return (
     <div
-      className={
-        visible
-          ? "absolute inset-0 flex bg-background"
-          : "invisible absolute inset-0 flex bg-background pointer-events-none"
-      }
+      className={getPanePresentationClass(visible, "flex bg-background")}
       aria-hidden={!visible}
       inert={!visible ? true : undefined}
     >
@@ -145,7 +142,7 @@ function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
 
   return (
     <div
-      className={visible ? "absolute inset-0" : "invisible absolute inset-0 pointer-events-none"}
+      className={getPanePresentationClass(visible)}
       aria-hidden={!visible}
       inert={!visible ? true : undefined}
     >

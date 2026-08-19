@@ -1,4 +1,5 @@
 interface MindMapInstance {
+  el: HTMLElement
   on(event: string, handler: Function): void
   off(event: string, handler: Function): void
   emit(event: string, ...args: unknown[]): void
@@ -33,9 +34,11 @@ declare class TouchEvent {
     y: number
   } | null
   lastTouchStartDistance: number
+  gestureActive: boolean
   constructor({ mindMap }: { mindMap: MindMapInstance })
   bindEvent(): void
   unBindEvent(): void
+  isEventOwned(e: globalThis.TouchEvent): boolean
   onTouchstart(e: globalThis.TouchEvent): void
   onTouchmove(e: globalThis.TouchEvent): void
   onTouchcancel(e: globalThis.TouchEvent): void

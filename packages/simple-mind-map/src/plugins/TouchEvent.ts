@@ -2,6 +2,7 @@
 import { getTwoPointDistance } from '../utils'
 
 interface MindMapInstance {
+  el: HTMLElement
   on(event: string, handler: Function): void
   off(event: string, handler: Function): void
   emit(event: string, ...args: unknown[]): void
@@ -30,6 +31,7 @@ class TouchEvent {
   declare touchStartScaleView: Record<string, unknown> | null
   declare lastTouchStartPosition: { x: number; y: number } | null
   declare lastTouchStartDistance: number
+  declare gestureActive: boolean
 
   //  构造函数
   constructor({ mindMap }: { mindMap: MindMapInstance }) {
@@ -40,6 +42,7 @@ class TouchEvent {
     this.touchStartScaleView = null
     this.lastTouchStartPosition = null
     this.lastTouchStartDistance = 0
+    this.gestureActive = false
     this.bindEvent()
   }
 
@@ -65,8 +68,14 @@ class TouchEvent {
     window.removeEventListener('touchend', this.onTouchend)
   }
 
+  isEventOwned(e: globalThis.TouchEvent): boolean {
+    return e.composedPath().includes(this.mindMap.el)
+  }
+
   // 手指按下事件
   onTouchstart(e: globalThis.TouchEvent): void {
+    if (!this.isEventOwned(e)) return
+    this.gestureActive = true
     this.touchesNum = e.touches.length
     this.touchStartScaleView = null
     if (this.touchesNum === 1) {
@@ -90,6 +99,7 @@ class TouchEvent {
 
   // 手指移动事件
   onTouchmove(e: globalThis.TouchEvent): void {
+    if (!this.gestureActive) return
     let len = e.touches.length
     if (len === 1) {
       let touch = e.touches[0]
@@ -159,10 +169,17 @@ class TouchEvent {
   }
 
   // 手指取消事件
-  onTouchcancel(e: globalThis.TouchEvent): void {}
+  onTouchcancel(e: globalThis.TouchEvent): void {
+    if (!this.gestureActive) return
+    this.gestureActive = false
+    this.touchesNum = 0
+    this.singleTouchstartEvent = null
+    this.touchStartScaleView = null
+  }
 
   // 手指松开事件
   onTouchend(e: globalThis.TouchEvent): void {
+    if (!this.gestureActive) return
     this.dispatchMouseEvent('mouseup', e.target as EventTarget)
     if (this.touchesNum === 1) {
       // 模拟双击事件
@@ -184,6 +201,7 @@ class TouchEvent {
     this.touchesNum = 0
     this.singleTouchstartEvent = null
     this.touchStartScaleView = null
+    this.gestureActive = false
   }
 
   // 发送鼠标事件

@@ -1,11 +1,9 @@
 import { useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslation, SUPPORTED_LOCALES, useChangeLocale, useLocale } from "@zoeymind/i18n"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  Collapsible,
+  CollapsibleTrigger,
   Field,
   FieldContent,
   FieldDescription,
@@ -15,11 +13,15 @@ import {
   FieldSeparator,
   FieldSet,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
   Switch,
-  ToggleGroup,
-  ToggleGroupItem,
 } from "@zoeymind/ui"
-import { ThemeMenu } from "@/shared/app-shared"
+import { ThemeModeToggle, ThemePresetGrid } from "@/shared/app-shared/ThemeMenu"
 
 const PERFORMANCE_MODE_KEY = "mind-map-performance-mode"
 const PERFORMANCE_CONFIG_KEY = "mind-map-performance-config"
@@ -31,58 +33,98 @@ const DEFAULT_PERFORMANCE_CONFIG = {
   removeNodeWhenOutCanvas: true,
 }
 
-export function LanguageSettingsSection() {
+export function PreferencesSettingsSection() {
+  return (
+    <div className="space-y-8">
+      <LanguageSettingsSection />
+      <Separator />
+      <ThemeModeSettingsSection />
+      <Separator />
+      <ThemePresetSettingsSection />
+      <Separator />
+      <EditorSettingsSection />
+    </div>
+  )
+}
+
+function LanguageSettingsSection() {
   const { t } = useTranslation()
   const current = useLocale()
   const changeLocale = useChangeLocale()
 
   return (
-    <SettingsSection
-      title={t("language.switch")}
-      description={t("settings.languageDescription")}
-    >
-      <ToggleGroup
-        type="single"
-        value={current}
-        onValueChange={value => {
-          if (value) changeLocale(value)
-        }}
-        variant="outline"
-        spacing={1}
-        className="w-full"
-        aria-label={t("language.switch")}
-      >
-        {SUPPORTED_LOCALES.map(locale => (
-          <ToggleGroupItem key={locale} value={locale} className="flex-1">
-            {t(`language.${locale}`)}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+    <SettingsSection title={t("settings.language")} description={t("settings.languageDescription")}>
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldLabel htmlFor="application-language">{t("language.switch")}</FieldLabel>
+        </FieldContent>
+        <Select value={current} onValueChange={locale => locale && void changeLocale(locale)}>
+          <SelectTrigger id="application-language" className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_LOCALES.map(locale => (
+              <SelectItem key={locale} value={locale}>
+                {t(`language.${locale}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
     </SettingsSection>
   )
 }
 
-export function ThemeSettingsSection() {
+function ThemeModeSettingsSection() {
   const { t } = useTranslation()
 
   return (
-    <SettingsSection
-      title={t("common.themePreset")}
-      description={t("settings.themeDescription")}
-      contentClassName="p-0"
-    >
-      <ThemeMenu variant="inline" />
+    <SettingsSection title={t("settings.theme")} description={t("settings.themeDescription")}>
+      <ThemeModeToggle />
     </SettingsSection>
+  )
+}
+
+function ThemePresetSettingsSection() {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="t-acc space-y-3"
+      data-open={String(open)}
+    >
+      <CollapsibleTrigger className="t-acc-head flex w-full items-center justify-between gap-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold text-balance">{t("common.themePreset")}</h2>
+          <p className="text-sm text-muted-foreground text-pretty">
+            {t("settings.presetDescription")}
+          </p>
+        </div>
+        <span className="t-acc-chevron text-muted-foreground">
+          <ChevronDown className="size-4" />
+        </span>
+      </CollapsibleTrigger>
+      <div className="t-acc-panel">
+        <div className="t-acc-panel-inner">
+          <div className="h-64 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ThemePresetGrid />
+          </div>
+        </div>
+      </div>
+    </Collapsible>
   )
 }
 
 export function EditorSettingsSection() {
   const { t } = useTranslation()
   const [performanceMode, setPerformanceMode] = useState(
-    () => localStorage.getItem(PERFORMANCE_MODE_KEY) === "true",
+    () => localStorage.getItem(PERFORMANCE_MODE_KEY) === "true"
   )
   const [alignSameLevelWidth, setAlignSameLevelWidth] = useState(
-    () => localStorage.getItem(ALIGN_SAME_LEVEL_WIDTH_KEY) === "true",
+    () => localStorage.getItem(ALIGN_SAME_LEVEL_WIDTH_KEY) === "true"
   )
   const [config, setConfig] = useState(() => {
     const saved = localStorage.getItem(PERFORMANCE_CONFIG_KEY)
@@ -104,10 +146,7 @@ export function EditorSettingsSection() {
     localStorage.setItem(ALIGN_SAME_LEVEL_WIDTH_KEY, String(enabled))
   }
 
-  const updateConfig = (
-    field: keyof typeof config,
-    value: string | number | boolean,
-  ) => {
+  const updateConfig = (field: keyof typeof config, value: string | number | boolean) => {
     const next = {
       ...config,
       [field]: field === "time" || field === "padding" ? Number(value) : value,
@@ -190,9 +229,7 @@ export function EditorSettingsSection() {
                   <Switch
                     id="perf-remove-node"
                     checked={config.removeNodeWhenOutCanvas}
-                    onCheckedChange={checked =>
-                      updateConfig("removeNodeWhenOutCanvas", checked)
-                    }
+                    onCheckedChange={checked => updateConfig("removeNodeWhenOutCanvas", checked)}
                   />
                 </Field>
               </FieldGroup>
@@ -208,22 +245,18 @@ function SettingsSection({
   title,
   description,
   children,
-  contentClassName,
 }: {
   title: string
   description: string
   children: React.ReactNode
-  contentClassName?: string
 }) {
   return (
-    <div className="p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent className={contentClassName}>{children}</CardContent>
-      </Card>
-    </div>
+    <section className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-base font-semibold text-balance">{title}</h2>
+        <p className="text-sm text-muted-foreground text-pretty">{description}</p>
+      </div>
+      {children}
+    </section>
   )
 }

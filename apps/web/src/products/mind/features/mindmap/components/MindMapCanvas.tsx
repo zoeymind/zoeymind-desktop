@@ -34,13 +34,12 @@ import { useProjectContext } from "@/products/mind/features/mindmap/contexts/Pro
 import { useOrganization } from "@/shared/app-shared"
 import { toast, toastLoading, dismissToast } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
-import { Button, LoadErrorScreen } from "@zoeymind/ui"
+import { LoadErrorScreen } from "@zoeymind/ui"
 import type { default as MindMap } from "simple-mind-map"
 import { isWaitingForCollaboration } from "@/products/mind/features/mindmap/types/mindmap-extensions"
 import { logger } from "@zoeymind/logger"
 // Save 按钮的位置在 TopBar 内 (菜单右侧), 由 TopBar 自身消费 HeaderSaveButton.
 import { MindMapIconToolbar } from "./MindMapIconToolbar.tsx"
-import { HeaderTitle } from "./HeaderTitle"
 import { CanvasTool } from "./canvasTool/index.tsx"
 import { MindMapScrollbar } from "./MindMapScrollbar.tsx"
 import { PreviewIndicator } from "./PreviewIndicator.tsx"
@@ -66,6 +65,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
 
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
+  const canvasViewportRef = useRef<HTMLDivElement>(null)
   const visibleRef = useRef(visible)
   visibleRef.current = visible
   const formatPanelRef = useRef<FormatPanelRef>(null)
@@ -86,7 +86,6 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     },
     [updateGlobalProgress]
   )
-
   const { data: user } = useCurrentUser()
 
   // 使用Zustand stores替代本地状态
@@ -94,11 +93,52 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
 
   const { forceDefaultTemplate, setForceDefaultTemplate } = useUIStore()
 
+  useEffect(() => {
+    const viewport = canvasViewportRef.current
+    if (!viewport || !visible) return
+
+    const updateFloatingPanelBounds = () => {
+      const rect = viewport.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+      const titlebarBottom =
+        document.querySelector<HTMLElement>("[data-app-titlebar]")?.getBoundingClientRect()
+          .bottom ?? 0
+      const safeTop = Math.max(rect.top, titlebarBottom)
+      document.documentElement.style.setProperty("--mind-floating-top", `${safeTop + 16}px`)
+      document.documentElement.style.setProperty(
+        "--mind-floating-right",
+        `${window.innerWidth - rect.right + 16}px`
+      )
+      document.documentElement.style.setProperty(
+        "--mind-floating-bottom",
+        `${window.innerHeight - rect.bottom + 16}px`
+      )
+      document.documentElement.style.setProperty(
+        "--mind-floating-max-width",
+        `${Math.max(300, rect.width - 32)}px`
+      )
+    }
+
+    // WKWebView 不保证 hidden -> visible 会触发 ResizeObserver；等布局提交后主动测量。
+    let secondFrame = 0
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(updateFloatingPanelBounds)
+    })
+    const observer = new ResizeObserver(updateFloatingPanelBounds)
+    observer.observe(viewport)
+    window.addEventListener("resize", updateFloatingPanelBounds)
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+      observer.disconnect()
+      window.removeEventListener("resize", updateFloatingPanelBounds)
+    }
+  }, [visible])
+
   const { syncFromHook } = useCommentStore()
 
   // 权限管理 - 从store获取权限状态
   const { hasPermission, canEdit } = usePermissionStore()
-
 
   const handleLoadError = useCallback(
     (error: unknown) => {
@@ -469,7 +509,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
               <div className="flex-1" />
               <CanvasTool />
             </aside>
-            <div className="relative min-w-0 flex-1">
+            <div ref={canvasViewportRef} className="relative min-w-0 flex-1">
               <div
                 ref={containerRef}
                 key="mind-map-container"

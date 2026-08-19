@@ -1,26 +1,38 @@
 /**
  * 设置面板 —— Dialog 形式, 采用 @zoeymind/ui SettingsShell 布局.
  *
- * 拆分成三个 section:
- *  - providers: 服务商配置 (kind / baseURL / apiKey), 明确"保存"按钮 (staged state)
- *  - models:    从已配置服务商拉取到的模型, checkbox 打开/关闭 (自动保存, 小改动)
- *  - about:     版本信息
+ * 三个一级分类:
+ *  - preferences: 语言、主题与编辑器行为
+ *  - ai:          服务商配置与模型启用
+ *  - about:       版本与本地数据位置
  *
  * 数据源 = <appData>/models.json (由 loadModelsConfig / saveModelsConfig 读写).
  * 拉取到的可用模型列表在内存缓存, providerCache Map<providerId, FetchedModel[]>.
  */
-// @ts-nocheck
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import { Bot, Boxes, Info, Languages, Loader2, Palette, Plus, RefreshCw, Save, Settings2, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import {
+  Bot,
+  Check,
+  ChevronsUpDown,
+  ChevronDown,
+  Info,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Save,
+  Settings2,
+  Trash2,
+} from "lucide-react"
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Checkbox,
+  ConfirmDialog,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Input,
   Label,
   Select,
@@ -28,10 +40,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   SettingsShell,
-  cn
-} from '@zoeymind/ui'
-import { toast, createUUID } from '@/shared/app-shared'
+  cn,
+} from "@zoeymind/ui"
+import { toast, createUUID } from "@/shared/app-shared"
 import {
   loadModelsConfig,
   saveModelsConfig,
@@ -40,26 +55,22 @@ import {
   type ModelsConfig,
   type ModelProvider,
   type ModelEntry,
-  type ProviderKind
-} from '@/shared/native'
-import {
-  EditorSettingsSection,
-  LanguageSettingsSection,
-  ThemeSettingsSection
-} from './settings-preference-sections'
+  type ProviderKind,
+} from "@/shared/native"
+import { PreferencesSettingsSection } from "./settings-preference-sections"
 
 const PROVIDER_KIND_OPTIONS: Array<{ value: ProviderKind; label: string }> = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'openai-compatible', label: 'OpenAI 兼容' },
-  { value: 'ollama', label: 'Ollama' },
-  { value: 'gemini', label: 'Google Gemini' }
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openai-compatible", label: "OpenAI 兼容" },
+  { value: "ollama", label: "Ollama" },
+  { value: "gemini", label: "Google Gemini" },
 ]
 
 const kindLabel = (k: ProviderKind): string =>
   PROVIDER_KIND_OPTIONS.find(o => o.value === k)?.label ?? k
 
-type SectionId = 'language' | 'theme' | 'editor' | 'providers' | 'models' | 'about'
+type SectionId = "preferences" | "ai" | "about"
 
 interface SettingsDialogProps {
   open: boolean
@@ -72,7 +83,7 @@ const providerFetchCache = new Map<string, FetchedModel[]>()
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { t } = useTranslation()
   const [cfg, setCfg] = useState<ModelsConfig | null>(null)
-  const [active, setActive] = useState<SectionId>('language')
+  const [active, setActive] = useState<SectionId>("preferences")
   // 触发 models section 刷新用 (fetch cache 更新后)
   const [cacheVersion, setCacheVersion] = useState(0)
   const bumpCache = useCallback(() => setCacheVersion(v => v + 1), [])
@@ -90,401 +101,650 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     <SettingsShell
       open={open}
       onOpenChange={onOpenChange}
-      title={t('settings.title')}
+      title={t("settings.title")}
       items={[
-        { id: 'language', label: t('settings.language'), icon: Languages },
-        { id: 'theme', label: t('settings.theme'), icon: Palette },
-        { id: 'editor', label: t('settings.editor'), icon: Settings2 },
-        { id: 'providers', label: t('settings.providers'), icon: Boxes },
-        { id: 'models', label: t('settings.models'), icon: Bot },
-        { id: 'about', label: t('settings.about'), icon: Info }
+        { id: "preferences", label: t("settings.preferences"), icon: Settings2 },
+        { id: "ai", label: t("settings.aiModels"), icon: Bot },
+        { id: "about", label: t("settings.about"), icon: Info },
       ]}
       activeId={active}
       onActiveChange={id => setActive(id as SectionId)}
+      contentClassName={active === "ai" ? "overflow-hidden p-0" : undefined}
     >
-      {active === 'language' && <LanguageSettingsSection />}
-      {active === 'theme' && <ThemeSettingsSection />}
-      {active === 'editor' && <EditorSettingsSection />}
-      {active === 'providers' && cfg && (
-        <ProvidersSection cfg={cfg} persist={persist} onFetch={bumpCache} />
+      {active === "preferences" && <PreferencesSettingsSection />}
+      {active === "ai" && cfg && (
+        <AIModelsSection
+          cfg={cfg}
+          persist={persist}
+          cacheVersion={cacheVersion}
+          onFetch={bumpCache}
+        />
       )}
-      {active === 'models' && cfg && (
-        <ModelsSection cfg={cfg} persist={persist} cacheVersion={cacheVersion} />
-      )}
-      {active === 'about' && <AboutSection />}
+      {active === "about" && <AboutSection />}
     </SettingsShell>
   )
 }
 
-interface ProvidersSectionProps {
+interface AIModelsSectionProps {
   cfg: ModelsConfig
   persist: (next: ModelsConfig) => Promise<void>
+  cacheVersion: number
   onFetch: () => void
 }
 
-function ProvidersSection({ cfg, persist, onFetch }: ProvidersSectionProps) {
-  // Staged 副本 — 编辑不立即写盘, 点"保存"才 persist.
-  const [staged, setStaged] = useState<ModelProvider[]>(cfg.providers)
-  const [dirty, setDirty] = useState(false)
+function AIModelsSection({ cfg, persist, cacheVersion, onFetch }: AIModelsSectionProps) {
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
+    () => cfg.providers[0]?.id ?? null
+  )
+  const [providerPendingDelete, setProviderPendingDelete] = useState<ModelProvider | null>(null)
+  const selectedProvider =
+    cfg.providers.find(provider => provider.id === selectedProviderId) ?? cfg.providers[0] ?? null
+
+  const addProvider = async () => {
+    const id = createUUID()
+    const provider: ModelProvider = {
+      id,
+      name: `OpenAI ${cfg.providers.length + 1}`,
+      kind: "openai",
+      baseURL: "",
+      apiKey: "",
+    }
+    await persist({ ...cfg, providers: [...cfg.providers, provider] })
+    setSelectedProviderId(id)
+  }
+
+  const removeProvider = async (providerId: string) => {
+    providerFetchCache.delete(providerId)
+    const providers = cfg.providers.filter(provider => provider.id !== providerId)
+    await persist({
+      ...cfg,
+      providers,
+      models: cfg.models.filter(model => model.providerId !== providerId),
+    })
+    setSelectedProviderId(providers[0]?.id ?? null)
+  }
+
+  return (
+    <>
+      <div className="grid h-full min-h-0 grid-cols-[12rem_minmax(0,1fr)]">
+        <section className="flex min-h-0 flex-col border-r px-4 py-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">服务商</h2>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => void addProvider()}
+              aria-label="新增服务商"
+            >
+              <Plus />
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {cfg.providers.map(provider => {
+              const active = provider.id === selectedProvider?.id
+              const modelCount = cfg.models.filter(model => model.providerId === provider.id).length
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  onClick={() => setSelectedProviderId(provider.id)}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors",
+                    active ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{provider.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {kindLabel(provider.kind)} · {modelCount} 个模型
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+            {cfg.providers.length === 0 && (
+              <p className="py-3 text-xs text-muted-foreground">还没有服务商。</p>
+            )}
+          </div>
+        </section>
+
+        <section className="min-h-0 min-w-0 overflow-y-auto px-6 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {selectedProvider ? (
+            <ProviderDetail
+              key={selectedProvider.id}
+              provider={selectedProvider}
+              cfg={cfg}
+              persist={persist}
+              cacheVersion={cacheVersion}
+              onFetch={onFetch}
+              onRemove={() => setProviderPendingDelete(selectedProvider)}
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+              <p className="text-sm text-muted-foreground">新增服务商后即可配置模型。</p>
+              <Button variant="outline" size="sm" onClick={() => void addProvider()}>
+                <Plus />
+                新增服务商
+              </Button>
+            </div>
+          )}
+        </section>
+      </div>
+      <ConfirmDialog
+        open={providerPendingDelete !== null}
+        onOpenChange={open => !open && setProviderPendingDelete(null)}
+        title={`删除“${providerPendingDelete?.name ?? ""}”？`}
+        description={`该服务商及其绑定的 ${cfg.models.filter(model => model.providerId === providerPendingDelete?.id).length} 个模型将被删除。此操作无法撤销。`}
+        confirmText="删除服务商"
+        variant="destructive"
+        onConfirm={async () => {
+          if (providerPendingDelete) await removeProvider(providerPendingDelete.id)
+          setProviderPendingDelete(null)
+        }}
+      />
+    </>
+  )
+}
+
+interface ProviderDetailProps {
+  provider: ModelProvider
+  cfg: ModelsConfig
+  persist: (next: ModelsConfig) => Promise<void>
+  cacheVersion: number
+  onFetch: () => void
+  onRemove: () => void
+}
+
+function ProviderDetail({
+  provider,
+  cfg,
+  persist,
+  cacheVersion,
+  onFetch,
+  onRemove,
+}: ProviderDetailProps) {
+  const [draft, setDraft] = useState(provider)
   const [saving, setSaving] = useState(false)
+  const [fetching, setFetching] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [newModel, setNewModel] = useState<ModelEntry | null>(null)
+  const [expandedModelId, setExpandedModelId] = useState<string | null>(null)
+  void cacheVersion
 
-  useEffect(() => {
-    setStaged(cfg.providers)
-    setDirty(false)
-  }, [cfg.providers])
+  const dirty = JSON.stringify(draft) !== JSON.stringify(provider)
+  const models = cfg.models.filter(model => model.providerId === provider.id)
+  const fetched = providerFetchCache.get(provider.id) ?? []
 
-  const update = (id: string, patch: Partial<ModelProvider>) => {
-    setStaged(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)))
-    setDirty(true)
-  }
-
-  const add = () => {
-    setStaged(prev => [
-      ...prev,
-      { id: createUUID(), kind: 'openai', baseURL: '', apiKey: '' }
-    ])
-    setDirty(true)
-  }
-
-  const remove = (id: string) => {
-    setStaged(prev => prev.filter(p => p.id !== id))
-    setDirty(true)
-    providerFetchCache.delete(id)
-  }
-
-  const save = async () => {
+  const saveProvider = async () => {
+    const name = draft.name.trim()
+    if (!name) {
+      toast.error("请输入服务商名称")
+      return
+    }
     setSaving(true)
     try {
-      // 同时清掉已删 provider 的关联 models.
-      const stagedIds = new Set(staged.map(p => p.id))
-      const models = cfg.models.filter(m => stagedIds.has(m.provider))
-      await persist({ ...cfg, providers: staged, models })
-      setDirty(false)
-      toast.success('服务商配置已保存')
-    } catch (err) {
-      toast.error(`保存失败: ${err instanceof Error ? err.message : String(err)}`)
+      await persist({
+        ...cfg,
+        providers: cfg.providers.map(item => (item.id === provider.id ? { ...draft, name } : item)),
+      })
+      setDraft(current => ({ ...current, name }))
+      toast.success("服务商已保存")
     } finally {
       setSaving(false)
     }
   }
 
-  const revert = () => {
-    setStaged(cfg.providers)
-    setDirty(false)
-  }
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex-1 space-y-6 overflow-y-auto p-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <div>
-              <CardTitle>服务商</CardTitle>
-              <CardDescription>
-                配置 Base URL + API Key. 保存后在"模型" tab 里拉取可用列表.
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={add}>
-              <Plus className="mr-1 size-3.5" />
-              新增
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {staged.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                还没有服务商, 点右上"新增"开始.
-              </p>
-            )}
-            {staged.map(p => (
-              <ProviderEditor
-                key={p.id}
-                provider={p}
-                onUpdate={patch => update(p.id, patch)}
-                onRemove={() => remove(p.id)}
-                onFetched={onFetch}
-                savedInCfg={cfg.providers.some(x => x.id === p.id)}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      {dirty && (
-        <div className="flex items-center justify-end gap-2 border-t bg-muted/40 px-6 py-3">
-          <span className="mr-auto text-xs text-muted-foreground">
-            有未保存改动
-          </span>
-          <Button variant="ghost" size="sm" onClick={revert} disabled={saving}>
-            撤销
-          </Button>
-          <Button size="sm" onClick={save} disabled={saving}>
-            {saving ? (
-              <Loader2 className="mr-1 size-3.5 animate-spin" />
-            ) : (
-              <Save className="mr-1 size-3.5" />
-            )}
-            保存
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface ProviderEditorProps {
-  provider: ModelProvider
-  onUpdate: (patch: Partial<ModelProvider>) => void
-  onRemove: () => void
-  onFetched: () => void
-  /** 该 provider 是否已在磁盘 cfg 里 (决定是否允许拉取). */
-  savedInCfg: boolean
-}
-
-function ProviderEditor({
-  provider,
-  onUpdate,
-  onRemove,
-  onFetched,
-  savedInCfg
-}: ProviderEditorProps) {
-  const [fetching, setFetching] = useState(false)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const cached = providerFetchCache.get(provider.id) ?? null
-
-  const doFetch = async () => {
+  const fetchModels = async () => {
     setFetching(true)
     setFetchError(null)
     try {
-      const list = await fetchProviderModels(provider)
-      providerFetchCache.set(provider.id, list)
-      onFetched()
-      if (list.length === 0) {
-        setFetchError('provider 返回空列表')
-      } else {
-        toast.success(`拉到 ${list.length} 个模型, 到 "模型" tab 勾选`)
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setFetchError(msg)
-      toast.error(`拉取失败: ${msg}`)
+      const models = await fetchProviderModels(draft)
+      providerFetchCache.set(provider.id, models)
+      onFetch()
+      if (models.length === 0) setFetchError("服务商未返回可用模型")
+    } catch (error) {
+      setFetchError(error instanceof Error ? error.message : String(error))
     } finally {
       setFetching(false)
     }
   }
 
+  const beginAddModel = () => {
+    if (newModel) return
+    setExpandedModelId(null)
+    setNewModel({
+      id: createUUID(),
+      providerId: provider.id,
+      name: "",
+      alias: "",
+      capabilities: ["chat"],
+    })
+  }
+
+  const validateModel = (model: ModelEntry): ModelEntry | null => {
+    const name = model.name.trim()
+    const alias = model.alias.trim()
+    if (!alias) {
+      toast.error("请输入模型别名")
+      return null
+    }
+    if (!name) {
+      toast.error("请选择或输入模型 ID")
+      return null
+    }
+    if (
+      cfg.models.some(
+        item => item.id !== model.id && item.providerId === provider.id && item.name === name
+      )
+    ) {
+      toast.error("该服务商下已存在相同模型 ID")
+      return null
+    }
+    return { ...model, name, alias }
+  }
+
+  const confirmNewModel = async (draftModel: ModelEntry) => {
+    const model = validateModel(draftModel)
+    if (!model) return false
+    await persist({ ...cfg, models: [...cfg.models, model] })
+    setNewModel(null)
+    return true
+  }
+
+  const confirmModelEdit = async (draftModel: ModelEntry) => {
+    const model = validateModel(draftModel)
+    if (!model) return false
+    await persist({
+      ...cfg,
+      models: cfg.models.map(item => (item.id === model.id ? model : item)),
+    })
+    setExpandedModelId(null)
+    return true
+  }
+
+  const removeModel = async (modelId: string) => {
+    await persist({ ...cfg, models: cfg.models.filter(model => model.id !== modelId) })
+    setExpandedModelId(null)
+  }
+
   return (
-    <div className="space-y-3 rounded-md border p-4">
-      <div className="flex items-center gap-2">
-        <Select
-          value={provider.kind}
-          onValueChange={(v: string) => onUpdate({ kind: v as ProviderKind })}
+    <div className="space-y-7">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold text-balance">{provider.name}</h2>
+          <p className="text-sm text-muted-foreground">配置连接信息并管理绑定到此服务商的模型。</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onRemove}
+          aria-label="删除服务商"
+          className="text-destructive hover:text-destructive"
         >
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PROVIDER_KIND_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="flex-1" />
-        <Button variant="ghost" size="icon-sm" onClick={onRemove}>
-          <Trash2 className="size-4" />
+          <Trash2 />
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Base URL</Label>
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor={`provider-name-${provider.id}`}>名称</Label>
           <Input
-            placeholder={
-              provider.kind === 'ollama'
-                ? 'http://localhost:11434'
-                : '默认端点 (留空即用官方)'
-            }
-            value={provider.baseURL ?? ''}
-            onChange={e => onUpdate({ baseURL: e.target.value })}
+            id={`provider-name-${provider.id}`}
+            value={draft.name}
+            onChange={event => setDraft(current => ({ ...current, name: event.target.value }))}
+            placeholder="例如：公司 OpenAI"
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">API Key</Label>
+        <div className="space-y-1.5">
+          <Label>类型</Label>
+          <Select
+            value={draft.kind}
+            onValueChange={kind =>
+              kind && setDraft(current => ({ ...current, kind: kind as ProviderKind }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PROVIDER_KIND_OPTIONS.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`provider-url-${provider.id}`}>Base URL</Label>
           <Input
+            id={`provider-url-${provider.id}`}
+            value={draft.baseURL ?? ""}
+            onChange={event => setDraft(current => ({ ...current, baseURL: event.target.value }))}
+            placeholder={draft.kind === "ollama" ? "http://localhost:11434" : "留空使用官方地址"}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor={`provider-key-${provider.id}`}>API Key</Label>
+          <Input
+            id={`provider-key-${provider.id}`}
             type="password"
-            placeholder={provider.kind === 'ollama' ? '(不需要)' : 'sk-...'}
-            value={provider.apiKey ?? ''}
-            onChange={e => onUpdate({ apiKey: e.target.value })}
+            value={draft.apiKey ?? ""}
+            onChange={event => setDraft(current => ({ ...current, apiKey: event.target.value }))}
+            placeholder={draft.kind === "ollama" ? "不需要" : "sk-..."}
           />
         </div>
       </div>
 
       <div className="flex items-center gap-2">
+        <Button size="sm" onClick={() => void saveProvider()} disabled={!dirty || saving}>
+          {saving ? <Loader2 className="animate-spin" /> : <Save />}
+          保存服务商
+        </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={doFetch}
-          disabled={fetching || !savedInCfg}
-          title={savedInCfg ? undefined : '请先保存服务商配置'}
+          onClick={() => void fetchModels()}
+          disabled={fetching || dirty}
+          title={dirty ? "请先保存服务商" : undefined}
         >
-          {fetching ? (
-            <Loader2 className="mr-1 size-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-1 size-3.5" />
-          )}
-          {cached ? '重新拉取' : '拉取模型列表'}
+          {fetching ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+          {fetched ? "重新拉取模型" : "拉取模型"}
         </Button>
-        {fetchError && (
-          <span className="truncate text-xs text-destructive">{fetchError}</span>
-        )}
-        {cached && !fetchError && (
-          <span className="text-xs text-muted-foreground">
-            {cached.length} 个可用
-          </span>
-        )}
-        {!savedInCfg && !cached && (
-          <span className="text-xs text-muted-foreground">
-            保存后才能拉取
-          </span>
-        )}
+        {fetchError && <span className="truncate text-xs text-destructive">{fetchError}</span>}
       </div>
+
+      <section className="space-y-3 border-t pt-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">模型</h3>
+            <p className="text-xs text-muted-foreground">每个模型都绑定到 {provider.name}。</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={beginAddModel} disabled={newModel !== null}>
+            <Plus />
+            添加模型
+          </Button>
+        </div>
+        {models.length === 0 && !newModel ? (
+          <p className="py-3 text-sm text-muted-foreground">
+            添加模型后可配置别名、模型 ID 和 Token 限制。
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {newModel && (
+              <ModelEditor
+                key={newModel.id}
+                model={newModel}
+                suggestions={fetched.map(item => item.id)}
+                expanded
+                isNew
+                onExpandedChange={() => undefined}
+                onConfirm={confirmNewModel}
+                onCancel={() => setNewModel(null)}
+                onRemove={() => undefined}
+              />
+            )}
+            {models.map(model => (
+              <ModelEditor
+                key={model.id}
+                model={model}
+                suggestions={fetched.map(item => item.id)}
+                expanded={expandedModelId === model.id}
+                onExpandedChange={expanded => setExpandedModelId(expanded ? model.id : null)}
+                onConfirm={confirmModelEdit}
+                onCancel={() => setExpandedModelId(null)}
+                onRemove={() => void removeModel(model.id)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
 
-interface ModelsSectionProps {
-  cfg: ModelsConfig
-  persist: (next: ModelsConfig) => Promise<void>
-  cacheVersion: number
+interface ModelEditorProps {
+  model: ModelEntry
+  suggestions: string[]
+  expanded: boolean
+  isNew?: boolean
+  onExpandedChange: (expanded: boolean) => void
+  onConfirm: (model: ModelEntry) => Promise<boolean>
+  onCancel: () => void
+  onRemove: () => void
 }
 
-function ModelsSection({ cfg, persist, cacheVersion }: ModelsSectionProps) {
-  // cacheVersion 只是让这个 section 在 fetch 后重渲染 (读 module-level Map)
-  void cacheVersion
-
-  const providersWithFetched = useMemo(
-    () =>
-      cfg.providers
-        .map(p => ({
-          provider: p,
-          fetched: providerFetchCache.get(p.id) ?? null
-        }))
-        .filter(x => x.fetched !== null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cfg.providers, cacheVersion]
+function ModelEditor({
+  model,
+  suggestions,
+  expanded,
+  isNew = false,
+  onExpandedChange,
+  onConfirm,
+  onCancel,
+  onRemove,
+}: ModelEditorProps) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [draft, setDraft] = useState(model)
+  const [query, setQuery] = useState(model.name)
+  const [saving, setSaving] = useState(false)
+  const filteredSuggestions = suggestions.filter(suggestion =>
+    suggestion.toLowerCase().includes(query.toLowerCase())
   )
 
-  const enabledByProvider = useMemo(() => {
-    const m = new Map<string, Set<string>>()
-    for (const model of cfg.models) {
-      if (!m.has(model.provider)) m.set(model.provider, new Set())
-      m.get(model.provider)!.add(model.name)
+  const toggleExpanded = () => {
+    if (!expanded) {
+      setDraft(model)
+      setQuery(model.name)
     }
-    return m
-  }, [cfg.models])
+    onExpandedChange(!expanded)
+  }
 
-  const toggle = (providerId: string, modelId: string) => {
-    const set = enabledByProvider.get(providerId)
-    const already = set?.has(modelId) ?? false
-    let models: ModelEntry[]
-    if (already) {
-      models = cfg.models.filter(
-        m => !(m.provider === providerId && m.name === modelId)
-      )
-    } else {
-      models = [
-        ...cfg.models,
-        {
-          id: createUUID(),
-          provider: providerId,
-          name: modelId,
-          capabilities: ['chat']
-        }
-      ]
+  const chooseModel = (name: string) => {
+    const normalized = name.trim()
+    setQuery(normalized)
+    setDraft(current => ({ ...current, name: normalized }))
+    setPickerOpen(false)
+  }
+
+  const parseOptionalTokenLimit = (value: string): number | undefined => {
+    if (!value) return undefined
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined
+  }
+
+  const confirm = async () => {
+    setSaving(true)
+    try {
+      await onConfirm(draft)
+    } finally {
+      setSaving(false)
     }
-    void persist({ ...cfg, models })
   }
 
   return (
-    <div className="space-y-6 overflow-y-auto p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>启用的模型</CardTitle>
-          <CardDescription>
-            勾选希望在思维导图 AI 面板里出现的模型 (改动自动保存).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {providersWithFetched.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              还没有拉取任何服务商的模型. 到 "服务商" tab 添加并点 "拉取模型列表".
-            </p>
-          )}
-          {providersWithFetched.map(({ provider, fetched }) => {
-            const enabled = enabledByProvider.get(provider.id) ?? new Set()
-            return (
-              <div key={provider.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium">
-                    {kindLabel(provider.kind)}
-                    {provider.baseURL && (
-                      <span className="ml-2 font-mono text-xs text-muted-foreground">
-                        {provider.baseURL}
+    <div className="t-acc border-b" data-open={expanded ? "true" : "false"}>
+      {!isNew && (
+        <button
+          type="button"
+          className="t-acc-head flex w-full cursor-pointer items-center gap-3 py-3 text-left"
+          onClick={toggleExpanded}
+          aria-expanded={expanded}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium">{model.alias}</span>
+            <span className="block truncate font-mono text-xs text-muted-foreground">
+              {model.name}
+              {(model.maxContextTokens || model.maxOutputTokens) &&
+                ` · ${model.maxContextTokens ? `上下文 ${model.maxContextTokens}` : ""}${model.maxContextTokens && model.maxOutputTokens ? " / " : ""}${model.maxOutputTokens ? `输出 ${model.maxOutputTokens}` : ""}`}
+            </span>
+          </span>
+          <ChevronDown className="t-acc-chevron size-4 shrink-0 text-muted-foreground" />
+        </button>
+      )}
+      <div className="t-acc-panel grid" aria-hidden={!expanded}>
+        <div className="t-acc-panel-inner min-h-0 overflow-hidden">
+          <div className={cn("space-y-4 bg-muted/30 p-3", !isNew && "mb-3")}>
+            {isNew && <p className="text-sm font-medium">添加模型</p>}
+            <div className="space-y-1.5">
+              <Label htmlFor={`model-alias-${model.id}`}>别名</Label>
+              <Input
+                id={`model-alias-${model.id}`}
+                value={draft.alias}
+                placeholder="例如：日常对话"
+                onChange={event => setDraft(current => ({ ...current, alias: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>模型 ID</Label>
+              <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                <PopoverTrigger
+                  nativeButton
+                  render={
+                    <Button
+                      variant="outline"
+                      className="w-full justify-between font-mono font-normal"
+                    >
+                      <span className={cn("truncate", !draft.name && "text-muted-foreground")}>
+                        {draft.name || "选择或输入模型 ID"}
                       </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {enabled.size} / {fetched!.length}
-                  </span>
-                </div>
-                <div className="max-h-64 space-y-0.5 overflow-y-auto rounded-md border bg-muted/30 p-2">
-                  {fetched!.map(m => {
-                    const on = enabled.has(m.id)
-                    return (
-                      <label
-                        key={m.id}
-                        className={cn(
-                          'flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors',
-                          on ? 'bg-primary/10 text-foreground' : 'hover:bg-muted/60'
-                        )}
-                      >
-                        <Checkbox
-                          checked={on}
-                          onCheckedChange={() => toggle(provider.id, m.id)}
-                        />
-                        <span className="flex-1 truncate font-mono">{m.id}</span>
-                      </label>
-                    )
-                  })}
-                </div>
+                      <ChevronsUpDown className="text-muted-foreground" />
+                    </Button>
+                  }
+                />
+                <PopoverContent align="start" className="w-(--anchor-width) p-0">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="搜索或输入模型 ID"
+                      value={query}
+                      onValueChange={setQuery}
+                    />
+                    <CommandList>
+                      {query.trim() && query.trim() !== draft.name && (
+                        <CommandGroup heading="自定义">
+                          <CommandItem
+                            value={`custom:${query}`}
+                            onSelect={() => chooseModel(query)}
+                          >
+                            使用“{query.trim()}”
+                          </CommandItem>
+                        </CommandGroup>
+                      )}
+                      <CommandEmpty>输入模型 ID 后使用上方选项。</CommandEmpty>
+                      {filteredSuggestions.length > 0 && (
+                        <CommandGroup heading="可用模型">
+                          {filteredSuggestions.map(suggestion => (
+                            <CommandItem
+                              key={suggestion}
+                              value={suggestion}
+                              onSelect={() => chooseModel(suggestion)}
+                            >
+                              <span className="truncate font-mono">{suggestion}</span>
+                              {suggestion === draft.name && <Check className="ml-auto" />}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={`model-context-${model.id}`}>最大上下文 Token</Label>
+                <Input
+                  id={`model-context-${model.id}`}
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={draft.maxContextTokens ?? ""}
+                  placeholder="例如 128000"
+                  onChange={event =>
+                    setDraft(current => ({
+                      ...current,
+                      maxContextTokens: parseOptionalTokenLimit(event.target.value),
+                    }))
+                  }
+                />
               </div>
-            )
-          })}
-        </CardContent>
-      </Card>
+              <div className="space-y-1.5">
+                <Label htmlFor={`model-output-${model.id}`}>最大输出 Token</Label>
+                <Input
+                  id={`model-output-${model.id}`}
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={draft.maxOutputTokens ?? ""}
+                  placeholder="例如 8192"
+                  onChange={event =>
+                    setDraft(current => ({
+                      ...current,
+                      maxOutputTokens: parseOptionalTokenLimit(event.target.value),
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              {!isNew ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRemove}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 />
+                  删除
+                </Button>
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+                  取消
+                </Button>
+                <Button size="sm" onClick={() => void confirm()} disabled={saving}>
+                  {saving ? <Loader2 className="animate-spin" /> : <Check />}
+                  确认
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
 function AboutSection() {
   return (
-    <div className="p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>ZoeyMind Desktop</CardTitle>
-          <CardDescription>本地思维导图编辑器</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>版本 0.1.0</p>
-          <p>数据保存在 <code className="text-xs">~/Documents/ZoeyMind</code></p>
-          <p>
-            配置文件:{' '}
+    <section className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-base font-semibold text-balance">ZoeyMind Desktop</h2>
+        <p className="text-sm text-muted-foreground">本地思维导图编辑器</p>
+      </div>
+      <dl className="divide-y text-sm">
+        <div className="flex justify-between py-3">
+          <dt className="text-muted-foreground">版本</dt>
+          <dd className="tabular-nums">0.1.0</dd>
+        </div>
+        <div className="flex justify-between gap-6 py-3">
+          <dt className="text-muted-foreground">数据目录</dt>
+          <dd>
+            <code className="text-xs">~/Documents/ZoeyMind</code>
+          </dd>
+        </div>
+        <div className="flex justify-between gap-6 py-3">
+          <dt className="text-muted-foreground">配置文件</dt>
+          <dd>
             <code className="text-xs">&lt;appData&gt;/models.json</code>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+          </dd>
+        </div>
+      </dl>
+    </section>
   )
 }
 

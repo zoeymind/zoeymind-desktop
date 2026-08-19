@@ -36,6 +36,7 @@ export function TitleBar() {
   return (
     <div
       data-tauri-drag-region
+      data-app-titlebar
       className="fixed inset-x-0 top-0 z-[100] flex h-10 items-stretch bg-muted/60 backdrop-blur"
     >
       {/* macOS 红绿灯占位由 TabBar 内部 startInset=88 让开; 液态 panel 仍从 x=0 铺满. */}
