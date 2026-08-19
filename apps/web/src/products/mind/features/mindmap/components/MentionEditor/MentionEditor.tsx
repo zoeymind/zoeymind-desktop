@@ -80,7 +80,7 @@ const MentionMenu = forwardRef<HTMLUListElement, BeautifulMentionsMenuProps>(
   ({ loading: _loading, ...props }, ref) => (
     <ul
       ref={ref}
-      className="absolute bottom-full left-0 z-10 mb-1.5 max-h-[240px] min-w-[180px] max-w-[280px] overflow-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+      className="absolute bottom-full left-0 z-[100] mb-1.5 max-h-[240px] min-w-[180px] max-w-[280px] overflow-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
       {...props}
     />
   )
