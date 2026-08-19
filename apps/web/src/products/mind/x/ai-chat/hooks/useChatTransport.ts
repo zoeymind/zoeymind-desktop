@@ -146,6 +146,7 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
 
 import { streamText, convertToModelMessages, type UIMessage } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { loadModelsConfig, nativeFetch, type ModelProvider } from '@/shared/native'
@@ -168,16 +169,24 @@ function resolveBaseURL(provider: ModelProvider): string | undefined {
 function makeLanguageModel(provider: ModelProvider, modelName: string) {
   const baseURL = resolveBaseURL(provider)
   switch (provider.kind) {
-    case 'openai':
-    case 'openai-compatible':
-    case 'ollama': {
-      // Ollama 也有 OpenAI 兼容层 (/v1/chat/completions), 走同一分支.
+    case 'openai': {
       const openai = createOpenAI({
         baseURL: baseURL ? `${baseURL}/v1` : undefined,
-        apiKey: provider.apiKey || 'ollama',
+        apiKey: provider.apiKey ?? '',
         fetch: nativeFetch
       })
       return openai(modelName)
+    }
+    case 'openai-compatible':
+    case 'ollama': {
+      // Ollama 也有 /v1/chat/completions 兼容层, 走 openai-compatible.
+      const oc = createOpenAICompatible({
+        name: provider.kind === 'ollama' ? 'ollama' : 'openai-compatible',
+        baseURL: baseURL ? `${baseURL}/v1` : 'http://localhost:11434/v1',
+        apiKey: provider.apiKey || undefined,
+        fetch: nativeFetch
+      })
+      return oc(modelName)
     }
     case 'anthropic': {
       const anthropic = createAnthropic({

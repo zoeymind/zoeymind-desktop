@@ -14,9 +14,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.39",
-    "@ai-sdk/google": "^4.0.45",
-    "@ai-sdk/openai": "^4.0.43",
+    "@ai-sdk/anthropic": "^3.0.111",
+    "@ai-sdk/google": "^3.0.110",
+    "@ai-sdk/openai": "^3.0.97",
+    "@ai-sdk/openai-compatible": "^2.0.69",
     "@ai-sdk/react": "3.0.204",
     "@hookform/resolvers": "^3.9.1",
     "@lexical/react": "^0.28.0",
