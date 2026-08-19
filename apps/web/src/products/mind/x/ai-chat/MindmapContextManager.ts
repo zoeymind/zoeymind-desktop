@@ -463,7 +463,10 @@ export class MindmapContextManager {
 
     // 首次发送，提供全量
     if (!this.lastSnapshot) {
-      this.idMapper.reset()
+      // NOTE: 这里以前会 this.idMapper.reset(), 会把用户消息里 @-mention 提前
+      // shorten 过的短 id 全部清掉, 导致用户消息里 M:n1「核心模块B」 与随后
+      // 全量上下文里的 M:n1「核心模块A」 冲突. 保留已有映射, formatFullContext
+      // 里的 shorten 会命中已存在则复用, 未见过再顺次分配, 不再错位.
       const fullText = this.formatFullContext(currentNodes)
       const estimatedTokens = this.estimateTokens(fullText)
       logger.info('[MindmapContextManager] 全量上下文统计:', {
