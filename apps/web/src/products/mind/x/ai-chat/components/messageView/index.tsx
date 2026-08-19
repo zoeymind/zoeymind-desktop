@@ -79,7 +79,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
   }, [messages.length])
 
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto">
+    <div ref={containerRef} className="h-full overflow-y-auto no-scrollbar">
       <div ref={contentRef} className="flex flex-col p-4 min-h-full pb-6">
         {/* 加载更多按钮 */}
         {hasMoreMessages && (
