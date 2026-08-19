@@ -11,15 +11,10 @@
  */
 
 import React, { forwardRef, useCallback, useMemo, useRef } from 'react'
-import { logger } from '@zoeymind/logger'
 import { User } from 'lucide-react'
 import {
   $getRoot,
   $createParagraphNode,
-  $createTextNode,
-  $getNodeByKey,
-  $setSelection,
-  $createRangeSelection,
   COMMAND_PRIORITY_LOW,
   KEY_ENTER_COMMAND,
   type EditorState
@@ -80,13 +75,12 @@ export interface MentionEditorProps {
   className?: string
 }
 
-/** 建议菜单容器: 浮在输入框上方; 通过 shadcn popover token 保持一致外观. */
+/** 建议菜单容器：浮在输入框上方/下方，复用 popover token */
 const MentionMenu = forwardRef<HTMLUListElement, BeautifulMentionsMenuProps>(
   ({ loading: _loading, ...props }, ref) => (
     <ul
       ref={ref}
-      style={{ zIndex: 100 }}
-      className="absolute bottom-full left-0 mb-1.5 max-h-[240px] min-w-[200px] max-w-[280px] overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md outline-none"
+      className="absolute bottom-full left-0 z-10 mb-1.5 max-h-[240px] min-w-[180px] max-w-[280px] overflow-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
       {...props}
     />
   )
@@ -102,9 +96,8 @@ function createMentionMenuItem(showAvatar: boolean) {
         <li
           ref={ref}
           className={cn(
-            'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
-            'hover:bg-accent hover:text-accent-foreground',
-            selected && 'bg-accent text-accent-foreground'
+            'flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-xs transition-colors last:border-b-0',
+            selected && 'bg-muted'
           )}
           {...props}
         >
@@ -113,14 +106,14 @@ function createMentionMenuItem(showAvatar: boolean) {
               <img
                 src={String(avatar)}
                 alt={item.value}
-                className="size-5 shrink-0 rounded-full object-cover"
+                className="size-6 shrink-0 rounded-full object-cover"
               />
             ) : (
-              <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted">
-                <User className="size-3 text-muted-foreground" />
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
+                <User className="size-4 text-muted-foreground" />
               </div>
             ))}
-          <span className="truncate">{item.value}</span>
+          <span className="max-w-[200px] truncate">{item.value}</span>
         </li>
       )
     }
@@ -146,15 +139,9 @@ const ControlledValuePlugin: React.FC<{ value: string }> = ({ value }) => {
   const [editor] = useLexicalComposerContext()
   const lastSyncedRef = useRef<string | null>(null)
 
-  // 首次挂载: 只是登记, 不动 editor (initialConfig 里 editorState 已经根据 value 建过树)
-  if (lastSyncedRef.current === null) lastSyncedRef.current = value
-
-  // 后续同步走 useEffect: 避免渲染阶段调 editor.update.
-  // 关键 gate: editor.isComposing() 期间跳过 - IME 正在写 DOM,
-  // 我们再 clear+rebuild 就会撞 selection offset 引发 $validatePoint 报错.
-  React.useEffect(() => {
-    if (lastSyncedRef.current === value) return
-    if (editor.isComposing?.()) return
+  if (lastSyncedRef.current === null) {
+    lastSyncedRef.current = value
+  } else if (lastSyncedRef.current !== value) {
     const current = $readEditorMarkup(editor.getEditorState())
     if (current !== value) {
       editor.update(() => {
@@ -166,7 +153,7 @@ const ControlledValuePlugin: React.FC<{ value: string }> = ({ value }) => {
       })
     }
     lastSyncedRef.current = value
-  }, [editor, value])
+  }
 
   return null
 }
@@ -224,42 +211,6 @@ const EditablePlugin: React.FC<{ disabled: boolean }> = ({ disabled }) => {
   return null
 }
 
-/**
- * lexical-beautiful-mentions 在 replace(mentionNode) 后不移动 selection,
- * Lexical 0.45 集成下 caret 会落到段首. 我们监听 BeautifulMentionNode 创建,
- * 在其后补一个空文本 (或复用已有 next sibling), 把 caret 挪到 mention 之后.
- */
-const CaretAfterMentionPlugin: React.FC = () => {
-  const [editor] = useLexicalComposerContext()
-  React.useEffect(() => {
-    return editor.registerMutationListener(BeautifulMentionNode, mutations => {
-      // 使用微任务以避免与刚提交的 update 冲突
-      queueMicrotask(() => {
-        editor.update(() => {
-          for (const [key, kind] of mutations) {
-            if (kind !== 'created') continue
-            const node = $getNodeByKey(key)
-            if (!node) continue
-            let after = node.getNextSibling()
-            if (!after) {
-              const spacer = $createTextNode(' ')
-              node.insertAfter(spacer)
-              after = spacer
-            }
-            const sel = $createRangeSelection()
-            const target = after
-            // 光标落在 mention 之后节点的开头 (若是空文本 spacer, 就是 offset 0)
-            sel.anchor.set(target.getKey(), 0, 'text')
-            sel.focus.set(target.getKey(), 0, 'text')
-            $setSelection(sel)
-          }
-        })
-      })
-    })
-  }, [editor])
-  return null
-}
-
 export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
   (
     {
@@ -289,13 +240,8 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
         },
         nodes: [BeautifulMentionNode],
         editable: !disabled,
-        // Lexical 会把可恢复错误 ($validatePoint 之类, 常发生在 IME 期间
-        // DOM 领先 model 时) 派到这里. 之前 throw 直接崩掉 editor state,
-        // 导致 caret 塌到段首、DOM 里 IME 残字回不去 model. 只 warn.
         onError: (error: Error) => {
-          logger.warn('[MentionEditor] Lexical recoverable error', {
-            message: error.message
-          })
+          throw error
         },
         editorState: () => {
           const root = $getRoot()
@@ -405,7 +351,6 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
           <ControlledValuePlugin value={value} />
           <EnterCommandPlugin onEnter={onKeyDown} />
           <EditablePlugin disabled={disabled} />
-          <CaretAfterMentionPlugin />
           {autoFocus && <AutoFocusPlugin />}
         </LexicalComposer>
       </div>
