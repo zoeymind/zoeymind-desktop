@@ -32,9 +32,13 @@ import { cn } from '@/shared/app-shared'
 import { trpc } from '../lib/trpc'
 import { useTranslation } from '@zoeymind/i18n'
 import { getMindmapContextEnabled, setMindmapContextEnabled } from './hooks/useUserPrompt'
+import { LOCAL_AI_TOOLS } from './local-tools'
 
 const MIN_WIDTH = 300
 const MAX_WIDTH = 800
+// 桌面端 trpc stub 返回 data:undefined, 消费者别写 `= []` 默认值 (每次新数组
+// 触发 useEffect 无限循环). 用这个 module-level singleton 兜底.
+const EMPTY_MCP_SERVERS: McpServerItem[] = []
 
 interface AIchatV2Props {
   isActive?: boolean
@@ -80,12 +84,14 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
   // Prompt Manager 已随扩展模块拆分，社区版按钮回调为空操作。
   const setShowPromptManager = (_next: boolean) => {}
 
-  // ✅ 获取工具列表
-  const { data: toolsData, isLoading: toolsLoading } = trpc.aiV2.getTools.useQuery<AiToolListResult>()
+  // 桌面端: 静态工具清单 (LOCAL_AI_TOOLS from ./local-tools). trpc.aiV2.getTools 走 stub 无数据.
+  const toolsData: AiToolListResult = { tools: LOCAL_AI_TOOLS }
+  const toolsLoading = false
 
   // ✅ 获取 MCP 工具列表
   const { isLoading: mcpToolsLoading } = useMCPTools({ enabled: !!isActive })
-  const { data: mcpServers = [] } = trpc.mcp.list.useQuery<McpServerItem[]>()
+  const { data: mcpServersData } = trpc.mcp.list.useQuery<McpServerItem[]>()
+  const mcpServers = mcpServersData ?? EMPTY_MCP_SERVERS
   const mcpServerStatus = useMCPStore(state => state.serverStatus)
 
   // ✅ 声明哪些工具弹 UI (借鉴 CopilotKit useCopilotAction({ renderAndWaitForResponse }) 设计)
