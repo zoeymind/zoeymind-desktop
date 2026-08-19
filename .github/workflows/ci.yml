@@ -13,16 +13,13 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  web:
+    name: Web build
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -33,6 +30,20 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build web application
+        run: pnpm --filter @zoeymind-desktop/web build
+
+  native:
+    name: Native check
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -40,12 +51,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build web application
-        run: pnpm --filter @zoeymind-desktop/web build
 
       - name: Check native application
         run: cargo check --manifest-path src-tauri/Cargo.toml --locked
