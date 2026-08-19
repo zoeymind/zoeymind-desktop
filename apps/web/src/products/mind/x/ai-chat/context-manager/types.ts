@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MindmapContextManager 的内部类型. 从 MindmapContextManager.ts 抽出来,
  * 方便分散到 flatten/diff/render 等子模块复用.

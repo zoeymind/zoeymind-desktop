@@ -1,9 +1,9 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 获取 MCP 工具列表 Hook（数据走 trpc.mcp.list）
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { McpServerItem } from '../../lib/api-types'
 import { trpc } from '../../lib/trpc'
 import { useMCPStore } from '../../useMCPStore'
@@ -21,14 +21,9 @@ interface UseMCPToolsOptions {
   enabled?: boolean
 }
 
-
-// stable module-level singleton, 避免 destructure 默认值 `= []` 每次生成新数组
-// 引起 useEffect 无限 re-run (Maximum update depth exceeded).
-const EMPTY_SERVERS: McpServerItem[] = []
 export function useMCPTools(options: UseMCPToolsOptions = {}) {
   const { enabled = true } = options
-  const query = trpc.mcp.list.useQuery<McpServerItem[]>(undefined, { enabled })
-  const servers = useMemo<McpServerItem[]>(() => query.data ?? EMPTY_SERVERS, [query.data])
+  const { data: servers = [] } = trpc.mcp.list.useQuery<McpServerItem[]>(undefined, { enabled })
   const [tools, setTools] = useState<MCPToolDisplay[]>([])
   const [isLoading, setIsLoading] = useState(false)
 

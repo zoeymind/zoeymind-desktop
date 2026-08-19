@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * useAIChat — AI 聊天的薄壳编排器.
  *

@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MindMapInstanceContext — 把 mindMap 实例通过 React Context 暴露给消息组件,
  * 替代之前 UserMessage / AssistantMessage 各自维护的 `globalMindMapInstance` 全局变量.

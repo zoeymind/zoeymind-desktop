@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 删除确认对话框 — 复用共享 ConfirmDialog
  */

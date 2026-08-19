@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * useTokenUsageReporter — 从最新一条 assistant 消息的 metadata.totalUsage 取累计 token,
  * 同步到 store, 顶栏的 ContextUsageIndicator 用. 没有时清零.

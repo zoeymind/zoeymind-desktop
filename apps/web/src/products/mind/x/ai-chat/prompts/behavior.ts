@@ -1,3 +1,4 @@
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * Agent 工作行为规范
  */

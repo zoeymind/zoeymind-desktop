@@ -1,3 +1,4 @@
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * ZTDL (Zoey Test DSL) 协议说明
  *

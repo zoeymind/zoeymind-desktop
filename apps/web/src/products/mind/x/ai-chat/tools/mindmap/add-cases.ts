@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 import type { Tool } from '../../../ai-chat/tools/types'
 import { AddCasesSchema } from '@zoeymind/shared'
 import { parsePriorityFromText, createPriorityIcons } from './priority-label'

@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat util, not wired to editor in desktop
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * assistant 消息是否已有可渲染内容.
  *

@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat util, not wired to editor in desktop
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 import { describe, it, expect } from 'vitest'
 import {
   processMentions,

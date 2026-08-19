@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * Tool UI Registry — 声明式注册"哪个工具弹什么 UI" + 自动接 respond 链路.
  *

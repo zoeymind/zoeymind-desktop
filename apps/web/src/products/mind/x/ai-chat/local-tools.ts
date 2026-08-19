@@ -1,3 +1,4 @@
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 桌面端 AI 工具静态清单 —— 来源: apps/zoeymind/x/api/services/ai-v2/tools.ts.
  * 桌面端后端不跑 trpc.aiV2.getTools, 用这个静态常量做本地 shim.

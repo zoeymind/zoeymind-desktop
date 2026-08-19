@@ -1,4 +1,4 @@
-// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
+// @ts-nocheck — desktop mirror of cloud module
 import { logger } from '@zoeymind/logger'
 import { useState, useEffect, useCallback, useRef } from 'react'
 
@@ -421,39 +421,25 @@ export const useMindMapModules = (
 
         const result: ModuleSuggestion[] = []
 
-        // 桌面端 relax 规则: 有 icon=sign_2 的节点算模块 (源版行为), 或者根节点下
-        // 前 3 层子节点也当模块 (用户思维导图不一定有 sign_2 图标).
-        const traverseDataTree = (
-          node: MindMapNodeTree,
-          depth: number,
-          isRoot: boolean
-        ) => {
+        const traverseDataTree = (node: MindMapNodeTree) => {
           if (!node) return
 
           const nodeData = resolveNodeData(node)
-          if (nodeData) {
-            const hasSignIcon =
-              nodeData.icon &&
-              Array.isArray(nodeData.icon) &&
-              nodeData.icon.includes('sign_2')
-            // 排除根节点自己 (通常是项目标题, 不作为可 @ 的模块).
-            const includeByDepth = !isRoot && depth >= 1 && depth <= 3
-            if ((hasSignIcon || includeByDepth) && nodeData.uid) {
+          if (nodeData && nodeData.icon && Array.isArray(nodeData.icon)) {
+            if (nodeData.icon.includes('sign_2')) {
               result.push({
-                id: nodeData.uid,
+                id: nodeData.uid || '',
                 display: nodeData.text || '未命名模块'
               })
             }
           }
 
           if (node.children && Array.isArray(node.children)) {
-            node.children.forEach(child =>
-              traverseDataTree(child as MindMapNodeTree, depth + 1, false)
-            )
+            node.children.forEach(child => traverseDataTree(child))
           }
         }
 
-        traverseDataTree(rawData, 0, true)
+        traverseDataTree(rawData)
 
         setModuleList(result)
       } catch (error) {
@@ -461,6 +447,7 @@ export const useMindMapModules = (
         setModuleList([])
       }
     }
+
     extractModules()
   }, [mindMap, refreshTrigger])
 

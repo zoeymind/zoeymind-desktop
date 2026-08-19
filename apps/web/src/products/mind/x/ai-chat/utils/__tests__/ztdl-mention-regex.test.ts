@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat util, not wired to editor in desktop
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 import {
   CLASS_MENTION_SPAN_REGEX,
   INLINE_CODE_ZTDL_REGEX,

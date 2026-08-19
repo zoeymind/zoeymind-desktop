@@ -1,4 +1,4 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * useCompactionStore — 把 useCompactionTrigger 内部的 phase / 最近结果挂到全局,
  * 让 ContextUsageIndicator 等 sibling 组件能读取展示 spinner / 提示.

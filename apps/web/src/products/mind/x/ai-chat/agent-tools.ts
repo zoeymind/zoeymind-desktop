@@ -1,3 +1,4 @@
+// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 桌面端 agent 工具集 —— 精简自 apps/zoeymind/x/api/services/ai-v2/tools.ts.
  * 结构完全一致 (AI SDK `tool({description, inputSchema, ...})`), 只做用例/模块 CRUD
