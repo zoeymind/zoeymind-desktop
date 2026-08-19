@@ -31,20 +31,15 @@ export function TitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="fixed inset-x-0 top-0 z-[100] flex h-14 items-stretch bg-muted/60 backdrop-blur"
+      className="fixed inset-x-0 top-0 z-[100] flex h-10 items-stretch bg-muted/60 backdrop-blur"
     >
-      {/* macOS spacer: 让开系统红绿灯 (trafficLightPosition 需要跟 h-20 一起调 y) */}
-      <div
-        className={isMac ? "h-full w-[88px] shrink-0" : "h-full w-2 shrink-0"}
-        data-tauri-drag-region
-      />
-
+      {/* macOS 红绿灯占位由 TabBar 内部 startInset=88 让开; 液态 panel 仍从 x=0 铺满. */}
       <div data-tauri-drag-region className="flex h-full min-w-0 flex-1 items-stretch">
-        <TabBar />
+        <TabBar isMac={isMac} />
       </div>
 
       {!isMac && (
-        <div className="flex h-full items-start pt-2">
+        <div className="flex h-full items-center">
           <button
             onClick={() => appWindow.minimize()}
             className="flex h-8 items-center px-3 hover:bg-muted"

@@ -20,8 +20,7 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  cn
+  DialogTitle
 } from '@zoeymind/ui'
 import { useTabs, type OpenTab } from '@/shared/tabs/store'
 import { pendingProjects } from '@/shared/native'
@@ -33,7 +32,7 @@ import { defaultMindmapData } from '@zoeymind/shared'
 import { i18next } from '@zoeymind/i18n'
 import { MorphingTabs, type MorphingTabsItem } from '@/components/motion/morphing-tabs'
 
-export function TabBar() {
+export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
   const tabs = useTabs(s => s.tabs)
   const activeId = useTabs(s => s.activeId)
   const setActive = useTabs(s => s.setActive)
@@ -66,8 +65,15 @@ export function TabBar() {
 
   // MorphingTabs items: 每个 tab 的 label = 文件名 (或"加载中…"), content=null.
   const morphItems: MorphingTabsItem[] = useMemo(
-    () =>
-      tabs.map(tab => {
+    () => [
+      {
+        id: 'home',
+        label: '',
+        icon: <Home className="size-3.5" />,
+        content: null,
+        pinned: true
+      },
+      ...tabs.map(tab => {
         const loading = tabLoading[tab.id] === true
         const isActiveTab = activeId === tab.id
         const dirty =
@@ -77,49 +83,47 @@ export function TabBar() {
           id: tab.id,
           label: loading ? '加载中…' : tab.title || '无标题',
           icon: loading ? (
-            <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+            <Loader2 className="size-3 animate-spin text-muted-foreground" />
           ) : dirty ? (
             <span
               aria-hidden
-              className="inline-block size-2 rounded-full bg-foreground/70"
+              className="inline-block size-1.5 rounded-full bg-foreground/70"
             />
           ) : null,
           content: null
         }
-      }),
+      })
+    ],
     [tabs, tabLoading, activeId, liveDirty]
   )
 
   return (
     <>
-      <div className="flex h-full w-full min-w-0 items-stretch">
-        <HomeChip active={activeId === 'home'} onClick={() => setActive('home')} />
-
-        <div className="flex min-w-0 flex-1 items-stretch" data-tauri-drag-region>
-          {tabs.length > 0 && (
-            <MorphingTabs
-              items={morphItems}
-              value={activeId === 'home' ? null : (activeId ?? null)}
-              onValueChange={id => {
-                if (id) setActive(id)
-              }}
-              onOrderChange={ids => reorderTabs(ids)}
-              onClose={requestClose}
-              ariaLabel="项目 tabs"
-              className="!rounded-none !bg-transparent !overflow-visible !text-foreground shrink-0 min-w-0 flex-1"
-              classNames={{
-                root: '!rounded-none !bg-transparent !overflow-visible !text-foreground',
-                rail: 'items-stretch',
-                tab: '!text-foreground',
-                activeTab: '!text-background',
-                label: '!text-foreground',
-                content: 'hidden'
-              }}
-            />
-          )}
-        </div>
-
-        <PlusChip onClick={onPlus} />
+      {/*
+        MorphingTabs 铺满整个 titlebar (含红绿灯下方). startInset=88 让 tab 位置从
+        x=88 开始 (macOS 红绿灯让位), 但液态 panel SVG 仍从 x=0 铺到右端 —> Home
+        激活时左右两侧的液态曲线都能画全.
+        '+' 按钮浮在右上, 通过 endInset=40 让 tab 不占它的位置.
+       */}
+      <div className="relative flex h-full w-full min-w-0 items-stretch" data-tauri-drag-region>
+        <MorphingTabs
+          items={morphItems}
+          value={activeId ?? 'home'}
+          onValueChange={id => setActive(id === 'home' ? 'home' : (id ?? 'home'))}
+          onOrderChange={ids => {
+            const projectIds = ids.filter(id => id !== 'home')
+            reorderTabs(projectIds)
+          }}
+          onClose={requestClose}
+          ariaLabel="项目 tabs"
+          startInset={isMac ? 88 : 8}
+          endInset={40}
+          trailing={<PlusChip onClick={onPlus} />}
+          className="min-w-0 flex-1"
+          classNames={{
+            content: 'hidden'
+          }}
+        />
       </div>
 
       {pendingTab && (
@@ -155,28 +159,7 @@ export function TabBar() {
   )
 }
 
-// Home chip: 独立于 MorphingTabs, 对齐它的 tab 视觉:
-// MorphingTabs 内部 tab 有 marginTop=12, height=44 -> Home 用 mt-3 (12px) h-11 (44px).
-function HomeChip({ active, onClick }: { active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-tauri-drag-region="false"
-      aria-label="Home"
-      title="Home"
-      className={cn(
-        'group relative mt-3 h-11 shrink-0 inline-flex items-center px-3 text-xs rounded-xl transition-colors',
-        active
-          ? 'bg-background text-foreground z-20'
-          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
-      )}
-    >
-      <Home className="size-4" />
-    </button>
-  )
-}
-
+// '+' 按钮: 浏览器风格 - 紧贴最后一个 tab 右侧, 简约小方块 (不做胶囊/圆角药丸).
 function PlusChip({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -185,13 +168,12 @@ function PlusChip({ onClick }: { onClick: () => void }) {
       aria-label="New tab"
       title="新项目"
       data-tauri-drag-region="false"
-      className="mt-3 h-11 shrink-0 inline-flex items-center justify-center px-2.5 rounded-xl text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+      className="ml-1 size-7 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-foreground transition-colors"
     >
-      <Plus className="size-4" />
+      <Plus className="size-3.5" />
     </button>
   )
 }
-
 interface CloseConfirmProps {
   tab: OpenTab
   onCancel: () => void

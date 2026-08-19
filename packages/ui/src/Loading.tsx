@@ -96,7 +96,7 @@ export const Loading: FC<LoadingProps> = ({
     <div
       className={`
         loading-container
-        fixed inset-x-0 top-14 bottom-0 flex flex-col items-center justify-center
+        fixed inset-x-0 top-10 bottom-0 flex flex-col items-center justify-center
         bg-background
         z-30 transition-all duration-300 ease-out
         ${show ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"}

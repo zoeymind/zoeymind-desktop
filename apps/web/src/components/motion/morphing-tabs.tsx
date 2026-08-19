@@ -27,6 +27,7 @@ import { createPortal } from "react-dom";
 import { EASE_OUT, SPRING_GLIDE, SPRING_PRESS } from "@/lib/ease";
 import { TOUCH_GESTURE_CLASS, capturePointer } from "@/lib/touch";
 import { cn } from "@/lib/utils";
+import { Button } from "@zoeymind/ui";
 
 export type MorphingTabsItem = {
   id: string;
@@ -34,6 +35,8 @@ export type MorphingTabsItem = {
   icon?: ReactNode;
   content: ReactNode;
   disabled?: boolean;
+  /** [ZoeyMind] 非拖拽、非关闭, 但仍可点击激活 (Home tab 用). */
+  pinned?: boolean;
 };
 
 export type MorphingTabsClassNames = {
@@ -59,6 +62,12 @@ export interface MorphingTabsProps {
   ariaLabel?: string;
   className?: string;
   classNames?: MorphingTabsClassNames;
+  /** [ZoeyMind] 左侧额外留白 (macOS 红绿灯). tab 位置偏移这么多, 但液态 panel 仍 x=0 起. */
+  startInset?: number;
+  /** [ZoeyMind] 右侧额外留白 ('+' 按钮 等). */
+  endInset?: number;
+  /** [ZoeyMind] 渲染在最后一个 tab 右侧 (跟随 tab 移动), 用于 '+' 按钮. */
+  trailing?: ReactNode;
 }
 
 type DragSession = {
@@ -98,17 +107,19 @@ type SpringTabProps = {
   onLostPointerCapture: (event: ReactPointerEvent<HTMLDivElement>) => void;
 };
 
-// [ZoeyMind 桌面端定制] 从 80px 面板缩到 56px titlebar; 值按比例缩.
+// [ZoeyMind 桌面端] 更紧凑: RAIL_HEIGHT=40, TAB_HEIGHT=26 (tab 视觉更小).
 const DRAG_THRESHOLD = 5;
-const MAX_TAB_WIDTH = 176;
-const MIN_TAB_WIDTH = 96;
-const TAB_HEIGHT = 44;
-const TAB_TOP = 12;
-const TAB_RADIUS = 12;
-const RAIL_HEIGHT = 56;
-const SURFACE_INSET = 8;
-const LIQUID_JOIN = 14;
-const PANEL_RADIUS = 14;
+const MAX_TAB_WIDTH = 120;
+const MIN_TAB_WIDTH = 80;
+const TAB_HEIGHT = 36;
+const TAB_TOP = 4;
+const TAB_RADIUS = 14;
+const RAIL_HEIGHT = 40;
+const SURFACE_INSET = 0;
+const LIQUID_JOIN = 10;
+const PANEL_RADIUS = 10;
+/** pinned (Home) tab 固定宽度, icon-only. */
+const PINNED_TAB_WIDTH = 32;
 
 function sameOrder(a: string[], b: string[]) {
   return a.length === b.length && a.every((id, index) => id === b[index]);
@@ -228,12 +239,30 @@ function SpringTab({
               viewBox={`0 0 ${surfaceWidth} ${RAIL_HEIGHT + PANEL_RADIUS}`}
               preserveAspectRatio="none"
               className={cn(
-                "pointer-events-none absolute inset-x-0 top-0 w-full text-[#fafaf8]",
+                "pointer-events-none absolute inset-x-0 top-0 w-full text-background",
                 dragging ? "z-20" : "z-0",
                 surfaceClassName,
               )}
               style={{ height: RAIL_HEIGHT + PANEL_RADIUS }}
             >
+              <defs>
+                {/* 面板从上到下渐变: tab 顶端 (RAIL_HEIGHT - TAB_HEIGHT ~ TAB_TOP) fully opaque,
+                    过 RAIL_HEIGHT (面板底沿) 之后逐渐透明, 让下面画布颜色自然透过. */}
+                <linearGradient id={`liquid-fade-${id}`} x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
+                  <stop
+                    offset={`${((RAIL_HEIGHT - TAB_HEIGHT / 2) / (RAIL_HEIGHT + PANEL_RADIUS)) * 100}%`}
+                    stopColor="currentColor"
+                    stopOpacity="1"
+                  />
+                  <stop
+                    offset={`${(RAIL_HEIGHT / (RAIL_HEIGHT + PANEL_RADIUS)) * 100}%`}
+                    stopColor="currentColor"
+                    stopOpacity="0.85"
+                  />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                </linearGradient>
+              </defs>
               <LiquidSurfacePath
                 key={
                   anyDragging
@@ -242,6 +271,7 @@ function SpringTab({
                       : "displaced"
                     : "idle"
                 }
+                fillId={`liquid-fade-${id}`}
                 left={liquidDriver}
                 surfaceWidth={surfaceWidth}
                 tabWidth={tabWidth}
@@ -256,6 +286,7 @@ function SpringTab({
           transform: dragging ? draggedTransform : settledTransform,
         }}
         className={className}
+        data-tauri-drag-region="false"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -267,20 +298,21 @@ function SpringTab({
     </>
   );
 }
-
 function LiquidSurfacePath({
   left,
   surfaceWidth,
   tabWidth,
+  fillId,
 }: {
   left: MotionValue<number>;
   surfaceWidth: number;
   tabWidth: number;
+  fillId?: string;
 }) {
   const path = useTransform(left, (value) =>
     liquidTabPath(value, surfaceWidth, tabWidth),
   );
-  return <motion.path d={path} fill="currentColor" />;
+  return <motion.path d={path} fill={fillId ? `url(#${fillId})` : "currentColor"} />;
 }
 
 export function MorphingTabs({
@@ -293,6 +325,9 @@ export function MorphingTabs({
   ariaLabel = "Tabs",
   className,
   classNames,
+  startInset = 0,
+  endInset = 0,
+  trailing,
 }: MorphingTabsProps) {
   const reduce = Boolean(useReducedMotion());
   const uid = useId();
@@ -368,12 +403,21 @@ export function MorphingTabs({
   // and the notch never has to be clamped away from the tab that cut it.
   const { tabWidth, slotGap } = useMemo(() => {
     const count = order.length;
-    if (!surfaceWidth || count === 0) {
+    const pinnedCount = order.reduce(
+      (acc, id) => acc + (itemMap.get(id)?.pinned ? 1 : 0),
+      0,
+    );
+    const nonPinnedCount = count - pinnedCount;
+    if (!surfaceWidth || nonPinnedCount === 0) {
       return { tabWidth: MAX_TAB_WIDTH, slotGap: tabGap };
     }
-    const inner = surfaceWidth - SURFACE_INSET * 2;
+    const reservedPinned = pinnedCount * PINNED_TAB_WIDTH;
+    // 可用 tab 宽度 = surfaceWidth - 两侧 SURFACE_INSET - startInset (红绿灯让位)
+    // - endInset ('+' 按钮让位) - pinned 保留.
+    const inner =
+      surfaceWidth - SURFACE_INSET * 2 - startInset - endInset - reservedPinned;
     const widthAt = (gap: number) =>
-      Math.floor((inner - gap * (count - 1)) / count);
+      Math.floor((inner - gap * (count - 1)) / nonPinnedCount);
 
     if (widthAt(tabGap) >= MIN_TAB_WIDTH) {
       return {
@@ -382,19 +426,30 @@ export function MorphingTabs({
       };
     }
     if (count > 1 && widthAt(0) >= MIN_TAB_WIDTH) {
-      const gap = Math.floor((inner - MIN_TAB_WIDTH * count) / (count - 1));
+      const gap = Math.floor(
+        (inner - MIN_TAB_WIDTH * nonPinnedCount) / (count - 1),
+      );
       return { tabWidth: MIN_TAB_WIDTH, slotGap: Math.max(0, gap) };
     }
     return { tabWidth: Math.max(0, widthAt(0)), slotGap: 0 };
-  }, [order.length, surfaceWidth, tabGap]);
+  }, [order, surfaceWidth, tabGap, itemMap, startInset, endInset]);
 
-  const slotLefts = useMemo(
-    () =>
-      order.map(
-        (_, index) => SURFACE_INSET + index * (tabWidth + slotGap),
-      ),
-    [order, slotGap, tabWidth],
+  const widthOf = useCallback(
+    (index: number) =>
+      itemMap.get(order[index])?.pinned ? PINNED_TAB_WIDTH : tabWidth,
+    [itemMap, order, tabWidth],
   );
+
+  // slotLefts: prefix-sum, per-slot width. pinned 位置只占 PINNED_TAB_WIDTH.
+  const slotLefts = useMemo(() => {
+    const arr: number[] = [];
+    let cursor = SURFACE_INSET + startInset;
+    for (let i = 0; i < order.length; i += 1) {
+      arr.push(cursor);
+      cursor += widthOf(i) + slotGap;
+    }
+    return arr;
+  }, [order, slotGap, widthOf, startInset]);
 
   const dragStartIndex = draggingId ? order.indexOf(draggingId) : -1;
 
@@ -464,7 +519,7 @@ export function MorphingTabs({
       !activeId ||
       activeVisualIndex < 0 ||
       activeId === draggingId ||
-      !slotLefts[activeVisualIndex]
+      slotLefts[activeVisualIndex] === undefined
     ) {
       return;
     }
@@ -508,6 +563,7 @@ export function MorphingTabs({
       if (
         event.button !== 0 ||
         itemMap.get(id)?.disabled ||
+        itemMap.get(id)?.pinned ||
         dragRef.current
       ) {
         return;
@@ -515,9 +571,14 @@ export function MorphingTabs({
 
       const startIndex = orderRef.current.indexOf(id);
       if (startIndex < 0) return;
-      const capturedSlots = orderRef.current.map(
-        (_, index) => SURFACE_INSET + index * (tabWidth + slotGap),
-      );
+      const capturedSlots: number[] = [];
+      {
+        let cursor = SURFACE_INSET + startInset;
+        for (let i = 0; i < orderRef.current.length; i += 1) {
+          capturedSlots.push(cursor);
+          cursor += widthOf(i) + slotGap;
+        }
+      }
       const startLeft = capturedSlots[startIndex];
 
       dragAnimationRef.current?.stop();
@@ -536,7 +597,7 @@ export function MorphingTabs({
         slotLefts: capturedSlots,
       };
     },
-    [dragLeft, itemMap, slotGap, tabWidth],
+    [dragLeft, itemMap, slotGap, widthOf, startInset],
   );
 
   const moveDrag = useCallback(
@@ -585,13 +646,19 @@ export function MorphingTabs({
         }
       }
 
+      // [ZoeyMind] 保护 pinned items 位置: 不允许 drop 到 pinned 索引.
+      const isPinnedAt = (i: number) =>
+        !!itemMap.get(drag.startOrder[i])?.pinned
+      while (targetIndex !== drag.startIndex && isPinnedAt(targetIndex)) {
+        targetIndex = targetIndex > drag.startIndex ? targetIndex - 1 : targetIndex + 1
+      }
       dragLeft.set(visualLeft);
       if (targetIndex !== drag.targetIndex) {
         drag.targetIndex = targetIndex;
         setDragTargetIndex(targetIndex);
       }
     },
-    [activeId, dragLeft, surfaceLeft, tabWidth],
+    [activeId, dragLeft, surfaceLeft, tabWidth, itemMap],
   );
 
   const finishDrag = useCallback(
@@ -724,22 +791,24 @@ export function MorphingTabs({
   return (
     <div
       ref={rootRef}
+      data-tauri-drag-region
       className={cn(
-        "relative isolate min-w-0 overflow-hidden rounded-[2rem] bg-[#292929] text-white",
+        "relative isolate min-w-0 overflow-visible bg-transparent text-foreground",
         classNames?.root,
         className,
       )}
     >
-      <div className="relative" style={{ height: RAIL_HEIGHT }}>
+      <div className="relative" data-tauri-drag-region style={{ height: RAIL_HEIGHT }}>
         <div
           ref={railRef}
           role="tablist"
           aria-label={ariaLabel}
           aria-orientation="horizontal"
           className={cn(
-            "relative z-30 flex h-full gap-3 md:gap-4",
+            "relative z-30 flex h-full gap-0.5",
             classNames?.rail,
           )}
+          data-tauri-drag-region
         >
           {orderedItems.map((item, index) => {
             const isActive = item.id === activeId;
@@ -761,7 +830,7 @@ export function MorphingTabs({
                 anyDragging={Boolean(draggingId)}
                 surfaceHost={rootRef.current}
                 surfaceWidth={surfaceWidth}
-                tabWidth={tabWidth}
+                tabWidth={widthOf(index)}
                 surfaceClassName={classNames?.activeTab}
                 zIndex={isDragging ? 30 : isActive ? 20 : 1}
                 className={cn(
@@ -780,7 +849,6 @@ export function MorphingTabs({
                 // A touch is implicitly captured by whatever it landed on —
                 // here the label inside the tab — so the moment the drag takes
                 // the capture for the tab itself, that child *loses* it, and
-                // the notification bubbles straight back up to this handler.
                 // Ending the drag on it kills the gesture on the frame it
                 // starts. Only the tab losing its own capture means the
                 // platform took the pointer away. A mouse has no implicit
@@ -792,7 +860,7 @@ export function MorphingTabs({
               >
                 <div
                   style={{
-                    width: tabWidth,
+                    width: widthOf(index),
                     height: TAB_HEIGHT,
                     marginTop: TAB_TOP,
                   }}
@@ -802,10 +870,12 @@ export function MorphingTabs({
                     <span
                       aria-hidden
                       className={cn(
-                        "absolute inset-x-0 bottom-2 top-0 rounded-[1.25rem] transition-colors duration-200",
+                        // [ZoeyMind] 缩到 bottom-1 让 hover pill 底部留 4px 缝,
+                        // 不贴下面的 panel; 左右也各 2px 让开 tab 边.
+                        "absolute inset-x-0.5 bottom-1 top-1 rounded-md transition-colors duration-200",
                         isDragging
-                          ? "bg-[#3a3a3a]"
-                          : "bg-transparent group-hover:bg-white/[0.06]",
+                          ? "bg-foreground/15"
+                          : "bg-transparent group-hover:bg-foreground/10",
                       )}
                     />
                   ) : null}
@@ -829,66 +899,94 @@ export function MorphingTabs({
                     }}
                     onKeyDown={(event) => handleTabKeyDown(item.id, event)}
                     className={cn(
-                      "group relative z-10 flex h-full w-full min-w-0 items-center gap-2 overflow-hidden rounded-t-[1.5rem] px-3 text-left outline-none transition-colors",
+                      // [ZoeyMind] pinned 图标 tab 用 justify-center 让 icon 居中而非左靠 padding;
+                      // 圆角对齐 TAB_RADIUS 常量, 避免和液态 SVG 曲线错位.
+                      "group relative z-10 flex h-full w-full min-w-0 items-center justify-center gap-1.5 overflow-hidden outline-none transition-colors cursor-pointer",
+                      item.pinned ? "px-0" : onClose ? "pl-3 pr-7" : "px-3",
                       isActive
-                        ? "text-[#181818]"
-                        : "pb-2 text-white/70 hover:text-white",
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
                       classNames?.tab,
                     )}
+                    style={{
+                      borderTopLeftRadius: TAB_RADIUS,
+                      borderTopRightRadius: TAB_RADIUS,
+                    }}
                   >
                     <span
                       aria-hidden
                       className={cn(
                         "pointer-events-none absolute inset-x-1 top-1 opacity-0 transition-opacity group-focus-visible:opacity-100",
                         isActive
-                          ? "bottom-0 rounded-t-[1.25rem] border-x-2 border-t-2 border-black/20"
-                          : "bottom-2 rounded-[1rem] border-2 border-white/60",
+                          ? "bottom-0 rounded-t-md border-x-2 border-t-2 border-foreground/20"
+                          : "bottom-2 rounded border-2 border-foreground/60",
                       )}
                     />
                     {item.icon ? (
                       <span
                         aria-hidden
                         className={cn(
-                          "grid size-8 shrink-0 place-items-center",
+                          "grid size-4 shrink-0 place-items-center",
                           classNames?.icon,
                         )}
                       >
                         {item.icon}
                       </span>
                     ) : null}
-                    <span
-                      className={cn(
-                        "min-w-0 truncate whitespace-nowrap text-base font-medium leading-none tracking-[-0.025em]",
-                        classNames?.label,
-                      )}
-                    >
-                      {item.label}
-                    </span>
+                    {item.label ? (
+                      <span
+                        className={cn(
+                          "min-w-0 truncate whitespace-nowrap text-xs font-medium leading-none tracking-[-0.01em]",
+                          classNames?.label,
+                        )}
+                      >
+                        {item.label}
+                      </span>
+                    ) : null}
                   </button>
 
-                  {onClose ? (
-                    <button
-                      type="button"
-                      aria-label={`Close ${item.label}`}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onClose(item.id);
-                      }}
-                      className={cn(
-                        "absolute right-2 top-1/2 z-20 grid size-6 -translate-y-1/2 place-items-center rounded-full text-[#9aa0a8] transition-colors hover:bg-black/[0.06] hover:text-[#4b5563] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current",
-                        !isActive &&
-                          "top-[calc(50%-4px)] text-white/45 hover:bg-white/[0.08] hover:text-white/80",
-                        classNames?.close,
-                      )}
-                    >
-                      <X aria-hidden className="size-3.5 stroke-[1.5]" />
-                    </button>
+                  {onClose && !item.pinned ? (
+                    <div className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={`Close ${item.label}`}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onClose(item.id);
+                        }}
+                        className={cn(
+                          "text-muted-foreground hover:text-foreground",
+                          classNames?.close,
+                        )}
+                      >
+                        <X aria-hidden />
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
               </SpringTab>
             );
           })}
+          {trailing ? (
+            <div
+              aria-hidden={false}
+              className="absolute z-30 flex items-center transition-[left] duration-200 ease-out"
+              style={{
+                left:
+                  order.length > 0
+                    ? (slotLefts[order.length - 1] ?? SURFACE_INSET) +
+                      widthOf(order.length - 1) +
+                      slotGap
+                    : SURFACE_INSET + startInset,
+                top: TAB_TOP,
+                height: TAB_HEIGHT,
+              }}
+            >
+              {trailing}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -897,7 +995,7 @@ export function MorphingTabs({
         role="tabpanel"
         aria-labelledby={`${uid}-tab-${safeId(activeId ?? "empty")}`}
         className={cn(
-          "relative z-20 mx-4 min-h-64 overflow-hidden rounded-[1.75rem] bg-[#fafaf8] text-[#181818]",
+          "relative z-20 mx-4 min-h-64 overflow-hidden rounded-[1.75rem] bg-background text-foreground",
           classNames?.content,
         )}
       >
