@@ -35,6 +35,7 @@ import { getMindmapContextEnabled, setMindmapContextEnabled } from './hooks/useU
 
 const MIN_WIDTH = 300
 const MAX_WIDTH = 800
+const EMPTY_MCP_SERVERS: McpServerItem[] = []
 
 interface AIchatV2Props {
   isActive?: boolean
@@ -85,7 +86,10 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
 
   // ✅ 获取 MCP 工具列表
   const { isLoading: mcpToolsLoading } = useMCPTools({ enabled: !!isActive })
-  const { data: mcpServers = [] } = trpc.mcp.list.useQuery<McpServerItem[]>()
+  // 桌面端 stub 返回 data=undefined; 用 module-level singleton 兜底防 destructure
+  // 默认值每次生成新 [] 触发 useEffect loop (Maximum update depth exceeded).
+  const { data: mcpServersData } = trpc.mcp.list.useQuery<McpServerItem[]>()
+  const mcpServers = mcpServersData ?? EMPTY_MCP_SERVERS
   const mcpServerStatus = useMCPStore(state => state.serverStatus)
 
   // ✅ 声明哪些工具弹 UI (借鉴 CopilotKit useCopilotAction({ renderAndWaitForResponse }) 设计)

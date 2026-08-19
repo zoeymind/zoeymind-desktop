@@ -3,7 +3,7 @@
  * 获取 MCP 工具列表 Hook（数据走 trpc.mcp.list）
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { McpServerItem } from '../../lib/api-types'
 import { trpc } from '../../lib/trpc'
 import { useMCPStore } from '../../useMCPStore'
@@ -21,9 +21,15 @@ interface UseMCPToolsOptions {
   enabled?: boolean
 }
 
+// stable module-level singleton, 避免 destructure 默认值 `= []` 每次生成新数组
+// -> useEffect deps [servers] 变化 -> loadMCPTools setState -> re-render -> loop
+// (Maximum update depth exceeded).
+const EMPTY_SERVERS: McpServerItem[] = []
+
 export function useMCPTools(options: UseMCPToolsOptions = {}) {
   const { enabled = true } = options
-  const { data: servers = [] } = trpc.mcp.list.useQuery<McpServerItem[]>(undefined, { enabled })
+  const query = trpc.mcp.list.useQuery<McpServerItem[]>(undefined, { enabled })
+  const servers = useMemo<McpServerItem[]>(() => query.data ?? EMPTY_SERVERS, [query.data])
   const [tools, setTools] = useState<MCPToolDisplay[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
