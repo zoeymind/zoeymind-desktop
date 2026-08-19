@@ -18,7 +18,7 @@
  *
  * 该 hook 只做协调；bundle 数据源由编辑器通过 `registerBundleSource` 注入。
  */
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   useProjectMindMapStore as useMindMapStore,
   useProjectSessionStore,
@@ -27,21 +27,25 @@ import type { MindMapNodeTree } from "simple-mind-map"
 import {
   writeBundle,
   writeRecovery,
+  assertFileRevision,
+  readFileRevision,
+  enqueueRecoveryWrite,
+  flushRecoveryWrites,
+  FileConflictError,
+  type FileRevision,
   clearRecovery,
   refreshProjectIndex,
   getProject,
   findByPath,
   registerProject,
-  unregisterProject,
   preferredSaveDir,
   rememberSaveDir,
   pendingProjects,
   createUUID,
   type ZMindBundle,
-  type ProjectRow,
 } from "./"
 import { useTabs } from "@/shared/tabs/store"
-import { bumpProjects } from "./projects-events"
+import { bumpProjects, useProjectsEvents } from "./projects-events"
 import { exists, mkdir } from "@tauri-apps/plugin-fs"
 import { save as saveDialog } from "@tauri-apps/plugin-dialog"
 import { join } from "@tauri-apps/api/path"
@@ -70,6 +74,7 @@ interface SaveFlowState {
   source: BundleSource | null
   path: string | null
   /** draft 保存成功后写入的真实 project id; 之后 refresh/clearRecovery 都用它 */
+  revision: FileRevision | null
   realProjectId: string | null
   timer: ReturnType<typeof setTimeout> | null
   createdAt: number
@@ -94,12 +99,14 @@ function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
 export function useSaveFlow(projectId: string | null) {
   const setDirty = useMindMapStore(s => s.setDirty)
   const isDirty = useMindMapStore(s => s.isDirty)
+  const [conflict, setConflict] = useState<FileConflictError | null>(null)
   const sessionStore = useProjectSessionStore()
 
   const stateRef = useRef<SaveFlowState>({
     source: null,
     path: null,
     realProjectId: null,
+    revision: null,
     timer: null,
     createdAt: 0,
     renderer: null,
@@ -113,11 +120,28 @@ export function useSaveFlow(projectId: string | null) {
       const row = await getProject(projectId)
       if (!mounted || !row) return
       stateRef.current.path = row.path
+      stateRef.current.revision = await readFileRevision(row.path)
       stateRef.current.createdAt = row.createdAt
     })()
     return () => {
       mounted = false
     }
+  }, [projectId])
+
+  // 卡片重命名会移动磁盘文件；同步已挂载编辑器持有的写入路径，避免下次保存写回旧地址。
+  useEffect(() => {
+    return useProjectsEvents.subscribe(events => {
+      const changed = events.pathChanged
+      if (!changed) return
+      const state = stateRef.current
+      if (changed.id !== projectId && changed.id !== state.realProjectId) return
+      state.path = changed.path
+      void readFileRevision(changed.path).then(revision => {
+        if (stateRef.current.path === changed.path) stateRef.current.revision = revision
+      })
+      if (state.source) state.source.name = changed.name
+      useTabs.getState().renameTab(projectId ?? changed.id, changed.name)
+    })
   }, [projectId])
 
   const registerBundleSource = useCallback((source: BundleSource) => {
@@ -131,20 +155,22 @@ export function useSaveFlow(projectId: string | null) {
     state.timer = setTimeout(() => {
       if (!state.source) return
       const bundle = nowBundle(state.source, state.createdAt)
-      void writeRecovery(projectId, bundle, state.path)
+      enqueueRecoveryWrite(projectId, () => writeRecovery(projectId, bundle, state.path))
     }, RECOVERY_DEBOUNCE_MS)
   }, [projectId])
 
-  const flushRecovery = useCallback(() => {
+  const flushRecovery = useCallback(async () => {
     if (!projectId || !isDirty) return
     const state = stateRef.current
     if (state.timer) {
       clearTimeout(state.timer)
       state.timer = null
     }
-    if (!state.source) return
-    const bundle = nowBundle(state.source, state.createdAt)
-    void writeRecovery(projectId, bundle, state.path)
+    if (state.source) {
+      const bundle = nowBundle(state.source, state.createdAt)
+      enqueueRecoveryWrite(projectId, () => writeRecovery(projectId, bundle, state.path))
+    }
+    await flushRecoveryWrites(projectId)
   }, [projectId, isDirty])
 
   const markDirty = useCallback(() => {
@@ -161,9 +187,6 @@ export function useSaveFlow(projectId: string | null) {
     const state = stateRef.current
     if (!state.source) return
 
-    // draft 首次保存: state.path 尚为 null -> 弹 saveDialog. 一旦 state.path
-    // 记下真实路径 (即使 pendingProjects.isPending 仍 true), 之后再 save 走已入库
-    // 分支, 不再弹框.
     if (pendingProjects.isPending(projectId) && !state.path) {
       const dir = await preferredSaveDir()
       if (!(await exists(dir))) await mkdir(dir, { recursive: true })
@@ -173,24 +196,24 @@ export function useSaveFlow(projectId: string | null) {
         defaultPath,
         filters: [{ name: "ZoeyMind", extensions: ["zmind"] }],
       })
-      if (!picked) return
+      if (!picked) throw new Error("保存已取消")
 
-      // 碰撞检查: 目标路径已被登记 -> 若还被别的 tab 打开, 拒绝
       const collided = await findByPath(picked)
-      if (collided) {
-        const busy = useTabs
-          .getState()
-          .tabs.find(
-            t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
-          )
-        if (busy) {
-          const { toast } = await import("@/shared/app-shared")
-          toast.error(`“${collided.name}” 已在另一个 tab 中打开, 请先关闭再保存到该路径`)
-          return
-        }
+      if (await exists(picked)) {
+        const busy = collided
+          ? useTabs
+              .getState()
+              .tabs.find(
+                t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
+              )
+          : null
+        throw new Error(
+          busy
+            ? `“${collided?.name ?? fileBasenameNoExt(picked)}” 已在另一个 Tab 中打开`
+            : `目标文件已存在：${picked}`
+        )
       }
 
-      // preview
       let previewPng: Uint8Array | null = state.source.previewPng ?? null
       if (state.renderer) {
         try {
@@ -200,46 +223,29 @@ export function useSaveFlow(projectId: string | null) {
           previewPng = state.source.previewPng ?? null
         }
       }
-      // 名字权威源: 用户选的文件名 (foo.zmind -> foo)
       const fileName = fileBasenameNoExt(picked)
       const nextSource = { ...state.source, name: fileName, previewPng }
+      await writeBundle(picked, nowBundle(nextSource, state.createdAt))
 
-      const bundle = nowBundle(nextSource, state.createdAt)
-      await writeBundle(picked, bundle)
-
-      let realId: string
-      if (collided) {
-        realId = collided.id
-        await refreshProjectIndex(realId, {
-          name: fileName,
-          nodeCount: nextSource.nodeCount ?? 0,
-        })
-      } else {
-        realId = createUUID()
-        await registerProject({
-          id: realId,
-          path: picked,
-          name: fileName,
-          nodeCount: nextSource.nodeCount ?? 0,
-        })
-      }
-
-      // pending stash 保留 (draft id 仍是 workspaceId), 但 state 记下真实路径 +
-      // realProjectId, 之后再 save 走已入库分支, refreshProjectIndex 用真实 id.
+      const realId = createUUID()
+      await registerProject({
+        id: realId,
+        path: picked,
+        name: fileName,
+        nodeCount: nextSource.nodeCount ?? 0,
+      })
       state.path = picked
+      state.revision = await readFileRevision(picked)
       state.realProjectId = realId
       state.source.name = fileName
-      await rememberSaveDir(picked)
+      await Promise.all([rememberSaveDir(picked), clearRecovery(projectId), clearRecovery(realId)])
       setDirty(false)
       bumpProjects()
-
-      // 就地升级 tab: id 保持不变 -> EditorPane React key 稳定 -> 不 remount.
-      // 标题也切到文件名, 和卡片保持一致.
       useTabs.getState().promoteDraftInPlace(projectId, realId, fileName)
+      pendingProjects.clear(projectId)
       return
     }
 
-    // 已入库：正常写回原路径
     if (!state.path) return
     let previewPng: Uint8Array | null = state.source.previewPng ?? null
     if (state.renderer) {
@@ -250,70 +256,86 @@ export function useSaveFlow(projectId: string | null) {
         previewPng = state.source.previewPng ?? null
       }
     }
-    // 每次 save 都以当前 state.path 的文件名为准 (用户外部重命名文件 -> 下次 save 会自动同步 DB/tab)
     const fileName = fileBasenameNoExt(state.path)
     state.source.name = fileName
     const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
+    try {
+      await assertFileRevision(state.path, state.revision)
+    } catch (error) {
+      if (error instanceof FileConflictError) setConflict(error)
+      throw error
+    }
     await writeBundle(state.path, bundle)
+    state.revision = await readFileRevision(state.path)
     const effectiveId = state.realProjectId ?? projectId
     await refreshProjectIndex(effectiveId, {
       name: fileName,
       nodeCount: state.source.nodeCount ?? 0,
     })
-    await clearRecovery(effectiveId)
+    await Promise.all([clearRecovery(effectiveId), clearRecovery(projectId)])
     if (state.timer) {
       clearTimeout(state.timer)
       state.timer = null
     }
     setDirty(false)
     bumpProjects()
+    setConflict(null)
   }, [projectId, setDirty])
 
   const saveAs = useCallback(
-    async (newPath: string, opts?: { onCollide?: (row: ProjectRow) => Promise<boolean> }) => {
+    async (newPath: string) => {
       if (!projectId) return
       const state = stateRef.current
       if (!state.source) return
-
-      // 若目标路径已被另一条记录占用，问调用方（UI 侧）弹框确认覆盖
-      const collide = await findByPath(newPath)
-      if (collide && collide.id !== projectId) {
-        const ok = opts?.onCollide ? await opts.onCollide(collide) : true
-        if (!ok) return
-        await unregisterProject(collide.id)
+      if ((await findByPath(newPath)) || (await exists(newPath))) {
+        throw new Error(`目标文件已存在：${newPath}`)
       }
 
       const fileName = fileBasenameNoExt(newPath)
-      state.source.name = fileName
-      const bundle = nowBundle(state.source, state.createdAt)
+      const bundle = nowBundle({ ...state.source, name: fileName }, state.createdAt)
       await writeBundle(newPath, bundle)
-      state.path = newPath
-
-      // realProjectId 若已存在用它 (draft -> save -> saveAs 场景); 否则用 projectId.
-      const effectiveId = state.realProjectId ?? projectId
-      const own = await getProject(effectiveId)
-      if (own) {
-        await refreshProjectIndex(effectiveId, {
-          name: fileName,
-          nodeCount: state.source.nodeCount ?? 0,
-        })
-      } else {
-        await registerProject({
-          id: effectiveId,
-          path: newPath,
-          name: fileName,
-          nodeCount: state.source.nodeCount ?? 0,
-        })
-      }
-      await clearRecovery(effectiveId)
-      setDirty(false)
+      const copyId = createUUID()
+      await registerProject({
+        id: copyId,
+        path: newPath,
+        name: fileName,
+        nodeCount: state.source.nodeCount ?? 0,
+      })
       bumpProjects()
-
-      // 同步 tab 标题到新文件名. draft tab (仍以 unsaved-* 为 id) 也要 renameTab.
-      useTabs.getState().renameTab(projectId, fileName)
+      useTabs.getState().openTab({ id: copyId, kind: "file", title: fileName, projectId: copyId })
     },
-    [projectId, setDirty]
+    [projectId]
   )
+
+  const overwrite = useCallback(async () => {
+    if (!projectId) return
+    const state = stateRef.current
+    if (!state.path || !state.source) return
+    const fileName = fileBasenameNoExt(state.path)
+    await writeBundle(state.path, nowBundle({ ...state.source, name: fileName }, state.createdAt))
+    state.revision = await readFileRevision(state.path)
+    await refreshProjectIndex(state.realProjectId ?? projectId, {
+      name: fileName,
+      nodeCount: state.source.nodeCount ?? 0,
+    })
+    setConflict(null)
+    setDirty(false)
+    bumpProjects()
+  }, [projectId, setDirty])
+
+  const reloadFromDisk = useCallback(async () => {
+    const state = stateRef.current
+    if (!state.path) return
+    state.revision = await readFileRevision(state.path)
+    setConflict(null)
+    setDirty(false)
+  }, [setDirty])
+
+  const saveCopy = useCallback(async () => {
+    const picked = await saveDialog({ filters: [{ name: "ZoeyMind", extensions: ["zmind"] }] })
+    if (!picked) throw new Error("保存副本已取消")
+    await saveAs(picked)
+  }, [saveAs])
 
   const discardAndClose = useCallback(async () => {
     if (!projectId) return
@@ -324,10 +346,12 @@ export function useSaveFlow(projectId: string | null) {
   // window 生命周期 hook：blur / beforeunload 立刻 flush recovery
   useEffect(() => {
     if (!projectId) return
-    const onBlur = () => flushRecovery()
+    const onBlur = () => {
+      void flushRecovery()
+    }
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!sessionStore.getState().dirty) return
-      flushRecovery()
+      void flushRecovery()
       // 触发浏览器 "unsaved changes" 提示
       e.preventDefault()
       e.returnValue = ""
@@ -357,20 +381,30 @@ export function useSaveFlow(projectId: string | null) {
     () => ({
       isDirty,
       markDirty,
+      conflict,
       registerBundleSource,
       registerPreviewRenderer,
       save,
       saveAs,
+      flushRecovery,
       discardAndClose,
+      overwrite,
+      reloadFromDisk,
+      saveCopy,
     }),
     [
       isDirty,
       markDirty,
+      conflict,
       registerBundleSource,
       registerPreviewRenderer,
       save,
       saveAs,
+      flushRecovery,
       discardAndClose,
+      overwrite,
+      reloadFromDisk,
+      saveCopy,
     ]
   )
 }

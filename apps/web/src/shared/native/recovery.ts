@@ -14,13 +14,14 @@
  *
  * 存储格式：本身就是 .zmind bundle，多打一个 recovery.json 描述 sourcePath / savedAt / projectId。
  */
-import { readDir, exists, mkdir, remove, readFile } from '@tauri-apps/plugin-fs'
-import JSZip from 'jszip'
-import { appDataDir, join } from '@tauri-apps/api/path'
-import { packBundle, unpackBundle, type ZMindBundle } from './zmind-file'
-import { writeFile } from '@tauri-apps/plugin-fs'
+import { readDir, exists, mkdir, remove, readFile } from "@tauri-apps/plugin-fs"
+import JSZip from "jszip"
+import { appDataDir, join } from "@tauri-apps/api/path"
+import { packBundle, unpackBundle, type ZMindBundle } from "./zmind-file"
+import { readFileRevision, type FileRevision } from "./file-revision"
+import { writeBytesAtomically } from "./atomic-file"
 
-const RECOVERY_DIR = 'recovery'
+const RECOVERY_DIR = "recovery"
 
 async function recoveryDir(): Promise<string> {
   const base = await appDataDir()
@@ -41,6 +42,17 @@ export interface RecoveryDescriptor {
   sourcePath: string | null
   savedAt: number
   name: string
+  sourceRevision?: FileRevision | null
+}
+
+export interface CorruptRecoveryDescriptor {
+  filename: string
+  message: string
+}
+
+export interface RecoveryScan {
+  valid: RecoveryDescriptor[]
+  corrupt: CorruptRecoveryDescriptor[]
 }
 
 export async function writeRecovery(
@@ -54,11 +66,12 @@ export async function writeRecovery(
     projectId,
     sourcePath,
     savedAt: Date.now(),
-    name: bundle.meta.name
+    name: bundle.meta.name,
+    sourceRevision: sourcePath ? await readFileRevision(sourcePath) : null,
   }
-  zip.file('recovery.json', JSON.stringify(descriptor))
-  const out = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
-  await writeFile(await recoveryPath(projectId), out)
+  zip.file("recovery.json", JSON.stringify(descriptor))
+  const out = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" })
+  await writeBytesAtomically(await recoveryPath(projectId), out)
 }
 
 export async function clearRecovery(projectId: string): Promise<void> {
@@ -68,27 +81,33 @@ export async function clearRecovery(projectId: string): Promise<void> {
   }
 }
 
-export async function listRecoveries(): Promise<RecoveryDescriptor[]> {
+export async function scanRecoveries(): Promise<RecoveryScan> {
   const dir = await recoveryDir()
   const entries = await readDir(dir)
-  const results: RecoveryDescriptor[] = []
+  const valid: RecoveryDescriptor[] = []
+  const corrupt: CorruptRecoveryDescriptor[] = []
   for (const entry of entries) {
-    if (!entry.name?.endsWith('.zmind')) continue
+    if (!entry.name?.endsWith(".zmind")) continue
     try {
       const path = await join(dir, entry.name)
       const bytes = await readFile(path)
       const zip = await JSZip.loadAsync(bytes)
-      const descFile = zip.file('recovery.json')
-      if (!descFile) continue
-      const desc = JSON.parse(await descFile.async('string')) as RecoveryDescriptor
-      results.push(desc)
-    } catch {
-      // 损坏的 recovery：忽略；下一次落盘会覆盖。
+      const descFile = zip.file("recovery.json")
+      if (!descFile) throw new Error("missing recovery.json")
+      valid.push(JSON.parse(await descFile.async("string")) as RecoveryDescriptor)
+    } catch (error) {
+      corrupt.push({
+        filename: entry.name,
+        message: error instanceof Error ? error.message : "invalid recovery file",
+      })
     }
   }
-  return results.sort((a, b) => b.savedAt - a.savedAt)
+  return { valid: valid.sort((a, b) => a.savedAt - b.savedAt), corrupt }
 }
 
+export async function listRecoveries(): Promise<RecoveryDescriptor[]> {
+  return (await scanRecoveries()).valid
+}
 /** 弹框里 Reopen 时用：读回 bundle，交给 editor 载入（未 flush 落盘）。 */
 export async function readRecoveryBundle(projectId: string): Promise<ZMindBundle | null> {
   const path = await recoveryPath(projectId)

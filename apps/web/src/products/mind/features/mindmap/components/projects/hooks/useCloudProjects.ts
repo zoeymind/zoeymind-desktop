@@ -4,29 +4,32 @@
  * 保留原产品版本的 API 表面（projects / loading / renameProject / deleteProject / toggleFavorite ...），
  * 组件级 JSX 完全不改。
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { logger } from '@zoeymind/logger'
-import { i18next } from '@zoeymind/i18n'
-import { toast } from '@/shared/app-shared'
-import { useNavigate } from 'react-router-dom'
-import type { MindMapNodeTree } from 'simple-mind-map'
-import { defaultMindmapData } from '@zoeymind/shared'
-import { exists, mkdir } from '@tauri-apps/plugin-fs'
-import { join } from '@tauri-apps/api/path'
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { logger } from "@zoeymind/logger"
+import { i18next } from "@zoeymind/i18n"
+import { toast } from "@/shared/app-shared"
+import { useNavigate } from "react-router-dom"
+import type { MindMapNodeTree } from "simple-mind-map"
+import { defaultMindmapData } from "@zoeymind/shared"
+import { exists, mkdir } from "@tauri-apps/plugin-fs"
+import { join } from "@tauri-apps/api/path"
+import { useTabs } from "@/shared/tabs/store"
+import { projectSessionRegistry } from "@/products/mind/editor-session"
 import {
   createUUID,
   defaultVaultDir,
   listProjects,
   pendingProjects,
-  refreshProjectIndex,
+  notifyProjectRenamed,
+  renameProjectFile,
   registerProject,
   setStarred,
   useProjectsEvents,
   unregisterProject,
   writeBundle,
   type ProjectRow,
-  type ZMindBundle
-} from '@/shared/native'
+  type ZMindBundle,
+} from "@/shared/native"
 
 export interface CloudProjectWithStats {
   id: string
@@ -48,9 +51,9 @@ export interface CloudProjectWithStats {
 
 /** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
 function fileBasenameNoExt(p: string): string {
-  if (!p) return 'Untitled'
-  const last = p.split(/[\\/]/).pop() ?? ''
-  return last.replace(/\.zmind$/i, '') || 'Untitled'
+  if (!p) return "Untitled"
+  const last = p.split(/[\\/]/).pop() ?? ""
+  return last.replace(/\.zmind$/i, "") || "Untitled"
 }
 
 function toCloud(row: ProjectRow): CloudProjectWithStats {
@@ -70,12 +73,12 @@ function toCloud(row: ProjectRow): CloudProjectWithStats {
     metadata: { starred: row.isStarred, tags: row.tags },
     stats: { nodeCount: row.nodeCount, size: row.size },
     nodeCount: row.nodeCount,
-    size: row.size
+    size: row.size,
   }
 }
 
 function sanitizeFilename(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'Untitled'
+  return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "Untitled"
 }
 
 async function pickUniquePath(dir: string, baseName: string): Promise<string> {
@@ -85,7 +88,7 @@ async function pickUniquePath(dir: string, baseName: string): Promise<string> {
     const candidate = await join(dir, `${baseName}-${i}.zmind`)
     if (!(await exists(candidate))) return candidate
   }
-  throw new Error('cannot pick unique filename')
+  throw new Error("cannot pick unique filename")
 }
 
 function countNodes(tree: MindMapNodeTree): number {
@@ -97,31 +100,28 @@ function countNodes(tree: MindMapNodeTree): number {
 
 interface UseCloudProjectsOptions {
   searchText?: string
-  sortType?: 'recent' | 'created' | 'name' | 'starred'
+  sortType?: "recent" | "created" | "name" | "starred"
   folderId?: string
   workspaceId?: string
-  owner?: 'me' | 'all'
+  owner?: "me" | "all"
   onProjectsChanged?: () => void
 }
 
 export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
-  const { searchText = '', sortType = 'recent', folderId, onProjectsChanged } = opts
+  const { searchText = "", sortType = "recent", folderId, onProjectsChanged } = opts
   const [rows, setRows] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const navigate = useNavigate()
 
-  const refreshProjects = useCallback(
-    async (_options?: { silent?: boolean }) => {
-      try {
-        const list = await listProjects()
-        setRows(list)
-      } catch (error) {
-        logger.error('加载项目失败', error)
-      }
-    },
-    []
-  )
+  const refreshProjects = useCallback(async (_options?: { silent?: boolean }) => {
+    try {
+      const list = await listProjects()
+      setRows(list)
+    } catch (error) {
+      logger.error("加载项目失败", error)
+    }
+  }, [])
 
   const bumpCount = useProjectsEvents(s => s.bumpCount)
   useEffect(() => {
@@ -131,7 +131,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
       .then(list => {
         if (mounted) setRows(list)
       })
-      .catch(err => logger.error('加载项目失败', err))
+      .catch(err => logger.error("加载项目失败", err))
       .finally(() => {
         if (mounted) setLoading(false)
       })
@@ -148,14 +148,14 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
       items = items.filter(p => p.name.toLowerCase().includes(q))
     }
     items.sort((a, b) => {
-      if (sortType === 'starred') {
+      if (sortType === "starred") {
         const diff = (b.isFavorited ? 1 : 0) - (a.isFavorited ? 1 : 0)
         if (diff !== 0) return diff
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       }
-      if (sortType === 'created')
+      if (sortType === "created")
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      if (sortType === 'name') return a.name.localeCompare(b.name)
+      if (sortType === "name") return a.name.localeCompare(b.name)
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     })
     return items
@@ -165,15 +165,15 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
       if (creating) return
       setCreating(true)
       try {
-        const title = name?.trim() || i18next.t('mindmap.editor.newProjectTitle')
+        const title = name?.trim() || i18next.t("mindmap.editor.newProjectTitle")
         // 桌面端：新建不落盘、不入索引。只把 bundle 放内存暂存池，跳转编辑器；
         // 首次 Ctrl+S 时才让用户选保存路径并入库。
         const tempId = pendingProjects.stash({ title, tree: defaultMindmapData })
         onProjectsChanged?.()
         navigate(`/editor/${tempId}`)
       } catch (error) {
-        logger.error('创建失败', error)
-        toast.error(i18next.t('mindmap.editor.createFailed'))
+        logger.error("创建失败", error)
+        toast.error(i18next.t("mindmap.editor.createFailed"))
       } finally {
         setCreating(false)
       }
@@ -183,7 +183,9 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
 
   const renameProject = useCallback(
     async (project: CloudProjectWithStats, newName: string) => {
-      await refreshProjectIndex(project.id, { name: newName.trim() })
+      const renamed = await renameProjectFile(project.id, newName)
+      notifyProjectRenamed({ id: project.id, ...renamed })
+      useTabs.getState().renameProjectTabs(project.id, renamed.name)
       await refreshProjects()
       onProjectsChanged?.()
     },
@@ -192,6 +194,14 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
 
   const deleteProject = useCallback(
     async (project: CloudProjectWithStats) => {
+      const openSession = projectSessionRegistry.get(project.id)
+      if (openSession) {
+        throw new Error(
+          openSession.getState().dirty
+            ? "请先保存或关闭该导图，再从 ZoeyMind 中移除"
+            : "请先关闭该导图，再从 ZoeyMind 中移除"
+        )
+      }
       await unregisterProject(project.id)
       await refreshProjects()
       onProjectsChanged?.()
@@ -218,6 +228,6 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
     createProject,
     renameProject,
     deleteProject,
-    toggleFavorite
+    toggleFavorite,
   }
 }

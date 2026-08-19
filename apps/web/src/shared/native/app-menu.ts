@@ -8,6 +8,7 @@
  * 首次 install 后重建也是同一 API; 语言切换后重构 menu 让文案跟随 locale.
  */
 import { Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
+import { getVersion } from "@tauri-apps/api/app"
 import { i18next } from "@zoeymind/i18n"
 import { logger } from "@zoeymind/logger"
 import { open as openDialog, save as saveNativeDialog } from "@tauri-apps/plugin-dialog"
@@ -139,13 +140,14 @@ async function buildRecentSubmenu(): Promise<Submenu> {
  */
 export async function installAppMenu(): Promise<void> {
   const t = (k: string, fb: string) => i18next.t(k, fb)
+  const appVersion = await getVersion()
 
   // 首个 submenu 会成为 macOS App 菜单 (About / Quit 等)
   const appSubmenu = await Submenu.new({
     text: "ZoeyMind",
     items: [
       await PredefinedMenuItem.new({
-        item: { About: { name: "ZoeyMind", copyright: "MIT", version: "0.1.0" } },
+        item: { About: { name: "ZoeyMind", copyright: "MIT", version: appVersion } },
       }),
       await PredefinedMenuItem.new({ item: "Separator" }),
       await PredefinedMenuItem.new({ item: "Services" }),

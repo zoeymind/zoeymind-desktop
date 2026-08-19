@@ -1,5 +1,5 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { useCallback, useRef, useMemo, useEffect } from "react"
+import { useCallback, useRef, useMemo, useEffect, useState } from "react"
 import { MindMapDropdown } from "./MindMapDropdown.tsx"
 import { FormatPanel, type FormatPanelRef } from "./FormatPanel/FormatPanel.tsx"
 import { TopBar } from "./TopBar/TopBar.tsx"
@@ -34,7 +34,7 @@ import { useProjectContext } from "@/products/mind/features/mindmap/contexts/Pro
 import { useOrganization } from "@/shared/app-shared"
 import { toast, toastLoading, dismissToast } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
-import { LoadErrorScreen } from "@zoeymind/ui"
+import { Button, LoadErrorScreen } from "@zoeymind/ui"
 import type { default as MindMap } from "simple-mind-map"
 import { isWaitingForCollaboration } from "@/products/mind/features/mindmap/types/mindmap-extensions"
 import { logger } from "@zoeymind/logger"
@@ -45,6 +45,16 @@ import { MindMapScrollbar } from "./MindMapScrollbar.tsx"
 import { PreviewIndicator } from "./PreviewIndicator.tsx"
 import { CollaborationCursorLayer } from "./CollaborationCursorLayer"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
+import {
+  getProject,
+  notifyProjectPathChanged,
+  readBundle,
+  relinkProjectFile,
+  unregisterProject,
+} from "@/shared/native"
+import { open as openNativeDialog } from "@tauri-apps/plugin-dialog"
+import { useSaveFlowContext } from "@/shared/native"
+import { useTabs } from "@/shared/tabs/store"
 
 // 初始化插件
 initPlugins()
@@ -68,6 +78,8 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
   const canvasViewportRef = useRef<HTMLDivElement>(null)
   const visibleRef = useRef(visible)
   visibleRef.current = visible
+  const [reloadToken, setReloadToken] = useState(0)
+  const saveFlow = useSaveFlowContext()
   const formatPanelRef = useRef<FormatPanelRef>(null)
 
   // 🎯 从 Context 获取 workspaceId 和 cloudMode (页面级作用域)
@@ -302,7 +314,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     setMindMapReact,
     loadSavedData,
     saveData,
-    0, // reloadToken 已移除,workspaceId 变化时 Provider 会重新挂载
+    reloadToken,
     handleLoadError,
     updateProgress
   )
@@ -493,6 +505,37 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     }
   }, [mindMap])
 
+  const handleLocateMissingFile = useCallback(async () => {
+    if (!workspaceId) return
+    const picked = await openNativeDialog({
+      multiple: false,
+      filters: [{ name: "ZoeyMind", extensions: ["zmind"] }],
+    })
+    if (!picked || typeof picked !== "string") return
+    await readBundle(picked)
+    const changed = await relinkProjectFile(workspaceId, picked)
+    notifyProjectPathChanged({ id: workspaceId, ...changed })
+    useTabs.getState().renameProjectTabs(workspaceId, changed.name)
+    setLoadError(null)
+    setReloadToken(value => value + 1)
+  }, [setLoadError, workspaceId])
+
+  const handleRemoveMissingProject = useCallback(async () => {
+    if (!workspaceId) return
+    await unregisterProject(workspaceId)
+    useTabs.getState().closeTab(workspaceId)
+    useTabs.getState().goHome()
+  }, [workspaceId])
+
+  useEffect(() => {
+    if (!workspaceId || cloudMode) return
+    const checkPath = async () => {
+      const project = await getProject(workspaceId)
+      if (project && !project.exists) setLoadError(t("fileRepair.missingDescription"))
+    }
+    window.addEventListener("focus", checkPath)
+    return () => window.removeEventListener("focus", checkPath)
+  }, [cloudMode, setLoadError, t, workspaceId])
   return (
     <CommentProvider value={commentContextValue}>
       <AIChatProvider>
@@ -521,14 +564,30 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
                 copyXMindDataToClipboard={copyXMindDataToClipboard}
               />
               <MindMapIconToolbar />
+              {saveFlow.conflict && !loadError && (
+                <LoadErrorScreen
+                  title={t("fileConflict.title")}
+                  description={t("fileConflict.description")}
+                  secondaryLabel={t("fileConflict.reload")}
+                  onSecondary={() => {
+                    void saveFlow.reloadFromDisk().then(() => setReloadToken(value => value + 1))
+                  }}
+                  primaryLabel={t("fileConflict.saveCopy")}
+                  onPrimary={() => void saveFlow.saveCopy()}
+                >
+                  <Button variant="destructive" onClick={() => void saveFlow.overwrite()}>
+                    {t("fileConflict.overwrite")}
+                  </Button>
+                </LoadErrorScreen>
+              )}
               {loadError && (
                 <LoadErrorScreen
-                  title={t("mindmap.canvas.loadFailed")}
+                  title={t("fileRepair.title")}
                   description={loadError}
-                  secondaryLabel={t("mindmap.canvas.restoreFromSnapshot")}
-                  onSecondary={handleUseSnapshot}
-                  primaryLabel={t("mindmap.canvas.useDefaultTemplate")}
-                  onPrimary={handleUseDefaultTemplate}
+                  secondaryLabel={t("fileRepair.remove")}
+                  onSecondary={() => void handleRemoveMissingProject()}
+                  primaryLabel={t("fileRepair.locate")}
+                  onPrimary={() => void handleLocateMissingFile()}
                 />
               )}
               <MindMapScrollbar />

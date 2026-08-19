@@ -15,6 +15,7 @@ describe("editor pane presentation", () => {
     expect(getPanePresentationClass(false)).toContain("absolute inset-0")
   })
 
+
   it("preserves pane-specific layout classes", () => {
     expect(getPanePresentationClass(true, "flex bg-background")).toContain("flex bg-background")
   })

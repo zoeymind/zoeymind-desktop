@@ -15,7 +15,7 @@ import {
 } from "@/products/mind/features/mindmap/components/projects/ProjectsSidebar"
 import { ProjectProvider } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 import { useLoading, useLoadingStore } from "@/shared/app-shared"
-import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext } from "@/shared/native"
+import { SaveFlowProvider, useSaveFlowContext } from "@/shared/native"
 import { useTabs, type OpenTab } from "@/shared/tabs/store"
 import { tabSaveFns } from "@/shared/tabs/instances"
 import {
@@ -173,11 +173,13 @@ function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
 function EditorPaneInner({ id, visible }: { id: string; visible: boolean }) {
   const saveFlow = useSaveFlowContext()
   const sessionStore = useProjectSessionStore()
-  // 每个 tab 注册自己的命令，供原生菜单和关闭确认按项目定位。
+  // 每个 tab 注册自己的命令，供菜单、单 Tab 关闭和窗口级协调器按项目定位。
   useEffect(() => {
     const commands = {
       save: () => saveFlow.save(),
       saveAs: (path: string) => saveFlow.saveAs(path),
+      flushRecovery: () => saveFlow.flushRecovery(),
+      discard: () => saveFlow.discardAndClose(),
     }
     sessionStore.getState().setCommands(commands)
     tabSaveFns.register(id, commands)
@@ -189,7 +191,6 @@ function EditorPaneInner({ id, visible }: { id: string; visible: boolean }) {
   return (
     <ProjectProvider key={id} workspaceId={id} cloudMode={false}>
       <MindMapCanvas visible={visible} />
-      <UnsavedGuard projectId={id} saveFlow={saveFlow} />
     </ProjectProvider>
   )
 }

@@ -8,8 +8,8 @@
  * 注意：这里只做索引 CRUD；.zmind 文件本身的读写在 `zmind-file.ts`；
  * 保存流程（更新 mtime/size/nodeCount/preview 缓存）由 editor 层协调。
  */
-import { exists, stat } from '@tauri-apps/plugin-fs'
-import { select, execute } from './db'
+import { exists, stat } from "@tauri-apps/plugin-fs"
+import { select, execute } from "./db"
 
 export interface ProjectRow {
   id: string
@@ -59,14 +59,14 @@ function toProject(row: RawProjectRow, existsOnDisk: boolean): ProjectRow {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastOpenedAt: row.last_opened_at,
-    exists: existsOnDisk
+    exists: existsOnDisk,
   }
 }
 
 function safeParseArray(raw: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : []
   } catch {
     return []
   }
@@ -81,17 +81,17 @@ export async function listProjects(opts: ListProjectsOptions = {}): Promise<Proj
   const where: string[] = []
   const args: unknown[] = []
   if (opts.folderId === null) {
-    where.push('folder_id IS NULL')
-  } else if (typeof opts.folderId === 'string') {
+    where.push("folder_id IS NULL")
+  } else if (typeof opts.folderId === "string") {
     where.push(`folder_id = $${args.length + 1}`)
     args.push(opts.folderId)
   }
   if (!opts.includeArchived) {
-    where.push('is_archived = 0')
+    where.push("is_archived = 0")
   }
   const sql =
     `SELECT * FROM projects_index` +
-    (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
+    (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
     ` ORDER BY updated_at DESC`
   const rows = await select<RawProjectRow>(sql, args)
   const results: ProjectRow[] = []
@@ -127,7 +127,16 @@ export async function registerProject(input: RegisterProjectInput): Promise<void
     `INSERT INTO projects_index
        (id, path, name, folder_id, node_count, size, mtime, created_at, updated_at, last_opened_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, NULL)`,
-    [input.id, input.path, input.name, input.folderId ?? null, input.nodeCount ?? 0, size, mtime, now]
+    [
+      input.id,
+      input.path,
+      input.name,
+      input.folderId ?? null,
+      input.nodeCount ?? 0,
+      size,
+      mtime,
+      now,
+    ]
   )
 }
 
@@ -154,14 +163,82 @@ export async function refreshProjectIndex(
     [
       patch.name ?? null,
       patch.nodeCount ?? null,
-      patch.folderId !== undefined ? 'y' : 'n',
+      patch.folderId !== undefined ? "y" : "n",
       patch.folderId ?? null,
       size,
       mtime,
       now,
-      id
+      id,
     ]
   )
+}
+
+export interface RenamedProjectFile {
+  path: string
+  name: string
+}
+
+function sanitizeProjectFilename(name: string): string {
+  const sanitized = name.replace(/[\\/:*?"<>|]/g, "_").trim()
+  return sanitized || "Untitled"
+}
+
+/** 重命名项目及其磁盘 .zmind 文件；文件路径与索引始终一起更新。 */
+export async function renameProjectFile(
+  id: string,
+  requestedName: string
+): Promise<RenamedProjectFile> {
+  const row = await getProject(id)
+  if (!row) throw new Error("项目不存在")
+
+  const name = sanitizeProjectFilename(requestedName)
+  const separatorIndex = Math.max(row.path.lastIndexOf("/"), row.path.lastIndexOf("\\"))
+  const directory = separatorIndex >= 0 ? row.path.slice(0, separatorIndex) : ""
+  const separator = row.path.includes("\\") && !row.path.includes("/") ? "\\" : "/"
+  const path = `${directory}${directory ? separator : ""}${name}.zmind`
+
+  if (path === row.path) return { path, name }
+  if (await exists(path)) throw new Error(`已存在同名文件“${name}.zmind”`)
+
+  const { rename } = await import("@tauri-apps/plugin-fs")
+  await rename(row.path, path)
+  try {
+    await execute(
+      `UPDATE projects_index
+         SET path = $1, name = $2, updated_at = $3
+       WHERE id = $4`,
+      [path, name, Date.now(), id]
+    )
+  } catch (error) {
+    await rename(path, row.path).catch(() => undefined)
+    throw error
+  }
+
+  return { path, name }
+}
+
+export async function relinkProjectFile(id: string, path: string): Promise<RenamedProjectFile> {
+  const row = await getProject(id)
+  if (!row) throw new Error("项目不存在")
+  if (!(await exists(path))) throw new Error("选择的文件不存在")
+  const occupied = await findByPath(path)
+  if (occupied && occupied.id !== id) throw new Error("该文件已属于另一个项目")
+  const name = path.replace(/^.*[\\/]/, "").replace(/\.zmind$/i, "") || row.name
+  const info = await stat(path)
+  await execute(
+    `UPDATE projects_index
+       SET path = $1, name = $2, size = $3, mtime = $4, updated_at = $5
+     WHERE id = $6`,
+    [
+      path,
+      name,
+      info.size,
+      info.mtime ? new Date(info.mtime).getTime() : Date.now(),
+      Date.now(),
+      id,
+    ]
+  )
+  return { path, name }
 }
 
 export async function setStarred(id: string, starred: boolean): Promise<void> {
@@ -176,64 +253,15 @@ export async function touchLastOpened(id: string): Promise<void> {
   await execute(`UPDATE projects_index SET last_opened_at = $1 WHERE id = $2`, [Date.now(), id])
 }
 
-/**
- * 移动项目文件到文件夹 —— 真的 fs.rename, projects_index.path/folder_id 同步.
- *
- * 目标目录:
- *   folderId=null   → preferredSaveDir (~/Documents/ZoeyMind)
- *   folderId=<id>   → preferredSaveDir/<folderName>
- * 目录不存在会自动创建. 目标已有同名文件 → 附 `-N` 后缀.
- */
-export async function moveProjectToFolder(
-  id: string,
-  folderId: string | null
-): Promise<void> {
+/** 文件夹是虚拟分类；移动只更新 folder_id，不改变用户磁盘上的文件路径。 */
+export async function moveProjectToFolder(id: string, folderId: string | null): Promise<void> {
   const row = await getProject(id)
-  if (!row) return
-  if (row.folderId === (folderId ?? null)) return
-
-  const { rename, exists, mkdir } = await import('@tauri-apps/plugin-fs')
-  const { join } = await import('@tauri-apps/api/path')
-  const { preferredSaveDir } = await import('./paths')
-
-  const base = await preferredSaveDir()
-  let targetDir = base
-  if (folderId) {
-    const fRows = await select<{ name: string }>(
-      `SELECT name FROM folders WHERE id = $1`,
-      [folderId]
-    )
-    const folderName = fRows[0]?.name
-    if (folderName) targetDir = await join(base, folderName)
-  }
-  if (!(await exists(targetDir))) await mkdir(targetDir, { recursive: true })
-
-  // 拼目标 path (原文件名不变); 冲突则加 -N.
-  const filename = row.path.replace(/^.*[\\/]/, '')
-  let target = await join(targetDir, filename)
-  if (row.path !== target && (await exists(target))) {
-    const dot = filename.lastIndexOf('.')
-    const stem = dot > 0 ? filename.slice(0, dot) : filename
-    const ext = dot > 0 ? filename.slice(dot) : ''
-    for (let n = 1; n < 999; n++) {
-      const candidate = await join(targetDir, `${stem}-${n}${ext}`)
-      if (!(await exists(candidate))) {
-        target = candidate
-        break
-      }
-    }
-  }
-
-  if (row.path !== target) {
-    await rename(row.path, target)
-  }
-
-  await execute(
-    `UPDATE projects_index
-       SET path = $1, folder_id = $2, updated_at = $3
-     WHERE id = $4`,
-    [target, folderId, Date.now(), id]
-  )
+  if (!row || row.folderId === folderId) return
+  await execute(`UPDATE projects_index SET folder_id = $1, updated_at = $2 WHERE id = $3`, [
+    folderId,
+    Date.now(),
+    id,
+  ])
 }
 
 /** 从索引里删记录；不删磁盘 .zmind 文件（用户可能想留着自己管理）。 */

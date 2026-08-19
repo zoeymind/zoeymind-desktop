@@ -53,14 +53,7 @@ export async function renameFolder(id: string, name: string): Promise<void> {
   await execute(`UPDATE folders SET name = $1 WHERE id = $2`, [name, id])
 }
 
-/**
- * 删文件夹。`deleteContents=false`：把归属该 folder 的 projects 的 folder_id 置 null（SQL 会级联做，
- * 因为 schema 是 ON DELETE SET NULL）。`deleteContents=true`：先把归属该 folder 的 projects
- * 从索引里删除（磁盘 .zmind 不动，只是从库里摘掉；用户在 Finder 里还有原文件）。
- */
-export async function deleteFolder(id: string, deleteContents: boolean): Promise<void> {
-  if (deleteContents) {
-    await execute(`DELETE FROM projects_index WHERE folder_id = $1`, [id])
-  }
+/** 删除虚拟文件夹；项目通过外键规则自动回到“无文件夹”，磁盘文件保持不变。 */
+export async function deleteFolder(id: string): Promise<void> {
   await execute(`DELETE FROM folders WHERE id = $1`, [id])
 }

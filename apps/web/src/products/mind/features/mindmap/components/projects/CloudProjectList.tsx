@@ -1,8 +1,8 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import React, { useCallback, useState, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { Loader2, PlusIcon } from 'lucide-react'
-import { AnimatePresence } from 'motion/react'
+import React, { useCallback, useState, useEffect } from "react"
+import { useNavigate } from "@tanstack/react-router"
+import { Loader2, PlusIcon } from "lucide-react"
+import { AnimatePresence } from "motion/react"
 
 import {
   Button,
@@ -10,31 +10,31 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
-} from '@zoeymind/ui'
-import { useOrganization } from '@/shared/app-shared'
-import { useTranslation } from '@zoeymind/i18n'
+  DialogTitle,
+} from "@zoeymind/ui"
+import { useOrganization } from "@/shared/app-shared"
+import { useTranslation } from "@zoeymind/i18n"
 
-import GridView from './GridView'
-import ListView from './ListView'
-import { DeleteDialog, RenameDialog } from './dialogs'
-import { MoveDialog } from './MoveDialog'
-import { useCloudProjects } from './hooks/useCloudProjects'
-import type { CloudProjectWithStats } from './hooks/useCloudProjects'
-import { ProjectCardSkeleton } from './ProjectCardSkeleton'
-import { ProjectListItemSkeleton } from './ProjectListItemSkeleton'
+import GridView from "./GridView"
+import ListView from "./ListView"
+import { DeleteDialog, RenameDialog } from "./dialogs"
+import { MoveDialog } from "./MoveDialog"
+import { useCloudProjects } from "./hooks/useCloudProjects"
+import type { CloudProjectWithStats } from "./hooks/useCloudProjects"
+import { ProjectCardSkeleton } from "./ProjectCardSkeleton"
+import { ProjectListItemSkeleton } from "./ProjectListItemSkeleton"
 
-type ViewType = 'grid' | 'list'
+type ViewType = "grid" | "list"
 
 interface CloudProjectListProps {
   viewType: ViewType
   searchText: string
-  sortType: 'recent' | 'created' | 'name' | 'starred'
+  sortType: "recent" | "created" | "name" | "starred"
   onProjectsChanged?: () => void
   onClearSearch?: () => void
   onProjectCountChange?: (count: number) => void
   onProjectClick?: (project: CloudProjectWithStats) => void
-  filter?: 'all' | 'owned' | 'favorited' | 'mine'
+  filter?: "all" | "owned" | "favorited" | "mine"
   folderId?: string
   /** 当前项目空间 ID; 传了则 mindmap 列表 & 新建都挂在这个 workspace 下 */
   workspaceId?: string | null
@@ -45,7 +45,7 @@ interface CloudProjectListProps {
  * 提到模块顶层，避免 mount-effect 中 setState 触发的额外一次渲染。
  */
 function computeSkeletonColumns(): number {
-  if (typeof window === 'undefined') return 12
+  if (typeof window === "undefined") return 12
   const containerWidth = window.innerWidth - 80
   const columns = Math.max(3, Math.floor(containerWidth / 328))
   return columns * 3
@@ -60,9 +60,9 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     onClearSearch,
     onProjectCountChange,
     onProjectClick,
-    filter = 'all',
+    filter = "all",
     folderId,
-    workspaceId
+    workspaceId,
   }) => {
     const { t } = useTranslation()
     const navigate = useNavigate()
@@ -72,8 +72,8 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     // 监听 resize 重新计算；初值在 useState 里同步算出。
     useEffect(() => {
       const recompute = () => setSkeletonColumns(computeSkeletonColumns())
-      window.addEventListener('resize', recompute)
-      return () => window.removeEventListener('resize', recompute)
+      window.addEventListener("resize", recompute)
+      return () => window.removeEventListener("resize", recompute)
     }, [])
 
     const {
@@ -87,21 +87,21 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
       createProject,
       renameProject,
       deleteProject,
-      toggleFavorite
+      toggleFavorite,
     } = useCloudProjects({
       searchText,
       sortType,
       onProjectsChanged,
       folderId,
       // "我的图" 虚拟视图: 跨 project 展示自己创建的全部, 忽略 workspaceId
-      workspaceId: filter === 'mine' ? undefined : workspaceId,
-      owner: filter === 'mine' ? 'me' : undefined
+      workspaceId: filter === "mine" ? undefined : workspaceId,
+      owner: filter === "mine" ? "me" : undefined,
     })
 
     const displayProjects =
-      filter === 'owned'
+      filter === "owned"
         ? projects.filter(p => p.isOwner)
-        : filter === 'favorited'
+        : filter === "favorited"
           ? projects.filter(p => p.isFavorited)
           : projects
 
@@ -175,9 +175,9 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     if (!isAuthenticated) {
       return (
         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-          <p className="text-lg mb-4">{t('projects.cloud.needLogin')}</p>
-          <Button onClick={() => navigate({ to: '/login' })} variant="outline">
-            {t('projects.cloud.login')}
+          <p className="text-lg mb-4">{t("projects.cloud.needLogin")}</p>
+          <Button onClick={() => navigate({ to: "/login" })} variant="outline">
+            {t("projects.cloud.login")}
           </Button>
         </div>
       )
@@ -185,13 +185,13 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
 
     if (loading) {
       // 根据视图类型显示不同的骨架屏
-      if (viewType === 'grid') {
+      if (viewType === "grid") {
         return (
           <div
             className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-7 pb-8 transition-opacity duration-500"
             style={{
-              WebkitMaskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)',
-              maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)'
+              WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
             }}
           >
             {Array.from({ length: skeletonColumns }).map((_, i) => (
@@ -204,8 +204,8 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
           <div
             className="space-y-0 transition-opacity duration-500"
             style={{
-              WebkitMaskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)',
-              maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)'
+              WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
             }}
           >
             {Array.from({ length: 12 }).map((_, i) => (
@@ -221,25 +221,25 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
         <div className="flex flex-col items-center justify-center flex-1 min-h-[60vh] text-muted-foreground">
           {searchText ? (
             <>
-              <p className="text-lg mb-4">{t('projects.cloud.noMatchSearch')}</p>
+              <p className="text-lg mb-4">{t("projects.cloud.noMatchSearch")}</p>
               <Button onClick={onClearSearch} variant="outline">
-                {t('projects.cloud.clearSearch')}
+                {t("projects.cloud.clearSearch")}
               </Button>
             </>
-          ) : filter === 'favorited' ? (
-            <p className="text-lg">{t('projects.cloud.favoritedEmpty')}</p>
+          ) : filter === "favorited" ? (
+            <p className="text-lg">{t("projects.cloud.favoritedEmpty")}</p>
           ) : folderId ? (
-            <p className="text-lg">{t('projects.cloud.folderEmpty')}</p>
+            <p className="text-lg">{t("projects.cloud.folderEmpty")}</p>
           ) : (
             <>
-              <p className="text-lg mb-4">{t('projects.cloud.empty')}</p>
+              <p className="text-lg mb-4">{t("projects.cloud.empty")}</p>
               <Button
                 onClick={handleCreateClick}
                 disabled={creating}
                 data-tour="create-first-cloud-project"
               >
                 <PlusIcon className="size-4 mr-2" />
-                {creating ? t('projects.cloud.creating') : t('projects.cloud.createFirst')}
+                {creating ? t("projects.cloud.creating") : t("projects.cloud.createFirst")}
               </Button>
             </>
           )}
@@ -252,18 +252,18 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
       ? (project: CloudProjectWithStats) => onProjectClick(project)
       : async (project: CloudProjectWithStats) => {
           // 桌面端: openTab 到工作区 tab, 不再直接 navigate.
-          const { useTabs } = await import('@/shared/tabs/store')
+          const { useTabs } = await import("@/shared/tabs/store")
           useTabs.getState().openTab({
             id: project.id,
-            kind: 'file',
-            title: project.name ?? project.title ?? ''
+            kind: "file",
+            title: project.name ?? project.title ?? "",
           })
         }
 
     return (
       <>
         <AnimatePresence mode="wait" initial={false}>
-          {viewType === 'grid' ? (
+          {viewType === "grid" ? (
             <GridView
               key="cloud-grid-view"
               projects={displayProjects}
@@ -291,7 +291,7 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
         <RenameDialog
           open={renameDialogOpen}
           onOpenChange={handleRenameOpenChange}
-          currentName={currentProject?.title || ''}
+          currentName={currentProject?.title || ""}
           onConfirm={handleRenameConfirm}
           loading={renameLoading}
         />
@@ -299,8 +299,11 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
         <DeleteDialog
           open={deleteDialogOpen}
           onOpenChange={handleDeleteOpenChange}
-          itemName={currentProject?.title || ''}
+          itemName={currentProject?.title || ""}
           onConfirm={handleDeleteConfirm}
+          title={t("projects.dialogs.removeTitle", { itemName: currentProject?.title || "" })}
+          description={t("projects.dialogs.removeDescription")}
+          destructiveText={t("projects.dialogs.removeAction")}
           loading={deleteLoading}
         />
 
@@ -322,7 +325,7 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
           open={creating}
           onOpenChange={(_, details) => {
             // 创建中不允许关闭 (outside-press / escape-key)
-            if (details.reason === 'outside-press' || details.reason === 'escape-key') {
+            if (details.reason === "outside-press" || details.reason === "escape-key") {
               details.cancel()
             }
           }}
@@ -333,10 +336,10 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
                 <Loader2 className="size-8 animate-spin text-primary" />
               </div>
               <DialogTitle className="text-center">
-                {t('projects.actions.creatingTitle')}
+                {t("projects.actions.creatingTitle")}
               </DialogTitle>
               <DialogDescription className="text-center">
-                {t('projects.actions.creatingDesc')}
+                {t("projects.actions.creatingDesc")}
               </DialogDescription>
             </DialogHeader>
           </DialogContent>

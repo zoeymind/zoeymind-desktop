@@ -31,6 +31,8 @@ interface TabsState {
   closeTab: (id: string) => void
   setActive: (id: TabId) => void
   renameTab: (id: string, title: string) => void
+  /** 按真实 projectId 同步所有对应 tab 的标题。 */
+  renameProjectTabs: (projectId: string, title: string) => void
   /**
    * draft 保存成功后**就地**升级 (id 保持不变, 只加 projectId 并翻 kind='file').
    * 这样 EditorPane 的 React key 稳定, 保存后不 remount / 不 flash.
@@ -99,6 +101,13 @@ export const useTabs = create<TabsState>()(
       renameTab: (id, title) =>
         set(state => ({
           tabs: state.tabs.map(t => (t.id === id ? { ...t, title } : t)),
+        })),
+
+      renameProjectTabs: (projectId, title) =>
+        set(state => ({
+          tabs: state.tabs.map(t =>
+            t.id === projectId || t.projectId === projectId ? { ...t, title } : t
+          ),
         })),
 
       promoteDraftInPlace: (tabId, projectId, title) =>

@@ -13,8 +13,9 @@
  * 用户可在 Finder 里随意移动 .zmind，索引里存的是绝对路径，运行时 exists() 判失效。
  */
 import JSZip from 'jszip'
-import { readFile, writeFile, exists } from '@tauri-apps/plugin-fs'
+import { readFile, exists } from '@tauri-apps/plugin-fs'
 import type { MindMapNodeTree } from 'simple-mind-map'
+import { writeBytesAtomically } from './atomic-file'
 
 export interface ZMindMeta {
   name: string
@@ -70,7 +71,7 @@ export async function readBundle(path: string): Promise<ZMindBundle> {
 
 export async function writeBundle(path: string, bundle: ZMindBundle): Promise<void> {
   const bytes = await packBundle(bundle)
-  await writeFile(path, bytes)
+  await writeBytesAtomically(path, bytes)
 }
 
 export async function bundleExists(path: string): Promise<boolean> {

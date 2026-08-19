@@ -39,11 +39,11 @@ export function TitleBar() {
       data-app-titlebar
       className="fixed inset-x-0 top-0 z-[100] flex h-10 items-stretch bg-muted/60 backdrop-blur"
     >
-      {/* macOS 红绿灯占位由 TabBar 内部 startInset=88 让开; 液态 panel 仍从 x=0 铺满. */}
-      <div data-tauri-drag-region className="flex h-full min-w-0 flex-1 items-stretch">
+      {/* TabBar 作为全宽底层，液态渐变延展到窗口最右边；右侧控制按钮浮在其上。 */}
+      <div data-tauri-drag-region className="absolute inset-0 min-w-0">
         <TabBar isMac={isMac} />
       </div>
-      <div className="flex h-full items-center px-1">
+      <div className="relative z-40 ml-auto flex h-full items-center px-1">
         <Button
           variant="ghost"
           size="icon-sm"
@@ -56,7 +56,7 @@ export function TitleBar() {
       </div>
 
       {!isMac && (
-        <div className="flex h-full items-center">
+        <div className="relative z-40 flex h-full items-center">
           <button
             onClick={() => appWindow.minimize()}
             className="flex h-8 items-center px-3 hover:bg-muted"

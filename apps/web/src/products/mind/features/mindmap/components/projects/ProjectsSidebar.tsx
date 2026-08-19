@@ -30,6 +30,7 @@ import { NewProjectMenu } from "./NewProjectMenu"
 import { SidebarFolders } from "./SidebarFolders"
 import { SearchShortcutHint } from "./WorkspaceSearchDialog"
 import brandLogo from "@/assets/logo.svg?url"
+import { AppVersionStatus } from "@/shared/app-shared"
 
 export type ProjectView = "all" | "mine" | "favorited" | "shared" | "trash" | "folder" | "workspace"
 
@@ -138,7 +139,7 @@ export function ProjectsSidebar({
           </div>
 
           {/* 主导航 + workspace 分组 + folders */}
-          <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-2">
+          <nav className="no-scrollbar flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-2">
             {MAIN_NAV.map(item => {
               const Icon = item.icon
               const active = activeView === item.view
@@ -207,6 +208,9 @@ export function ProjectsSidebar({
               onSelectFolder={onSelectFolder}
             />
           </nav>
+          <div className="flex shrink-0 items-center border-t border-border/50 px-2 py-1">
+            <AppVersionStatus className="justify-start" />
+          </div>
         </div>
       </aside>
 

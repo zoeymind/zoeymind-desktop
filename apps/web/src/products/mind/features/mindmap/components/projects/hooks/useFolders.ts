@@ -1,16 +1,16 @@
 /**
  * useFolders —— 桌面端本地版：SqlFolderRepo。API 表面对齐 tRPC 版。
  */
-import { useCallback, useEffect, useState } from 'react'
-import { logger } from '@zoeymind/logger'
+import { useCallback, useEffect, useState } from "react"
+import { logger } from "@zoeymind/logger"
 import {
   listFolders,
   createFolder as sqlCreateFolder,
   renameFolder as sqlRenameFolder,
   deleteFolder as sqlDeleteFolder,
   createUUID,
-  type FolderRow
-} from '@/shared/native'
+  type FolderRow,
+} from "@/shared/native"
 
 export type FolderItem = FolderRow
 
@@ -24,7 +24,7 @@ export function useFolders() {
     try {
       setFolders(await listFolders())
     } catch (error) {
-      logger.error('load folders failed:', error)
+      logger.error("load folders failed:", error)
     } finally {
       setIsLoading(false)
     }
@@ -61,10 +61,10 @@ export function useFolders() {
   )
 
   const deleteFolder = useCallback(
-    async (folderId: string, deleteContents = false) => {
+    async (folderId: string) => {
       setIsMutating(true)
       try {
-        await sqlDeleteFolder(folderId, deleteContents)
+        await sqlDeleteFolder(folderId)
         await load()
       } finally {
         setIsMutating(false)
@@ -81,6 +81,6 @@ export function useFolders() {
     createFolder,
     renameFolder,
     deleteFolder,
-    isMutating
+    isMutating,
   }
 }

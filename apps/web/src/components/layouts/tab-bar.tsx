@@ -96,10 +96,9 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
   return (
     <>
       {/*
-        MorphingTabs 铺满整个 titlebar (含红绿灯下方). startInset=88 让 tab 位置从
-        x=88 开始 (macOS 红绿灯让位), 但液态 panel SVG 仍从 x=0 铺到右端 —> Home
-        激活时左右两侧的液态曲线都能画全.
-        '+' 按钮浮在右上, 通过 endInset=40 让 tab 不占它的位置.
+        MorphingTabs 铺满整个 titlebar。startInset 给 macOS 红绿灯让位，
+        endInset 只约束 tab 与 '+' 的可用区域，并给右侧设置/窗口按钮留位；
+        液态 panel SVG 仍使用完整 surfaceWidth，从 x=0 铺到窗口最右端。
        */}
       <div className="relative flex h-full w-full min-w-0 items-stretch" data-tauri-drag-region>
         <MorphingTabs
@@ -113,7 +112,7 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
           onClose={requestClose}
           ariaLabel="项目 tabs"
           startInset={isMac ? 88 : 8}
-          endInset={40}
+          endInset={isMac ? 80 : 192}
           trailing={<PlusChip onClick={onPlus} />}
           className="min-w-0 flex-1"
           classNames={{

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use tauri::{Emitter, Manager};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod atomic_file;
 mod chat_stream;
 mod http_stream;
 use chat_stream::AbortMap;
@@ -34,6 +35,41 @@ async fn http_get_json(
   }
   Ok(text)
 }
+
+const RELEASES_API_URL: &str =
+  "https://api.github.com/repos/zoeymind/zoeymind-desktop/releases/latest";
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LatestRelease {
+  tag_name: String,
+  html_url: String,
+  name: Option<String>,
+  published_at: Option<String>,
+}
+
+/** 查询 GitHub 最新正式 Release。固定仓库地址，避免把通用 HTTP 代理暴露给 UI。 */
+#[tauri::command]
+async fn get_latest_release() -> Result<LatestRelease, String> {
+  let response = reqwest::Client::builder()
+    .timeout(std::time::Duration::from_secs(10))
+    .build()
+    .map_err(|error| error.to_string())?
+    .get(RELEASES_API_URL)
+    .header(reqwest::header::USER_AGENT, "ZoeyMind-Desktop")
+    .header(reqwest::header::ACCEPT, "application/vnd.github+json")
+    .send()
+    .await
+    .map_err(|error| error.to_string())?;
+
+  let status = response.status();
+  if !status.is_success() {
+    return Err(format!("GitHub Releases API returned {status}"));
+  }
+
+  response.json().await.map_err(|error| error.to_string())
+}
+
 fn migrations() -> Vec<Migration> {
   vec![
     Migration {
@@ -188,7 +224,9 @@ pub fn run() {
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_opener::init())
     .invoke_handler(tauri::generate_handler![
+      atomic_file::write_file_atomically,
       http_get_json,
+      get_latest_release,
       chat_stream::chat_stream,
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,

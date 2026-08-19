@@ -189,7 +189,7 @@ export function ProjectListPage({
     <>
       <div
         data-testid="projects-page"
-        className="flex min-h-0 flex-1 flex-col overflow-auto bg-muted/30"
+        className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-auto bg-muted/30"
       >
         <div className="mx-auto w-full max-w-6xl px-8 py-6">
           {/* 页面 header: 无框, 左标题+描述, 右 slot (通知铃 + 视图/排序按钮) */}

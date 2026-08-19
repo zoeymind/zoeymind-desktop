@@ -13,7 +13,6 @@ import {
   DialogDescription,
   DialogFooter,
   Button,
-  Checkbox,
 } from "@zoeymind/ui"
 import { useTranslation } from "@zoeymind/i18n"
 import { useFolders, type FolderItem } from "./hooks/useFolders"
@@ -36,7 +35,6 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
   const [createOpen, setCreateOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<FolderItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FolderItem | null>(null)
-  const [deleteContents, setDeleteContents] = useState(false)
 
   return (
     <div className="px-2">
@@ -157,7 +155,6 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
         onOpenChange={open => {
           if (!open) {
             setDeleteTarget(null)
-            setDeleteContents(false)
           }
         }}
       >
@@ -166,34 +163,14 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
             <DialogTitle>
               {t("projects.home.deleteFolderTitle", { itemName: deleteTarget?.name ?? "" })}
             </DialogTitle>
-            <DialogDescription>
-              {deleteContents
-                ? t("projects.home.deleteFolderWithContentsDesc", {
-                    n: deleteTarget?.mindmapCount ?? 0,
-                  })
-                : t("projects.home.deleteFolderDesc")}
-            </DialogDescription>
+            <DialogDescription>{t("projects.home.deleteFolderDesc")}</DialogDescription>
           </DialogHeader>
-
-          {!!deleteTarget && deleteTarget.mindmapCount > 0 && (
-            <label className="flex items-start gap-2.5 rounded-md border p-3 text-sm">
-              <Checkbox
-                checked={deleteContents}
-                onCheckedChange={v => setDeleteContents(v === true)}
-                className="mt-0.5"
-              />
-              <span>
-                {t("projects.home.deleteFolderContents", { n: deleteTarget.mindmapCount })}
-              </span>
-            </label>
-          )}
 
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
                 setDeleteTarget(null)
-                setDeleteContents(false)
               }}
             >
               {t("common.cancel")}
@@ -203,9 +180,8 @@ export function SidebarFolders({ active, activeFolderId, onSelectFolder }: Sideb
               disabled={isMutating}
               data-testid="folder-delete-confirm"
               onClick={async () => {
-                if (deleteTarget) await deleteFolder(deleteTarget.id, deleteContents)
+                if (deleteTarget) await deleteFolder(deleteTarget.id)
                 setDeleteTarget(null)
-                setDeleteContents(false)
               }}
             >
               {t("common.delete")}

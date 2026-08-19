@@ -5,22 +5,41 @@
  */
 export * from "./db"
 export * from "./paths"
+export * from "./atomic-file"
+export * from "./file-revision"
 export * from "./zmind-file"
 export * from "./chat-repo"
 export * from "./models-config"
 export * from "./preview"
+export * from "./recovery-queue"
+export * from "./recovery-service"
 export * from "./recovery"
 export * from "./folders-repo"
 export * from "./projects-repo"
 export * from "./mcp-repo"
 export * from "./mcp-spawn"
+export * from "./window-close-coordinator"
 export * from "./save-flow"
 export { UnsavedGuard } from "./unsaved-guard"
 export { SaveFlowProvider, useSaveFlowContext, useOptionalSaveFlow } from "./save-flow-context"
-export { useProjectsEvents, bumpProjects } from "./projects-events"
+export {
+  useProjectsEvents,
+  bumpProjects,
+  notifyProjectPathChanged,
+  notifyProjectRenamed,
+  type ProjectPathEvent,
+  type ProjectRenameEvent,
+} from "./projects-events"
 export { FileAssociationsListener } from "./file-associations"
 export { setupAppMenu } from "./app-menu"
 export { fetchProviderModels, type FetchedModel } from "./fetch-provider-models"
+export {
+  loadAppVersionInfo,
+  openLatestRelease,
+  isNewerVersion,
+  type AppVersionInfo,
+  type LatestRelease,
+} from "./app-version"
 export {
   streamChat,
   type StreamChatOptions,

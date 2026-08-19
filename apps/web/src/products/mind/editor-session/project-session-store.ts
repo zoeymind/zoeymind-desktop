@@ -19,6 +19,8 @@ export type ProjectSessionLifecycle =
 export interface ProjectSessionCommands {
   save?: () => Promise<void>
   saveAs?: (path: string) => Promise<void>
+  flushRecovery?: () => Promise<void>
+  discard?: () => Promise<void>
   dispose?: () => void
 }
 

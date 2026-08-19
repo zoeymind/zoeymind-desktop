@@ -9,17 +9,22 @@
  *   LoadingProvider       → 全局 loading 状态
  *   RouterProvider        → 列表 · 编辑器 · 设置
  *   <Loading>             → 全局 loading 遮罩 (读 LoadingProvider)
- *   <Toaster>             → sonner 通知
+ *   <Toaster>             → 跟随应用主题预设的通知
  */
 import { RouterProvider } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { Toaster } from "sonner"
-import { Loading, ThemeProvider, useTheme } from "@zoeymind/ui"
+import { Loading, ThemeProvider, Toaster, useTheme } from "@zoeymind/ui"
 import { I18nProvider, useTranslation } from "@zoeymind/i18n"
 import { router } from "@/routes"
 import { appLocales } from "@/locales"
-import { LoadingProvider, ThemePresetProvider, useLoading } from "@/shared/app-shared"
+import {
+  LoadingProvider,
+  ThemePresetProvider,
+  useAppVersion,
+  useLoading,
+} from "@/shared/app-shared"
 import { RecoveryDialog } from "@/pages/RecoveryDialog"
+import { WindowCloseDialog } from "@/pages/WindowCloseDialog"
 import { FileAssociationsListener, setupAppMenu } from "@/shared/native"
 import { useEffect } from "react"
 import logoLightUrl from "@/assets/logo.svg?url"
@@ -43,10 +48,14 @@ function InnerApp() {
     const teardown = setupAppMenu()
     return teardown
   }, [])
+  useEffect(() => {
+    void useAppVersion.getState().initialize()
+  }, [])
   return (
     <>
       <RouterProvider router={router} />
       <RecoveryDialog />
+      <WindowCloseDialog />
       <FileAssociationsListener />
       <Loading
         show={loading}
@@ -54,7 +63,7 @@ function InnerApp() {
         progress={progress}
         logoSrc={loadingLogoUrl}
       />
-      <Toaster position="top-right" richColors />
+      <Toaster position="bottom-left" />
     </>
   )
 }

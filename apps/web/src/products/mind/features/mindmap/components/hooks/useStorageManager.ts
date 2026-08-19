@@ -68,12 +68,10 @@ export function useStorageManager(): UseStorageManagerResult {
     try {
       const row = await getProject(workspaceId)
       if (!row) {
-        logger.warn(`项目 ${workspaceId} 不存在，使用默认数据`)
-        return { savedData: defaultData, savedViewData: null }
+        throw new Error("项目索引不存在")
       }
       if (!row.exists) {
-        logger.warn(`项目 ${workspaceId} 磁盘文件缺失`)
-        return { savedData: defaultData, savedViewData: null }
+        throw new Error(`找不到原文件：${row.path}`)
       }
       const bundle = await readBundle(row.path)
       // 名字权威源: 文件名 (foo.zmind -> foo), 不看 bundle.meta.name 也不看 row.name.

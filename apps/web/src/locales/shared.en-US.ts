@@ -17,19 +17,51 @@ export default {
     models: "Models",
     about: "About",
   },
-  recovery: {
-    title: "{{count}} unsaved edit detected",
+  appVersion: {
+    version: "Version",
+    updateAvailable: "Update available",
+    latestAvailable: "Version v{{version}} is available",
+    viewRelease: "View release",
+    upToDate: "Up to date",
+  },
+  projects: {
+    dialogs: {
+      removeTitle: "Remove “{{itemName}}” from ZoeyMind?",
+      removeDescription: "This removes the project index only. The .zmind file remains on disk.",
+      removeAction: "Remove",
+    },
+  },
+  windowClose: {
+    title: "{{count}} files have unsaved changes",
+    description: "Before closing, save all files, discard all changes, or cancel.",
+    saveAll: "Save all",
+    discardAll: "Discard all",
+    saveFailed: "Some files could not be saved. The window remains open.",
+  },
+  fileConflict: {
+    title: "The file changed on disk",
     description:
-      "The app did not close normally. Restore a draft to its original file, or choose a new location if that file is unavailable.",
+      "Reload the disk version, save the current content as a copy, or explicitly overwrite the disk file.",
+    reload: "Reload",
+    saveCopy: "Save copy",
+    overwrite: "Overwrite disk file",
+  },
+  fileRepair: {
+    title: "Original file not found",
+    missingDescription:
+      "The file was moved, renamed, or deleted. Locate it or remove the project from ZoeyMind.",
+    locate: "Locate file",
+    remove: "Remove from ZoeyMind",
+  },
+  recovery: {
+    title: "{{count}} files contain unsaved changes",
+    description:
+      "The app did not close normally. Cancel to preserve every record, or restore all files now.",
     untitled: "Untitled mind map",
-    sourceMissing: "Original file unavailable; choose a save location when restoring",
-    restore: "Restore draft",
+    sourceMissing: "Original file unavailable; a new file will be created in the ZoeyMind folder",
+    restoreAll: "Restore all",
     restoring: "Restoring…",
-    restored: "Draft restored",
-    restoreFailed: "Restore failed: {{message}}",
-    discard: "Discard",
-    discardWarning:
-      "Discarding deletes only the recovery draft and does not modify existing files. This cannot be undone.",
+    corruptCount: "{{count}} additional recovery records are corrupt and will be preserved.",
   },
   notifications: {
     bell: {

@@ -39,20 +39,11 @@ const ListView = forwardRef<HTMLDivElement, ListViewProps>(
         </div>
 
         <AnimatePresence initial={false}>
-          {projects.map((project, index) => (
+          {projects.map(project => (
             <motion.div
               key={project.id}
-              initial={{ opacity: 0, y: -20 }}
-              animate={{
-                opacity: 1,
-                y: 0,
-                transition: {
-                  delay: index * 0.05,
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 24
-                }
-              }}
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, height: 0 }}
               layout
               transition={{

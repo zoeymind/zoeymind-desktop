@@ -17,18 +17,48 @@ export default {
     models: "模型",
     about: "关于",
   },
+  appVersion: {
+    version: "版本",
+    updateAvailable: "有新版本",
+    latestAvailable: "最新版本 v{{version}} 已发布",
+    viewRelease: "查看更新",
+    upToDate: "已是最新版本",
+  },
+  projects: {
+    dialogs: {
+      removeTitle: "从 ZoeyMind 中移除“{{itemName}}”？",
+      removeDescription: "只会移除项目索引，不会删除磁盘上的 .zmind 文件。",
+      removeAction: "移除",
+    },
+  },
+  windowClose: {
+    title: "{{count}} 个文件有未保存的修改",
+    description: "关闭窗口前，请选择保存全部、全部不保存或取消。",
+    saveAll: "保存全部",
+    discardAll: "全部不保存",
+    saveFailed: "部分文件保存失败，窗口仍保持打开。",
+  },
+  fileConflict: {
+    title: "文件已在磁盘上发生变化",
+    description: "请选择重新加载磁盘版本、保存当前内容为副本，或明确覆盖磁盘文件。",
+    reload: "重新加载",
+    saveCopy: "保存副本",
+    overwrite: "覆盖磁盘文件",
+  },
+  fileRepair: {
+    title: "找不到原文件",
+    missingDescription: "原文件已被移动、重命名或删除。请定位文件，或从 ZoeyMind 中移除该项目。",
+    locate: "定位文件",
+    remove: "从 ZoeyMind 中移除",
+  },
   recovery: {
-    title: "检测到 {{count}} 个未保存的编辑",
-    description:
-      "应用上次未正常关闭。请选择要恢复的草稿；恢复会写回原文件，原文件不可用时将提示另存为。",
+    title: "检测到 {{count}} 个包含未保存修改的文件",
+    description: "应用上次未正常关闭。可以取消并保留全部记录，或一次恢复所有文件。",
     untitled: "未命名思维导图",
-    sourceMissing: "原文件不可用，恢复时需要选择保存位置",
-    restore: "恢复草稿",
+    sourceMissing: "原文件不可用，将自动保存到 ZoeyMind 文件夹",
+    restoreAll: "恢复全部",
     restoring: "正在恢复…",
-    restored: "草稿已恢复",
-    restoreFailed: "恢复失败：{{message}}",
-    discard: "丢弃",
-    discardWarning: "丢弃只会删除容灾草稿，不会修改已有文件；此操作无法撤销。",
+    corruptCount: "另有 {{count}} 个恢复记录已损坏，将继续保留。",
   },
   notifications: {
     bell: {

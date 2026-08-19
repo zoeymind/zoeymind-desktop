@@ -1,18 +1,16 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 /**
- * MoveDialog —— 桌面端简化版: 只支持"移动到某个文件夹".
+ * MoveDialog —— 桌面端虚拟文件夹分类。
  *
- * 云版本的"跨 workspace 移动"下线 (桌面端无 workspace 概念).
- * 移动 = 真 fs.rename 到 `~/Documents/ZoeyMind/<folderName>/`, projects_index
- * 的 path + folder_id 同步更新, 列表刷新.
+ * 移动只更新 projects_index.folder_id，不改变用户磁盘上的 .zmind 路径。
  *
  * 交互:
  *   - 顶部标题 + 项目名副标题
  *   - 中间 radio 列表: (无文件夹) + 所有 folders
  *   - 底部 取消 / 移动 主操作按钮
  */
-import { useEffect, useState } from 'react'
-import { Check, Folder as FolderIcon, FolderMinus, Loader2 } from 'lucide-react'
+import { useEffect, useState } from "react"
+import { Check, Folder as FolderIcon, FolderMinus, Loader2 } from "lucide-react"
 import {
   Button,
   cn,
@@ -21,13 +19,13 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@zoeymind/ui'
-import { toast } from '@/shared/app-shared'
-import { useTranslation } from '@zoeymind/i18n'
-import { useFolders } from './hooks/useFolders'
-import { moveProjectToFolder, bumpProjects } from '@/shared/native'
-import type { CloudProjectWithStats } from './hooks/useCloudProjects'
+  DialogTitle,
+} from "@zoeymind/ui"
+import { toast } from "@/shared/app-shared"
+import { useTranslation } from "@zoeymind/i18n"
+import { useFolders } from "./hooks/useFolders"
+import { moveProjectToFolder, bumpProjects } from "@/shared/native"
+import type { CloudProjectWithStats } from "./hooks/useCloudProjects"
 
 interface MoveDialogProps {
   open: boolean
@@ -58,14 +56,14 @@ export function MoveDialog({ open, onOpenChange, project, onMoved }: MoveDialogP
     try {
       await moveProjectToFolder(project.id, selectedFolderId)
       bumpProjects()
-      toast.success(t('projects.home.moveSuccess', '已移动'))
+      toast.success(t("projects.home.moveSuccess", "已移动"))
       onMoved?.()
       onOpenChange(false)
     } catch (error) {
       toast.error(
-        typeof error === 'object' && error !== null && 'message' in error
+        typeof error === "object" && error !== null && "message" in error
           ? String((error as { message: string }).message)
-          : t('projects.home.moveFailed', '移动失败')
+          : t("projects.home.moveFailed", "移动失败")
       )
     } finally {
       setBusy(false)
@@ -76,22 +74,22 @@ export function MoveDialog({ open, onOpenChange, project, onMoved }: MoveDialogP
     <Dialog open={open} onOpenChange={o => (!busy ? onOpenChange(o) : undefined)}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('projects.home.moveTo', '移动到')}</DialogTitle>
+          <DialogTitle>{t("projects.home.moveTo", "移动到")}</DialogTitle>
           <DialogDescription className="truncate">
-            {project.name ?? project.title ?? ''}
+            {project.name ?? project.title ?? ""}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-72 space-y-1 overflow-y-auto py-1">
+        <div className="no-scrollbar max-h-72 space-y-1 overflow-y-auto py-1">
           <FolderRow
             icon={FolderMinus}
-            label={t('projects.home.moveOutFolder', '无文件夹 (根目录)')}
+            label={t("projects.home.moveOutFolder", "无文件夹 (根目录)")}
             active={selectedFolderId === null}
             onSelect={() => setSelectedFolderId(null)}
           />
           {folders.length === 0 ? (
             <p className="px-3 py-2 text-xs text-muted-foreground">
-              {t('projects.home.noFolderToMove', '暂无文件夹, 请先在侧栏创建一个.')}
+              {t("projects.home.noFolderToMove", "暂无文件夹, 请先在侧栏创建一个.")}
             </p>
           ) : (
             folders.map(f => (
@@ -108,16 +106,16 @@ export function MoveDialog({ open, onOpenChange, project, onMoved }: MoveDialogP
 
         <DialogFooter className="flex flex-row justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-            {t('common.cancel', '取消')}
+            {t("common.cancel", "取消")}
           </Button>
           <Button onClick={handleConfirm} disabled={!changed || busy}>
             {busy ? (
               <>
                 <Loader2 className="mr-1 size-3.5 animate-spin" />
-                {t('common.processing', '处理中...')}
+                {t("common.processing", "处理中...")}
               </>
             ) : (
-              t('projects.home.moveTo', '移动到')
+              t("projects.home.moveTo", "移动到")
             )}
           </Button>
         </DialogFooter>
@@ -139,8 +137,8 @@ function FolderRow({ icon: Icon, label, active, onSelect }: FolderRowProps) {
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-left transition-colors',
-        active ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+        "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-left transition-colors",
+        active ? "bg-accent text-accent-foreground" : "hover:bg-muted"
       )}
     >
       <Icon className="size-4 shrink-0 text-muted-foreground" />
