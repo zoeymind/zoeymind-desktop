@@ -21,6 +21,17 @@ export { useProjectsEvents, bumpProjects } from './projects-events'
 export { FileAssociationsListener } from './file-associations'
 export { setupAppMenu, setMenuSaveFlow } from './app-menu'
 export { fetchProviderModels, type FetchedModel } from './fetch-provider-models'
+export {
+  streamChat,
+  type StreamChatOptions,
+  type StreamChatHandle,
+  type StreamChatMessage
+} from './desktop-chat'
+export * as chatRepo from './chat-repo'
+export type {
+  ChatConversationRow,
+  ChatMessageRow
+} from './chat-repo'
 
 export * as pendingProjects from './pending-projects'
 // 便利再导出：native 侧 hook 大多同时要 UUID，避免调用方两条 import

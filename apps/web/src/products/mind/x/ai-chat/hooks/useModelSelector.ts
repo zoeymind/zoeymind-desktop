@@ -1,31 +1,22 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
+// @ts-nocheck
 /**
- * 模型选择器 Hook (AIchatV2)
+ * 模型选择器 Hook (AIchatV2) —— 桌面端本地版.
  *
- * 数据源 = ZoeyMind `trpc.models.list` (PlatformModel, where isEnabled=true).
- * 不再依赖组织级 BYOK (`organization.aiConfig.listModels`) —— Phase B 之后 AI 调用统一走平台 AI 服务,
- * 模型清单由平台运营在 admin 后台决定.
- *
- * 本地缓存: 选中的 modelId 存 localStorage; 列表更新后若旧 selectedModel 不在新列表里,
- * 自动 fallback 到 defaultModelId (backend 决定) → 第一个.
+ * 源: <appData>/models.json (cfg.providers + cfg.models). 保持返回形状与源版一致,
+ * UI 不用改.
  */
 
-import { useState, useMemo } from 'react'
-import type { ModelListResult } from '../../lib/api-types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { logger } from '@zoeymind/logger'
-import { trpc } from '../../lib/trpc'
+import { loadModelsConfig, type ModelsConfig } from '@/shared/native'
 
 const PROVIDER_ICONS: Record<string, string> = {
   openai: '/llmLogo/openai.svg',
   google: '/llmLogo/gemini.svg',
+  gemini: '/llmLogo/gemini.svg',
   anthropic: '/llmLogo/claude.svg',
-  deepseek: '/llmLogo/deepseek.svg',
-  qwen: '/llmLogo/qwen.svg',
-  zhipu: '/llmLogo/zhipu.svg',
-  moonshot: '/llmLogo/moonshot.svg',
-  meta: '/llmLogo/meta.svg',
-  mistral: '/llmLogo/mistral.svg',
-  xai: '/llmLogo/xai.svg'
+  ollama: '/llmLogo/openai.svg',
+  'openai-compatible': '/llmLogo/openai.svg'
 }
 
 export interface AIModel {
@@ -41,27 +32,50 @@ export interface AIModel {
 }
 
 const LOCAL_STORAGE_KEY = 'aichatv2-selected-model'
+// 触发外部刷新 (设置面板保存新模型后 dispatch 这个事件).
+const MODELS_UPDATED_EVENT = 'zm:models-updated'
 
 export function useModelSelector() {
-  // 模型清单来自平台级 aigate provider (organizationId=null), 全实例内共享.
-  const { data, isLoading } = trpc.models.list.useQuery<ModelListResult>(undefined, {
-    staleTime: 30_000
-  })
+  const [cfg, setCfg] = useState<ModelsConfig | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const refresh = useCallback(() => {
+    setIsLoading(true)
+    void loadModelsConfig()
+      .then(setCfg)
+      .catch(err => logger.error('loadModelsConfig', err))
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  useEffect(() => {
+    refresh()
+    const onUpdate = () => refresh()
+    window.addEventListener(MODELS_UPDATED_EVENT, onUpdate)
+    return () => window.removeEventListener(MODELS_UPDATED_EVENT, onUpdate)
+  }, [refresh])
 
   const models: AIModel[] = useMemo(() => {
-    if (!data?.items) return []
-    return data.items.map(m => ({
-      id: m.modelId,
-      name: m.name,
-      description: m.description,
-      provider: m.provider,
-      hasVision: m.supportsVision,
-      hasToolCalling: m.supportsTools,
-      icon: m.iconUrl ?? PROVIDER_ICONS[m.provider] ?? undefined,
-      maxContextTokens: m.contextLength ?? undefined,
-      pricingNote: m.pricingNote
-    }))
-  }, [data])
+    if (!cfg) return []
+    return cfg.models.flatMap(m => {
+      const p = cfg.providers.find(p => p.id === m.provider)
+      if (!p) return []
+      return [
+        {
+          id: m.name, // 用 model.name 作为 id, 直接是 provider 那边可识别的字符串
+          name: m.name,
+          description: null,
+          provider: p.kind,
+          hasVision: m.capabilities?.includes('vision') ?? false,
+          hasToolCalling: m.capabilities?.includes('tools') ?? false,
+          icon: PROVIDER_ICONS[p.kind],
+          maxContextTokens: undefined,
+          pricingNote: null
+        }
+      ]
+    })
+  }, [cfg])
+
+  const defaultModelId = cfg?.defaults?.chat ?? models[0]?.id
 
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
     try {
@@ -76,8 +90,8 @@ export function useModelSelector() {
   const effectiveSelectedModel = useMemo(() => {
     if (models.length === 0) return selectedModel
     if (models.some(m => m.id === selectedModel)) return selectedModel
-    return data?.defaultModelId ?? models[0].id
-  }, [models, selectedModel, data?.defaultModelId])
+    return defaultModelId ?? models[0].id
+  }, [models, selectedModel, defaultModelId])
 
   const setSelectedModel = (modelId: string) => {
     setSelectedModelState(modelId)
@@ -88,7 +102,6 @@ export function useModelSelector() {
     }
   }
 
-  // 至少有 1 个上架模型即视为 "AI 已就绪"
   const isAIConfigured = models.length > 0
 
   return {

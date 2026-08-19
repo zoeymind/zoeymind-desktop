@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use tauri::{Emitter, Manager};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod chat_stream;
+use chat_stream::AbortMap;
+
 /**
  * 走 native reqwest 请求, 绕开 webview CORS. 前端 invoke('http_get_json', {url, headers}).
  * 用于拉取 provider 模型列表: 部分服务商 OPTIONS 预检返回 401 不给通过.
@@ -134,6 +137,7 @@ fn migrations() -> Vec<Migration> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .manage(AbortMap::default())
     // Single-instance: OS 双击 .zmind (macOS: fileAssociations 转 open event;
     // Windows/Linux: argv). 第二次启动时把路径 emit 到前端 'zm:open-file' 事件,
     // 由 useTabs.openTab 命中已有 tab 就激活, 否则新开.
@@ -160,7 +164,11 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_opener::init())
-    .invoke_handler(tauri::generate_handler![http_get_json])
+    .invoke_handler(tauri::generate_handler![
+      http_get_json,
+      chat_stream::chat_stream,
+      chat_stream::chat_stream_abort
+    ])
     .setup(|app| {
       if let Some(window) = app.get_webview_window("main") {
         #[cfg(target_os = "windows")]

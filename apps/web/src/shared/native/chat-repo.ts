@@ -1,13 +1,14 @@
 /**
- * SqlChatRepo —— AI Chat 会话/消息持久化，全部走 app.db。
+ * chat_conversations / chat_messages 的 CRUD (SqlProjectRepo 同一 db 实例).
  *
- * 产品仓的 AI Chat 用 IndexedDB (`chatDB`)；桌面端按用户方案改为 SQLite 单一
- * 持久层，让备份/迁移/查询都统一。产品仓的 `apps/zoeymind/x/web/mind/ai-chat/
- * storage/chatDB.ts` 与本 repo 表面对齐（listConversations / createConversation /
- * getMessages / appendMessage / deleteConversation / setTitle），替换时改
- * import 路径即可。
+ * 表 schema 见 src-tauri/src/lib.rs migrations:
+ *   chat_conversations(id, project_id, title, created_at, updated_at)
+ *   chat_messages(id, conversation_id, role, content_json, created_at)
+ *
+ * content_json 目前只用于放 string content, 未来可扩展为 tool_calls / attachments 等.
  */
 import { select, execute } from './db'
+import { createUUID } from '@/shared/app-shared'
 
 export interface ChatConversationRow {
   id: string
@@ -20,20 +21,19 @@ export interface ChatConversationRow {
 export interface ChatMessageRow {
   id: string
   conversationId: string
-  role: 'user' | 'assistant' | 'tool' | 'system'
-  content: unknown
+  role: 'user' | 'assistant' | 'system' | 'tool'
+  content: string
   createdAt: number
 }
 
-interface RawConv {
+interface RawConvRow {
   id: string
   project_id: string | null
   title: string
   created_at: number
   updated_at: number
 }
-
-interface RawMsg {
+interface RawMessageRow {
   id: string
   conversation_id: string
   role: string
@@ -41,90 +41,107 @@ interface RawMsg {
   created_at: number
 }
 
-function toConv(row: RawConv): ChatConversationRow {
+function toConv(r: RawConvRow): ChatConversationRow {
   return {
-    id: row.id,
-    projectId: row.project_id,
-    title: row.title,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    id: r.id,
+    projectId: r.project_id,
+    title: r.title,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at
   }
 }
 
-const ALLOWED_ROLES: Record<string, ChatMessageRow['role']> = {
-  user: 'user',
-  assistant: 'assistant',
-  tool: 'tool',
-  system: 'system'
-}
-
-function toMsg(row: RawMsg): ChatMessageRow {
-  const role = ALLOWED_ROLES[row.role] ?? 'system'
-  let content: unknown = null
+function parseContent(json: string): string {
   try {
-    content = JSON.parse(row.content_json)
+    const parsed = JSON.parse(json)
+    if (typeof parsed === 'string') return parsed
+    if (parsed && typeof parsed.text === 'string') return parsed.text
+    return json
   } catch {
-    content = row.content_json
+    return json
   }
-  return { id: row.id, conversationId: row.conversation_id, role, content, createdAt: row.created_at }
 }
 
-export async function listConversations(projectId?: string | null): Promise<ChatConversationRow[]> {
+function toMessage(r: RawMessageRow): ChatMessageRow {
+  return {
+    id: r.id,
+    conversationId: r.conversation_id,
+    role: r.role as ChatMessageRow['role'],
+    content: parseContent(r.content_json),
+    createdAt: r.created_at
+  }
+}
+
+export async function listConversations(projectId: string | null): Promise<ChatConversationRow[]> {
   const rows =
-    projectId === undefined
-      ? await select<RawConv>(`SELECT * FROM chat_conversations ORDER BY updated_at DESC`)
-      : projectId === null
-        ? await select<RawConv>(
-            `SELECT * FROM chat_conversations WHERE project_id IS NULL ORDER BY updated_at DESC`
-          )
-        : await select<RawConv>(
-            `SELECT * FROM chat_conversations WHERE project_id = $1 ORDER BY updated_at DESC`,
-            [projectId]
-          )
+    projectId === null
+      ? await select<RawConvRow>(
+          'SELECT * FROM chat_conversations WHERE project_id IS NULL ORDER BY updated_at DESC'
+        )
+      : await select<RawConvRow>(
+          'SELECT * FROM chat_conversations WHERE project_id = $1 ORDER BY updated_at DESC',
+          [projectId]
+        )
   return rows.map(toConv)
 }
 
 export async function createConversation(
-  id: string,
   projectId: string | null,
   title: string = ''
-): Promise<void> {
+): Promise<ChatConversationRow> {
+  const id = createUUID()
   const now = Date.now()
   await execute(
-    `INSERT INTO chat_conversations (id, project_id, title, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $4)`,
-    [id, projectId, title, now]
+    'INSERT INTO chat_conversations (id, project_id, title, created_at, updated_at) VALUES ($1,$2,$3,$4,$5)',
+    [id, projectId, title, now, now]
   )
+  return { id, projectId, title, createdAt: now, updatedAt: now }
 }
 
-export async function setConversationTitle(id: string, title: string): Promise<void> {
+export async function renameConversation(id: string, title: string): Promise<void> {
   await execute(
-    `UPDATE chat_conversations SET title = $1, updated_at = $2 WHERE id = $3`,
+    'UPDATE chat_conversations SET title = $1, updated_at = $2 WHERE id = $3',
     [title, Date.now(), id]
   )
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  await execute(`DELETE FROM chat_conversations WHERE id = $1`, [id])
-  // chat_messages 走 ON DELETE CASCADE 自动清
+  await execute('DELETE FROM chat_conversations WHERE id = $1', [id])
 }
 
-export async function getMessages(conversationId: string): Promise<ChatMessageRow[]> {
-  const rows = await select<RawMsg>(
-    `SELECT * FROM chat_messages WHERE conversation_id = $1 ORDER BY created_at ASC`,
+export async function listMessages(conversationId: string): Promise<ChatMessageRow[]> {
+  const rows = await select<RawMessageRow>(
+    'SELECT * FROM chat_messages WHERE conversation_id = $1 ORDER BY created_at ASC',
     [conversationId]
   )
-  return rows.map(toMsg)
+  return rows.map(toMessage)
 }
 
-export async function appendMessage(msg: ChatMessageRow): Promise<void> {
+export async function appendMessage(
+  conversationId: string,
+  role: ChatMessageRow['role'],
+  content: string
+): Promise<ChatMessageRow> {
+  const id = createUUID()
+  const now = Date.now()
   await execute(
-    `INSERT INTO chat_messages (id, conversation_id, role, content_json, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [msg.id, msg.conversationId, msg.role, JSON.stringify(msg.content), msg.createdAt]
+    'INSERT INTO chat_messages (id, conversation_id, role, content_json, created_at) VALUES ($1,$2,$3,$4,$5)',
+    [id, conversationId, role, JSON.stringify(content), now]
   )
-  await execute(`UPDATE chat_conversations SET updated_at = $1 WHERE id = $2`, [
-    Date.now(),
-    msg.conversationId
+  await execute('UPDATE chat_conversations SET updated_at = $1 WHERE id = $2', [
+    now,
+    conversationId
   ])
+  return { id, conversationId, role, content, createdAt: now }
+}
+
+export async function updateMessage(id: string, content: string): Promise<void> {
+  await execute('UPDATE chat_messages SET content_json = $1 WHERE id = $2', [
+    JSON.stringify(content),
+    id
+  ])
+}
+
+export async function deleteMessage(id: string): Promise<void> {
+  await execute('DELETE FROM chat_messages WHERE id = $1', [id])
 }

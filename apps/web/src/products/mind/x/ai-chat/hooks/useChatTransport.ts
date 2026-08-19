@@ -135,19 +135,158 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
         organizationId: currentOrgId,
         enabledToolNames
       }
-
-      const headers = new Headers(init?.headers ?? {})
-      if (!headers.has('Content-Type')) {
-        headers.set('Content-Type', 'application/json')
-      }
-
-      return fetch(input, {
-        ...init,
-        headers,
-        body: JSON.stringify(newBody),
-        // 跨域 (mind.zoeymind.com -> api.zoeymind.com) 必须带 cookie, 否则 requireAuth 401
-        credentials: 'include'
-      })
+      // 桌面端: 不走网络. 从 body 里挑 provider + model, 用 tauri chat_stream
+      // 拉 SSE, 转成 AI SDK v6 UI Message Stream 返回给 useChat.
+      return await runLocalStream(newBody)
     }
   }, [runtime, currentOrgId])
+}
+
+// ============ 桌面端本地流实现 ============
+
+import { loadModelsConfig, streamChat, type StreamChatMessage } from '@/shared/native'
+import { createUUID } from '@/shared/app-shared'
+
+interface UIMessagePart {
+  type: string
+  text?: string
+  content?: string
+}
+
+interface UIMessageIn {
+  id?: string
+  role: 'user' | 'assistant' | 'system'
+  content?: string
+  parts?: UIMessagePart[]
+}
+
+/** UI message parts -> 单一 content 字符串 (拼所有 text-* / text 部分). */
+function flattenParts(msg: UIMessageIn): string {
+  if (typeof msg.content === 'string' && msg.content) return msg.content
+  if (!Array.isArray(msg.parts)) return ''
+  return msg.parts
+    .map(p => {
+      if (typeof p.text === 'string') return p.text
+      if (typeof p.content === 'string') return p.content
+      return ''
+    })
+    .filter(Boolean)
+    .join('\n')
+}
+
+function encodeSse(chunk: unknown): Uint8Array {
+  const line = `data: ${JSON.stringify(chunk)}\n\n`
+  return new TextEncoder().encode(line)
+}
+
+/**
+ * 从 useChat body 拉 provider/model, 用 tauri invoke chat_stream 拿 SSE,
+ * 把 delta 转成 AI SDK v6 UI Message Stream chunks (text-start / text-delta / text-end
+ * / finish) 输出 Response.
+ *
+ * body 结构 (AI SDK v6 sendMessage):
+ *   { id: '...', messages: UIMessage[], model?: string }
+ * 我们额外接受 body.provider (可选) 或从 models.json 按 model.name 反查 provider.
+ */
+async function runLocalStream(body: {
+  messages: UIMessageIn[]
+  model?: string
+  userPrompt?: string
+  mindmapContextText?: string
+}): Promise<Response> {
+  const cfg = await loadModelsConfig()
+  // 优先取 body.model, 没传就用 defaults.chat, 再没有就取第一个 cfg.models.
+  const modelName =
+    body.model ??
+    cfg.defaults.chat ??
+    cfg.models[0]?.name ??
+    ''
+  const entry =
+    cfg.models.find(m => m.name === modelName || m.id === modelName) ??
+    cfg.models[0]
+  const provider = entry
+    ? cfg.providers.find(p => p.id === entry.provider)
+    : undefined
+
+  if (!entry || !provider) {
+    return sseErrorResponse('未配置任何模型: 请到设置 -> 模型 勾选一个')
+  }
+
+  const chatMessages: StreamChatMessage[] = []
+  const sys = [body.userPrompt, body.mindmapContextText].filter(Boolean).join('\n\n').trim()
+  if (sys) chatMessages.push({ role: 'system', content: sys })
+  for (const m of body.messages) {
+    const text = flattenParts(m)
+    if (!text) continue
+    chatMessages.push({ role: m.role, content: text })
+  }
+
+  const textId = `text-${createUUID()}`
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controllerRef = controller
+      controller.enqueue(encodeSse({ type: 'start' }))
+      controller.enqueue(encodeSse({ type: 'start-step' }))
+      controller.enqueue(encodeSse({ type: 'text-start', id: textId }))
+
+      try {
+        await streamChat({
+          provider,
+          model: entry.name,
+          messages: chatMessages,
+          onDelta: (text: string) => {
+            controller.enqueue(
+              encodeSse({ type: 'text-delta', id: textId, delta: text })
+            )
+          },
+          onDone: () => {
+            controller.enqueue(encodeSse({ type: 'text-end', id: textId }))
+            controller.enqueue(encodeSse({ type: 'finish-step' }))
+            controller.enqueue(encodeSse({ type: 'finish' }))
+            controller.close()
+          },
+          onError: (msg: string) => {
+            controller.enqueue(encodeSse({ type: 'error', errorText: msg }))
+            controller.close()
+          }
+        })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        controller.enqueue(encodeSse({ type: 'error', errorText: msg }))
+        controller.close()
+      }
+    },
+    cancel() {
+      // useChat.stop() 走这里; onError/onDone 未触发时 controllerRef 已 null.
+      controllerRef = null
+    }
+  })
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'x-vercel-ai-ui-message-stream': 'v1'
+    }
+  })
+}
+
+function sseErrorResponse(message: string): Response {
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encodeSse({ type: 'start' }))
+      controller.enqueue(encodeSse({ type: 'error', errorText: message }))
+      controller.close()
+    }
+  })
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'x-vercel-ai-ui-message-stream': 'v1'
+    }
+  })
 }
