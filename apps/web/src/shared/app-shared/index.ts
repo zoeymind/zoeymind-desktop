@@ -92,6 +92,14 @@ export { CodeBlock } from './code-block'
 export {
   processMentions,
   stripMentionsForCodeBlock,
+  convertAtMentionToZTDL,
+  buildMentionHtml,
+  extractNodeIdFromClass,
+  mentionClassName,
+  getMentionMessageClassName,
+  ZTDL_MENTION_REGEX,
+  INLINE_CODE_ZTDL_REGEX,
+  ESCAPED_ZTDL_REGEX,
   type MindMapNode,
   type MentionProcessorOptions
 } from './mentions'
