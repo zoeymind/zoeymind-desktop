@@ -263,12 +263,16 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
 
     const handleSearch = useCallback(
       (_trigger: string, query?: string | null): Promise<BeautifulMentionsItem[]> => {
+        // eslint-disable-next-line no-console
+        console.log('[MentionEditor] handleSearch called', { trigger: _trigger, query })
         onMentionTrigger?.()
         const items: BeautifulMentionsItem[] = onSearch(query ?? '').map(s => ({
           value: s.value,
           [MENTION_DATA_ID_KEY]: s.id,
           avatar: s.avatar ?? null
         }))
+        // eslint-disable-next-line no-console
+        console.log('[MentionEditor] handleSearch returning', items.length, 'items')
         return Promise.resolve(items)
       },
       [onSearch, onMentionTrigger]
