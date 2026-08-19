@@ -105,14 +105,15 @@ export function MindMapScrollbar({ className }: MindMapScrollbarProps) {
       >
         <div
           className={cn(
-            "absolute right-0 w-2 bg-black/30 backdrop-blur-sm rounded-full pointer-events-auto cursor-pointer hover:bg-black/40 transition-colors",
-            isDragging === "vertical" && "bg-black/50 shadow-lg"
+            'absolute right-0 w-2 rounded-full pointer-events-auto cursor-pointer transition-colors',
+            'bg-muted-foreground/40 hover:bg-muted-foreground/60',
+            isDragging === 'vertical' && 'bg-primary shadow-lg'
           )}
           style={{
             top: `${scrollbarData.vertical.top}%`,
             height: `${scrollbarData.vertical.height}%`,
           }}
-          onMouseDown={e => handleMouseDown(e, "vertical")}
+          onMouseDown={e => handleMouseDown(e, 'vertical')}
         />
       </div>
 
@@ -123,14 +124,15 @@ export function MindMapScrollbar({ className }: MindMapScrollbarProps) {
       >
         <div
           className={cn(
-            "absolute bottom-0 h-2 bg-black/30 backdrop-blur-sm rounded-full pointer-events-auto cursor-pointer hover:bg-black/40 transition-colors",
-            isDragging === "horizontal" && "bg-black/50 shadow-lg"
+            'absolute bottom-0 h-2 rounded-full pointer-events-auto cursor-pointer transition-colors',
+            'bg-muted-foreground/40 hover:bg-muted-foreground/60',
+            isDragging === 'horizontal' && 'bg-primary shadow-lg'
           )}
           style={{
             left: `${scrollbarData.horizontal.left}%`,
             width: `${scrollbarData.horizontal.width}%`,
           }}
-          onMouseDown={e => handleMouseDown(e, "horizontal")}
+          onMouseDown={e => handleMouseDown(e, 'horizontal')}
         />
       </div>
     </div>
