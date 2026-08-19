@@ -42,7 +42,8 @@
         "ext": ["zmind"],
         "description": "ZoeyMind 思维导图文件",
         "role": "Editor",
-        "mimeType": "application/x-zoeymind"
+        "mimeType": "application/x-zoeymind",
+        "icon": "icons/icon.icns"
       }
     ]
   }
