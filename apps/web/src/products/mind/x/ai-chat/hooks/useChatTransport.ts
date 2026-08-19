@@ -142,53 +142,75 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
   }, [runtime, currentOrgId])
 }
 
-// ============ 桌面端本地流实现 ============
+// ============ 桌面端本地流实现: streamText + tools + system prompt ============
 
-import {
-  createUIMessageStream,
-  createUIMessageStreamResponse
-} from 'ai'
-import { loadModelsConfig, streamChat, type StreamChatMessage, type StreamChatHandle } from '@/shared/native'
-import { createUUID } from '@/shared/app-shared'
+import { streamText, convertToModelMessages, type UIMessage } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { loadModelsConfig, nativeFetch, type ModelProvider } from '@/shared/native'
+import { buildSystemPrompt } from '../prompts/system-prompt'
+import { getAgentTools } from '../agent-tools'
 
-interface UIMessagePart {
-  type: string
-  text?: string
-  content?: string
+function resolveBaseURL(provider: ModelProvider): string | undefined {
+  const raw = provider.baseURL?.trim()
+  if (raw) return raw.replace(/\/+$/, '').replace(/\/v1$/, '')
+  switch (provider.kind) {
+    case 'openai':
+      return 'https://api.openai.com'
+    case 'ollama':
+      return 'http://localhost:11434'
+    default:
+      return undefined
+  }
 }
 
-interface UIMessageIn {
-  id?: string
-  role: 'user' | 'assistant' | 'system'
-  content?: string
-  parts?: UIMessagePart[]
-}
-
-/** UI message parts -> 单一 content 字符串 (拼所有 text-* / text 部分). */
-function flattenParts(msg: UIMessageIn): string {
-  if (typeof msg.content === 'string' && msg.content) return msg.content
-  if (!Array.isArray(msg.parts)) return ''
-  return msg.parts
-    .map(p => {
-      if (typeof p.text === 'string') return p.text
-      if (typeof p.content === 'string') return p.content
-      return ''
-    })
-    .filter(Boolean)
-    .join('\n')
+function makeLanguageModel(provider: ModelProvider, modelName: string) {
+  const baseURL = resolveBaseURL(provider)
+  switch (provider.kind) {
+    case 'openai':
+    case 'openai-compatible':
+    case 'ollama': {
+      // Ollama 也有 OpenAI 兼容层 (/v1/chat/completions), 走同一分支.
+      const openai = createOpenAI({
+        baseURL: baseURL ? `${baseURL}/v1` : undefined,
+        apiKey: provider.apiKey || 'ollama',
+        fetch: nativeFetch
+      })
+      return openai(modelName)
+    }
+    case 'anthropic': {
+      const anthropic = createAnthropic({
+        baseURL: baseURL ? `${baseURL}/v1` : undefined,
+        apiKey: provider.apiKey ?? '',
+        fetch: nativeFetch,
+        headers: { 'anthropic-dangerous-direct-browser-access': 'true' }
+      })
+      return anthropic(modelName)
+    }
+    case 'gemini': {
+      const google = createGoogleGenerativeAI({
+        baseURL: baseURL ? `${baseURL}/v1beta` : undefined,
+        apiKey: provider.apiKey ?? '',
+        fetch: nativeFetch
+      })
+      return google(modelName)
+    }
+    default:
+      throw new Error(`不支持的 provider kind: ${String(provider.kind)}`)
+  }
 }
 
 /**
- * 桌面端: useChat 里的 customFetch 最后统一调这个. 走 tauri chat_stream native
- * reqwest 拉服务商的 SSE, 用 AI SDK 官方 createUIMessageStream + writer 转成
- * v6 UI Message Stream Response 交回 useChat.
- *
- * 中止: init.signal 由 useChat.stop() 触发 -> abort streamChat handle,
- * 让 Rust 侧任务真的取消, 不再吐 delta.
+ * 桌面端本地 agent 流:
+ *   1. 从 body 挑 provider + model
+ *   2. 拼 system prompt (buildSystemPrompt + userPrompt + mindmapContext)
+ *   3. streamText({model, system, messages, tools, stopWhen}) 跑多步 tool loop
+ *   4. result.toUIMessageStreamResponse(...) 直接返回给 useChat
  */
 async function runLocalStream(
   body: {
-    messages: UIMessageIn[]
+    messages: UIMessage[]
     model?: string
     userPrompt?: string
     mindmapContextText?: string
@@ -209,6 +231,8 @@ async function runLocalStream(
     : undefined
 
   if (!entry || !provider) {
+    // 返回一个 UI Message Stream Response, 让 useChat 显示 error
+    const { createUIMessageStream, createUIMessageStreamResponse } = await import('ai')
     return createUIMessageStreamResponse({
       stream: createUIMessageStream({
         execute: ({ writer }) => {
@@ -221,71 +245,30 @@ async function runLocalStream(
     })
   }
 
-  const chatMessages: StreamChatMessage[] = []
-  const sys = [body.userPrompt, body.mindmapContextText].filter(Boolean).join('\n\n').trim()
-  if (sys) chatMessages.push({ role: 'system', content: sys })
-  for (const m of body.messages) {
-    const text = flattenParts(m)
-    if (!text) continue
-    chatMessages.push({ role: m.role, content: text })
+  const systemParts = [buildSystemPrompt()]
+  if (body.userPrompt) systemParts.push(`---\n\n${body.userPrompt}`)
+  if (body.mindmapContextText) {
+    systemParts.push(`---\n\n当前思维导图状态：\n${body.mindmapContextText}`)
   }
+  const systemContent = systemParts.join('\n\n')
 
-  const textId = `t-${createUUID()}`
+  const modelMessages = await convertToModelMessages(body.messages)
 
-  const stream = createUIMessageStream({
-    execute: async ({ writer }) => {
-      writer.write({ type: 'start' })
-      writer.write({ type: 'start-step' })
-      writer.write({ type: 'text-start', id: textId })
+  const model = makeLanguageModel(provider, entry.name)
+  const tools = getAgentTools()
 
-      let handle: StreamChatHandle | null = null
-      let doneResolve: (() => void) | null = null
-      const done = new Promise<void>(resolve => {
-        doneResolve = resolve
-      })
-
-      // useChat.stop() 触发的 abort -> 立即中断 Rust 侧任务
-      const onAbort = () => {
-        void handle?.abort()
-        writer.write({ type: 'abort', reason: 'user' })
-        writer.write({ type: 'finish' })
-        doneResolve?.()
-      }
-      signal?.addEventListener('abort', onAbort, { once: true })
-
-      try {
-        handle = await streamChat({
-          provider,
-          model: entry.name,
-          messages: chatMessages,
-          onDelta: (text: string) => {
-            writer.write({ type: 'text-delta', id: textId, delta: text })
-          },
-          onDone: () => {
-            writer.write({ type: 'text-end', id: textId })
-            writer.write({ type: 'finish-step' })
-            writer.write({ type: 'finish' })
-            doneResolve?.()
-          },
-          onError: (msg: string) => {
-            writer.write({ type: 'error', errorText: msg })
-            writer.write({ type: 'finish-step' })
-            writer.write({ type: 'finish' })
-            doneResolve?.()
-          }
-        })
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        writer.write({ type: 'error', errorText: msg })
-        writer.write({ type: 'finish-step' })
-        writer.write({ type: 'finish' })
-        doneResolve?.()
-      }
-
-      await done
-      signal?.removeEventListener('abort', onAbort)
-    }
+  const result = streamText({
+    model,
+    tools,
+    system: systemContent,
+    messages: modelMessages,
+    abortSignal: signal,
+    maxRetries: 2
   })
 
-  return createUIMessageStreamResponse({ stream })
+  return result.toUIMessageStreamResponse({
+    originalMessages: body.messages,
+    onError: (error: unknown) =>
+      error instanceof Error ? error.message : String(error)
+  })
 }

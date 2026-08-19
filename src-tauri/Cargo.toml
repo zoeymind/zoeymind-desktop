@@ -33,3 +33,4 @@ reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], defau
 tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
 futures-util = "0.3"
 urlencoding = "2"
+base64 = "0.22"

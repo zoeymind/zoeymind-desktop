@@ -63,35 +63,40 @@ export async function streamChat(opts: StreamChatOptions): Promise<StreamChatHan
   )
   unlisten.push(
     await listen<DoneEvent['payload']>(`chat:${requestId}:done`, event => {
+      console.log('[desktop-chat] done', event.payload)
       opts.onDone?.(event.payload.finish_reason)
       cleanup()
     })
   )
   unlisten.push(
     await listen<ErrorEvent['payload']>(`chat:${requestId}:error`, event => {
+      console.error('[desktop-chat] error event', event.payload)
       opts.onError?.(event.payload.message)
       cleanup()
     })
   )
-
+  const invokeArgs = {
+    req: {
+      requestId,
+      provider: {
+        kind: opts.provider.kind,
+        baseUrl: opts.provider.baseURL,
+        apiKey: opts.provider.apiKey
+      },
+      model: opts.model,
+      messages: opts.messages,
+      temperature: opts.temperature,
+      maxTokens: opts.maxTokens
+    }
+  }
+  console.log('[desktop-chat] invoke chat_stream', invokeArgs)
   try {
-    await invoke('chat_stream', {
-      req: {
-        requestId,
-        provider: {
-          kind: opts.provider.kind,
-          baseURL: opts.provider.baseURL,
-          apiKey: opts.provider.apiKey
-        },
-        model: opts.model,
-        messages: opts.messages,
-        temperature: opts.temperature,
-        maxTokens: opts.maxTokens
-      }
-    })
+    await invoke('chat_stream', invokeArgs)
+    console.log('[desktop-chat] invoke chat_stream returned Ok')
   } catch (err) {
     cleanup()
     const msg = err instanceof Error ? err.message : String(err)
+    console.error('[desktop-chat] invoke chat_stream failed', err)
     opts.onError?.(msg)
     throw err
   }

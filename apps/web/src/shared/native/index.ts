@@ -27,6 +27,7 @@ export {
   type StreamChatHandle,
   type StreamChatMessage
 } from './desktop-chat'
+export { nativeFetch } from './native-fetch'
 export * as chatRepo from './chat-repo'
 export type {
   ChatConversationRow,

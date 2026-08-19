@@ -16,14 +16,13 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
 use tokio::task::JoinHandle;
-
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatProvider {
   pub kind: String, // "openai" | "openai-compatible" | "anthropic" | "ollama" | "gemini"
-  #[serde(default)]
+  #[serde(default, alias = "baseURL")]
   pub base_url: Option<String>,
-  #[serde(default)]
+  #[serde(default, alias = "apiKey")]
   pub api_key: Option<String>,
 }
 
