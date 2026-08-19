@@ -39,9 +39,27 @@ export const MessageView: React.FC<MessageViewProps> = ({
     onScrollStatusChange
   })
 
-  // 计算要显示的消息
-  const visibleMessages = messages.slice(-displayCount)
-  const hasMoreMessages = messages.length > displayCount
+  // 去重: 消息数组里出现同 id 会让 React 报 "same key" 然后爆炸 (整个 chat 卡死).
+  // 见 chat store / DB 载入 / 重发路径任一处若把同一条消息 push 两遍, 这里兜底.
+  const dedupedMessages = React.useMemo(() => {
+    const seen = new Set<string>()
+    const out: typeof messages = []
+    for (const m of messages) {
+      if (!m.id || seen.has(m.id)) {
+        if (m.id) {
+          // eslint-disable-next-line no-console
+          console.warn('[MessageView] duplicate message id dropped', { id: m.id, role: m.role })
+        }
+        continue
+      }
+      seen.add(m.id)
+      out.push(m)
+    }
+    return out
+  }, [messages])
+
+  const visibleMessages = dedupedMessages.slice(-displayCount)
+  const hasMoreMessages = dedupedMessages.length > displayCount
 
   // 加载更多消息
   const loadMoreMessages = () => {

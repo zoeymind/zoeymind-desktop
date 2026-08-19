@@ -5,7 +5,6 @@
 
 import React, { useRef, useEffect } from 'react'
 import { PreviewMedia } from '@zoeymind/ui'
-import { logger } from '@zoeymind/logger'
 import type { Attachment } from '../../../ai-chat/types'
 
 interface MediaPreviewProps {
@@ -51,22 +50,12 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
   }
 
   // 将 attachments 转换为 MediaItem 格式
-  const mediaItems = attachments.map((att, index) => {
-    const item = {
-      id: att.id || `attachment-${index}`,
-      name: att.name || 'image',
-      url: att.dataUrl,
-      type: att.type === 'image' ? ('image' as const) : ('file' as const)
-    }
-    logger.debug('[MediaPreview] 转换附件', { index, item })
-    return item
-  })
-
-  logger.debug('[MediaPreview] 渲染预览', {
-    attachmentsCount: attachments.length,
-    mediaItemsCount: mediaItems.length,
-    hasDataUrl: mediaItems.some(item => item.url)
-  })
+  const mediaItems = attachments.map((att, index) => ({
+    id: att.id || `attachment-${index}`,
+    name: att.name || 'image',
+    url: att.dataUrl,
+    type: att.type === 'image' ? ('image' as const) : ('file' as const)
+  }))
 
   return (
     <div ref={scrollContainerRef} className="w-full overflow-hidden">

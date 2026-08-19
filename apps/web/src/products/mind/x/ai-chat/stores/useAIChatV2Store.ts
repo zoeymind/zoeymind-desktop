@@ -226,7 +226,13 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
     const runtime = getModuleAIChatRuntime()
 
     if ((!inputMessage.trim() && attachments.length === 0) || !runtime) {
-      logger.warn('[AIchatV2Store] 无法发送消息：输入为空或 runtime 未初始化')
+      logger.warn('[AIchatV2Store] 无法发送消息', {
+        inputEmpty: !inputMessage.trim(),
+        attachmentsCount: attachments.length,
+        runtimeReady: !!runtime,
+        workspaceId,
+        selectedModel
+      })
       return
     }
     // 暂存输入用于发送失败时恢复；清除中断标记
