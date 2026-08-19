@@ -10,7 +10,7 @@
  *   - About  (版本 / 品牌)
  */
 import { useCallback, useEffect, useState } from 'react'
-import { Bot, Info, Plus, Trash2 } from 'lucide-react'
+import { Bot, Info, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import {
   Button,
   Card,
@@ -19,13 +19,17 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  Label,
   NativeSelect,
-  SettingsShell
+  SettingsShell,
+  cn
 } from '@zoeymind/ui'
 import { toast, createUUID } from '@/shared/app-shared'
 import {
   loadModelsConfig,
   saveModelsConfig,
+  fetchProviderModels,
+  type FetchedModel,
   type ModelsConfig,
   type ModelProvider,
   type ModelEntry,
@@ -84,174 +88,215 @@ interface ModelsSectionProps {
   persist: (next: ModelsConfig) => Promise<void>
 }
 
+function ProviderCard({
+  provider,
+  cfg,
+  persist,
+  onRemove
+}: {
+  provider: ModelProvider
+  cfg: ModelsConfig
+  persist: (next: ModelsConfig) => Promise<void>
+  onRemove: () => void
+}) {
+  const [fetching, setFetching] = useState(false)
+  const [fetchedModels, setFetchedModels] = useState<FetchedModel[] | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  const update = (patch: Partial<ModelProvider>) => {
+    const providers = cfg.providers.map(p => (p.id === provider.id ? { ...p, ...patch } : p))
+    void persist({ ...cfg, providers })
+  }
+
+  const doFetch = async () => {
+    setFetching(true)
+    setFetchError(null)
+    try {
+      const list = await fetchProviderModels(provider)
+      setFetchedModels(list)
+      if (list.length === 0) {
+        setFetchError('provider 返回空模型列表')
+      } else {
+        toast.success(`拉到 ${list.length} 个模型`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setFetchError(msg)
+      setFetchedModels(null)
+      toast.error(`拉取失败: ${msg}`)
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  const enabledIds = new Set(
+    cfg.models.filter(m => m.provider === provider.id).map(m => m.name)
+  )
+
+  const toggleModel = (modelId: string) => {
+    const already = enabledIds.has(modelId)
+    let models: ModelEntry[]
+    if (already) {
+      models = cfg.models.filter(m => !(m.provider === provider.id && m.name === modelId))
+    } else {
+      models = [
+        ...cfg.models,
+        {
+          id: createUUID(),
+          provider: provider.id,
+          name: modelId,
+          capabilities: ['chat']
+        }
+      ]
+    }
+    void persist({ ...cfg, models })
+  }
+
+  const kindLabel: Record<ProviderKind, string> = {
+    openai: 'OpenAI',
+    anthropic: 'Anthropic',
+    'openai-compatible': 'OpenAI 兼容',
+    ollama: 'Ollama',
+    gemini: 'Google Gemini'
+  }
+
+  return (
+    <div className="space-y-3 rounded-md border p-4">
+      <div className="flex items-center gap-2">
+        <NativeSelect
+          value={provider.kind}
+          onChange={e => update({ kind: e.target.value as ProviderKind })}
+          className="w-40"
+        >
+          {PROVIDER_KINDS.map(k => (
+            <option key={k} value={k}>
+              {kindLabel[k]}
+            </option>
+          ))}
+        </NativeSelect>
+        <div className="flex-1" />
+        <Button variant="ghost" size="icon-sm" onClick={onRemove}>
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Base URL</Label>
+          <Input
+            placeholder={
+              provider.kind === 'ollama'
+                ? 'http://localhost:11434'
+                : '默认端点 (留空即用官方)'
+            }
+            value={provider.baseURL ?? ''}
+            onChange={e => update({ baseURL: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">API Key</Label>
+          <Input
+            type="password"
+            placeholder={provider.kind === 'ollama' ? '(不需要)' : 'sk-...'}
+            value={provider.apiKey ?? ''}
+            onChange={e => update({ apiKey: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={doFetch} disabled={fetching}>
+          {fetching ? (
+            <Loader2 className="mr-1 size-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="mr-1 size-3.5" />
+          )}
+          {fetchedModels ? '重新拉取' : '拉取模型列表'}
+        </Button>
+        {fetchError && (
+          <span className="text-xs text-destructive truncate">{fetchError}</span>
+        )}
+        {fetchedModels && (
+          <span className="text-xs text-muted-foreground">
+            {fetchedModels.length} 个模型 · 已选 {enabledIds.size}
+          </span>
+        )}
+      </div>
+
+      {fetchedModels && fetchedModels.length > 0 && (
+        <div className="max-h-56 space-y-1 overflow-y-auto rounded border bg-muted/30 p-2">
+          {fetchedModels.map(m => {
+            const on = enabledIds.has(m.id)
+            return (
+              <label
+                key={m.id}
+                className={cn(
+                  'flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs transition-colors',
+                  on ? 'bg-primary/10 text-foreground' : 'hover:bg-muted/60'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={on}
+                  onChange={() => toggleModel(m.id)}
+                  className="size-3.5"
+                />
+                <span className="flex-1 truncate font-mono">{m.id}</span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ModelsSection({ cfg, persist }: ModelsSectionProps) {
+  const addProvider = () => {
+    void persist({
+      ...cfg,
+      providers: [
+        ...cfg.providers,
+        { id: createUUID(), kind: 'openai', baseURL: '', apiKey: '' }
+      ]
+    })
+  }
+
+  const removeProvider = (id: string) => {
+    void persist({
+      ...cfg,
+      providers: cfg.providers.filter(p => p.id !== id),
+      models: cfg.models.filter(m => m.provider !== id)
+    })
+  }
+
   return (
     <div className="space-y-6 p-6 overflow-y-auto">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
-            <CardTitle>Providers</CardTitle>
-            <CardDescription>模型服务商 / API 端点</CardDescription>
+            <CardTitle>模型服务商</CardTitle>
+            <CardDescription>
+              配置 provider (Base URL + API Key), 然后"拉取模型列表"选择要用哪些
+            </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              persist({
-                ...cfg,
-                providers: [
-                  ...cfg.providers,
-                  { id: createUUID(), kind: 'openai', baseURL: '', apiKey: '' }
-                ]
-              })
-            }
-          >
+          <Button variant="outline" size="sm" onClick={addProvider}>
             <Plus className="mr-1 size-3.5" />
             新增
           </Button>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {cfg.providers.length === 0 && (
-            <p className="text-sm text-muted-foreground">还没有 provider。</p>
+            <p className="text-sm text-muted-foreground">还没有 provider, 点右上"新增"开始.</p>
           )}
-          {cfg.providers.map((p, idx) => (
-            <div key={p.id} className="space-y-2 rounded-md border p-3">
-              <div className="flex items-center gap-2">
-                <NativeSelect
-                  value={p.kind}
-                  onChange={e => {
-                    const providers = cfg.providers.slice()
-                    providers[idx] = { ...p, kind: e.target.value as ProviderKind }
-                    void persist({ ...cfg, providers })
-                  }}
-                >
-                  {PROVIDER_KINDS.map(k => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </NativeSelect>
-                <Input
-                  placeholder="Provider id"
-                  value={p.id}
-                  onChange={e => {
-                    const providers = cfg.providers.slice()
-                    providers[idx] = { ...p, id: e.target.value }
-                    void persist({ ...cfg, providers })
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() =>
-                    persist({
-                      ...cfg,
-                      providers: cfg.providers.filter(x => x.id !== p.id),
-                      models: cfg.models.filter(m => m.provider !== p.id)
-                    })
-                  }
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-              <Input
-                placeholder="Base URL (可选)"
-                value={p.baseURL ?? ''}
-                onChange={e => {
-                  const providers = cfg.providers.slice()
-                  providers[idx] = { ...p, baseURL: e.target.value }
-                  void persist({ ...cfg, providers })
-                }}
-              />
-              <Input
-                type="password"
-                placeholder="API Key"
-                value={p.apiKey ?? ''}
-                onChange={e => {
-                  const providers = cfg.providers.slice()
-                  providers[idx] = { ...p, apiKey: e.target.value }
-                  void persist({ ...cfg, providers })
-                }}
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle>Models</CardTitle>
-            <CardDescription>可用的模型 (关联到某个 provider)</CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={cfg.providers.length === 0}
-            onClick={() =>
-              persist({
-                ...cfg,
-                models: [
-                  ...cfg.models,
-                  {
-                    id: createUUID(),
-                    provider: cfg.providers[0]?.id ?? '',
-                    name: '',
-                    capabilities: ['chat']
-                  }
-                ]
-              })
-            }
-          >
-            <Plus className="mr-1 size-3.5" />
-            新增
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {cfg.models.length === 0 && (
-            <p className="text-sm text-muted-foreground">还没有模型。</p>
-          )}
-          {cfg.models.map((m, idx) => (
-            <div key={m.id} className="flex items-center gap-2 rounded-md border p-3">
-              <NativeSelect
-                value={m.provider}
-                onChange={e => {
-                  const models = cfg.models.slice()
-                  models[idx] = { ...m, provider: e.target.value }
-                  void persist({ ...cfg, models })
-                }}
-              >
-                <option value="">(选 provider)</option>
-                {cfg.providers.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.id}
-                  </option>
-                ))}
-              </NativeSelect>
-              <Input
-                placeholder="Model id (e.g. gpt-4o, claude-sonnet-4)"
-                value={m.name}
-                onChange={e => {
-                  const models = cfg.models.slice()
-                  models[idx] = { ...m, name: e.target.value }
-                  void persist({ ...cfg, models })
-                }}
-                className="flex-1"
-              />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() =>
-                  persist({
-                    ...cfg,
-                    models: cfg.models.filter(x => x.id !== m.id)
-                  })
-                }
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
+          {cfg.providers.map(p => (
+            <ProviderCard
+              key={p.id}
+              provider={p}
+              cfg={cfg}
+              persist={persist}
+              onRemove={() => removeProvider(p.id)}
+            />
           ))}
         </CardContent>
       </Card>
