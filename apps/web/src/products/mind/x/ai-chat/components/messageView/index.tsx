@@ -33,7 +33,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const isProcessing = status === 'submitted' || status === 'streaming'
   const [displayCount, setDisplayCount] = useState(MESSAGES_PER_PAGE)
 
-  const { containerRef, messagesEndRef } = useAutoScroll({
+  const { containerRef, contentRef, messagesEndRef } = useAutoScroll({
     messages,
     isSending: isProcessing,
     onScrollStatusChange
@@ -80,7 +80,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
 
   return (
     <div ref={containerRef} className="h-full overflow-y-auto">
-      <div className="flex flex-col p-4">
+      <div ref={contentRef} className="flex flex-col p-4 min-h-full pb-6">
         {/* 加载更多按钮 */}
         {hasMoreMessages && (
           <button
