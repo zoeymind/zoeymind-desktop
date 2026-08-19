@@ -415,7 +415,7 @@ export const useMindMapModules = (
 
         if (!rawData) {
           logger.warn('无法获取思维导图原始数据')
-          setModuleList([])
+          setModuleList(prev => (prev.length === 0 ? prev : []))
           return
         }
 
@@ -441,10 +441,21 @@ export const useMindMapModules = (
 
         traverseDataTree(rawData)
 
-        setModuleList(result)
+        // 内容相同时不换引用, 避免下游 useMemo/useCallback([moduleList]) 反复重建
+        // 触发 lexical-beautiful-mentions useMentionLookupService 里 [onSearch]
+        // useEffect 死循环 (Maximum update depth).
+        setModuleList(prev => {
+          if (
+            prev.length === result.length &&
+            prev.every((m, i) => m.id === result[i].id && m.display === result[i].display)
+          ) {
+            return prev
+          }
+          return result
+        })
       } catch (error) {
         logger.error('提取模块列表失败:', error)
-        setModuleList([])
+        setModuleList(prev => (prev.length === 0 ? prev : []))
       }
     }
 
