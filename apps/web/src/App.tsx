@@ -26,9 +26,10 @@ import {
 import { RecoveryDialog } from "@/pages/RecoveryDialog"
 import { WindowCloseDialog } from "@/pages/WindowCloseDialog"
 import { FileAssociationsListener, setupAppMenu } from "@/shared/native"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import logoLightUrl from "@/assets/logo.svg?url"
 import logoDarkUrl from "@/assets/logo-dark.svg?url"
+import { invoke } from "@tauri-apps/api/core"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +40,25 @@ const queryClient = new QueryClient({
   },
 })
 
+function FrontendReady() {
+  const { resolvedTheme } = useTheme()
+  const [notified, setNotified] = useState(false)
+
+  useEffect(() => {
+    if (notified || !resolvedTheme) return
+    let cancelled = false
+    void document.fonts.ready.then(async () => {
+      if (cancelled) return
+      await invoke("frontend_ready")
+      if (!cancelled) setNotified(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [notified, resolvedTheme])
+
+  return null
+}
 function InnerApp() {
   const { loading, tip, progress } = useLoading()
   const { t } = useTranslation()
@@ -63,6 +83,7 @@ function InnerApp() {
         progress={progress}
         logoSrc={loadingLogoUrl}
       />
+      <FrontendReady />
       <Toaster position="bottom-left" />
     </>
   )

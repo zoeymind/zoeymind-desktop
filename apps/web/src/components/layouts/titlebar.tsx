@@ -14,6 +14,7 @@ import { useTranslation } from "@zoeymind/i18n"
 import { Button } from "@zoeymind/ui"
 import { SettingsDialog } from "@/pages/SettingsDialog"
 import { TabBar } from "./tab-bar"
+import { isPhysicalTitlebarTarget } from "./titlebar-drag"
 
 const appWindow = getCurrentWindow()
 
@@ -46,6 +47,7 @@ export function TitleBar() {
   const isMac = platform === "macos"
 
   const handleTitlebarPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isPhysicalTitlebarTarget(event.currentTarget, event.target as Node)) return
     if (event.button !== 0) return
     const target = event.target as HTMLElement
     if (target.closest("button, [role='tab'], [data-tab-interactive]")) return

@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "ZoeyMind",
         "width": 1280,
         "height": 800,
@@ -19,6 +20,8 @@
         "fullscreen": false,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "backgroundColor": "#ffffff",
+        "visible": false,
         "trafficLightPosition": { "x": 12, "y": 20 }
       }
     ],

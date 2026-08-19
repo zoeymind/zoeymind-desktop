@@ -70,6 +70,15 @@ async fn get_latest_release() -> Result<LatestRelease, String> {
   response.json().await.map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn frontend_ready(app: tauri::AppHandle) -> Result<(), String> {
+  let window = app
+    .get_webview_window("main")
+    .ok_or_else(|| "main window not found".to_string())?;
+  window.show().map_err(|error| error.to_string())?;
+  window.set_focus().map_err(|error| error.to_string())
+}
+
 fn migrations() -> Vec<Migration> {
   vec![
     Migration {
@@ -227,6 +236,7 @@ pub fn run() {
       atomic_file::write_file_atomically,
       http_get_json,
       get_latest_release,
+      frontend_ready,
       chat_stream::chat_stream,
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,

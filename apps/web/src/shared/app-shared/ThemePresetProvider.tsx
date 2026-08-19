@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { useTheme, THEME_PRESET_STORAGE_KEY, THEME_PRESETS, applyThemeOrClear } from '@zoeymind/ui'
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { useTheme, THEME_PRESET_STORAGE_KEY, THEME_PRESETS, applyThemeOrClear } from "@zoeymind/ui"
 
 interface ThemePresetContextValue {
   presetId: string
@@ -15,7 +15,7 @@ const ThemePresetContext = createContext<ThemePresetContextValue | undefined>(un
 export function useThemePreset(): ThemePresetContextValue {
   const ctx = useContext(ThemePresetContext)
   if (!ctx) {
-    throw new Error('useThemePreset must be used within ThemePresetProvider')
+    throw new Error("useThemePreset must be used within ThemePresetProvider")
   }
   return ctx
 }
@@ -35,11 +35,11 @@ interface ThemePresetProviderProps {
 export function ThemePresetProvider({ children }: ThemePresetProviderProps): ReactNode {
   const { resolvedTheme } = useTheme()
   const [presetId, setPresetId] = useState<string>(() => {
-    if (typeof window === 'undefined') return ''
+    if (typeof window === "undefined") return ""
     try {
-      return window.localStorage.getItem(THEME_PRESET_STORAGE_KEY) ?? ''
+      return window.localStorage.getItem(THEME_PRESET_STORAGE_KEY) ?? ""
     } catch {
-      return ''
+      return ""
     }
   })
 
@@ -49,7 +49,7 @@ export function ThemePresetProvider({ children }: ThemePresetProviderProps): Rea
   // Apply theme whenever presetId or resolved theme changes
   useEffect(() => {
     const root = document.documentElement
-    const mode = (resolvedTheme ?? 'light') as 'light' | 'dark'
+    const mode = (resolvedTheme ?? "light") as "light" | "dark"
     applyThemeOrClear(currentPreset, mode, root)
   }, [presetId, resolvedTheme, currentPreset])
 
@@ -64,7 +64,7 @@ export function ThemePresetProvider({ children }: ThemePresetProviderProps): Rea
 
   const value: ThemePresetContextValue = {
     presetId,
-    setPreset: handleSetPreset
+    setPreset: handleSetPreset,
   }
 
   return <ThemePresetContext.Provider value={value}>{children}</ThemePresetContext.Provider>
