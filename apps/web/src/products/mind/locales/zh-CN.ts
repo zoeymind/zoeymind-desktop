@@ -266,6 +266,7 @@ export default {
         },
         publicShareDescription: "社区发现",
         publicShareLabel: "公开分享",
+        saving: "保存中...",
         savePrompt: "保存指令",
         systemPromptLabel: "系统提示词 (System Prompt)",
         tabs: {

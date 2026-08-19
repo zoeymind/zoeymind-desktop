@@ -35,10 +35,11 @@ async fn http_get_json(
   Ok(text)
 }
 fn migrations() -> Vec<Migration> {
-  vec![Migration {
-    version: 1,
-    description: "initial schema: projects/folders/snapshots/chat/ai/mcp",
-    sql: r#"
+  vec![
+    Migration {
+      version: 1,
+      description: "initial schema: projects/folders/snapshots/chat/ai/mcp",
+      sql: r#"
       -- 项目索引：每个 .zmind 文件在磁盘上的注册记录。
       -- path = 绝对路径，用户可以在 Finder 里移动/删除，运行时通过
       -- fs::exists 判断，缺失时 UI 显示失效卡片。
@@ -132,8 +133,27 @@ fn migrations() -> Vec<Migration> {
         updated_at INTEGER NOT NULL
       );
     "#,
-    kind: MigrationKind::Up,
-  }]
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 2,
+      description: "prompts library",
+      sql: r#"
+      -- 用户自定义提示词。桌面端单人本地库, 不做公开分享 / 多用户 / 社区.
+      -- is_enabled=1 的会被拼进 system prompt 前置 (在 useAIChatV2Store.mergedUserPrompt).
+      CREATE TABLE IF NOT EXISTS prompts (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        is_enabled INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_prompts_updated ON prompts(updated_at);
+    "#,
+      kind: MigrationKind::Up,
+    },
+  ]
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

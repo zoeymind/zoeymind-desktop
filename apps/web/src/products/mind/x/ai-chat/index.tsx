@@ -17,6 +17,8 @@ import { ActivePromptsIndicator } from "./components/ActivePromptsIndicator"
 import { ChatHistoryPanel } from "./components/historyView/ChatHistoryPanel"
 import { AIChatSettingsDialog } from "./components/inputView/AIChatSettingsDialog"
 import { LOCAL_AI_TOOLS } from "./local-tools"
+import { PromptManagerModal } from "./components/PromptManager/PromptManagerModal"
+import { usePromptsQuery } from "./hooks/usePrompts"
 import { ErrorBoundary } from "./components/ErrorBoundary"
 import { MindMapInstanceProvider } from "./context/MindMapInstanceContext"
 import { ToolUIRenderer } from "./context/ToolUIRenderer"
@@ -74,15 +76,21 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
     setShowSettings,
   } = useAIChatV2Store()
 
-  // Prompts 由扩展模块提供；社区版无 prompt 命名空间, 不注入合并 prompt.
-  const myPrompts: Array<{ id: string; title: string; isEnabled: boolean; content: string }> = []
+  // 本地提示词库 (sqlite prompts 表). 启用的指令拼进 mergedUserPrompt,
+  // 作为 system prompt 前置发给模型.
+  const { data: myPromptsData } = usePromptsQuery()
+  const myPrompts = useMemo(() => myPromptsData ?? [], [myPromptsData])
   useEffect(() => {
-    setMergedUserPrompt("")
-  }, [setMergedUserPrompt])
-  // Prompt Manager 已随扩展模块拆分, 社区版按钮回调为空操作.
-  // useCallback + [] 保证引用稳定, 避免击穿下游 UserMessage / InputView 的 React.memo.
-  const setShowPromptManager = useCallback((_next: boolean) => undefined, [])
-  const handleOpenPromptManager = useCallback(() => setShowPromptManager(true), [setShowPromptManager])
+    setMergedUserPrompt(
+      myPrompts
+        .filter(p => p.isEnabled)
+        .map(p => p.content)
+        .join('\n\n')
+    )
+  }, [myPrompts, setMergedUserPrompt])
+
+  const [showPromptManager, setShowPromptManager] = useState(false)
+  const handleOpenPromptManager = useCallback(() => setShowPromptManager(true), [])
 
   // 桌面端后端不跑 trpc.aiV2.getTools, 用本地静态清单 shim.
   const toolsData = useMemo<AiToolListResult>(() => ({ tools: LOCAL_AI_TOOLS }), [])
@@ -374,7 +382,10 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
           disabled={!isAIConfigured}
         />
       </div>
-      {/* PromptManagerModal 已随扩展模块拆分，社区版不渲染。 */}
+      <PromptManagerModal
+        isOpen={showPromptManager}
+        onClose={() => setShowPromptManager(false)}
+      />
       <AIChatSettingsDialog
         open={showSettings}
         onOpenChange={setShowSettings}

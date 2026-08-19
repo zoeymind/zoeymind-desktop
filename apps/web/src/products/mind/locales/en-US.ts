@@ -271,6 +271,7 @@ export default {
         },
         publicShareDescription: "Community discovery",
         publicShareLabel: "Public sharing",
+        saving: "Saving...",
         savePrompt: "Save prompt",
         systemPromptLabel: "System Prompt",
         tabs: {
