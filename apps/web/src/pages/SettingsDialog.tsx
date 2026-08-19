@@ -46,7 +46,7 @@ import {
   SettingsShell,
   cn,
 } from "@zoeymind/ui"
-import { toast, createUUID } from "@/shared/app-shared"
+import { AppVersionStatus, toast, createUUID } from "@/shared/app-shared"
 import {
   loadModelsConfig,
   saveModelsConfig,
@@ -720,6 +720,7 @@ function ModelEditor({
 }
 
 function AboutSection() {
+  const { t } = useTranslation()
   return (
     <section className="space-y-6">
       <div className="space-y-1">
@@ -727,9 +728,11 @@ function AboutSection() {
         <p className="text-sm text-muted-foreground">本地思维导图编辑器</p>
       </div>
       <dl className="divide-y text-sm">
-        <div className="flex justify-between py-3">
-          <dt className="text-muted-foreground">版本</dt>
-          <dd className="tabular-nums">0.1.0</dd>
+        <div className="flex justify-between gap-6 py-3">
+          <dt className="text-muted-foreground">{t("appVersion.version")}</dt>
+          <dd>
+            <AppVersionStatus variant="detail" />
+          </dd>
         </div>
         <div className="flex justify-between gap-6 py-3">
           <dt className="text-muted-foreground">数据目录</dt>

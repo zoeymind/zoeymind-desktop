@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ZoeyMind",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "identifier": "com.zoeymind.desktop",
   "build": {
     "frontendDist": "../apps/web/dist",
@@ -36,14 +36,27 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "document-icons/zoeymind-document.icns": "zoeymind-document.icns",
+      "document-icons/zoeymind-document.ico": "zoeymind-document.ico"
+    },
     "fileAssociations": [
       {
         "name": "ZoeyMind Document",
         "ext": ["zmind"],
         "description": "ZoeyMind 思维导图文件",
         "role": "Editor",
-        "mimeType": "application/x-zoeymind"
+        "mimeType": "application/x-zoeymind",
+        "exportedType": {
+          "identifier": "com.zoeymind.desktop.document",
+          "conformsTo": ["public.data"]
+        }
       }
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
   }
 }
