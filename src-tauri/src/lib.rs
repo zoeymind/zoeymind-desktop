@@ -1,6 +1,10 @@
-use std::collections::HashMap;
+use std::{
+  collections::HashMap,
+  path::{Path, PathBuf},
+  sync::Mutex,
+};
 
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, State};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod atomic_file;
@@ -8,6 +12,96 @@ mod chat_stream;
 mod http_stream;
 use chat_stream::AbortMap;
 use http_stream::HttpAbortMap;
+
+#[derive(Default)]
+struct PendingOpenFiles(Mutex<PendingOpenFilesInner>);
+
+#[derive(Default)]
+struct PendingOpenFilesInner {
+  frontend_ready: bool,
+  paths: Vec<String>,
+}
+
+fn is_zmind_file(path: &Path) -> bool {
+  path.extension()
+    .and_then(|extension| extension.to_str())
+    .is_some_and(|extension| extension.eq_ignore_ascii_case("zmind"))
+}
+
+fn path_from_open_argument(argument: &str) -> Option<PathBuf> {
+  if argument.starts_with('-') {
+    return None;
+  }
+  if let Ok(url) = url::Url::parse(argument) {
+    return url.to_file_path().ok().filter(|path| is_zmind_file(path));
+  }
+  let path = PathBuf::from(argument);
+  is_zmind_file(&path).then_some(path)
+}
+
+fn enqueue_open_files(app: &tauri::AppHandle, paths: impl IntoIterator<Item = PathBuf>) {
+  let paths = paths
+    .into_iter()
+    .filter(|path| is_zmind_file(path))
+    .map(|path| path.to_string_lossy().into_owned())
+    .collect::<Vec<_>>();
+  if paths.is_empty() {
+    return;
+  }
+  let emit_paths = if let Ok(mut pending) = app.state::<PendingOpenFiles>().0.lock() {
+    if pending.frontend_ready {
+      Some(paths)
+    } else {
+      for path in paths {
+        if !pending.paths.contains(&path) {
+          pending.paths.push(path);
+        }
+      }
+      None
+    }
+  } else {
+    Some(paths)
+  };
+  if let Some(paths) = emit_paths {
+    let _ = app.emit("zm:open-file", paths);
+  }
+}
+
+#[tauri::command]
+fn take_pending_open_files(pending: State<'_, PendingOpenFiles>) -> Vec<String> {
+  pending.0.lock().map(|mut pending| {
+    pending.frontend_ready = true;
+    std::mem::take(&mut pending.paths)
+  }).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod open_file_tests {
+  use super::*;
+
+  #[test]
+  fn accepts_case_insensitive_zmind_paths() {
+    assert_eq!(
+      path_from_open_argument("/vault/Plan.ZMIND"),
+      Some(PathBuf::from("/vault/Plan.ZMIND"))
+    );
+  }
+
+  #[test]
+  fn accepts_file_urls() {
+    assert_eq!(
+      path_from_open_argument("file:///tmp/Plan.zmind"),
+      Some(PathBuf::from("/tmp/Plan.zmind"))
+    );
+  }
+
+  #[test]
+  fn rejects_flags_other_urls_and_unrelated_files() {
+    assert_eq!(path_from_open_argument("--inspect"), None);
+    assert_eq!(path_from_open_argument("https://zoeymind.com/Plan.zmind"), None);
+    assert_eq!(path_from_open_argument("/tmp/Plan.txt"), None);
+  }
+}
 
 /**
  * 走 native reqwest 请求, 绕开 webview CORS. 前端 invoke('http_get_json', {url, headers}).
@@ -206,21 +300,22 @@ pub fn run() {
   tauri::Builder::default()
     .manage(AbortMap::default())
     .manage(HttpAbortMap::default())
+    .manage(PendingOpenFiles::default())
     // Single-instance: OS 双击 .zmind (macOS: fileAssociations 转 open event;
     // Windows/Linux: argv). 第二次启动时把路径 emit 到前端 'zm:open-file' 事件,
     // 由 useTabs.openTab 命中已有 tab 就激活, 否则新开.
     .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
       log::info!("second instance launched, argv={:?}", argv);
-      // argv[0] 是 exe 路径, argv[1..] 是文件参数
-      let paths: Vec<&str> = argv.iter().skip(1).map(|s| s.as_str()).collect();
-      if !paths.is_empty() {
-        let _ = app.emit("zm:open-file", &paths);
-      }
-      // 把窗口拉到前台
-      if let Some(w) = app.get_webview_window("main") {
-        let _ = w.show();
-        let _ = w.set_focus();
-        let _ = w.unminimize();
+      enqueue_open_files(
+        app,
+        argv.iter()
+          .skip(1)
+          .filter_map(|argument| path_from_open_argument(argument)),
+      );
+      if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        let _ = window.unminimize();
       }
     }))
     .plugin(
@@ -237,12 +332,20 @@ pub fn run() {
       http_get_json,
       get_latest_release,
       frontend_ready,
+      take_pending_open_files,
       chat_stream::chat_stream,
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,
       http_stream::http_stream_abort
     ])
     .setup(|app| {
+      #[cfg(any(windows, target_os = "linux"))]
+      enqueue_open_files(
+        app.handle(),
+        std::env::args()
+          .skip(1)
+          .filter_map(|argument| path_from_open_argument(&argument)),
+      );
       if let Some(window) = app.get_webview_window("main") {
         #[cfg(target_os = "windows")]
         {
@@ -260,6 +363,12 @@ pub fn run() {
       }
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(|app, event| {
+      #[cfg(target_os = "macos")]
+      if let tauri::RunEvent::Opened { urls } = event {
+        enqueue_open_files(app, urls.into_iter().filter_map(|url| url.to_file_path().ok()));
+      }
+    });
 }

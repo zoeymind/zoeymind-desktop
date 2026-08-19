@@ -26,7 +26,7 @@ import {
 import { RecoveryDialog } from "@/pages/RecoveryDialog"
 import { WindowCloseDialog } from "@/pages/WindowCloseDialog"
 import { FileAssociationsListener, setupAppMenu } from "@/shared/native"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import logoLightUrl from "@/assets/logo.svg?url"
 import logoDarkUrl from "@/assets/logo-dark.svg?url"
 import { invoke } from "@tauri-apps/api/core"
@@ -40,12 +40,12 @@ const queryClient = new QueryClient({
   },
 })
 
-function FrontendReady() {
+function FrontendReady({ filesReady }: { filesReady: boolean }) {
   const { resolvedTheme } = useTheme()
   const [notified, setNotified] = useState(false)
 
   useEffect(() => {
-    if (notified || !resolvedTheme) return
+    if (notified || !resolvedTheme || !filesReady) return
     let cancelled = false
     void document.fonts.ready.then(async () => {
       if (cancelled) return
@@ -55,11 +55,13 @@ function FrontendReady() {
     return () => {
       cancelled = true
     }
-  }, [notified, resolvedTheme])
+  }, [filesReady, notified, resolvedTheme])
 
   return null
 }
 function InnerApp() {
+  const [initialFilesOpened, setInitialFilesOpened] = useState(false)
+  const handleInitialFilesOpened = useCallback(() => setInitialFilesOpened(true), [])
   const { loading, tip, progress } = useLoading()
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
@@ -76,14 +78,14 @@ function InnerApp() {
       <RouterProvider router={router} />
       <RecoveryDialog />
       <WindowCloseDialog />
-      <FileAssociationsListener />
+      <FileAssociationsListener onInitialFilesOpened={handleInitialFilesOpened} />
       <Loading
         show={loading}
         tip={tip ?? t("common.loading", "加载中...")}
         progress={progress}
         logoSrc={loadingLogoUrl}
       />
-      <FrontendReady />
+      <FrontendReady filesReady={initialFilesOpened} />
       <Toaster position="bottom-left" />
     </>
   )
