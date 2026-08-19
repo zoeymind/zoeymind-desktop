@@ -175,7 +175,7 @@ function makeLanguageModel(provider: ModelProvider, modelName: string) {
         apiKey: provider.apiKey ?? '',
         fetch: nativeFetch
       })
-      return openai(modelName)
+      return openai.chat(modelName)
     }
     case 'openai-compatible':
     case 'ollama': {
