@@ -15,6 +15,10 @@ import { User } from 'lucide-react'
 import {
   $getRoot,
   $createParagraphNode,
+  $createTextNode,
+  $getNodeByKey,
+  $setSelection,
+  $createRangeSelection,
   COMMAND_PRIORITY_LOW,
   KEY_ENTER_COMMAND,
   type EditorState
@@ -75,12 +79,13 @@ export interface MentionEditorProps {
   className?: string
 }
 
-/** 建议菜单容器：浮在输入框上方/下方，复用 popover token */
+/** 建议菜单容器: 浮在输入框上方; 通过 shadcn popover token 保持一致外观. */
 const MentionMenu = forwardRef<HTMLUListElement, BeautifulMentionsMenuProps>(
   ({ loading: _loading, ...props }, ref) => (
     <ul
       ref={ref}
-      className="absolute bottom-full left-0 z-10 mb-1.5 max-h-[240px] min-w-[180px] max-w-[280px] overflow-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+      style={{ zIndex: 100 }}
+      className="absolute bottom-full left-0 mb-1.5 max-h-[240px] min-w-[200px] max-w-[280px] overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md outline-none"
       {...props}
     />
   )
@@ -96,8 +101,9 @@ function createMentionMenuItem(showAvatar: boolean) {
         <li
           ref={ref}
           className={cn(
-            'flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-xs transition-colors last:border-b-0',
-            selected && 'bg-muted'
+            'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+            'hover:bg-accent hover:text-accent-foreground',
+            selected && 'bg-accent text-accent-foreground'
           )}
           {...props}
         >
@@ -106,14 +112,14 @@ function createMentionMenuItem(showAvatar: boolean) {
               <img
                 src={String(avatar)}
                 alt={item.value}
-                className="size-6 shrink-0 rounded-full object-cover"
+                className="size-5 shrink-0 rounded-full object-cover"
               />
             ) : (
-              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
-                <User className="size-4 text-muted-foreground" />
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted">
+                <User className="size-3 text-muted-foreground" />
               </div>
             ))}
-          <span className="max-w-[200px] truncate">{item.value}</span>
+          <span className="truncate">{item.value}</span>
         </li>
       )
     }
@@ -208,6 +214,42 @@ const EditablePlugin: React.FC<{ disabled: boolean }> = ({ disabled }) => {
     }
     return undefined
   }, [editor, disabled])
+  return null
+}
+
+/**
+ * lexical-beautiful-mentions 在 replace(mentionNode) 后不移动 selection,
+ * Lexical 0.45 集成下 caret 会落到段首. 我们监听 BeautifulMentionNode 创建,
+ * 在其后补一个空文本 (或复用已有 next sibling), 把 caret 挪到 mention 之后.
+ */
+const CaretAfterMentionPlugin: React.FC = () => {
+  const [editor] = useLexicalComposerContext()
+  React.useEffect(() => {
+    return editor.registerMutationListener(BeautifulMentionNode, mutations => {
+      // 使用微任务以避免与刚提交的 update 冲突
+      queueMicrotask(() => {
+        editor.update(() => {
+          for (const [key, kind] of mutations) {
+            if (kind !== 'created') continue
+            const node = $getNodeByKey(key)
+            if (!node) continue
+            let after = node.getNextSibling()
+            if (!after) {
+              const spacer = $createTextNode(' ')
+              node.insertAfter(spacer)
+              after = spacer
+            }
+            const sel = $createRangeSelection()
+            const target = after
+            // 光标落在 mention 之后节点的开头 (若是空文本 spacer, 就是 offset 0)
+            sel.anchor.set(target.getKey(), 0, 'text')
+            sel.focus.set(target.getKey(), 0, 'text')
+            $setSelection(sel)
+          }
+        })
+      })
+    })
+  }, [editor])
   return null
 }
 
@@ -351,6 +393,7 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
           <ControlledValuePlugin value={value} />
           <EnterCommandPlugin onEnter={onKeyDown} />
           <EditablePlugin disabled={disabled} />
+          <CaretAfterMentionPlugin />
           {autoFocus && <AutoFocusPlugin />}
         </LexicalComposer>
       </div>

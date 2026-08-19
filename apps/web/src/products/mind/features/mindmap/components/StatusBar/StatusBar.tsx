@@ -5,6 +5,7 @@ import { usePermissionStore } from "@/products/mind/features/mindmap/stores/perm
 import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 import { TestCaseStats } from "./TestCaseStats"
 import { PermissionIndicator } from "./PermissionIndicator"
+import { ZoomControls } from "./ZoomControls"
 
 export const StatusBar: FC = () => {
   const { workspaceId, cloudMode } = useProjectContext()
@@ -31,8 +32,7 @@ export const StatusBar: FC = () => {
         {/* 权限显示 */}
         {showPermission && <PermissionIndicator role={role} />}
       </div>
-      {/* 右侧 — 暂留, 后续放真正的工具入口 */}
-      <div className="flex items-center gap-3" />
+      <ZoomControls />
     </footer>
   )
 }
