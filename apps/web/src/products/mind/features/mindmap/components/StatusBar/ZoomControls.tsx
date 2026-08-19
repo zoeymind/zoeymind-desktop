@@ -42,7 +42,7 @@ export function ZoomControls() {
   return (
     <ButtonGroup aria-label={`${zoomPercent}%`}>
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon-xs"
         onClick={() => mindMap?.view.enlarge()}
         disabled={!mindMap}
@@ -57,7 +57,7 @@ export function ZoomControls() {
           nativeButton
           disabled={!mindMap}
           render={
-            <Button variant="outline" size="xs" className="min-w-16 tabular-nums">
+            <Button variant="ghost" size="xs" className="min-w-14 tabular-nums">
               {zoomPercent}%
               <ChevronDown data-icon="inline-end" />
             </Button>
@@ -87,7 +87,7 @@ export function ZoomControls() {
       </DropdownMenu>
 
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon-xs"
         onClick={() => mindMap?.view.narrow()}
         disabled={!mindMap}

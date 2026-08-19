@@ -32,7 +32,7 @@ import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap
 import { useCommentStore } from "@/products/mind/features/mindmap/stores/comment-store"
 import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 import { useOrganization } from "@/shared/app-shared"
-import { toast, toastLoading, dismissToast, ThemeMenu, LanguageSwitcher } from "@/shared/app-shared"
+import { toast, toastLoading, dismissToast } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
 import { Button, LoadErrorScreen } from "@zoeymind/ui"
 import type { default as MindMap } from "simple-mind-map"
@@ -457,7 +457,7 @@ export function MindMapCanvas() {
       <AIChatProvider>
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1">
-            {/* 左侧 icon-only 活动条 —— 取代原顶部 Header. 上: TopBar (menu+save) / FormatPanel (tags/AI). 下: 语言 / 主题. */}
+            {/* 左侧 icon-only 活动条。全局偏好统一收敛到顶部设置入口。 */}
             <aside className="z-30 flex w-12 shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-2">
               <TopBar collaboration={collaboration} />
               <FormatPanel
@@ -467,9 +467,6 @@ export function MindMapCanvas() {
               />
               <div className="flex-1" />
               <CanvasTool />
-              <div className="my-1 h-px w-4 bg-border" />
-              <LanguageSwitcher />
-              <ThemeMenu />
             </aside>
             <div className="relative min-w-0 flex-1">
               <div

@@ -3,6 +3,18 @@
  */
 
 export default {
+  settings: {
+    title: '设置',
+    preferences: '偏好设置',
+    language: '语言',
+    languageDescription: '选择应用界面使用的语言。',
+    theme: '主题',
+    themeDescription: '选择明暗模式和界面配色预设。',
+    editor: '编辑器',
+    providers: '服务商',
+    models: '模型',
+    about: '关于'
+  },
   notifications: {
     bell: {
       title: '通知',

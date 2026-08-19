@@ -11,7 +11,8 @@
  */
 // @ts-nocheck
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Bot, Boxes, Info, Loader2, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
+import { useTranslation } from '@zoeymind/i18n'
+import { Bot, Boxes, Info, Languages, Loader2, Palette, Plus, RefreshCw, Save, Settings2, Trash2 } from 'lucide-react'
 import {
   Button,
   Card,
@@ -41,6 +42,11 @@ import {
   type ModelEntry,
   type ProviderKind
 } from '@/shared/native'
+import {
+  EditorSettingsSection,
+  LanguageSettingsSection,
+  ThemeSettingsSection
+} from './settings-preference-sections'
 
 const PROVIDER_KIND_OPTIONS: Array<{ value: ProviderKind; label: string }> = [
   { value: 'openai', label: 'OpenAI' },
@@ -53,7 +59,7 @@ const PROVIDER_KIND_OPTIONS: Array<{ value: ProviderKind; label: string }> = [
 const kindLabel = (k: ProviderKind): string =>
   PROVIDER_KIND_OPTIONS.find(o => o.value === k)?.label ?? k
 
-type SectionId = 'providers' | 'models' | 'about'
+type SectionId = 'language' | 'theme' | 'editor' | 'providers' | 'models' | 'about'
 
 interface SettingsDialogProps {
   open: boolean
@@ -64,8 +70,9 @@ interface SettingsDialogProps {
 const providerFetchCache = new Map<string, FetchedModel[]>()
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  const { t } = useTranslation()
   const [cfg, setCfg] = useState<ModelsConfig | null>(null)
-  const [active, setActive] = useState<SectionId>('providers')
+  const [active, setActive] = useState<SectionId>('language')
   // 触发 models section 刷新用 (fetch cache 更新后)
   const [cacheVersion, setCacheVersion] = useState(0)
   const bumpCache = useCallback(() => setCacheVersion(v => v + 1), [])
@@ -83,15 +90,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     <SettingsShell
       open={open}
       onOpenChange={onOpenChange}
-      title="设置"
+      title={t('settings.title')}
       items={[
-        { id: 'providers', label: '服务商', icon: Boxes },
-        { id: 'models', label: '模型', icon: Bot },
-        { id: 'about', label: '关于', icon: Info }
+        { id: 'language', label: t('settings.language'), icon: Languages },
+        { id: 'theme', label: t('settings.theme'), icon: Palette },
+        { id: 'editor', label: t('settings.editor'), icon: Settings2 },
+        { id: 'providers', label: t('settings.providers'), icon: Boxes },
+        { id: 'models', label: t('settings.models'), icon: Bot },
+        { id: 'about', label: t('settings.about'), icon: Info }
       ]}
       activeId={active}
       onActiveChange={id => setActive(id as SectionId)}
     >
+      {active === 'language' && <LanguageSettingsSection />}
+      {active === 'theme' && <ThemeSettingsSection />}
+      {active === 'editor' && <EditorSettingsSection />}
       {active === 'providers' && cfg && (
         <ProvidersSection cfg={cfg} persist={persist} onFetch={bumpCache} />
       )}

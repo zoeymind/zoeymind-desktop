@@ -23,14 +23,12 @@ import {
   Trash2,
   Search as SearchIcon,
   PanelLeftClose,
-  Settings,
   Plus,
   User,
 } from "lucide-react"
 import { cn, Button } from "@zoeymind/ui"
 import { useState } from "react"
 import { useTranslation } from "@zoeymind/i18n"
-import { LanguageSwitcher, ThemeMenu } from "@/shared/app-shared"
 import { Link } from "react-router-dom"
 import {
   AppBrandBar,
@@ -40,7 +38,6 @@ import {
 } from "@/shared/organization"
 import { WorkspaceAvatar } from "@/shared/auth"
 import { AppLauncher } from "@/shared/app-shared"
-import { SettingsDialog } from "@/pages/SettingsDialog"
 import { NewProjectMenu } from "./NewProjectMenu"
 import { SidebarAccountMenu } from "./SidebarAccountMenu"
 import { SidebarFolders } from "./SidebarFolders"
@@ -98,7 +95,6 @@ export function ProjectsSidebar({
   const { t } = useTranslation()
   const [settingsProjectId, setSettingsProjectId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
 
   return (
     <>
@@ -224,24 +220,6 @@ export function ProjectsSidebar({
               onSelectFolder={onSelectFolder}
             />
           </nav>
-          {/* 底部: 设置 + 语言切换 + 主题切换 */}
-          <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowSettings(true)}
-              className="text-muted-foreground"
-              aria-label={t("common.settings", "设置")}
-              title={t("common.settings", "设置")}
-            >
-              <Settings className="size-4" />
-            </Button>
-            <div className="flex items-center gap-1">
-              <LanguageSwitcher />
-              <ThemeMenu />
-            </div>
-          </div>
         </div>
       </aside>
 
@@ -260,7 +238,6 @@ export function ProjectsSidebar({
         onCreated={id => onWorkspaceCreated?.(id)}
       />
 
-      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </>
   )
 }

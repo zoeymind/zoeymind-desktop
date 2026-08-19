@@ -3,6 +3,18 @@
  */
 
 export default {
+  settings: {
+    title: 'Settings',
+    preferences: 'Preferences',
+    language: 'Language',
+    languageDescription: 'Choose the language used by the application interface.',
+    theme: 'Theme',
+    themeDescription: 'Choose the color mode and interface theme preset.',
+    editor: 'Editor',
+    providers: 'Providers',
+    models: 'Models',
+    about: 'About'
+  },
   notifications: {
     bell: {
       title: 'Notifications',

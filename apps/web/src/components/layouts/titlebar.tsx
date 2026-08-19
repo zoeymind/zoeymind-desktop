@@ -9,7 +9,10 @@
  */
 import { useEffect, useState } from "react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { Minus, Maximize2, X } from "lucide-react"
+import { Maximize2, Minus, Settings, X } from "lucide-react"
+import { useTranslation } from "@zoeymind/i18n"
+import { Button } from "@zoeymind/ui"
+import { SettingsDialog } from "@/pages/SettingsDialog"
 import { TabBar } from "./tab-bar"
 
 const appWindow = getCurrentWindow()
@@ -23,6 +26,8 @@ async function detectPlatform(): Promise<"macos" | "windows" | "linux"> {
 
 export function TitleBar() {
   const [platform, setPlatform] = useState<"macos" | "windows" | "linux">("macos")
+  const { t } = useTranslation()
+  const [settingsOpen, setSettingsOpen] = useState(false)
   useEffect(() => {
     void detectPlatform().then(setPlatform)
   }, [])
@@ -36,6 +41,17 @@ export function TitleBar() {
       {/* macOS 红绿灯占位由 TabBar 内部 startInset=88 让开; 液态 panel 仍从 x=0 铺满. */}
       <div data-tauri-drag-region className="flex h-full min-w-0 flex-1 items-stretch">
         <TabBar isMac={isMac} />
+      </div>
+      <div className="flex h-full items-center px-1">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setSettingsOpen(true)}
+          aria-label={t("settings.title")}
+          title={t("settings.title")}
+        >
+          <Settings />
+        </Button>
       </div>
 
       {!isMac && (
@@ -60,6 +76,7 @@ export function TitleBar() {
           </button>
         </div>
       )}
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }

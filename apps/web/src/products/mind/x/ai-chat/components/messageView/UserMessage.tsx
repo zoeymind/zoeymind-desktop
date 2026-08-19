@@ -209,7 +209,14 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   }
 
   const handleConfirmResend = async () => {
-    if (!(storeMindMap as { workspaceId?: string } | null)?.workspaceId) return
+    const wsid = (storeMindMap as { workspaceId?: string } | null)?.workspaceId
+    if (!wsid) {
+      logger.warn('[UserMessage] 无法重新发送: mindMap.workspaceId 缺失', {
+        hasStoreMindMap: !!storeMindMap,
+        messageId: message.id
+      })
+      return
+    }
 
     setIsResending(true)
     try {
@@ -219,7 +226,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
           text: draftMessage,
           attachments: draftAttachments
         },
-        (storeMindMap as { workspaceId?: string } | null)!.workspaceId!,
+        wsid,
         selectedModel,
         currentModel?.provider
       )
