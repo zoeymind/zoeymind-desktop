@@ -47,10 +47,6 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri -> target
 
       - name: Check native application
         run: cargo check --manifest-path src-tauri/Cargo.toml --locked
