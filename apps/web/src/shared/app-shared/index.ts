@@ -68,7 +68,7 @@ export { ThemeMenu } from './ThemeMenu'
 export { LanguageSwitcher } from './LanguageSwitcher'
 
 // ── 3. Loading Provider ──────────────────────────
-export { LoadingProvider, useLoading } from './loading'
+export { LoadingProvider, useLoading, useLoadingStore } from './loading'
 
 // ── 4. 云端概念 stub —— 未接入真实实现，只为编译通过 ─
 export { trpc, trpcClient } from './trpc-stub'

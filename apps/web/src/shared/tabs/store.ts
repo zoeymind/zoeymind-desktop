@@ -11,6 +11,7 @@
  */
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { useLoadingStore } from "@/shared/app-shared/loading"
 import { useTabLoading } from "./loading"
 
 export type TabId = string | "home"
@@ -72,7 +73,13 @@ export const useTabs = create<TabsState>()(
           if (tab.projectId) void touchLastOpenedSafe(tab.projectId)
           return { tabs: [...state.tabs, tab], activeId: tab.id }
         })
-        if (opened) useTabLoading.getState().setLoading(tab.id, true)
+        if (opened) {
+          useTabLoading.getState().setLoading(tab.id, true)
+          // ⚡ 同步拉起全局 loading, 与 activeId 翻转在同一 batch 内提交,
+          // EditorPane 首帧就被 <Loading> 覆盖, 不会闪 raf-gated Loader2/空画布.
+          // MindMapCanvas 挂载后会用具体 tip 覆盖, 最终 hideLoading 由它负责.
+          useLoadingStore.getState().showLoading()
+        }
       },
 
       closeTab: id => {

@@ -4,7 +4,7 @@
  * Home 和已加载的 editor pane 常驻 DOM。Tab 激活只改变可见性，Tab 排序只改变标题顺序；
  * editor runtime 的 DOM 顺序和组件 identity 不随这两类视图操作变化。
  */
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Loader2, PanelLeft } from "lucide-react"
 import { MindMapCanvas } from "@/products/mind/features/mindmap/components/MindMapCanvas"
@@ -14,7 +14,7 @@ import {
   type ProjectView,
 } from "@/products/mind/features/mindmap/components/projects/ProjectsSidebar"
 import { ProjectProvider } from "@/products/mind/features/mindmap/contexts/ProjectContext"
-import { useLoading } from "@/shared/app-shared"
+import { useLoading, useLoadingStore } from "@/shared/app-shared"
 import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext } from "@/shared/native"
 import { useTabs, type OpenTab } from "@/shared/tabs/store"
 import { tabSaveFns } from "@/shared/tabs/instances"
@@ -61,6 +61,15 @@ export function WorkspaceShell() {
   useEffect(() => {
     if (activeId === "home") hideLoading()
   }, [activeId, hideLoading])
+  // 冷启动: 持久化的 activeId 若不是 home, 首帧就同步拉起全局 loading, 遮住
+  // EditorPane raf-gated Loader2 / 空画布, 避免"全局 loading 不是第一个显示"的闪.
+  // 只跑一次: 后续 openTab 走 tabs store 内的 showLoading, 切 Tab 不会重放.
+  useLayoutEffect(() => {
+    if (activeId !== "home" && !useLoadingStore.getState().loading) {
+      useLoadingStore.getState().showLoading()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="relative h-full w-full">
