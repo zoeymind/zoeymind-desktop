@@ -59,7 +59,9 @@ struct ErrorPayload<'a> {
   message: &'a str,
 }
 
-pub type AbortMap = Mutex<HashMap<String, JoinHandle<()>>>;
+/// Newtype wrapper 避免和其它 Mutex<HashMap<String, JoinHandle<()>>> state 冲突.
+#[derive(Default)]
+pub struct AbortMap(pub Mutex<HashMap<String, JoinHandle<()>>>);
 
 fn strip_v1(url: &str) -> String {
   let s = url.trim_end_matches('/');
@@ -549,7 +551,7 @@ pub async fn chat_stream(
   let id_for_task = request_id.clone();
 
   // 已经在跑的 id: 先取消旧任务
-  if let Ok(mut map) = abort_map.lock() {
+  if let Ok(mut map) = abort_map.0.lock() {
     if let Some(handle) = map.remove(&request_id) {
       handle.abort();
     }
@@ -610,7 +612,7 @@ pub async fn chat_stream(
     }
   });
 
-  if let Ok(mut map) = abort_map.lock() {
+  if let Ok(mut map) = abort_map.0.lock() {
     map.insert(request_id, handle);
   }
 
@@ -622,7 +624,7 @@ pub async fn chat_stream_abort(
   abort_map: State<'_, AbortMap>,
   request_id: String,
 ) -> Result<(), String> {
-  if let Ok(mut map) = abort_map.lock() {
+  if let Ok(mut map) = abort_map.0.lock() {
     if let Some(handle) = map.remove(&request_id) {
       handle.abort();
     }

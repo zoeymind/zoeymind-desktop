@@ -50,7 +50,8 @@ struct ErrorPayload<'a> {
   message: &'a str,
 }
 
-pub type HttpAbortMap = Mutex<HashMap<String, JoinHandle<()>>>;
+#[derive(Default)]
+pub struct HttpAbortMap(pub Mutex<HashMap<String, JoinHandle<()>>>);
 
 fn emit_head(app: &AppHandle, id: &str, payload: HeadPayload) {
   let _ = app.emit(&format!("http:{}:head", id), payload);
@@ -127,7 +128,7 @@ pub async fn http_stream_start(
   req: HttpStreamRequest,
 ) -> Result<(), String> {
   let request_id = req.request_id.clone();
-  if let Ok(mut map) = abort_map.lock() {
+  if let Ok(mut map) = abort_map.0.lock() {
     if let Some(h) = map.remove(&request_id) {
       h.abort();
     }
@@ -141,7 +142,7 @@ pub async fn http_stream_start(
     }
   });
 
-  if let Ok(mut map) = abort_map.lock() {
+  if let Ok(mut map) = abort_map.0.lock() {
     map.insert(request_id, handle);
   }
   Ok(())
@@ -152,7 +153,7 @@ pub async fn http_stream_abort(
   abort_map: State<'_, HttpAbortMap>,
   request_id: String,
 ) -> Result<(), String> {
-  if let Ok(mut map) = abort_map.lock() {
+  if let Ok(mut map) = abort_map.0.lock() {
     if let Some(h) = map.remove(&request_id) {
       h.abort();
     }
