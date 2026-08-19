@@ -31,6 +31,13 @@ export default {
       removeAction: "移除",
     },
   },
+  windowControls: {
+    groupLabel: "窗口控制",
+    minimize: "最小化",
+    maximize: "最大化",
+    restore: "还原",
+    close: "关闭",
+  },
   windowClose: {
     title: "{{count}} 个文件有未保存的修改",
     description: "关闭窗口前，请选择保存全部、全部不保存或取消。",

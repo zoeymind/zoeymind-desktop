@@ -100,7 +100,7 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
         endInset 只约束 tab 与 '+' 的可用区域，并给右侧设置/窗口按钮留位；
         液态 panel SVG 仍使用完整 surfaceWidth，从 x=0 铺到窗口最右端。
        */}
-      <div className="relative flex h-full w-full min-w-0 items-stretch" data-tauri-drag-region>
+      <div className="relative flex h-full w-full min-w-0 items-stretch">
         <MorphingTabs
           items={morphItems}
           value={activeId ?? "home"}

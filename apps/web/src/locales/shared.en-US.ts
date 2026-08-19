@@ -31,6 +31,13 @@ export default {
       removeAction: "Remove",
     },
   },
+  windowControls: {
+    groupLabel: "Window controls",
+    minimize: "Minimize",
+    maximize: "Maximize",
+    restore: "Restore",
+    close: "Close",
+  },
   windowClose: {
     title: "{{count}} files have unsaved changes",
     description: "Before closing, save all files, discard all changes, or cancel.",
