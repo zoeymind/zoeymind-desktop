@@ -64,7 +64,7 @@ interface AssistantMessageProps {
   isProcessing?: boolean
 }
 
-export const AssistantMessage: React.FC<AssistantMessageProps> = ({
+const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   message,
   isLast = false,
   isProcessing = false
@@ -660,3 +660,8 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({
     </div>
   )
 }
+
+// 流式期间 AI SDK 每 token 重建 messages 数组引用, MessageView 会重渲染全部可见消息.
+// 已定稿消息 message 对象引用稳定, memo 后每 token 仅重渲染正在流式的最后一条,
+// 避免旧消息的 markdown/工具卡片/motion 反复重算.
+export const AssistantMessage = React.memo(AssistantMessageImpl)

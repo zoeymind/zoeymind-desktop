@@ -28,7 +28,7 @@ interface UserMessageProps {
   onOpenPromptManager: () => void
 }
 
-export const UserMessage: React.FC<UserMessageProps> = ({
+const UserMessageImpl: React.FC<UserMessageProps> = ({
   message,
   models,
   selectedModel,
@@ -292,6 +292,10 @@ export const UserMessage: React.FC<UserMessageProps> = ({
     </>
   )
 }
+
+// 与 AssistantMessage 同理: 流式期间 MessageView 每 token 重渲染, 用户消息已定稿,
+// memo 后 message 引用不变即跳过. 依赖上游 setSelectedModel / onOpenPromptManager 为稳定引用.
+export const UserMessage = React.memo(UserMessageImpl)
 
 /**
  * 收起只读态：整卡可点击（pointer + hover 高亮）。

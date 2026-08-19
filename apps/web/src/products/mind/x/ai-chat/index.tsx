@@ -6,7 +6,7 @@
  * 所有状态通过 useAIChatV2Store 管理，组件间无 props 传递
  */
 
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import type { McpServerItem, AiToolListResult, PromptItem } from "../lib/api-types"
 import { GripVertical, ChevronDown, Plus, History, Bot, AlertCircle, Settings } from "lucide-react"
 import { Button } from "@zoeymind/ui"
@@ -79,8 +79,10 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
   useEffect(() => {
     setMergedUserPrompt("")
   }, [setMergedUserPrompt])
-  // Prompt Manager 已随扩展模块拆分，社区版按钮回调为空操作。
-  const setShowPromptManager = (_next: boolean) => {}
+  // Prompt Manager 已随扩展模块拆分, 社区版按钮回调为空操作.
+  // useCallback + [] 保证引用稳定, 避免击穿下游 UserMessage / InputView 的 React.memo.
+  const setShowPromptManager = useCallback((_next: boolean) => undefined, [])
+  const handleOpenPromptManager = useCallback(() => setShowPromptManager(true), [setShowPromptManager])
 
   // 桌面端后端不跑 trpc.aiV2.getTools, 用本地静态清单 shim.
   const toolsData = useMemo<AiToolListResult>(() => ({ tools: LOCAL_AI_TOOLS }), [])
@@ -181,7 +183,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
               enabledPrompts={(myPrompts ?? [])
                 .filter(p => p.isEnabled)
                 .map(p => ({ id: p.id, name: p.title }))}
-              onClick={() => setShowPromptManager(true)}
+              onClick={handleOpenPromptManager}
               title={t("mindmap.aiChat.core.promptLibrary")}
             />
             <button
@@ -337,7 +339,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
-                onOpenPromptManager={() => setShowPromptManager(true)}
+                onOpenPromptManager={handleOpenPromptManager}
               />
             </MindMapInstanceProvider>
           </ErrorBoundary>
@@ -368,7 +370,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
           models={models}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
-          onOpenPromptManager={() => setShowPromptManager(true)}
+          onOpenPromptManager={handleOpenPromptManager}
           disabled={!isAIConfigured}
         />
       </div>
