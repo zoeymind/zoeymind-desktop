@@ -186,6 +186,7 @@ export default {
       },
       message: {
         aborted: 'Aborted',
+        errorLabel: 'Error',
         abortedGeneration: 'Generation aborted',
         closePreview: 'Close preview',
         contentSnippet: 'Content snippet:',

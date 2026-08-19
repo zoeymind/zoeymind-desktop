@@ -182,6 +182,7 @@ export default {
       },
       message: {
         aborted: '已中断',
+        errorLabel: '错误',
         abortedGeneration: '生成已中断',
         closePreview: '关闭预览',
         contentSnippet: '内容片段：',

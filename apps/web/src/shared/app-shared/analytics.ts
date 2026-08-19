@@ -4,12 +4,14 @@
 
 interface AnalyticsClient {
   track: (event: string, props?: Record<string, unknown>) => void
+  trackEvent: (event: string, props?: Record<string, unknown>) => Promise<void>
   page: (name?: string, props?: Record<string, unknown>) => void
   identify: (userId: string, traits?: Record<string, unknown>) => void
 }
 
 const NOOP_CLIENT: AnalyticsClient = {
   track: () => undefined,
+  trackEvent: () => Promise.resolve(),
   page: () => undefined,
   identify: () => undefined
 }
