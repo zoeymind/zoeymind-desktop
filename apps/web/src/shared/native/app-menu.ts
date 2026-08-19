@@ -7,35 +7,23 @@
  *
  * 首次 install 后重建也是同一 API; 语言切换后重构 menu 让文案跟随 locale.
  */
-import { Menu, MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu'
-import { i18next } from '@zoeymind/i18n'
-import { logger } from '@zoeymind/logger'
-import { open as openDialog, save as saveNativeDialog } from '@tauri-apps/plugin-dialog'
-import * as pendingProjects from './pending-projects'
-import { defaultMindmapData } from '@zoeymind/shared'
-import { useTabs } from '@/shared/tabs/store'
-import { findByPath, registerProject, listProjects } from './projects-repo'
-import { bumpProjects } from './projects-events'
-import { createUUID } from '@/shared/app-shared'
-
-// 保存流程通过一个模块级"最新 saveFlow"句柄拿到; EditorPane 挂载时 register.
-// (App 顶层菜单不知道当前 tab 的 SaveFlowContext, 用 module-level 存最新 active flow.)
-let currentSaveFlow: {
-  save: () => Promise<void>
-  saveAs: (path: string) => Promise<void>
-} | null = null
-
-export function setMenuSaveFlow(
-  flow: { save: () => Promise<void>; saveAs: (path: string) => Promise<void> } | null
-): void {
-  currentSaveFlow = flow
-}
+import { Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
+import { i18next } from "@zoeymind/i18n"
+import { logger } from "@zoeymind/logger"
+import { open as openDialog, save as saveNativeDialog } from "@tauri-apps/plugin-dialog"
+import * as pendingProjects from "./pending-projects"
+import { defaultMindmapData } from "@zoeymind/shared"
+import { useTabs } from "@/shared/tabs/store"
+import { findByPath, registerProject, listProjects } from "./projects-repo"
+import { bumpProjects } from "./projects-events"
+import { createUUID } from "@/shared/app-shared"
+import { projectSessionRegistry } from "@/products/mind/editor-session"
 
 // 新建 draft tab
 async function actionNew(): Promise<void> {
-  const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
+  const title = i18next.t("mindmap.editor.newProjectTitle", "未命名思维导图")
   const id = pendingProjects.stash({ title, tree: defaultMindmapData })
-  useTabs.getState().openTab({ id, kind: 'draft', title })
+  useTabs.getState().openTab({ id, kind: "draft", title })
 }
 
 // 打开对话框 -> 找/建 project -> openTab
@@ -43,54 +31,58 @@ async function actionOpen(): Promise<void> {
   try {
     const picked = await openDialog({
       multiple: false,
-      filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
+      filters: [{ name: "ZoeyMind", extensions: ["zmind"] }],
     })
-    if (!picked || typeof picked !== 'string') return
+    if (!picked || typeof picked !== "string") return
     const existing = await findByPath(picked)
     let id = existing?.id
     // 名字权威源: 文件名 (foo.zmind -> foo).
-    const name = picked.split(/[\\/]/).pop()!.replace(/\.zmind$/i, '') || 'Untitled'
+    const name =
+      picked
+        .split(/[\\/]/)
+        .pop()!
+        .replace(/\.zmind$/i, "") || "Untitled"
     if (!id) {
       id = createUUID()
       await registerProject({ id, path: picked, name, nodeCount: 0 })
       bumpProjects()
     }
-    useTabs.getState().openTab({ id, kind: 'file', title: name, projectId: id })
+    useTabs.getState().openTab({ id, kind: "file", title: name, projectId: id })
   } catch (error) {
-    logger.error('open failed', error)
+    logger.error("open failed", error)
   }
 }
 
 async function actionSave(): Promise<void> {
   try {
-    await currentSaveFlow?.save()
+    await projectSessionRegistry.getActive()?.getState().commands.save?.()
   } catch (error) {
-    logger.error('save failed', error)
+    logger.error("save failed", error)
   }
 }
 
 async function actionSaveAs(): Promise<void> {
   try {
     const picked = await saveNativeDialog({
-      filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
+      filters: [{ name: "ZoeyMind", extensions: ["zmind"] }],
     })
     if (!picked) return
-    await currentSaveFlow?.saveAs(picked)
+    await projectSessionRegistry.getActive()?.getState().commands.saveAs?.(picked)
   } catch (error) {
-    logger.error('save as failed', error)
+    logger.error("save as failed", error)
   }
 }
 
 function actionCloseTab(): void {
   const s = useTabs.getState()
-  if (s.activeId === 'home' || !s.activeId) return
+  if (s.activeId === "home" || !s.activeId) return
   s.closeTab(s.activeId as string)
 }
 
-function actionSetLocale(loc: 'zh-CN' | 'en-US'): void {
+function actionSetLocale(loc: "zh-CN" | "en-US"): void {
   void i18next.changeLanguage(loc)
   try {
-    localStorage.setItem('i18nextLng', loc)
+    localStorage.setItem("i18nextLng", loc)
   } catch {
     /* ignore */
   }
@@ -101,13 +93,8 @@ function actionSetLocale(loc: 'zh-CN' | 'en-US'): void {
  * 支持 BACK / FORWARD / SELECT_ALL 等 simple-mind-map 命令.
  */
 function actionMindMapCommand(cmd: string): void {
-  // 惰性 import 避免菜单初始化时循环依赖
-  void import('@/products/mind/features/mindmap/stores/mindmap-store').then(mod => {
-    const inst = mod.useMindMapStore.getState().mindMap as unknown as {
-      execCommand?: (name: string, ...args: unknown[]) => void
-    } | null
-    inst?.execCommand?.(cmd)
-  })
+  const instance = projectSessionRegistry.getActive()?.getState().mindMap
+  instance?.execCommand?.(cmd)
 }
 
 async function buildRecentSubmenu(): Promise<Submenu> {
@@ -125,25 +112,25 @@ async function buildRecentSubmenu(): Promise<Submenu> {
         action: () => {
           useTabs.getState().openTab({
             id: row.id,
-            kind: 'file',
+            kind: "file",
             title: row.name,
-            projectId: row.id
+            projectId: row.id,
           })
-        }
+        },
       })
     )
   )
   return await Submenu.new({
-    text: i18next.t('menu.openRecent', '打开最近'),
+    text: i18next.t("menu.openRecent", "打开最近"),
     items: items.length
       ? items
       : [
           await MenuItem.new({
-            id: 'recent:empty',
-            text: i18next.t('menu.noRecent', '(空)'),
-            enabled: false
-          })
-        ]
+            id: "recent:empty",
+            text: i18next.t("menu.noRecent", "(空)"),
+            enabled: false,
+          }),
+        ],
   })
 }
 
@@ -155,118 +142,118 @@ export async function installAppMenu(): Promise<void> {
 
   // 首个 submenu 会成为 macOS App 菜单 (About / Quit 等)
   const appSubmenu = await Submenu.new({
-    text: 'ZoeyMind',
+    text: "ZoeyMind",
     items: [
       await PredefinedMenuItem.new({
-        item: { About: { name: 'ZoeyMind', copyright: 'MIT', version: '0.1.0' } }
+        item: { About: { name: "ZoeyMind", copyright: "MIT", version: "0.1.0" } },
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Services' }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Hide' }),
-      await PredefinedMenuItem.new({ item: 'HideOthers' }),
-      await PredefinedMenuItem.new({ item: 'ShowAll' }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Quit' })
-    ]
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Services" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Hide" }),
+      await PredefinedMenuItem.new({ item: "HideOthers" }),
+      await PredefinedMenuItem.new({ item: "ShowAll" }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Quit" }),
+    ],
   })
 
   const fileSubmenu = await Submenu.new({
-    text: t('menu.file', '文件'),
+    text: t("menu.file", "文件"),
     items: [
       await MenuItem.new({
-        id: 'file:new',
-        text: t('menu.new', '新建'),
-        accelerator: 'CmdOrCtrl+N',
-        action: () => void actionNew()
+        id: "file:new",
+        text: t("menu.new", "新建"),
+        accelerator: "CmdOrCtrl+N",
+        action: () => void actionNew(),
       }),
       await MenuItem.new({
-        id: 'file:open',
-        text: t('menu.open', '打开...'),
-        accelerator: 'CmdOrCtrl+O',
-        action: () => void actionOpen()
+        id: "file:open",
+        text: t("menu.open", "打开..."),
+        accelerator: "CmdOrCtrl+O",
+        action: () => void actionOpen(),
       }),
       await buildRecentSubmenu(),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        id: 'file:save',
-        text: t('menu.save', '保存'),
-        accelerator: 'CmdOrCtrl+S',
-        action: () => void actionSave()
+        id: "file:save",
+        text: t("menu.save", "保存"),
+        accelerator: "CmdOrCtrl+S",
+        action: () => void actionSave(),
       }),
       await MenuItem.new({
-        id: 'file:saveas',
-        text: t('menu.saveAs', '另存为...'),
-        accelerator: 'CmdOrCtrl+Shift+S',
-        action: () => void actionSaveAs()
+        id: "file:saveas",
+        text: t("menu.saveAs", "另存为..."),
+        accelerator: "CmdOrCtrl+Shift+S",
+        action: () => void actionSaveAs(),
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
-        id: 'file:closetab',
-        text: t('menu.closeTab', '关闭标签'),
-        accelerator: 'CmdOrCtrl+W',
-        action: () => actionCloseTab()
+        id: "file:closetab",
+        text: t("menu.closeTab", "关闭标签"),
+        accelerator: "CmdOrCtrl+W",
+        action: () => actionCloseTab(),
       }),
-      await PredefinedMenuItem.new({ item: 'CloseWindow' })
-    ]
+      await PredefinedMenuItem.new({ item: "CloseWindow" }),
+    ],
   })
 
   // 走 active tab 的 mindMap 命令; 无 canvas 时 fallback 到 OS 层 Undo/Redo (预设项)
   const editSubmenu = await Submenu.new({
-    text: t('menu.edit', '编辑'),
+    text: t("menu.edit", "编辑"),
     items: [
       await MenuItem.new({
-        id: 'edit:undo',
-        text: t('menu.undo', '撤销'),
-        accelerator: 'CmdOrCtrl+Z',
-        action: () => actionMindMapCommand('BACK')
+        id: "edit:undo",
+        text: t("menu.undo", "撤销"),
+        accelerator: "CmdOrCtrl+Z",
+        action: () => actionMindMapCommand("BACK"),
       }),
       await MenuItem.new({
-        id: 'edit:redo',
-        text: t('menu.redo', '重做'),
-        accelerator: 'CmdOrCtrl+Shift+Z',
-        action: () => actionMindMapCommand('FORWARD')
+        id: "edit:redo",
+        text: t("menu.redo", "重做"),
+        accelerator: "CmdOrCtrl+Shift+Z",
+        action: () => actionMindMapCommand("FORWARD"),
       }),
-      await PredefinedMenuItem.new({ item: 'Separator' }),
-      await PredefinedMenuItem.new({ item: 'Cut' }),
-      await PredefinedMenuItem.new({ item: 'Copy' }),
-      await PredefinedMenuItem.new({ item: 'Paste' }),
+      await PredefinedMenuItem.new({ item: "Separator" }),
+      await PredefinedMenuItem.new({ item: "Cut" }),
+      await PredefinedMenuItem.new({ item: "Copy" }),
+      await PredefinedMenuItem.new({ item: "Paste" }),
       await MenuItem.new({
-        id: 'edit:selectall',
-        text: t('menu.selectAll', '全选'),
-        accelerator: 'CmdOrCtrl+A',
-        action: () => actionMindMapCommand('SELECT_ALL')
-      })
-    ]
+        id: "edit:selectall",
+        text: t("menu.selectAll", "全选"),
+        accelerator: "CmdOrCtrl+A",
+        action: () => actionMindMapCommand("SELECT_ALL"),
+      }),
+    ],
   })
 
   const langSubmenu = await Submenu.new({
-    text: t('menu.language', '语言'),
+    text: t("menu.language", "语言"),
     items: [
       await MenuItem.new({
-        id: 'lang:zh',
-        text: '简体中文',
-        action: () => actionSetLocale('zh-CN')
+        id: "lang:zh",
+        text: "简体中文",
+        action: () => actionSetLocale("zh-CN"),
       }),
       await MenuItem.new({
-        id: 'lang:en',
-        text: 'English',
-        action: () => actionSetLocale('en-US')
-      })
-    ]
+        id: "lang:en",
+        text: "English",
+        action: () => actionSetLocale("en-US"),
+      }),
+    ],
   })
 
   const windowSubmenu = await Submenu.new({
-    text: t('menu.window', '窗口'),
+    text: t("menu.window", "窗口"),
     items: [
-      await PredefinedMenuItem.new({ item: 'Minimize' }),
-      await PredefinedMenuItem.new({ item: 'Maximize' }),
-      await PredefinedMenuItem.new({ item: 'Fullscreen' })
-    ]
+      await PredefinedMenuItem.new({ item: "Minimize" }),
+      await PredefinedMenuItem.new({ item: "Maximize" }),
+      await PredefinedMenuItem.new({ item: "Fullscreen" }),
+    ],
   })
 
   const menu = await Menu.new({
-    items: [appSubmenu, fileSubmenu, editSubmenu, langSubmenu, windowSubmenu]
+    items: [appSubmenu, fileSubmenu, editSubmenu, langSubmenu, windowSubmenu],
   })
 
   await menu.setAsAppMenu()
@@ -276,12 +263,12 @@ export async function installAppMenu(): Promise<void> {
  * i18n 变化后重建菜单文案.
  */
 export function setupAppMenu(): () => void {
-  void installAppMenu().catch(err => logger.error('installAppMenu failed', err))
+  void installAppMenu().catch(err => logger.error("installAppMenu failed", err))
   const onLangChange = () => {
-    void installAppMenu().catch(err => logger.error('reinstallAppMenu failed', err))
+    void installAppMenu().catch(err => logger.error("reinstallAppMenu failed", err))
   }
-  i18next.on('languageChanged', onLangChange)
+  i18next.on("languageChanged", onLangChange)
   return () => {
-    i18next.off('languageChanged', onLangChange)
+    i18next.off("languageChanged", onLangChange)
   }
 }

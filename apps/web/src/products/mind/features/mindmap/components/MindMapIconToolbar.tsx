@@ -5,7 +5,7 @@ import { Trash2 } from 'lucide-react'
 import { Button, Separator } from '@zoeymind/ui'
 import { addIconToHistory } from '@/products/mind/features/mindmap/utils/storage/iconHistory'
 import { useUIStore } from '@/products/mind/stores'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { useTranslation } from '@zoeymind/i18n'
 
 interface IconItem {

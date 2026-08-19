@@ -94,7 +94,7 @@ export function createProjectSessionStore(projectId: string): ProjectSessionStor
     setLifecycle: lifecycle => set({ lifecycle }),
     setLoadError: loadError => set({ loadError }),
     setMindMap: mindMap => set({ mindMap }),
-    setDirty: dirty => set({ dirty }),
+    setDirty: dirty => set(state => (state.dirty === dirty ? state : { dirty })),
     setTitle: title => set({ title }),
     setPreview: (previewActive, exitPreview = null) => set({ previewActive, exitPreview }),
     setUI: ui => set(state => ({ ui: { ...state.ui, ...ui } })),

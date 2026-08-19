@@ -3,37 +3,34 @@
  * 前端其它地方一律通过本文件 import，不直接 import @tauri-apps/*，
  * 便于测试和替换。
  */
-export * from './db'
-export * from './paths'
-export * from './zmind-file'
-export * from './chat-repo'
-export * from './models-config'
-export * from './preview'
-export * from './recovery'
-export * from './folders-repo'
-export * from './projects-repo'
-export * from './mcp-repo'
-export * from './mcp-spawn'
-export * from './save-flow'
-export { UnsavedGuard } from './unsaved-guard'
-export { SaveFlowProvider, useSaveFlowContext, useOptionalSaveFlow } from './save-flow-context'
-export { useProjectsEvents, bumpProjects } from './projects-events'
-export { FileAssociationsListener } from './file-associations'
-export { setupAppMenu, setMenuSaveFlow } from './app-menu'
-export { fetchProviderModels, type FetchedModel } from './fetch-provider-models'
+export * from "./db"
+export * from "./paths"
+export * from "./zmind-file"
+export * from "./chat-repo"
+export * from "./models-config"
+export * from "./preview"
+export * from "./recovery"
+export * from "./folders-repo"
+export * from "./projects-repo"
+export * from "./mcp-repo"
+export * from "./mcp-spawn"
+export * from "./save-flow"
+export { UnsavedGuard } from "./unsaved-guard"
+export { SaveFlowProvider, useSaveFlowContext, useOptionalSaveFlow } from "./save-flow-context"
+export { useProjectsEvents, bumpProjects } from "./projects-events"
+export { FileAssociationsListener } from "./file-associations"
+export { setupAppMenu } from "./app-menu"
+export { fetchProviderModels, type FetchedModel } from "./fetch-provider-models"
 export {
   streamChat,
   type StreamChatOptions,
   type StreamChatHandle,
-  type StreamChatMessage
-} from './desktop-chat'
-export { nativeFetch } from './native-fetch'
-export * as chatRepo from './chat-repo'
-export type {
-  ChatConversationRow,
-  ChatMessageRow
-} from './chat-repo'
+  type StreamChatMessage,
+} from "./desktop-chat"
+export { nativeFetch } from "./native-fetch"
+export * as chatRepo from "./chat-repo"
+export type { ChatConversationRow, ChatMessageRow } from "./chat-repo"
 
-export * as pendingProjects from './pending-projects'
+export * as pendingProjects from "./pending-projects"
 // 便利再导出：native 侧 hook 大多同时要 UUID，避免调用方两条 import
-export { createUUID, generateUUID } from '@/shared/app-shared'
+export { createUUID, generateUUID } from "@/shared/app-shared"

@@ -11,20 +11,20 @@
  * 注意: 第 2/3 步只在非 tool-result roundtrip 时做, 避免覆盖之前的 FULL/DIFF.
  */
 
-import { useMemo } from 'react'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { useAIChatV2Store } from '../../ai-chat/stores/useAIChatV2Store'
-import { chatDB } from '../../ai-chat/storage/chatDB'
-import { getMindmapContextEnabled } from '../../ai-chat/hooks/useUserPrompt'
-import { getEnabledToolNames } from '../../ai-chat/hooks/useToolSettings'
-import { logger } from '@zoeymind/logger'
-import type { ChatRuntime } from './internal/chatRuntime'
-import type { UIMessage } from '@ai-sdk/react'
+import { useMemo } from "react"
+import { useProjectSessionStore } from "@/products/mind/editor-session"
+import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
+import { chatDB } from "../../ai-chat/storage/chatDB"
+import { getMindmapContextEnabled } from "../../ai-chat/hooks/useUserPrompt"
+import { getEnabledToolNames } from "../../ai-chat/hooks/useToolSettings"
+import { logger } from "@zoeymind/logger"
+import type { ChatRuntime } from "./internal/chatRuntime"
+import type { UIMessage } from "@ai-sdk/react"
 import {
   recallForQuery,
   extractLatestUserText,
-  getRecentMessageIds
-} from '../../ai-chat/memory/recall'
+  getRecentMessageIds,
+} from "../../ai-chat/memory/recall"
 
 interface UseChatTransportOptions {
   runtime: ChatRuntime
@@ -33,6 +33,7 @@ interface UseChatTransportOptions {
 
 /** 返回一个稳定的 fetch 函数, 供 DefaultChatTransport 使用. */
 export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOptions) {
+  const sessionStore = useProjectSessionStore()
   return useMemo(() => {
     return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const userPrompt = useAIChatV2Store.getState().mergedUserPrompt
@@ -47,11 +48,11 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
       const originalBody = init?.body ? JSON.parse(init.body as string) : {}
       const bodyMessages: Array<{ role?: string }> = originalBody.messages || []
       const lastMessage = bodyMessages.length > 0 ? bodyMessages[bodyMessages.length - 1] : null
-      const isToolResultRoundtrip = lastMessage?.role === 'assistant'
+      const isToolResultRoundtrip = lastMessage?.role === "assistant"
 
       if (contextEnabled && !isToolResultRoundtrip) {
         try {
-          const mindMap = useMindMapStore.getState().mindMap
+          const mindMap = sessionStore.getState().mindMap
           const manager = runtime.mindmapContextManager.current
           if (mindMap && manager) {
             const { text } = manager.prepareContext()
@@ -65,17 +66,17 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
                 version: snapshot.version,
                 nodes: snapshot.nodes.map(({ path: _, ...rest }) => rest),
                 timestamp: snapshot.timestamp,
-                idMapping: manager.idMapper.serialize()
+                idMapping: manager.idMapper.serialize(),
               })
             }
           } else {
-            logger.warn('[useChatTransport] mindMap 或 manager 不存在', {
+            logger.warn("[useChatTransport] mindMap 或 manager 不存在", {
               hasMindMap: !!mindMap,
-              hasManager: !!manager
+              hasManager: !!manager,
             })
           }
         } catch (error) {
-          logger.warn('[useChatTransport] 获取思维导图上下文失败', { error })
+          logger.warn("[useChatTransport] 获取思维导图上下文失败", { error })
         }
       }
 
@@ -92,7 +93,7 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
             if (recall) memoryContextText = recall.injectedText
           }
         } catch (error) {
-          logger.warn('[useChatTransport] 长期记忆召回失败', { error })
+          logger.warn("[useChatTransport] 长期记忆召回失败", { error })
         }
       }
 
@@ -103,15 +104,15 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
           if (msg.parts && Array.isArray(msg.parts)) {
             for (const part of msg.parts) {
               if (
-                typeof part.type === 'string' &&
-                part.type.startsWith('tool-') &&
+                typeof part.type === "string" &&
+                part.type.startsWith("tool-") &&
                 part.output?.ztdl
               ) {
                 // 用 ZTDL 文本替代结构化 data, 删除 ztdl 字段
                 part.output = {
                   success: part.output.success,
                   data: part.output.ztdl,
-                  error: part.output.error
+                  error: part.output.error,
                 }
               }
             }
@@ -133,34 +134,34 @@ export function useChatTransport({ runtime, currentOrgId }: UseChatTransportOpti
           selectedKnowledgeBaseIds.length > 0 ? selectedKnowledgeBaseIds : undefined,
         mindmapContextText,
         organizationId: currentOrgId,
-        enabledToolNames
+        enabledToolNames,
       }
       // 桌面端: 不走网络. 从 body 里挑 provider + model, 用 tauri chat_stream
       // 拉 SSE, 转成 AI SDK v6 UI Message Stream 返回给 useChat.
       return await runLocalStream(newBody, init?.signal ?? undefined)
     }
-  }, [runtime, currentOrgId])
+  }, [runtime, currentOrgId, sessionStore])
 }
 
 // ============ 桌面端本地流实现: streamText + tools + system prompt ============
 
-import { streamText, convertToModelMessages, type UIMessage } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { createAnthropic } from '@ai-sdk/anthropic'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { loadModelsConfig, nativeFetch, type ModelProvider } from '@/shared/native'
-import { buildSystemPrompt } from '../prompts/system-prompt'
-import { getAgentTools } from '../agent-tools'
+import { streamText, convertToModelMessages, type UIMessage } from "ai"
+import { createOpenAI } from "@ai-sdk/openai"
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
+import { createAnthropic } from "@ai-sdk/anthropic"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { loadModelsConfig, nativeFetch, type ModelProvider } from "@/shared/native"
+import { buildSystemPrompt } from "../prompts/system-prompt"
+import { getAgentTools } from "../agent-tools"
 
 function resolveBaseURL(provider: ModelProvider): string | undefined {
   const raw = provider.baseURL?.trim()
-  if (raw) return raw.replace(/\/+$/, '').replace(/\/v1$/, '')
+  if (raw) return raw.replace(/\/+$/, "").replace(/\/v1$/, "")
   switch (provider.kind) {
-    case 'openai':
-      return 'https://api.openai.com'
-    case 'ollama':
-      return 'http://localhost:11434'
+    case "openai":
+      return "https://api.openai.com"
+    case "ollama":
+      return "http://localhost:11434"
     default:
       return undefined
   }
@@ -169,39 +170,39 @@ function resolveBaseURL(provider: ModelProvider): string | undefined {
 function makeLanguageModel(provider: ModelProvider, modelName: string) {
   const baseURL = resolveBaseURL(provider)
   switch (provider.kind) {
-    case 'openai': {
+    case "openai": {
       const openai = createOpenAI({
         baseURL: baseURL ? `${baseURL}/v1` : undefined,
-        apiKey: provider.apiKey ?? '',
-        fetch: nativeFetch
+        apiKey: provider.apiKey ?? "",
+        fetch: nativeFetch,
       })
       return openai.chat(modelName)
     }
-    case 'openai-compatible':
-    case 'ollama': {
+    case "openai-compatible":
+    case "ollama": {
       // Ollama 也有 /v1/chat/completions 兼容层, 走 openai-compatible.
       const oc = createOpenAICompatible({
-        name: provider.kind === 'ollama' ? 'ollama' : 'openai-compatible',
-        baseURL: baseURL ? `${baseURL}/v1` : 'http://localhost:11434/v1',
+        name: provider.kind === "ollama" ? "ollama" : "openai-compatible",
+        baseURL: baseURL ? `${baseURL}/v1` : "http://localhost:11434/v1",
         apiKey: provider.apiKey || undefined,
-        fetch: nativeFetch
+        fetch: nativeFetch,
       })
       return oc(modelName)
     }
-    case 'anthropic': {
+    case "anthropic": {
       const anthropic = createAnthropic({
         baseURL: baseURL ? `${baseURL}/v1` : undefined,
-        apiKey: provider.apiKey ?? '',
+        apiKey: provider.apiKey ?? "",
         fetch: nativeFetch,
-        headers: { 'anthropic-dangerous-direct-browser-access': 'true' }
+        headers: { "anthropic-dangerous-direct-browser-access": "true" },
       })
       return anthropic(modelName)
     }
-    case 'gemini': {
+    case "gemini": {
       const google = createGoogleGenerativeAI({
         baseURL: baseURL ? `${baseURL}/v1beta` : undefined,
-        apiKey: provider.apiKey ?? '',
-        fetch: nativeFetch
+        apiKey: provider.apiKey ?? "",
+        fetch: nativeFetch,
       })
       return google(modelName)
     }
@@ -227,30 +228,22 @@ async function runLocalStream(
   signal?: AbortSignal
 ): Promise<Response> {
   const cfg = await loadModelsConfig()
-  const modelName =
-    body.model ??
-    cfg.defaults.chat ??
-    cfg.models[0]?.name ??
-    ''
-  const entry =
-    cfg.models.find(m => m.name === modelName || m.id === modelName) ??
-    cfg.models[0]
-  const provider = entry
-    ? cfg.providers.find(p => p.id === entry.provider)
-    : undefined
+  const modelName = body.model ?? cfg.defaults.chat ?? cfg.models[0]?.name ?? ""
+  const entry = cfg.models.find(m => m.name === modelName || m.id === modelName) ?? cfg.models[0]
+  const provider = entry ? cfg.providers.find(p => p.id === entry.providerId) : undefined
 
   if (!entry || !provider) {
     // 返回一个 UI Message Stream Response, 让 useChat 显示 error
-    const { createUIMessageStream, createUIMessageStreamResponse } = await import('ai')
+    const { createUIMessageStream, createUIMessageStreamResponse } = await import("ai")
     return createUIMessageStreamResponse({
       stream: createUIMessageStream({
         execute: ({ writer }) => {
           writer.write({
-            type: 'error',
-            errorText: '未配置任何模型: 请到设置 -> 模型 勾选一个'
+            type: "error",
+            errorText: "未配置任何模型: 请到设置 -> 模型 勾选一个",
           })
-        }
-      })
+        },
+      }),
     })
   }
 
@@ -259,7 +252,7 @@ async function runLocalStream(
   if (body.mindmapContextText) {
     systemParts.push(`---\n\n当前思维导图状态：\n${body.mindmapContextText}`)
   }
-  const systemContent = systemParts.join('\n\n')
+  const systemContent = systemParts.join("\n\n")
 
   const modelMessages = await convertToModelMessages(body.messages)
 
@@ -272,12 +265,12 @@ async function runLocalStream(
     system: systemContent,
     messages: modelMessages,
     abortSignal: signal,
-    maxRetries: 2
+    maxRetries: 2,
+    maxOutputTokens: entry.maxOutputTokens,
   })
 
   return result.toUIMessageStreamResponse({
     originalMessages: body.messages,
-    onError: (error: unknown) =>
-      error instanceof Error ? error.message : String(error)
+    onError: (error: unknown) => (error instanceof Error ? error.message : String(error)),
   })
 }

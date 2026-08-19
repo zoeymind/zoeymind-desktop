@@ -2,7 +2,7 @@
 import { logger } from '@zoeymind/logger'
 import { useEffect } from 'react'
 import { mindmapDB } from '@/products/mind/features/mindmap/utils/storage/mindmapDB'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 
 export function useViewManager() {

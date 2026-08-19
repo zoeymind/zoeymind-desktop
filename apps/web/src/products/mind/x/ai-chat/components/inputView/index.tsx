@@ -11,7 +11,7 @@ import { MessageComposerBox } from './MessageComposerBox'
 import { useImageAttachmentManager } from './useImageAttachmentManager'
 import { useAIChatRuntime } from '../../context/AIChatRuntimeContext'
 import { useAIChatV2Store } from '../../stores/useAIChatV2Store'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import type { AIModel } from '../../../ai-chat/hooks/useModelSelector'
 
 interface InputViewProps {

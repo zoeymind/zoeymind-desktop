@@ -6,12 +6,22 @@
  *   - tauri onCloseRequested (Cmd+Q / 红灯 / 更新触发的关窗)
  *   - browser beforeunload (Ctrl+R / 关标签)
  */
-import { useEffect, useState } from 'react'
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button } from '@zoeymind/ui'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { pendingProjects } from '@/shared/native'
-import type { useSaveFlow } from './save-flow'
+import { useEffect, useState } from "react"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Button,
+} from "@zoeymind/ui"
+import {
+  useProjectMindMapStore as useMindMapStore,
+  useProjectSessionStore,
+} from "@/products/mind/editor-session"
+import { pendingProjects } from "@/shared/native"
+import type { useSaveFlow } from "./save-flow"
 
 type SaveFlow = ReturnType<typeof useSaveFlow>
 
@@ -22,6 +32,7 @@ interface Props {
 
 export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element | null {
   const isDirty = useMindMapStore(s => s.isDirty)
+  const sessionStore = useProjectSessionStore()
   const isPending = !!projectId && pendingProjects.isPending(projectId)
   const shouldGuard = isDirty || isPending
   const [promptOpen, setPromptOpen] = useState(false)
@@ -34,7 +45,7 @@ export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element 
     void win
       .onCloseRequested(async event => {
         if (
-          !useMindMapStore.getState().isDirty &&
+          !sessionStore.getState().dirty &&
           !(projectId && pendingProjects.isPending(projectId))
         ) {
           return
@@ -48,17 +59,17 @@ export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element 
     return () => {
       unlisten?.()
     }
-  }, [shouldGuard, projectId])
+  }, [shouldGuard, projectId, sessionStore])
 
   // beforeunload
   useEffect(() => {
     if (!shouldGuard) return
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
-      e.returnValue = ''
+      e.returnValue = ""
     }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
   }, [shouldGuard])
 
   const proceedClose = () => {
@@ -79,7 +90,7 @@ export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element 
     if (projectId && pendingProjects.isPending(projectId)) {
       pendingProjects.clear(projectId)
     }
-    useMindMapStore.getState().setDirty(false)
+    sessionStore.getState().setDirty(false)
     proceedClose()
   }
 
@@ -91,9 +102,7 @@ export function UnsavedGuard({ projectId, saveFlow }: Props): React.JSX.Element 
         <DialogHeader>
           <DialogTitle>还有未保存的改动</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">
-          关闭窗口会丢掉未保存的改动. 需要先保存吗?
-        </p>
+        <p className="text-sm text-muted-foreground">关闭窗口会丢掉未保存的改动. 需要先保存吗?</p>
         <DialogFooter className="flex flex-row justify-end gap-2">
           <Button variant="ghost" onClick={() => setPromptOpen(false)}>
             取消

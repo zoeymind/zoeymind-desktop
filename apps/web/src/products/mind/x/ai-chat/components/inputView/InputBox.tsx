@@ -12,7 +12,7 @@ import {
   MentionEditor,
   type MentionEditorSuggestion
 } from '@/products/mind/features/mindmap/components/MentionEditor/MentionEditor'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { useMindMapModules } from '@/products/mind/features/mindmap/hooks/useMindMapModules'
 import { MENTION_PILL_CLASS } from '../../../ai-chat/utils/mentions'
 import { useTranslation } from '@zoeymind/i18n'

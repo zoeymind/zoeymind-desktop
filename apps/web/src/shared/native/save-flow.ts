@@ -18,9 +18,12 @@
  *
  * 该 hook 只做协调；bundle 数据源由编辑器通过 `registerBundleSource` 注入。
  */
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import type { MindMapNodeTree } from 'simple-mind-map'
+import { useCallback, useEffect, useMemo, useRef } from "react"
+import {
+  useProjectMindMapStore as useMindMapStore,
+  useProjectSessionStore,
+} from "@/products/mind/editor-session"
+import type { MindMapNodeTree } from "simple-mind-map"
 import {
   writeBundle,
   writeRecovery,
@@ -36,21 +39,21 @@ import {
   createUUID,
   type ZMindBundle,
   type ProjectRow,
-} from './'
-import { useTabs } from '@/shared/tabs/store'
-import { bumpProjects } from './projects-events'
-import { exists, mkdir } from '@tauri-apps/plugin-fs'
-import { save as saveDialog } from '@tauri-apps/plugin-dialog'
-import { join } from '@tauri-apps/api/path'
-import { composePreviewWithLogo } from './preview'
+} from "./"
+import { useTabs } from "@/shared/tabs/store"
+import { bumpProjects } from "./projects-events"
+import { exists, mkdir } from "@tauri-apps/plugin-fs"
+import { save as saveDialog } from "@tauri-apps/plugin-dialog"
+import { join } from "@tauri-apps/api/path"
+import { composePreviewWithLogo } from "./preview"
 
 const RECOVERY_DEBOUNCE_MS = 5_000
 
 /** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
 function fileBasenameNoExt(path: string): string {
-  if (!path) return 'Untitled'
-  const last = path.split(/[\\/]/).pop() ?? ''
-  return last.replace(/\.zmind$/i, '') || 'Untitled'
+  if (!path) return "Untitled"
+  const last = path.split(/[\\/]/).pop() ?? ""
+  return last.replace(/\.zmind$/i, "") || "Untitled"
 }
 
 export interface BundleSource {
@@ -81,24 +84,25 @@ function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
     meta: {
       name: source.name,
       tags: source.tags ?? [],
-      createdAt,
+      createdAt: createdAt || Date.now(),
       updatedAt: Date.now(),
-      nodeCount: source.nodeCount ?? 0
-    }
+      nodeCount: source.nodeCount ?? 0,
+    },
   }
 }
 
 export function useSaveFlow(projectId: string | null) {
   const setDirty = useMindMapStore(s => s.setDirty)
   const isDirty = useMindMapStore(s => s.isDirty)
+  const sessionStore = useProjectSessionStore()
 
   const stateRef = useRef<SaveFlowState>({
     source: null,
     path: null,
     realProjectId: null,
     timer: null,
-    createdAt: Date.now(),
-    renderer: null
+    createdAt: 0,
+    renderer: null,
   })
 
   // 首次挂载：解析 path
@@ -163,25 +167,25 @@ export function useSaveFlow(projectId: string | null) {
     if (pendingProjects.isPending(projectId) && !state.path) {
       const dir = await preferredSaveDir()
       if (!(await exists(dir))) await mkdir(dir, { recursive: true })
-      const safeName = (state.source.name || 'Untitled').replace(/[\\/:*?"<>|]/g, '_')
+      const safeName = (state.source.name || "Untitled").replace(/[\\/:*?"<>|]/g, "_")
       const defaultPath = await join(dir, `${safeName}.zmind`)
       const picked = await saveDialog({
         defaultPath,
-        filters: [{ name: 'ZoeyMind', extensions: ['zmind'] }]
+        filters: [{ name: "ZoeyMind", extensions: ["zmind"] }],
       })
       if (!picked) return
 
       // 碰撞检查: 目标路径已被登记 -> 若还被别的 tab 打开, 拒绝
       const collided = await findByPath(picked)
       if (collided) {
-        const busy = useTabs.getState().tabs.find(
-          t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
-        )
-        if (busy) {
-          const { toast } = await import('@/shared/app-shared')
-          toast.error(
-            `“${collided.name}” 已在另一个 tab 中打开, 请先关闭再保存到该路径`
+        const busy = useTabs
+          .getState()
+          .tabs.find(
+            t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
           )
+        if (busy) {
+          const { toast } = await import("@/shared/app-shared")
+          toast.error(`“${collided.name}” 已在另一个 tab 中打开, 请先关闭再保存到该路径`)
           return
         }
       }
@@ -208,7 +212,7 @@ export function useSaveFlow(projectId: string | null) {
         realId = collided.id
         await refreshProjectIndex(realId, {
           name: fileName,
-          nodeCount: nextSource.nodeCount ?? 0
+          nodeCount: nextSource.nodeCount ?? 0,
         })
       } else {
         realId = createUUID()
@@ -216,7 +220,7 @@ export function useSaveFlow(projectId: string | null) {
           id: realId,
           path: picked,
           name: fileName,
-          nodeCount: nextSource.nodeCount ?? 0
+          nodeCount: nextSource.nodeCount ?? 0,
         })
       }
 
@@ -254,7 +258,7 @@ export function useSaveFlow(projectId: string | null) {
     const effectiveId = state.realProjectId ?? projectId
     await refreshProjectIndex(effectiveId, {
       name: fileName,
-      nodeCount: state.source.nodeCount ?? 0
+      nodeCount: state.source.nodeCount ?? 0,
     })
     await clearRecovery(effectiveId)
     if (state.timer) {
@@ -291,14 +295,14 @@ export function useSaveFlow(projectId: string | null) {
       if (own) {
         await refreshProjectIndex(effectiveId, {
           name: fileName,
-          nodeCount: state.source.nodeCount ?? 0
+          nodeCount: state.source.nodeCount ?? 0,
         })
       } else {
         await registerProject({
           id: effectiveId,
           path: newPath,
           name: fileName,
-          nodeCount: state.source.nodeCount ?? 0
+          nodeCount: state.source.nodeCount ?? 0,
         })
       }
       await clearRecovery(effectiveId)
@@ -322,31 +326,31 @@ export function useSaveFlow(projectId: string | null) {
     if (!projectId) return
     const onBlur = () => flushRecovery()
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!useMindMapStore.getState().isDirty) return
+      if (!sessionStore.getState().dirty) return
       flushRecovery()
       // 触发浏览器 "unsaved changes" 提示
       e.preventDefault()
-      e.returnValue = ''
+      e.returnValue = ""
     }
-    window.addEventListener('blur', onBlur)
-    window.addEventListener('beforeunload', onBeforeUnload)
+    window.addEventListener("blur", onBlur)
+    window.addEventListener("beforeunload", onBeforeUnload)
     return () => {
-      window.removeEventListener('blur', onBlur)
-      window.removeEventListener('beforeunload', onBeforeUnload)
+      window.removeEventListener("blur", onBlur)
+      window.removeEventListener("beforeunload", onBeforeUnload)
     }
-  }, [projectId, flushRecovery])
+  }, [projectId, flushRecovery, sessionStore])
 
   // Ctrl/Cmd+S 快捷键
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey
-      if (meta && e.key.toLowerCase() === 's') {
+      if (meta && e.key.toLowerCase() === "s") {
         e.preventDefault()
         void save()
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
   }, [save])
 
   return useMemo(
@@ -357,7 +361,7 @@ export function useSaveFlow(projectId: string | null) {
       registerPreviewRenderer,
       save,
       saveAs,
-      discardAndClose
+      discardAndClose,
     }),
     [
       isDirty,
@@ -366,7 +370,7 @@ export function useSaveFlow(projectId: string | null) {
       registerPreviewRenderer,
       save,
       saveAs,
-      discardAndClose
+      discardAndClose,
     ]
   )
 }

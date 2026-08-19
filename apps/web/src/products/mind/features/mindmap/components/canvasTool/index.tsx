@@ -6,7 +6,7 @@ import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
 import { TestCaseStats } from "../StatusBar/TestCaseStats"
 import { useMindMapModules } from "@/products/mind/features/mindmap/hooks/useMindMapModules"
 import { usePanTool } from "@/products/mind/features/mindmap/components/hooks/usePanTool"
-import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { useTranslation } from "@zoeymind/i18n"
 
 export const CanvasTool: FC = () => {

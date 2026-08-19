@@ -1,15 +1,10 @@
 /**
  * WorkspaceShell —— tabs 主内容区, VS Code 风格 keep-alive.
  *
- * Home 区和每个 open editor tab 都常驻 DOM (via `hidden` 属性), 切 tab 不再 unmount.
- *
- * useMindMapStore 是全局单例, 直接挂多个 canvas 会互相踩. 解决:
- *   - 每个 MindMapCanvas 挂载时把自己的 MindMap 实例 register 到 tabInstances Map
- *   - WorkspaceShell 监听 activeId, 把 tabInstances[activeId] 塞回全局 store
- *   - dirty state 同样按 tab 缓存 (tabDirty)
- * 切 tab: 全局 store swap 一次, 不重载 canvas, 不弹 Loading.
+ * Home 和已加载的 editor pane 常驻 DOM。Tab 激活只改变可见性，Tab 排序只改变标题顺序；
+ * editor runtime 的 DOM 顺序和组件 identity 不随这两类视图操作变化。
  */
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Loader2, PanelLeft } from "lucide-react"
 import { MindMapCanvas } from "@/products/mind/features/mindmap/components/MindMapCanvas"
@@ -19,44 +14,30 @@ import {
   type ProjectView,
 } from "@/products/mind/features/mindmap/components/projects/ProjectsSidebar"
 import { ProjectProvider } from "@/products/mind/features/mindmap/contexts/ProjectContext"
-import {
-  SaveFlowProvider,
-  UnsavedGuard,
-  useSaveFlowContext,
-  setMenuSaveFlow,
-} from "@/shared/native"
-import { useTabs, type OpenTab } from "@/shared/tabs/store"
-import { tabInstances, tabDirty, tabSaveFns } from "@/shared/tabs/instances"
-import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
 import { useLoading } from "@/shared/app-shared"
+import { SaveFlowProvider, UnsavedGuard, useSaveFlowContext } from "@/shared/native"
+import { useTabs, type OpenTab } from "@/shared/tabs/store"
+import { tabSaveFns } from "@/shared/tabs/instances"
 import {
   ProjectSessionProvider,
-  activateLegacyProjectSession,
-  startLegacyProjectSessionAdapter,
+  projectSessionRegistry,
   useProjectSessionStore,
 } from "@/products/mind/editor-session"
+import { reconcileEditorPaneOrder } from "@/products/mind/editor-session/editor-pane-order"
 const LOCAL_ORG_ID = "local"
 
 export function WorkspaceShell() {
   const tabs = useTabs(s => s.tabs)
   const activeId = useTabs(s => s.activeId)
   const navigate = useNavigate()
-  useEffect(() => startLegacyProjectSessionAdapter(), [])
   const location = useLocation()
+  const { hideLoading } = useLoading()
   const [paneOrder, setPaneOrder] = useState<string[]>(() => tabs.map(tab => tab.id))
   useEffect(
     () =>
       useTabs.subscribe(state => {
-        const currentTabIds = new Set(state.tabs.map(tab => tab.id))
-        setPaneOrder(current => {
-          const next = [
-            ...current.filter(id => currentTabIds.has(id)),
-            ...state.tabs.map(tab => tab.id).filter(id => !current.includes(id)),
-          ]
-          return next.length === current.length && next.every((id, index) => id === current[index])
-            ? current
-            : next
-        })
+        const nextTabOrder = state.tabs.map(tab => tab.id)
+        setPaneOrder(current => reconcileEditorPaneOrder(current, nextTabOrder))
       }),
     []
   )
@@ -74,36 +55,12 @@ export function WorkspaceShell() {
     if (location.pathname !== target) navigate(target, { replace: true })
   }, [activeId, location.pathname, navigate])
   useEffect(() => {
-    activateLegacyProjectSession(activeId === "home" ? null : activeId)
+    projectSessionRegistry.setActive(activeId === "home" ? null : activeId)
   }, [activeId])
-
-  // 切 tab: 从 tabInstances 恢复 active tab 的 mindMap + dirty 到全局 store.
-  // 离开的 tab 把当前 dirty 存进缓存.
-  const prevActiveRef = useRef<string | null>(null)
-  const { hideLoading } = useLoading()
   useEffect(() => {
-    const prev = prevActiveRef.current
-    if (prev && prev !== "home" && prev !== activeId) {
-      tabDirty.set(prev, useMindMapStore.getState().isDirty)
-    }
-    if (activeId === "home") {
-      // 回首页: 保留全局 mindMap 不动, 只关闭 loading 遮罩 (避免 hidden EditorPane
-      // 的 resolveMindMapLoading 看到 hasMindMap=false 触发 showLoading 循环).
-      hideLoading()
-    } else {
-      // 切到已有 canvas 实例的 tab: swap 到那个实例.
-      // 新 tab 首次挂载: tabInstances 里还没有实例, 保留全局 mindMap 不动,
-      // 等 EditorPane useCanvasManager 自己 setMindMap 上来.
-      const instance = tabInstances.get(activeId)
-      if (instance) {
-        useMindMapStore.setState({
-          mindMap: instance as never,
-          isDirty: tabDirty.get(activeId),
-        })
-      }
-    }
-    prevActiveRef.current = activeId
+    if (activeId === "home") hideLoading()
   }, [activeId, hideLoading])
+
   return (
     <div className="relative h-full w-full">
       <HomePane visible={activeId === "home"} />
@@ -131,7 +88,15 @@ function HomePane({ visible }: { visible: boolean }) {
   }, [])
 
   return (
-    <div className="absolute inset-0 flex bg-background" hidden={!visible}>
+    <div
+      className={
+        visible
+          ? "absolute inset-0 flex bg-background"
+          : "invisible absolute inset-0 flex bg-background pointer-events-none"
+      }
+      aria-hidden={!visible}
+      inert={!visible ? true : undefined}
+    >
       <ProjectsSidebar
         activeView={activeView}
         activeFolderId={activeFolderId}
@@ -179,7 +144,11 @@ function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
   }, [mounted, visible])
 
   return (
-    <div className="absolute inset-0" hidden={!visible}>
+    <div
+      className={visible ? "absolute inset-0" : "invisible absolute inset-0 pointer-events-none"}
+      aria-hidden={!visible}
+      inert={!visible ? true : undefined}
+    >
       {mounted ? (
         <ProjectSessionProvider projectId={tab.id}>
           <SaveFlowProvider projectId={tab.id}>
@@ -198,8 +167,7 @@ function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
 function EditorPaneInner({ id, visible }: { id: string; visible: boolean }) {
   const saveFlow = useSaveFlowContext()
   const sessionStore = useProjectSessionStore()
-  // 每个 tab 都注册自己的 save 句柄, 供 CloseConfirmDialog / TabBar 关闭时调用
-  // (不能只依赖 setMenuSaveFlow, 那个只映射当前 active tab).
+  // 每个 tab 注册自己的命令，供原生菜单和关闭确认按项目定位。
   useEffect(() => {
     const commands = {
       save: () => saveFlow.save(),
@@ -212,15 +180,6 @@ function EditorPaneInner({ id, visible }: { id: string; visible: boolean }) {
       tabSaveFns.unregister(id)
     }
   }, [id, saveFlow, sessionStore])
-  // Active tab 时把 saveFlow 暴露给顶部 macOS 原生菜单 (File > Save / Save As).
-  useEffect(() => {
-    if (!visible) return
-    setMenuSaveFlow({
-      save: () => saveFlow.save(),
-      saveAs: (path: string) => saveFlow.saveAs(path),
-    })
-    return () => setMenuSaveFlow(null)
-  }, [visible, saveFlow])
   return (
     <ProjectProvider key={id} workspaceId={id} cloudMode={false}>
       <MindMapCanvas visible={visible} />

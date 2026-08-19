@@ -8,15 +8,18 @@
  *
  * 云版本里的 autosave + auto-snapshot 全部去掉（用户方案：手动保存 + 容灾快照）。
  */
-import { useCallback, useEffect, useRef } from 'react'
-import type { MindMapNodeTree } from 'simple-mind-map'
-import { logger } from '@zoeymind/logger'
-import { defaultData } from './useCanvasManager'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { getProject, readBundle, pendingProjects, useOptionalSaveFlow } from '@/shared/native'
-import { useTabs } from '@/shared/tabs/store'
-import { useTabLoading } from '@/shared/tabs/loading'
+import { useCallback, useEffect, useRef } from "react"
+import type { MindMapNodeTree } from "simple-mind-map"
+import { logger } from "@zoeymind/logger"
+import { defaultData } from "./useCanvasManager"
+import {
+  useProjectMindMapStore as useMindMapStore,
+  useProjectSessionStore,
+} from "@/products/mind/editor-session"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
+import { getProject, readBundle, pendingProjects, useOptionalSaveFlow } from "@/shared/native"
+import { useTabs } from "@/shared/tabs/store"
+import { useTabLoading } from "@/shared/tabs/loading"
 
 interface LoadedData {
   savedData: MindMapNodeTree | null
@@ -28,12 +31,11 @@ interface UseStorageManagerResult {
   saveData: () => Promise<void>
 }
 
-
 /** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
 function fileBasename(path: string): string {
-  if (!path) return 'Untitled'
-  const last = path.split(/[\\/]/).pop() ?? ''
-  return last.replace(/\.zmind$/i, '') || 'Untitled'
+  if (!path) return "Untitled"
+  const last = path.split(/[\\/]/).pop() ?? ""
+  return last.replace(/\.zmind$/i, "") || "Untitled"
 }
 function countNodes(tree: MindMapNodeTree | null | undefined): number {
   if (!tree) return 0
@@ -46,8 +48,9 @@ function countNodes(tree: MindMapNodeTree | null | undefined): number {
 export function useStorageManager(): UseStorageManagerResult {
   const { workspaceId } = useProjectContext()
   const { mindMap } = useMindMapStore()
+  const sessionStore = useProjectSessionStore()
   const flow = useOptionalSaveFlow(workspaceId ?? null)
-  const nameRef = useRef<string>('')
+  const nameRef = useRef<string>("")
 
   const loadSavedData = useCallback(async (): Promise<LoadedData> => {
     if (!workspaceId) {
@@ -78,12 +81,12 @@ export function useStorageManager(): UseStorageManagerResult {
       nameRef.current = fileBasename(row.path)
       return { savedData: bundle.tree, savedViewData: bundle.view ?? null }
     } catch (error) {
-      logger.error('读取 .zmind 失败', error)
+      logger.error("读取 .zmind 失败", error)
       // 抛给 useCanvasManager.onLoadError -> setLoadError, 触发 LoadErrorScreen.
       throw new Error(
         error instanceof Error && error.message
           ? `无法读取 .zmind 文件: ${error.message}`
-          : '无法读取 .zmind 文件, 可能已损坏'
+          : "无法读取 .zmind 文件, 可能已损坏"
       )
     }
   }, [workspaceId])
@@ -93,7 +96,7 @@ export function useStorageManager(): UseStorageManagerResult {
    * 也会触发 data_change (引擎内部的初始化事件), 这些不是用户编辑, 不应
    * markDirty. 用 tree JSON hash 做门槛: 只有真的变了才 markDirty.
    */
-  const lastCleanHashRef = useRef<string>('')
+  const lastCleanHashRef = useRef<string>("")
 
   useEffect(() => {
     if (!mindMap) return
@@ -117,7 +120,7 @@ export function useStorageManager(): UseStorageManagerResult {
       flow.registerBundleSource({
         tree,
         name: nameRef.current,
-        nodeCount: countNodes(tree)
+        nodeCount: countNodes(tree),
       })
       return tree
     }
@@ -134,12 +137,12 @@ export function useStorageManager(): UseStorageManagerResult {
       if (nextHash === lastCleanHashRef.current) return
       flow.markDirty()
     }
-    mindMap.on?.('data_change', onChange)
+    mindMap.on?.("data_change", onChange)
 
     // 保存 (isDirty: true -> false) 完成后, 把当前 tree 记成新的 baseline.
-    let prevDirty = useMindMapStore.getState().isDirty
-    const unsubDirty = useMindMapStore.subscribe(state => {
-      const nextDirty = state.isDirty
+    let prevDirty = sessionStore.getState().dirty
+    const unsubDirty = sessionStore.subscribe(state => {
+      const nextDirty = state.dirty
       if (prevDirty === true && nextDirty === false) {
         const tree = mindMap.getData() as MindMapNodeTree
         lastCleanHashRef.current = treeHash(tree)
@@ -148,11 +151,10 @@ export function useStorageManager(): UseStorageManagerResult {
     })
 
     return () => {
-      mindMap.off?.('data_change', onChange)
+      mindMap.off?.("data_change", onChange)
       unsubDirty()
     }
-  }, [mindMap, flow])
-
+  }, [mindMap, flow, sessionStore])
 
   /**
    * 注册预览图渲染器 —— save-flow 在写盘时按需调用, 得到 canvas.toDataURL png,
@@ -162,18 +164,22 @@ export function useStorageManager(): UseStorageManagerResult {
     if (!mindMap) return
     const renderer = async (): Promise<Uint8Array | null> => {
       try {
-        const doExport = (mindMap as unknown as { doExport?: { png: (name: string, transparent?: boolean) => Promise<string> } }).doExport
+        const doExport = (
+          mindMap as unknown as {
+            doExport?: { png: (name: string, transparent?: boolean) => Promise<string> }
+          }
+        ).doExport
         if (!doExport?.png) return null
-        const dataUrl = await doExport.png('preview', true)
-        if (typeof dataUrl !== 'string') return null
-        const base64 = dataUrl.split(',')[1]
+        const dataUrl = await doExport.png("preview", true)
+        if (typeof dataUrl !== "string") return null
+        const base64 = dataUrl.split(",")[1]
         if (!base64) return null
         const bin = atob(base64)
         const bytes = new Uint8Array(bin.length)
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
         return bytes
       } catch (error) {
-        logger.warn('生成预览 PNG 失败', error)
+        logger.warn("生成预览 PNG 失败", error)
         return null
       }
     }

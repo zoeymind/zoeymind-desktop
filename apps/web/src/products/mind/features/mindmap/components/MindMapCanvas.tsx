@@ -28,7 +28,7 @@ import { EMPTY_SNAPSHOT } from "@/products/mind/features/mindmap/services/commen
 import { useLoading } from "@/shared/app-shared"
 import { trpcClient } from "@/shared/app-shared"
 import { useUIStore } from "@/products/mind/stores"
-import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { useCommentStore } from "@/products/mind/features/mindmap/stores/comment-store"
 import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 import { useOrganization } from "@/shared/app-shared"
@@ -46,7 +46,6 @@ import { MindMapScrollbar } from "./MindMapScrollbar.tsx"
 import { PreviewIndicator } from "./PreviewIndicator.tsx"
 import { CollaborationCursorLayer } from "./CollaborationCursorLayer"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
-import { tabInstances } from "@/shared/tabs/instances"
 
 // 初始化插件
 initPlugins()
@@ -54,7 +53,7 @@ initPlugins()
 // 协作同步中 Toast 的固定 id：toast.loading 原位更新避免重复弹
 const MINDMAP_SYNC_TOAST_ID = "mindmap-collab-sync"
 
-export function MindMapCanvas() {
+export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
   // 🎯 记录页面组件开始时间，用于计算总加载耗时（只在首次渲染时设置）
   const componentStartTimeRef = useRef<number>(undefined)
   const mountCountRef = useRef(0)
@@ -67,6 +66,8 @@ export function MindMapCanvas() {
 
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
+  const visibleRef = useRef(visible)
+  visibleRef.current = visible
   const formatPanelRef = useRef<FormatPanelRef>(null)
 
   // 🎯 从 Context 获取 workspaceId 和 cloudMode (页面级作用域)
@@ -78,7 +79,13 @@ export function MindMapCanvas() {
     setCurrentOrganizationId(currentOrg?.id)
   }, [currentOrg?.id])
 
-  const { showLoading, hideLoading, updateProgress, loading } = useLoading()
+  const { showLoading, hideLoading, updateProgress: updateGlobalProgress, loading } = useLoading()
+  const updateProgress = useCallback(
+    (progress: number) => {
+      if (visibleRef.current) updateGlobalProgress(progress)
+    },
+    [updateGlobalProgress]
+  )
 
   const { data: user } = useCurrentUser()
 
@@ -92,18 +99,10 @@ export function MindMapCanvas() {
   // 权限管理 - 从store获取权限状态
   const { hasPermission, canEdit } = usePermissionStore()
 
-  // 把当前实例注册到 tab-scoped 注册表, 让 WorkspaceShell 切 tab 时 swap 全局 store.
-  useEffect(() => {
-    if (!workspaceId) return
-    if (mindMap) tabInstances.register(workspaceId, mindMap)
-    return () => {
-      if (workspaceId) tabInstances.unregister(workspaceId)
-    }
-  }, [mindMap, workspaceId])
 
   const handleLoadError = useCallback(
     (error: unknown) => {
-      hideLoading()
+      if (visibleRef.current) hideLoading()
       const fallback = t("mindmap.canvas.loadFailed")
       const message = error instanceof Error ? error.message || fallback : fallback
       setLoadError(message)
@@ -112,7 +111,7 @@ export function MindMapCanvas() {
   )
 
   const handleUseDefaultTemplate = useCallback(() => {
-    showLoading(t("mindmap.canvas.loadingDefaultTemplate"))
+    if (visibleRef.current) showLoading(t("mindmap.canvas.loadingDefaultTemplate"))
     setLoadError(null)
     setForceDefaultTemplate(true)
     setMindMap(null)
@@ -351,6 +350,7 @@ export function MindMapCanvas() {
 
   // ✅ 简化的Loading管理逻辑 —— 首次同步完成后，重连/重新同步不再覆盖全局 Loading
   useEffect(() => {
+    if (!visible) return
     const decision = resolveMindMapLoading({
       workspaceId,
       cloudMode,
@@ -393,6 +393,7 @@ export function MindMapCanvas() {
     hideLoading,
     updateProgress,
     t,
+    visible,
   ])
 
   // 轻量"同步中" Toast：首次同步完成后用右上角 sonner 提示；连接恢复后自动收起。

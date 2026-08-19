@@ -12,25 +12,25 @@
  * classNames.activeTab='!text-background' 让液态 SVG 的 fill 用主题 background 色,
  * 视觉上和下面画布连成一片.
  */
-import { Home, Loader2, Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Home, Loader2, Plus } from "lucide-react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import {
   Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@zoeymind/ui'
-import { useTabs, type OpenTab } from '@/shared/tabs/store'
-import { pendingProjects } from '@/shared/native'
-import { tabDirty, tabSaveFns } from '@/shared/tabs/instances'
-import { useTabLoading } from '@/shared/tabs/loading'
-import { logger } from '@zoeymind/logger'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { defaultMindmapData } from '@zoeymind/shared'
-import { i18next } from '@zoeymind/i18n'
-import { MorphingTabs, type MorphingTabsItem } from '@/components/motion/morphing-tabs'
+  DialogTitle,
+} from "@zoeymind/ui"
+import { useTabs, type OpenTab } from "@/shared/tabs/store"
+import { pendingProjects } from "@/shared/native"
+import { tabSaveFns } from "@/shared/tabs/instances"
+import { useTabLoading } from "@/shared/tabs/loading"
+import { logger } from "@zoeymind/logger"
+import { projectSessionRegistry } from "@/products/mind/editor-session"
+import { defaultMindmapData } from "@zoeymind/shared"
+import { i18next } from "@zoeymind/i18n"
+import { MorphingTabs, type MorphingTabsItem } from "@/components/motion/morphing-tabs"
 
 export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
   const tabs = useTabs(s => s.tabs)
@@ -39,21 +39,24 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
   const closeTab = useTabs(s => s.closeTab)
   const reorderTabs = useTabs(s => s.reorderTabs)
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
-  const liveDirty = useMindMapStore(s => s.isDirty)
+  const sessionRevision = useSyncExternalStore(
+    projectSessionRegistry.subscribe,
+    projectSessionRegistry.getRevision,
+    projectSessionRegistry.getRevision
+  )
   const tabLoading = useTabLoading(s => s.loading)
 
   const onPlus = () => {
-    const title = i18next.t('mindmap.editor.newProjectTitle', '未命名思维导图')
+    const title = i18next.t("mindmap.editor.newProjectTitle", "未命名思维导图")
     const id = pendingProjects.stash({ title, tree: defaultMindmapData })
-    useTabs.getState().openTab({ id, kind: 'draft', title })
+    useTabs.getState().openTab({ id, kind: "draft", title })
   }
 
   const requestClose = (id: string) => {
     const tab = tabs.find(t => t.id === id)
     if (!tab) return
-    const isActiveTab = activeId === tab.id
-    const dirty = isActiveTab && useMindMapStore.getState().isDirty
-    const pending = tab.kind === 'draft' && pendingProjects.isPending(tab.id)
+    const dirty = projectSessionRegistry.get(tab.id)?.getState().dirty ?? false
+    const pending = tab.kind === "draft" && pendingProjects.isPending(tab.id)
     if (dirty || pending) {
       setPendingCloseId(tab.id)
     } else {
@@ -61,40 +64,35 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
     }
   }
 
-  const pendingTab = pendingCloseId ? tabs.find(t => t.id === pendingCloseId) ?? null : null
+  const pendingTab = pendingCloseId ? (tabs.find(t => t.id === pendingCloseId) ?? null) : null
 
   // MorphingTabs items: 每个 tab 的 label = 文件名 (或"加载中…"), content=null.
   const morphItems: MorphingTabsItem[] = useMemo(
     () => [
       {
-        id: 'home',
-        label: '',
+        id: "home",
+        label: "",
         icon: <Home className="size-3.5" />,
         content: null,
-        pinned: true
+        pinned: true,
       },
       ...tabs.map(tab => {
         const loading = tabLoading[tab.id] === true
-        const isActiveTab = activeId === tab.id
         const dirty =
-          tab.kind === 'draft' ||
-          (isActiveTab ? liveDirty : tabDirty.get(tab.id))
+          tab.kind === "draft" || (projectSessionRegistry.get(tab.id)?.getState().dirty ?? false)
         return {
           id: tab.id,
-          label: loading ? '加载中…' : tab.title || '无标题',
+          label: loading ? "加载中…" : tab.title || "无标题",
           icon: loading ? (
             <Loader2 className="size-3 animate-spin text-muted-foreground" />
           ) : dirty ? (
-            <span
-              aria-hidden
-              className="inline-block size-1.5 rounded-full bg-foreground/70"
-            />
+            <span aria-hidden className="inline-block size-1.5 rounded-full bg-foreground/70" />
           ) : null,
-          content: null
+          content: null,
         }
-      })
+      }),
     ],
-    [tabs, tabLoading, activeId, liveDirty]
+    [tabs, tabLoading, sessionRevision]
   )
 
   return (
@@ -108,10 +106,10 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
       <div className="relative flex h-full w-full min-w-0 items-stretch" data-tauri-drag-region>
         <MorphingTabs
           items={morphItems}
-          value={activeId ?? 'home'}
-          onValueChange={id => setActive(id === 'home' ? 'home' : (id ?? 'home'))}
+          value={activeId ?? "home"}
+          onValueChange={id => setActive(id === "home" ? "home" : (id ?? "home"))}
           onOrderChange={ids => {
-            const projectIds = ids.filter(id => id !== 'home')
+            const projectIds = ids.filter(id => id !== "home")
             reorderTabs(projectIds)
           }}
           onClose={requestClose}
@@ -121,7 +119,7 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
           trailing={<PlusChip onClick={onPlus} />}
           className="min-w-0 flex-1"
           classNames={{
-            content: 'hidden'
+            content: "hidden",
           }}
         />
       </div>
@@ -131,8 +129,8 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
           tab={pendingTab}
           onCancel={() => setPendingCloseId(null)}
           onDiscard={() => {
-            if (pendingTab.kind === 'draft') pendingProjects.clear(pendingTab.id)
-            useMindMapStore.getState().setDirty(false)
+            if (pendingTab.kind === "draft") pendingProjects.clear(pendingTab.id)
+            projectSessionRegistry.get(pendingTab.id)?.getState().setDirty(false)
             closeTab(pendingTab.id)
             setPendingCloseId(null)
           }}
@@ -143,10 +141,10 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
             try {
               await handle.save()
             } catch (error) {
-              logger.error('close-save failed', error)
+              logger.error("close-save failed", error)
               return
             }
-            if (useMindMapStore.getState().isDirty) {
+            if (projectSessionRegistry.get(pendingTab.id)?.getState().dirty) {
               setPendingCloseId(null)
               return
             }
@@ -162,16 +160,18 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
 // '+' 按钮: 浏览器风格 - 紧贴最后一个 tab 右侧, 简约小方块 (不做胶囊/圆角药丸).
 function PlusChip({ onClick }: { onClick: () => void }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-sm"
       onClick={onClick}
       aria-label="New tab"
       title="新项目"
       data-tauri-drag-region="false"
-      className="ml-1 size-7 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/10 hover:text-foreground transition-colors"
+      className="ml-1 shrink-0 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
     >
       <Plus className="size-3.5" />
-    </button>
+    </Button>
   )
 }
 interface CloseConfirmProps {

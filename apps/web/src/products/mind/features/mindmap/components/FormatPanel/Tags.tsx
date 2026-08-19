@@ -3,7 +3,7 @@ import { FC, useEffect } from 'react'
 import { useTranslation } from '@zoeymind/i18n'
 import { nodeIconList } from 'simple-mind-map/src/svg/icons'
 import { useIconManager } from '@/products/mind/features/mindmap/components/hooks/useIconManager'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { PanelLayout } from './PanelLayout'
 
 interface TagsProps {

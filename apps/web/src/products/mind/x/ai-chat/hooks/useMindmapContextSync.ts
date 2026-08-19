@@ -8,13 +8,13 @@
  *   - 把 pendingSnapshot 暂存 (Manager 还没创建时, 等就绪后由初始化 effect 拉起)
  */
 
-import { useEffect } from 'react'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { useAIChatV2Store } from '../../ai-chat/stores/useAIChatV2Store'
-import { MindmapContextManager } from '../../ai-chat/MindmapContextManager'
-import { chatDB } from '../../ai-chat/storage/chatDB'
-import { logger } from '@zoeymind/logger'
-import type { ChatRuntime } from './internal/chatRuntime'
+import { useEffect } from "react"
+import { useProjectSessionStore } from "@/products/mind/editor-session"
+import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
+import { MindmapContextManager } from "../../ai-chat/MindmapContextManager"
+import { chatDB } from "../../ai-chat/storage/chatDB"
+import { logger } from "@zoeymind/logger"
+import type { ChatRuntime } from "./internal/chatRuntime"
 
 interface UseMindmapContextSyncOptions {
   runtime: ChatRuntime
@@ -25,16 +25,17 @@ interface UseMindmapContextSyncOptions {
 export function useMindmapContextSync({
   runtime,
   isInitialized,
-  workspaceId
+  workspaceId,
 }: UseMindmapContextSyncOptions): void {
   const conversationId = useAIChatV2Store(s => s.currentConversationId)
+  const sessionStore = useProjectSessionStore()
 
   // 初始化 MindmapContextManager: 直到 mindMap 装载好为止.
   // cleanup 只在 workspaceId 真的切换 / 整个 hook 卸载时跑 (useMemo 稳定的 runtime 保证不会
   // 因 useAIChat re-render 把 Manager 置 null).
   useEffect(() => {
     const tryInit = () => {
-      const mindMap = useMindMapStore.getState().mindMap
+      const mindMap = sessionStore.getState().mindMap
       if (mindMap && !runtime.mindmapContextManager.current) {
         runtime.mindmapContextManager.current = new MindmapContextManager(mindMap)
         // 检查是否有暂存的快照需要恢复 (解决 Manager 初始化晚于对话加载的竞态)
@@ -53,7 +54,7 @@ export function useMindmapContextSync({
       }
     }
 
-    const unsub = useMindMapStore.subscribe((state, prevState) => {
+    const unsub = sessionStore.subscribe((state, prevState) => {
       if (state.mindMap && !prevState.mindMap) {
         if (tryInit()) unsub()
       }
@@ -63,7 +64,7 @@ export function useMindmapContextSync({
       runtime.mindmapContextManager.current = null
       unsub()
     }
-  }, [workspaceId, runtime])
+  }, [workspaceId, runtime, sessionStore])
   // 对话切换时同步快照: 先 reset, 再尝试恢复新对话的快照
   useEffect(() => {
     if (!isInitialized) return
@@ -79,7 +80,7 @@ export function useMindmapContextSync({
           const persisted = await chatDB.loadSnapshot(conversationId)
           if (!cancelled) runtime.pendingSnapshot.current = persisted ?? null
         } catch (error) {
-          logger.warn('[useMindmapContextSync] 加载快照失败', { error })
+          logger.warn("[useMindmapContextSync] 加载快照失败", { error })
         }
         return
       }
@@ -89,7 +90,7 @@ export function useMindmapContextSync({
         const persisted = await chatDB.loadSnapshot(conversationId)
         if (!cancelled && persisted) manager.restoreSnapshot(persisted)
       } catch (error) {
-        logger.warn('[useMindmapContextSync] 恢复快照失败', { error })
+        logger.warn("[useMindmapContextSync] 恢复快照失败", { error })
       }
     }
 

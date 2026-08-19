@@ -39,7 +39,7 @@ import { XMindExporter } from '@/products/mind/features/mindmap/utils/XMindExpor
 import { ZMXMindExporter } from '@/products/mind/features/mindmap/utils/ZMXMindExporter'
 import { convertMindMapNodeTreeToMarkdownWithIcons } from '@/products/mind/features/mindmap/utils/markdownParser'
 import { exportToZipNested } from '@/products/mind/features/mindmap/utils/zipNestedExporter'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import {
   bumpProjects,
   createUUID,

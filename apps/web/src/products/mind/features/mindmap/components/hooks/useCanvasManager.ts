@@ -1,17 +1,17 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { logger } from '@zoeymind/logger'
-import { useEffect, useRef } from 'react'
-import MindMap from 'simple-mind-map'
-import { customCheckIsTouchPad } from '@/products/mind/lib/isTouchPad'
-import { defaultMindmapData, MAX_NODE_COUNT } from '@zoeymind/shared'
-import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
-import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { useThemePreset } from '@/shared/app-shared'
-import { colorToHsl, useTheme } from '@zoeymind/ui'
+import { logger } from "@zoeymind/logger"
+import { useEffect, useRef } from "react"
+import MindMap from "simple-mind-map"
+import { customCheckIsTouchPad } from "@/products/mind/lib/isTouchPad"
+import { defaultMindmapData, MAX_NODE_COUNT } from "@zoeymind/shared"
+import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
+import { useThemePreset } from "@/shared/app-shared"
+import { colorToHsl, useTheme } from "@zoeymind/ui"
 
-const PERFORMANCE_MODE_KEY = 'mind-map-performance-mode'
-const PERFORMANCE_CONFIG_KEY = 'mind-map-performance-config'
-const ALIGN_SAME_LEVEL_WIDTH_KEY = 'mind-map-align-same-level-width'
+const PERFORMANCE_MODE_KEY = "mind-map-performance-mode"
+const PERFORMANCE_CONFIG_KEY = "mind-map-performance-config"
+const ALIGN_SAME_LEVEL_WIDTH_KEY = "mind-map-align-same-level-width"
 
 // 使用共享包中的默认数据
 export const defaultData = defaultMindmapData
@@ -46,20 +46,20 @@ interface AppPresetMindmapStyles {
 
 function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
   const styles = getComputedStyle(document.documentElement)
-  const background = readThemeToken(styles, '--background', '#ffffff')
-  const foreground = readThemeToken(styles, '--foreground', '#111111')
-  const card = readThemeToken(styles, '--card', '#ffffff')
-  const cardForeground = readThemeToken(styles, '--card-foreground', '#111111')
-  const primary = readThemeToken(styles, '--primary', '#111111')
-  const primaryForeground = readThemeToken(styles, '--primary-foreground', '#ffffff')
-  const secondary = readThemeToken(styles, '--secondary', card)
-  const secondaryForeground = readThemeToken(styles, '--secondary-foreground', cardForeground)
-  const accent = readThemeToken(styles, '--accent', secondary)
-  const accentForeground = readThemeToken(styles, '--accent-foreground', secondaryForeground)
-  const border = readThemeToken(styles, '--border', '#e5e5e5')
-  const input = readThemeToken(styles, '--input', border)
-  const mutedForeground = readThemeToken(styles, '--muted-foreground', '#666666')
-  const ring = readThemeToken(styles, '--ring', primary)
+  const background = readThemeToken(styles, "--background", "#ffffff")
+  const foreground = readThemeToken(styles, "--foreground", "#111111")
+  const card = readThemeToken(styles, "--card", "#ffffff")
+  const cardForeground = readThemeToken(styles, "--card-foreground", "#111111")
+  const primary = readThemeToken(styles, "--primary", "#111111")
+  const primaryForeground = readThemeToken(styles, "--primary-foreground", "#ffffff")
+  const secondary = readThemeToken(styles, "--secondary", card)
+  const secondaryForeground = readThemeToken(styles, "--secondary-foreground", cardForeground)
+  const accent = readThemeToken(styles, "--accent", secondary)
+  const accentForeground = readThemeToken(styles, "--accent-foreground", secondaryForeground)
+  const border = readThemeToken(styles, "--border", "#e5e5e5")
+  const input = readThemeToken(styles, "--input", border)
+  const mutedForeground = readThemeToken(styles, "--muted-foreground", "#666666")
+  const ring = readThemeToken(styles, "--ring", primary)
 
   return {
     hoverRectColor: ring,
@@ -69,17 +69,17 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
       fill: card,
       fontSize: 13,
       strokeColor: ring,
-      strokeWidth: 1
+      strokeWidth: 1,
     },
     dragPlaceholderLineConfig: {
       color: ring,
-      width: 2
+      width: 2,
     },
     quickCreateChildBtnIcon: {
-      icon: '',
+      icon: "",
       style: {
-        color: primary
-      }
+        color: primary,
+      },
     },
     themeConfig: {
       backgroundColor: background,
@@ -98,7 +98,7 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
         borderRadius: 8,
         startColor: primary,
         endColor: primary,
-        hoverRectColor: ring
+        hoverRectColor: ring,
       },
       second: {
         fillColor: secondary,
@@ -108,7 +108,7 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
         borderRadius: 8,
         startColor: secondary,
         endColor: secondary,
-        hoverRectColor: ring
+        hoverRectColor: ring,
       },
       node: {
         fillColor: card,
@@ -118,7 +118,7 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
         borderRadius: 8,
         startColor: card,
         endColor: card,
-        hoverRectColor: ring
+        hoverRectColor: ring,
       },
       generalization: {
         fillColor: accent,
@@ -128,9 +128,9 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
         borderRadius: 8,
         startColor: accent,
         endColor: accent,
-        hoverRectColor: ring
-      }
-    }
+        hoverRectColor: ring,
+      },
+    },
   }
 }
 
@@ -184,34 +184,57 @@ export function useCanvasManager(
   const { workspaceId, cloudMode } = useProjectContext()
   // 保存实例的引用以便在清理时使用
   const instanceRef = useRef<MindMap | null>(null)
-  // 添加初始化锁，防止重复初始化
-  const initializingRef = useRef(false)
+  // 每次 effect 运行分配递增代次；只有最新代次可以创建引擎。
+  const initializationAttemptRef = useRef(0)
   // 添加项目ID引用，用于检测变化
   const currentProjectIdRef = useRef<string | undefined>(undefined)
   const currentReloadTokenRef = useRef<number>(0)
   const { resolvedTheme } = useTheme()
   const { presetId } = useThemePreset()
-
-  // 独立的resize监听器useEffect，不受projectId变化影响
-  useEffect(() => {
-    // 添加窗口大小变化监听
-    const handleResize = () => {
-      if (instanceRef.current) {
-        // MindMap的resize方法会自动重新获取容器尺寸并更新SVG
-        instanceRef.current.resize()
+  const hasUsableContainerSize = () => {
+    const container = containerRef.current
+    if (!container) return false
+    const rect = container.getBoundingClientRect()
+    return rect.width > 0 && rect.height > 0
+  }
+  const waitForUsableContainer = (isCancelled: () => boolean) =>
+    new Promise<boolean>(resolve => {
+      const check = () => {
+        if (isCancelled()) {
+          resolve(false)
+          return
+        }
+        if (hasUsableContainerSize()) {
+          resolve(true)
+          return
+        }
+        requestAnimationFrame(check)
       }
+      check()
+    })
+
+  // Every mounted editor keeps a measurable container. Resize is safe for active and
+  // inactive panes alike; visibility changes never participate in engine initialization.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const resize = () => {
+      if (instanceRef.current && hasUsableContainerSize()) instanceRef.current.resize()
     }
-
-    // 添加resize监听器
-    window.addEventListener('resize', handleResize, { passive: true })
-
+    const observer = new ResizeObserver(resize)
+    observer.observe(container)
+    window.addEventListener("resize", resize, { passive: true })
     return () => {
-      // 移除窗口大小变化监听
-      window.removeEventListener('resize', handleResize)
+      observer.disconnect()
+      window.removeEventListener("resize", resize)
     }
-  }, []) // 空依赖数组，只在组件挂载/卸载时执行
+  }, [])
 
   useEffect(() => {
+    const attempt = initializationAttemptRef.current + 1
+    initializationAttemptRef.current = attempt
+    let cancelled = false
+    const isCancelled = () => cancelled || initializationAttemptRef.current !== attempt
     if (!containerRef.current) {
       // logger.debug('useCanvasManager: 容器未准备好，跳过初始化')
       return
@@ -237,24 +260,13 @@ export function useCanvasManager(
       return
     }
 
-    // 如果正在初始化，则跳过
-    if (initializingRef.current) {
-      logger.warn('useCanvasManager: 正在初始化中，跳过新的初始化请求', {
-        workspaceId,
-        currentProjectId: currentProjectIdRef.current
-      })
-      return
-    }
-
     const initializeMindMap = async () => {
-      initializingRef.current = true
-
       // 移除独立的loading逻辑，统一由MindMapCanvas管理
 
       try {
         // 清理容器
         if (containerRef.current && containerRef.current.children.length > 0) {
-          containerRef.current.innerHTML = ''
+          containerRef.current.innerHTML = ""
         }
 
         // 创建新实例前保存当前数据
@@ -266,7 +278,7 @@ export function useCanvasManager(
             // ✅ 清空 store 中的实例，避免其他组件引用已销毁的实例
             setMindMap(null)
           } catch (error) {
-            logger.warn('清理旧实例失败:', error)
+            logger.warn("清理旧实例失败:", error)
           }
         }
 
@@ -282,12 +294,13 @@ export function useCanvasManager(
             savedViewData = loadedData.savedViewData
             updateProgress?.(60)
           } catch (error) {
-            logger.error('加载数据失败:', error)
+            logger.error("加载数据失败:", error)
             if (cloudMode) {
               throw error
             }
           }
         }
+        if (isCancelled()) return
 
         const appStyles = createAppPresetMindmapStyles()
         updateProgress?.(65)
@@ -297,10 +310,10 @@ export function useCanvasManager(
         const initialDocState = savedData?.__initialYDocState
 
         // 读取性能模式设置
-        const isPerformanceMode = localStorage.getItem(PERFORMANCE_MODE_KEY) === 'true'
+        const isPerformanceMode = localStorage.getItem(PERFORMANCE_MODE_KEY) === "true"
 
         // 读取同层级节点等宽设置
-        const isAlignSameLevelWidth = localStorage.getItem(ALIGN_SAME_LEVEL_WIDTH_KEY) === 'true'
+        const isAlignSameLevelWidth = localStorage.getItem(ALIGN_SAME_LEVEL_WIDTH_KEY) === "true"
 
         // 读取性能配置
         let performanceConfig = {}
@@ -325,6 +338,9 @@ export function useCanvasManager(
         if (!containerRef.current) {
           return
         }
+        if (!(await waitForUsableContainer(isCancelled))) {
+          return
+        }
 
         // 创建 MindMap 实例，使用类型安全的配置
         const mindMapOptions = {
@@ -332,8 +348,8 @@ export function useCanvasManager(
           data: dataToUse,
           width: window.innerWidth,
           height: window.innerHeight,
-          layout: 'logicalStructure',
-          theme: 'default',
+          layout: "logicalStructure",
+          theme: "default",
           themeConfig: appStyles.themeConfig,
           openPerformance: isPerformanceMode,
           performanceConfig,
@@ -341,7 +357,7 @@ export function useCanvasManager(
           // 扩展选项（这些不在标准接口中，但 simple-mind-map 支持）
           layoutDirection: 2,
           useLeftKeySelectionRightKeyDrag: true,
-          dragTargetType: 'canvas',
+          dragTargetType: "canvas",
           openRealtimeRenderOnNodeTextEdit: true,
           alwaysShowExpandBtn: false,
           hoverRectColor: appStyles.hoverRectColor,
@@ -365,13 +381,13 @@ export function useCanvasManager(
             canEdit === false
               ? (updateInfo: { list?: unknown[]; type?: string }) => {
                   // 如果用户没有编辑权限，阻止所有协同更新
-                  logger.warn('只读用户尝试进行协同更新，已阻止:', updateInfo)
+                  logger.warn("只读用户尝试进行协同更新，已阻止:", updateInfo)
                   // 清空更新列表来阻止协同更新
                   if (updateInfo.list) {
                     updateInfo.list.length = 0
                   }
                 }
-              : null
+              : null,
         }
 
         const instance = new MindMap(mindMapOptions)
@@ -380,7 +396,7 @@ export function useCanvasManager(
         if (workspaceId) {
           ;(instance as MindMap & { workspaceId?: string }).workspaceId = workspaceId
         } else {
-          logger.warn('MindMapCanvas: 项目ID未提供，这可能导致AI聊天消息无法正确关联到项目')
+          logger.warn("MindMapCanvas: 项目ID未提供，这可能导致AI聊天消息无法正确关联到项目")
           // 设置一个默认项目ID，以确保AI聊天功能能够正常工作
           const defaultId = `mindmap-default-${Date.now()}`
           ;(instance as MindMap & { workspaceId?: string }).workspaceId = defaultId
@@ -397,10 +413,10 @@ export function useCanvasManager(
         if (savedViewData) {
           try {
             const viewData =
-              typeof savedViewData === 'string' ? JSON.parse(savedViewData) : savedViewData
+              typeof savedViewData === "string" ? JSON.parse(savedViewData) : savedViewData
             instance.view.setTransformData(viewData)
           } catch (error) {
-            logger.error('恢复视图数据失败:', error)
+            logger.error("恢复视图数据失败:", error)
           }
         }
 
@@ -416,44 +432,26 @@ export function useCanvasManager(
           // 触发 setMindMap,标记画布已渲染
           setMindMap(instance)
           // 移除监听器,只需要首次渲染
-          instance.off('node_tree_render_end', handleFirstRender)
+          instance.off("node_tree_render_end", handleFirstRender)
         }
 
-        instance.on('node_tree_render_end', handleFirstRender)
+        instance.on("node_tree_render_end", handleFirstRender)
 
         // 开始渲染
         instance.render()
       } catch (error) {
-        logger.error('初始化思维导图失败:', error)
+        if (isCancelled()) return
+        logger.error("初始化思维导图失败:", error)
         // 错误处理，loading由MindMapCanvas统一管理
         onLoadError?.(error)
-      } finally {
-        initializingRef.current = false
       }
     }
 
-    // 添加窗口大小变化监听
-    const handleResize = () => {
-      if (instanceRef.current) {
-        instanceRef.current.resize()
-      }
-    }
-
-    // 启动异步初始化
     initializeMindMap()
-
-    window.addEventListener('resize', handleResize)
-
     return () => {
-      // 移除窗口大小变化监听
-      window.removeEventListener('resize', handleResize)
-
-      // ✅ 主useEffect的清理函数不负责销毁实例
-      // 实例的销毁在以下两个地方处理:
-      // 1. initializeMindMap 开始时清理旧实例 (项目切换/reload)
-      // 2. 组件卸载清理 useEffect (组件真正卸载)
+      cancelled = true
     }
-  }, [workspaceId, reloadToken, checkCompleted, cloudMode, canEdit, hasPermission]) // ✅ 只有在权限确认后才初始化
+  }, [workspaceId, reloadToken, checkCompleted, cloudMode, canEdit, hasPermission])
 
   // 单独的useEffect来处理权限变化时的模式设置
   useEffect(() => {
@@ -463,7 +461,7 @@ export function useCanvasManager(
       instanceRef.current.opt.allowReadonlyContextMenu = shouldBeReadonly
 
       if (currentMode !== shouldBeReadonly) {
-        instanceRef.current.setMode(shouldBeReadonly ? 'readonly' : 'edit')
+        instanceRef.current.setMode(shouldBeReadonly ? "readonly" : "edit")
       }
     }
   }, [canEdit])
@@ -489,7 +487,7 @@ export function useCanvasManager(
           // ✅ 清空 store 中的实例，避免下次打开时误判
           setMindMap(null)
         } catch (error) {
-          logger.warn('组件卸载时销毁 MindMap 实例失败:', error)
+          logger.warn("组件卸载时销毁 MindMap 实例失败:", error)
         }
       }
     }

@@ -2,7 +2,7 @@
 import React from 'react'
 import { Eye, X } from 'lucide-react'
 import { Button } from '@zoeymind/ui'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { useTranslation } from '@zoeymind/i18n'
 
 export const PreviewIndicator: React.FC = () => {

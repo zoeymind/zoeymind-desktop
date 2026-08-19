@@ -6,7 +6,7 @@ import { Button } from '@zoeymind/ui'
 import { InputGroup, InputGroupInput, InputGroupAddon, InputGroupButton } from '@zoeymind/ui'
 import { ScrollArea } from '@zoeymind/ui'
 import type { default as MindMap, MindMapNode } from 'simple-mind-map'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 
 interface SearchEventData {
   current: number

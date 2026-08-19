@@ -38,7 +38,7 @@ import { Textarea } from '@zoeymind/ui'
 import { useToast } from '@/shared/app-shared'
 import { projectDB } from '@/shared/mindmap-bridge'
 import { CloudSnapshotPanel } from './CloudSnapshotPanel'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 
 interface SnapshotPanelProps {

@@ -14,7 +14,7 @@ import { cn } from '@/shared/app-shared'
 import { useContextMenu } from './hooks/useContextMenu'
 import { useIconManager } from './hooks/useIconManager'
 import { useUIStore } from '@/products/mind/stores'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { useTranslation } from '@zoeymind/i18n'
 
 interface MindMapDropdownProps {

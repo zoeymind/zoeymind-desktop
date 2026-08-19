@@ -15,7 +15,7 @@ import { Button } from '@zoeymind/ui'
 import { logger } from '@zoeymind/logger'
 import { toast } from '@/shared/app-shared'
 import { useSaveFlowContext, pendingProjects } from '@/shared/native'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
 import { useTabs } from '@/shared/tabs/store'
 

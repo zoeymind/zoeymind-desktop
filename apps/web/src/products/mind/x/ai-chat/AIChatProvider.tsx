@@ -14,7 +14,7 @@
 import type { ReactNode, ReactElement } from 'react'
 import { useAIChat } from './hooks/useAIChat'
 import { AIChatRuntimeProvider } from './context/AIChatRuntimeContext'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 
 export function AIChatProvider({ children }: { children: ReactNode }): ReactElement {
   const { mindMap } = useMindMapStore()

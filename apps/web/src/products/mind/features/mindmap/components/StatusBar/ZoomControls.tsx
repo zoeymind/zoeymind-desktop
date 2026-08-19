@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@zoeymind/ui"
-import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 
 const ZOOM_PRESETS = [50, 75, 100, 125, 150, 200] as const
 

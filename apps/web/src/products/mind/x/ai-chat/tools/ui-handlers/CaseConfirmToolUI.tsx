@@ -14,26 +14,26 @@
  * shouldRender=false, dispatcher 会 fall through 到默认的 toolExecutor.execute 路径.
  */
 
-import { useCallback } from 'react'
-import { useToolUI } from '../../../ai-chat/context/ToolUIRegistry'
-import { CaseConfirmPanel } from '../../../ai-chat/components/inputView/CaseConfirmPanel'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
-import { getModuleAIChatRuntime } from '../../../ai-chat/context/AIChatRuntimeContext'
-import { resolveToolInput } from '../../../ai-chat/hooks/internal/resolveToolInput'
-import { toolExecutor } from '../../../ai-chat/tools/executor'
-import { findNodeByUid } from '../../../ai-chat/tools/mindmap/mindmap-node-tree'
+import { useCallback } from "react"
+import { useToolUI } from "../../../ai-chat/context/ToolUIRegistry"
+import { CaseConfirmPanel } from "../../../ai-chat/components/inputView/CaseConfirmPanel"
+import { useProjectSessionStore, type ProjectSessionStore } from "@/products/mind/editor-session"
+import { getModuleAIChatRuntime } from "../../../ai-chat/context/AIChatRuntimeContext"
+import { resolveToolInput } from "../../../ai-chat/hooks/internal/resolveToolInput"
+import { toolExecutor } from "../../../ai-chat/tools/executor"
+import { findNodeByUid } from "../../../ai-chat/tools/mindmap/mindmap-node-tree"
 import {
   bindPreAssignedIds,
   cacheToolResult,
   toModelOutput,
-  type PreAssignedId
-} from '../../../ai-chat/tools/types'
-import type { CaseConfirmItem, ToolArgs } from '../../../ai-chat/types'
-import { logger } from '@zoeymind/logger'
+  type PreAssignedId,
+} from "../../../ai-chat/tools/types"
+import type { CaseConfirmItem, ToolArgs } from "../../../ai-chat/types"
+import { logger } from "@zoeymind/logger"
 
-type CaseToolName = 'add_cases' | 'update_cases' | 'delete_cases'
+type CaseToolName = "add_cases" | "update_cases" | "delete_cases"
 
-const CASE_REVIEW_SETTING_KEY = 'ai-case-review-enabled'
+const CASE_REVIEW_SETTING_KEY = "ai-case-review-enabled"
 
 interface ParsedArgs {
   toolName: CaseToolName
@@ -45,14 +45,15 @@ interface ParsedArgs {
   preAssignedIds: PreAssignedId[]
 }
 
-type ConfirmResult = Record<string, { action: 'accept' | 'reject'; feedback?: string }>
+type ConfirmResult = Record<string, { action: "accept" | "reject"; feedback?: string }>
 
 export function useCaseConfirmToolUI(): void {
+  const sessionStore = useProjectSessionStore()
   const render = useCallback(
     ({
       args,
       toolCallId,
-      dismiss
+      dismiss,
     }: {
       args: ParsedArgs
       toolCallId: string
@@ -62,31 +63,36 @@ export function useCaseConfirmToolUI(): void {
         cases={args.cases}
         operation={args.toolName}
         onConfirm={async results => {
-          await executeCaseConfirm(args, toolCallId, results)
+          await executeCaseConfirm(args, toolCallId, results, sessionStore)
           dismiss()
         }}
       />
     ),
-    []
+    [sessionStore]
   )
 
   useToolUI<ParsedArgs, never>({
-    name: ['add_cases', 'update_cases', 'delete_cases'],
+    name: ["add_cases", "update_cases", "delete_cases"],
     shouldRender: () => {
       // 用户没开 review 就让 dispatcher 走默认执行
       return (
-        typeof window !== 'undefined' && localStorage.getItem(CASE_REVIEW_SETTING_KEY) === 'true'
+        typeof window !== "undefined" && localStorage.getItem(CASE_REVIEW_SETTING_KEY) === "true"
       )
     },
-    parseArgs: (input, toolName) => parseCaseConfirmArgs(input, toolName as CaseToolName),
-    render
+    parseArgs: (input, toolName) =>
+      parseCaseConfirmArgs(input, toolName as CaseToolName, sessionStore),
+    render,
   })
 }
 
-function parseCaseConfirmArgs(input: unknown, toolName: CaseToolName): ParsedArgs {
+function parseCaseConfirmArgs(
+  input: unknown,
+  toolName: CaseToolName,
+  sessionStore: ProjectSessionStore
+): ParsedArgs {
   const runtime = getModuleAIChatRuntime()
   const mapper = runtime?.getIdMapper() ?? null
-  const mindMap = useMindMapStore.getState().mindMap
+  const mindMap = sessionStore.getState().mindMap
 
   let resolvedInput = input as ToolArgs
   let preAssignedIds: PreAssignedId[] = []
@@ -108,44 +114,43 @@ function parseCaseConfirmArgs(input: unknown, toolName: CaseToolName): ParsedArg
     if (!node?.children || !Array.isArray(node.children)) return undefined
     const steps = node.children
       .map(child => child?.data?.text)
-      .filter((step): step is string => typeof step === 'string' && step.trim().length > 0)
+      .filter((step): step is string => typeof step === "string" && step.trim().length > 0)
     return steps.length > 0 ? steps : undefined
   }
 
   let cases: CaseConfirmItem[] = []
   const obj = resolvedInput as Record<string, unknown>
 
-  if (toolName === 'add_cases') {
+  if (toolName === "add_cases") {
     const casesInput = obj.cases as Array<{ case: string; steps?: string[] }> | undefined
     if (casesInput?.length) {
       cases = casesInput.map((c, idx) => ({
         caseId: `new-${Date.now()}-${idx}`,
         caseText: c.case,
         steps: c.steps,
-        operation: 'add' as const,
-        preAssignedShortId: preAssignedIds.find(p => p.index === idx)?.shortId
+        operation: "add" as const,
+        preAssignedShortId: preAssignedIds.find(p => p.index === idx)?.shortId,
       }))
     }
-  } else if (toolName === 'update_cases') {
+  } else if (toolName === "update_cases") {
     const updates = obj.updates as
-      | Array<{ caseId: string; case?: string; steps?: string[] }>
-      | undefined
+      Array<{ caseId: string; case?: string; steps?: string[] }> | undefined
     if (updates?.length) {
       cases = updates.map(u => ({
         caseId: u.caseId,
         caseText: u.case || resolveCaseTitle(u.caseId),
         steps: u.steps && u.steps.length > 0 ? u.steps : resolveCaseSteps(u.caseId),
-        operation: 'update' as const
+        operation: "update" as const,
       }))
     }
-  } else if (toolName === 'delete_cases') {
+  } else if (toolName === "delete_cases") {
     const caseIds = obj.caseIds as string[] | undefined
     if (caseIds?.length) {
       cases = caseIds.map(caseId => ({
         caseId,
         caseText: resolveCaseTitle(caseId),
         steps: resolveCaseSteps(caseId),
-        operation: 'delete' as const
+        operation: "delete" as const,
       }))
     }
   }
@@ -154,7 +159,7 @@ function parseCaseConfirmArgs(input: unknown, toolName: CaseToolName): ParsedArg
     toolName,
     cases,
     resolvedInput,
-    preAssignedIds
+    preAssignedIds,
   }
 }
 
@@ -167,45 +172,46 @@ function parseCaseConfirmArgs(input: unknown, toolName: CaseToolName): ParsedArg
 async function executeCaseConfirm(
   args: ParsedArgs,
   toolCallId: string,
-  results: ConfirmResult
+  results: ConfirmResult,
+  sessionStore: ProjectSessionStore
 ): Promise<void> {
   const runtime = getModuleAIChatRuntime()
   if (!runtime) {
-    logger.error('[CaseConfirmToolUI] runtime 未初始化')
+    logger.error("[CaseConfirmToolUI] runtime 未初始化")
     return
   }
 
   const { toolName, cases, resolvedInput, preAssignedIds } = args
 
   // 拆分 accept / reject
-  const acceptedItems = cases.filter(item => results[item.caseId]?.action === 'accept')
-  const rejectedItems = cases.filter(item => results[item.caseId]?.action === 'reject')
+  const acceptedItems = cases.filter(item => results[item.caseId]?.action === "accept")
+  const rejectedItems = cases.filter(item => results[item.caseId]?.action === "reject")
 
   // 构造执行用的 toolInput
   const toolInput: Record<string, unknown> = {}
-  if (toolName === 'add_cases') {
+  if (toolName === "add_cases") {
     toolInput.moduleId = (resolvedInput as Record<string, unknown>).moduleId
     toolInput.cases = acceptedItems.map(c => ({ case: c.caseText, steps: c.steps }))
-  } else if (toolName === 'update_cases') {
+  } else if (toolName === "update_cases") {
     toolInput.updates = acceptedItems.map(c => ({
       caseId: c.caseId,
       case: c.caseText,
-      steps: c.steps
+      steps: c.steps,
     }))
   } else {
     toolInput.caseIds = acceptedItems.map(c => c.caseId).filter((id): id is string => !!id)
   }
 
   // 取 MindMap + idMapper
-  const mindMap = useMindMapStore.getState().mindMap
+  const mindMap = sessionStore.getState().mindMap
   const idMapper = runtime.getIdMapper()
   if (!mindMap || !idMapper) {
-    logger.error('[CaseConfirmToolUI] mindMap 或 idMapper 不存在')
+    logger.error("[CaseConfirmToolUI] mindMap 或 idMapper 不存在")
     runtime.addToolOutput({
       tool: toolName,
       toolCallId,
-      state: 'output-error',
-      errorText: 'MindMap 或 idMapper 未初始化'
+      state: "output-error",
+      errorText: "MindMap 或 idMapper 未初始化",
     })
     return
   }
@@ -216,7 +222,7 @@ async function executeCaseConfirm(
     if (acceptedItems[i].preAssignedShortId) {
       correctedPreAssignedIds.push({
         shortId: acceptedItems[i].preAssignedShortId!,
-        index: i
+        index: i,
       })
     }
   }
@@ -229,9 +235,9 @@ async function executeCaseConfirm(
   }
   // 顺便用一下 preAssignedIds (原始 dispatcher 解析的, 留作日志参考)
   if (preAssignedIds.length !== correctedPreAssignedIds.length) {
-    logger.debug('[CaseConfirmToolUI] 预分配 ID 调整', {
+    logger.debug("[CaseConfirmToolUI] 预分配 ID 调整", {
       original: preAssignedIds.length,
-      corrected: correctedPreAssignedIds.length
+      corrected: correctedPreAssignedIds.length,
     })
   }
 
@@ -243,15 +249,15 @@ async function executeCaseConfirm(
       bindPreAssignedIds(toolName, executionResult, correctedPreAssignedIds, idMapper)
     }
   } catch (error) {
-    logger.error('[CaseConfirmToolUI] 工具执行失败', { error })
+    logger.error("[CaseConfirmToolUI] 工具执行失败", { error })
     for (const { shortId } of correctedPreAssignedIds) {
       idMapper.unreserve(shortId)
     }
     runtime.addToolOutput({
       tool: toolName,
       toolCallId,
-      state: 'output-error',
-      errorText: error instanceof Error ? error.message : String(error)
+      state: "output-error",
+      errorText: error instanceof Error ? error.message : String(error),
     })
     return
   }
@@ -263,18 +269,18 @@ async function executeCaseConfirm(
   let modelResult = executionResult
   if (rejectedItems.length > 0) {
     const rejLines = rejectedItems
-      .map(r => `!「${r.caseText}」${results[r.caseId]?.feedback || '用户选择拒绝此修改'}`)
-      .join('\n')
+      .map(r => `!「${r.caseText}」${results[r.caseId]?.feedback || "用户选择拒绝此修改"}`)
+      .join("\n")
     const reviewSummary = `# review: ${acceptedItems.length}ok/${rejectedItems.length}rejected\n${rejLines}`
     modelResult = {
       ...executionResult,
-      ztdl: executionResult.ztdl ? `${executionResult.ztdl}\n${reviewSummary}` : reviewSummary
+      ztdl: executionResult.ztdl ? `${executionResult.ztdl}\n${reviewSummary}` : reviewSummary,
     }
   }
 
   runtime.addToolOutput({
     tool: toolName,
     toolCallId,
-    output: toModelOutput(modelResult)
+    output: toModelOutput(modelResult),
   })
 }

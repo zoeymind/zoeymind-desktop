@@ -7,7 +7,7 @@ import { AIFeaturePanel, useAIProcessing } from "@zoeymind-ext-mind"
 import { useFeature } from "@/shared/app-shared"
 import { MessageCircle, Sparkles } from "lucide-react"
 import { useUIStore } from "@/products/mind/stores"
-import { useMindMapStore } from "@/products/mind/features/mindmap/stores/mindmap-store"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
 import { useCommentContext } from "@/products/mind/features/mindmap/contexts/CommentContext"
 import {

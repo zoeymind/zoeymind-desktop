@@ -1,5 +1,6 @@
 export { ProjectSessionProvider } from "./ProjectSessionProvider"
 export { useProjectSession, useProjectSessionStore } from "./project-session-context"
+export { useProjectMindMapStore, type ProjectMindMapState } from "./use-project-mind-map-store"
 export {
   createProjectSessionStore,
   PROJECT_SESSION_LIFECYCLE,

@@ -57,6 +57,23 @@ describe("Project Editor Session", () => {
     expect(registry.getActive()).toBe(projectB)
   })
 
+  it("publishes state changes from every registered project", () => {
+    const registry = createProjectSessionRegistry()
+    const projectA = createProjectSessionStore("project-a")
+    const projectB = createProjectSessionStore("project-b")
+    const notify = vi.fn()
+    const unsubscribe = registry.subscribe(notify)
+    registry.register(projectA)
+    registry.register(projectB)
+
+    projectA.getState().setDirty(true)
+    projectB.getState().setDirty(true)
+
+    expect(notify).toHaveBeenCalledTimes(4)
+    expect(registry.getRevision()).toBe(4)
+    unsubscribe()
+  })
+
   it("mirrors legacy runtime changes only into the active session", () => {
     const projectA = createProjectSessionStore("project-a")
     const projectB = createProjectSessionStore("project-b")

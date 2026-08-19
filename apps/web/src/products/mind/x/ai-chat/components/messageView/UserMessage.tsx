@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@zoeymind/ui'
 import { useTranslation } from '@zoeymind/i18n'
 import { MessageComposerBox } from '../../../ai-chat/components/inputView/MessageComposerBox'
 import { useImageAttachmentManager } from '../../../ai-chat/components/inputView/useImageAttachmentManager'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 import type { AIModel } from '../../../ai-chat/hooks/useModelSelector'
 import type { Attachment, GenericMessagePart } from '../../../ai-chat/types'
 

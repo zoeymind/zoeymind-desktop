@@ -1,6 +1,6 @@
 import { logger } from '@zoeymind/logger'
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 
 // 节流函数
 const throttle = <T extends (...args: unknown[]) => void>(fn: T, delay: number): T => {

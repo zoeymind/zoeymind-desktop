@@ -4,15 +4,15 @@
  * 提取自原 useAIChat.ts.
  */
 
-import type { MindMap } from '@/products/mind/stores'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import type { MindMap } from "@/products/mind/stores"
+import { projectSessionRegistry } from "@/products/mind/editor-session"
 
 const DEFAULT_TIMEOUT = 3000
 
 export async function waitForMindMapInstance(
   timeout: number = DEFAULT_TIMEOUT
 ): Promise<MindMap | null> {
-  const existing = useMindMapStore.getState().mindMap
+  const existing = projectSessionRegistry.getActive()?.getState().mindMap
   if (existing) return existing
 
   return new Promise<MindMap | null>(resolve => {
@@ -27,8 +27,8 @@ export async function waitForMindMapInstance(
       }
     }, timeout)
 
-    unsubscribe = useMindMapStore.subscribe(state => {
-      const mindMap = state.mindMap
+    unsubscribe = projectSessionRegistry.subscribe(() => {
+      const mindMap = projectSessionRegistry.getActive()?.getState().mindMap
       if (mindMap && !settled) {
         settled = true
         clearTimeout(timer)

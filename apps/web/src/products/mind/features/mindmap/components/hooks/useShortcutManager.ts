@@ -3,7 +3,7 @@ import { logger } from '@zoeymind/logger'
 import { useEffect } from 'react'
 import { NodeManager } from '@/products/mind/features/mindmap/components/managers/NodeManager'
 import { useUIStore } from '@/products/mind/stores'
-import { useMindMapStore } from '@/products/mind/features/mindmap/stores/mindmap-store'
+import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
 
 export function useShortcutManager() {
   const { mindMap } = useMindMapStore()
