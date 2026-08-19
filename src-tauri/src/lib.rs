@@ -1,6 +1,34 @@
+use std::collections::HashMap;
+
 use tauri::{Emitter, Manager};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+/**
+ * 走 native reqwest 请求, 绕开 webview CORS. 前端 invoke('http_get_json', {url, headers}).
+ * 用于拉取 provider 模型列表: 部分服务商 OPTIONS 预检返回 401 不给通过.
+ */
+#[tauri::command]
+async fn http_get_json(
+  url: String,
+  headers: HashMap<String, String>,
+) -> Result<String, String> {
+  let client = reqwest::Client::builder()
+    .timeout(std::time::Duration::from_secs(30))
+    .build()
+    .map_err(|e| e.to_string())?;
+
+  let mut req = client.get(&url);
+  for (k, v) in headers.iter() {
+    req = req.header(k.as_str(), v.as_str());
+  }
+  let resp = req.send().await.map_err(|e| e.to_string())?;
+  let status = resp.status();
+  let text = resp.text().await.map_err(|e| e.to_string())?;
+  if !status.is_success() {
+    return Err(format!("HTTP {}: {}", status, text));
+  }
+  Ok(text)
+}
 fn migrations() -> Vec<Migration> {
   vec![Migration {
     version: 1,
@@ -132,16 +160,13 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_opener::init())
+    .invoke_handler(tauri::generate_handler![http_get_json])
     .setup(|app| {
       if let Some(window) = app.get_webview_window("main") {
         #[cfg(target_os = "windows")]
         {
-          // Windows: 禁用原生装饰, 用自定义标题栏
           let _ = window.set_decorations(false);
         }
-        // macOS titleBarStyle=Overlay + hiddenTitle=true + trafficLightPosition
-        // 都在 tauri.conf.json 编译期 embed 生效; 不再运行时调 setTitleBarStyle
-        // (会 reset traffic light position).
         log::info!("tauri window ready: {:?}", window.label());
       }
 
