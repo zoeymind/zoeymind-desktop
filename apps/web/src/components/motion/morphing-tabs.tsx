@@ -98,18 +98,17 @@ type SpringTabProps = {
   onLostPointerCapture: (event: ReactPointerEvent<HTMLDivElement>) => void;
 };
 
+// [ZoeyMind 桌面端定制] 从 80px 面板缩到 56px titlebar; 值按比例缩.
 const DRAG_THRESHOLD = 5;
-// The design width of a tab, and the narrowest it may shrink to before the
-// label stops reading. See `tabWidth` in MorphingTabs.
 const MAX_TAB_WIDTH = 176;
 const MIN_TAB_WIDTH = 96;
-const TAB_HEIGHT = 56;
-const TAB_TOP = 24;
-const TAB_RADIUS = 24;
-const RAIL_HEIGHT = 80;
-const SURFACE_INSET = 16;
-const LIQUID_JOIN = 24;
-const PANEL_RADIUS = 28;
+const TAB_HEIGHT = 44;
+const TAB_TOP = 12;
+const TAB_RADIUS = 12;
+const RAIL_HEIGHT = 56;
+const SURFACE_INSET = 8;
+const LIQUID_JOIN = 14;
+const PANEL_RADIUS = 14;
 
 function sameOrder(a: string[], b: string[]) {
   return a.length === b.length && a.every((id, index) => id === b[index]);
@@ -229,10 +228,11 @@ function SpringTab({
               viewBox={`0 0 ${surfaceWidth} ${RAIL_HEIGHT + PANEL_RADIUS}`}
               preserveAspectRatio="none"
               className={cn(
-                "pointer-events-none absolute inset-x-0 top-0 h-[108px] w-full text-[#fafaf8]",
+                "pointer-events-none absolute inset-x-0 top-0 w-full text-[#fafaf8]",
                 dragging ? "z-20" : "z-0",
                 surfaceClassName,
               )}
+              style={{ height: RAIL_HEIGHT + PANEL_RADIUS }}
             >
               <LiquidSurfacePath
                 key={
@@ -730,7 +730,7 @@ export function MorphingTabs({
         className,
       )}
     >
-      <div className="relative h-20">
+      <div className="relative" style={{ height: RAIL_HEIGHT }}>
         <div
           ref={railRef}
           role="tablist"

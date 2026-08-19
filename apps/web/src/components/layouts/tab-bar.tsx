@@ -155,7 +155,8 @@ export function TabBar() {
   )
 }
 
-// Home chip: 独立于 MorphingTabs, 高度对齐 tab (56px, marginTop 24 = 走 tab 视觉中线).
+// Home chip: 独立于 MorphingTabs, 对齐它的 tab 视觉:
+// MorphingTabs 内部 tab 有 marginTop=12, height=44 -> Home 用 mt-3 (12px) h-11 (44px).
 function HomeChip({ active, onClick }: { active: boolean; onClick: () => void }) {
   return (
     <button
@@ -165,8 +166,7 @@ function HomeChip({ active, onClick }: { active: boolean; onClick: () => void })
       aria-label="Home"
       title="Home"
       className={cn(
-        'group relative mt-6 h-14 shrink-0 inline-flex items-center px-4 text-xs',
-        'rounded-l-3xl transition-colors',
+        'group relative mt-3 h-11 shrink-0 inline-flex items-center px-3 text-xs rounded-xl transition-colors',
         active
           ? 'bg-background text-foreground z-20'
           : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
@@ -185,7 +185,7 @@ function PlusChip({ onClick }: { onClick: () => void }) {
       aria-label="New tab"
       title="新项目"
       data-tauri-drag-region="false"
-      className="mt-6 h-14 shrink-0 inline-flex items-center justify-center px-3 text-muted-foreground hover:bg-muted/40 hover:text-foreground rounded-r-3xl transition-colors"
+      className="mt-3 h-11 shrink-0 inline-flex items-center justify-center px-2.5 rounded-xl text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
     >
       <Plus className="size-4" />
     </button>

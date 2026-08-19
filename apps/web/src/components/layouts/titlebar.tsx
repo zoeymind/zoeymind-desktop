@@ -31,7 +31,7 @@ export function TitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="fixed inset-x-0 top-0 z-[100] flex h-20 items-stretch bg-muted/60 backdrop-blur"
+      className="fixed inset-x-0 top-0 z-[100] flex h-14 items-stretch bg-muted/60 backdrop-blur"
     >
       {/* macOS spacer: 让开系统红绿灯 (trafficLightPosition 需要跟 h-20 一起调 y) */}
       <div

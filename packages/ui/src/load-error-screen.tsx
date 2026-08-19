@@ -39,7 +39,7 @@ export const LoadErrorScreen: FC<LoadErrorScreenProps> = ({
   return (
     <div
       className={`
-        fixed inset-x-0 top-20 bottom-0 z-30 flex flex-col items-center justify-center bg-background
+        fixed inset-x-0 top-14 bottom-0 z-30 flex flex-col items-center justify-center bg-background
         ${className}
       `}
       style={{ isolation: 'isolate' }}
