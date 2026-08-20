@@ -37,8 +37,8 @@ jobs:
       - name: Validate input mode
         env:
           INPUT_VERSION: ${{ inputs.version }}
-          INPUT_ARTIFACT_RUN_ID: ${{ inputs.artifact-run-id }}
-          INPUT_RELEASE_TAG: ${{ inputs.release-tag }}
+          INPUT_ARTIFACT_RUN_ID: ${{ inputs['artifact-run-id'] }}
+          INPUT_RELEASE_TAG: ${{ inputs['release-tag'] }}
         run: |
           if [[ -n "$INPUT_ARTIFACT_RUN_ID" || -n "$INPUT_RELEASE_TAG" ]]; then
             if [[ -z "$INPUT_ARTIFACT_RUN_ID" || -z "$INPUT_RELEASE_TAG" || -n "$INPUT_VERSION" ]]; then
@@ -52,7 +52,7 @@ jobs:
 
   prepare:
     name: Prepare explicit release
-    if: inputs.artifact-run-id == ''
+    if: inputs['artifact-run-id'] == ''
     needs: validate
     runs-on: ubuntu-24.04
     outputs:
@@ -65,7 +65,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           INPUT_VERSION: ${{ inputs.version }}
-          INPUT_REF: ${{ inputs.release-ref }}
+          INPUT_REF: ${{ inputs['release-ref'] }}
         run: |
           if [[ ! "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "version must use MAJOR.MINOR.PATCH, got: $INPUT_VERSION" >&2
@@ -259,19 +259,19 @@ jobs:
 
   recover:
     name: Publish existing build artifacts
-    if: inputs.artifact-run-id != '' && inputs.release-tag != ''
+    if: inputs['artifact-run-id'] != '' && inputs['release-tag'] != ''
     needs: validate
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-      RELEASE_TAG: ${{ inputs.release-tag }}
+      RELEASE_TAG: ${{ inputs['release-tag'] }}
     steps:
       - name: Download successful installers
         uses: actions/download-artifact@v5
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.artifact-run-id }}
+          run-id: ${{ inputs['artifact-run-id'] }}
           pattern: zoeymind-*
           path: dist
 
