@@ -62,6 +62,13 @@ export default {
     releaseNotes: "更新说明",
     operationFailed: "更新服务暂时不可用，请稍后重试",
   },
+  routeError: {
+    title: "页面遇到问题",
+    description: "ZoeyMind 无法继续显示当前页面。你可以重试，或返回首页继续工作。",
+    retry: "重新加载",
+    home: "返回首页",
+    details: "错误详情",
+  },
   projects: {
     dialogs: {
       removeTitle: "从 ZoeyMind 中移除“{{itemName}}”？",

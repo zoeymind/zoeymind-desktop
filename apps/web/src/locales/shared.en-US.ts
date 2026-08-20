@@ -62,6 +62,14 @@ export default {
     releaseNotes: "Release notes",
     operationFailed: "The update service is unavailable. Try again later.",
   },
+  routeError: {
+    title: "This page ran into a problem",
+    description:
+      "ZoeyMind cannot continue displaying this page. Reload it, or return home to keep working.",
+    retry: "Reload",
+    home: "Return home",
+    details: "Error details",
+  },
   projects: {
     dialogs: {
       removeTitle: "Remove “{{itemName}}” from ZoeyMind?",
