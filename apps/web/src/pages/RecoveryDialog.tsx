@@ -45,7 +45,7 @@ export function RecoveryDialog() {
 
   return (
     <Dialog open onOpenChange={open => !open && !busy && setDismissed(true)}>
-      <DialogContent size="lg" showCloseButton={false} className="gap-0 overflow-hidden p-0">
+      <DialogContent size="sm" showCloseButton={false} className="gap-0 overflow-hidden p-0">
         <DialogHeader className="border-b px-6 py-5 text-left">
           <div className="flex items-start gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning">
@@ -63,7 +63,7 @@ export function RecoveryDialog() {
           </div>
         </DialogHeader>
         <RecoveryList items={scan.valid} locale={locale} />
-        <DialogFooter className="items-center border-t px-6 py-4 sm:items-center">
+        <DialogFooter className="m-0 items-center rounded-none border-t px-6 py-4 sm:items-center">
           <Button variant="ghost" disabled={busy} onClick={() => setDismissed(true)}>
             {t("common.cancel")}
           </Button>
