@@ -524,8 +524,8 @@ export const defaultOpt = {
   },
   // 如果节点文本为空，那么为了避免空白节点高度塌陷，会用该字段指定的文本测量一个高度
   emptyTextMeasureHeightText: 'abc123我和你',
-  // 是否在进行节点文本编辑时实时更新节点大小和节点位置，开启后当节点数量比较多时可能会造成卡顿
-  openRealtimeRenderOnNodeTextEdit: false,
+  // 编辑节点文本时，仅实时同步当前节点和相邻连线；提交后再收敛全树布局。
+  openRealtimeRenderOnNodeTextEdit: true,
   // 默认会给容器元素el绑定mousedown事件，可通过该选项设置是否阻止其默认事件
   // 如果设置为true，会带来一定问题，比如你聚焦在思维导图外的其他输入框，点击画布就不会触发其失焦
   mousedownEventPreventDefault: false,

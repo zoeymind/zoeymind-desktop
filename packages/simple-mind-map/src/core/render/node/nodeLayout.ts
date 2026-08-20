@@ -235,17 +235,10 @@ function layout() {
   if (!this.group) return
   // 清除之前的内容
   this.group.clear()
+  // clear() 会分离按钮 DOM；同步复位挂载状态，确保后续重新添加。
+  this._showExpandBtn = false
   const { openRealtimeRenderOnNodeTextEdit, textContentMargin, addCustomContentToNode } =
     this.mindMap.opt
-  // 避免编辑过程中展开收起按钮闪烁的问题
-  // 暂时去掉，带来的问题太多
-  // if (
-  //   openRealtimeRenderOnNodeTextEdit &&
-  //   this._expandBtn &&
-  //   this.getChildrenLength() > 0
-  // ) {
-  //   this.group.add(this._expandBtn)
-  // }
   const { width, height } = this
   let { paddingX, paddingY } = this.getPaddingVale()
   const halfBorderWidth = this.getBorderWidth() / 2

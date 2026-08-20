@@ -283,7 +283,27 @@ export default class TextEdit {
     })
   }
 
-  //  显示文本编辑框
+  // SVG 混排文本的实际行宽可能略超逻辑换行上限；编辑器复用该实际行宽。
+  // 只测文本行，避免节点 frame 中的图标、padding 和同层等宽影响编辑器。
+  getRenderedTextWrapWidth(node, fallbackWorldWidth, scale) {
+    const textData = node?._textData
+    if (!textData || typeof textData !== 'object' || !('node' in textData)) {
+      return fallbackWorldWidth
+    }
+    const wrapper = textData.node
+    if (!wrapper || typeof wrapper !== 'object' || !('node' in wrapper)) {
+      return fallbackWorldWidth
+    }
+    const root = wrapper.node
+    if (!(root instanceof SVGElement)) return fallbackWorldWidth
+    let maxCssWidth = 0
+    root.querySelectorAll('.smm-text-node-wrap').forEach(line => {
+      maxCssWidth = Math.max(maxCssWidth, line.getBoundingClientRect().width)
+    })
+    if (maxCssWidth <= 0 || scale <= 0) return fallbackWorldWidth
+    return Math.max(fallbackWorldWidth, maxCssWidth / scale)
+  }
+
   showEditTextBox({ node, rect, isInserting, isFromKeyDown, isFromScale }) {
     if (this.showTextEdit) return
     const {
@@ -403,13 +423,38 @@ export default class TextEdit {
     } else {
       this.textEditNode.innerHTML = textLines.join('<br>')
     }
-    // 计算编辑框最小宽度：在同层等宽对齐模式下，需要考虑节点实际绘制宽度
-    let editMinWidth = rect.width + this.textNodePaddingX * 2
+    // 节点文本宽度已按逻辑上限截断；实际 SVG 行宽由下方单独测量。
+    const tdSrc = node._textData
+    let clampedTextScreenWidth = rect.width
+    if (
+      tdSrc &&
+      typeof tdSrc === 'object' &&
+      'width' in tdSrc &&
+      typeof tdSrc.width === 'number'
+    ) {
+      clampedTextScreenWidth = tdSrc.width * scale
+    }
+    // max-width 同时约束 min-width，避免 CSS 在 min > max 时扩张编辑器。
+    const configuredWrapWidth =
+      typeof node.hasCustomWidth === 'function' && node.hasCustomWidth()
+        ? node.customTextWidth
+        : Number(textAutoWrapWidth)
+    const effectiveWrapWidth = this.getRenderedTextWrapWidth(
+      node,
+      configuredWrapWidth,
+      scale
+    )
+    const editMaxWidthCap = effectiveWrapWidth * scale + this.textNodePaddingX * 2
+    let editMinWidth = clampedTextScreenWidth + this.textNodePaddingX * 2
+    // SVG 实际行宽超过逻辑上限时，编辑器扩到同一内容宽度。
+    if (effectiveWrapWidth > configuredWrapWidth + 0.25) {
+      editMinWidth = editMaxWidthCap
+    }
     if (this.mindMap.opt.alignSameLevelNodeWidth && !node.isRoot && node._alignedWidth) {
-      // 使用节点 shape 的屏幕宽度（考虑缩放），确保编辑框不小于节点方框
+      // 同层对齐不能突破当前有效文本宽度，否则编辑态会延后换行。
       const nodeScreenWidth = node.width * scale
       if (nodeScreenWidth > editMinWidth) {
-        editMinWidth = nodeScreenWidth
+        editMinWidth = Math.min(nodeScreenWidth, editMaxWidthCap)
       }
     }
     this.textEditNode.style.minWidth = editMinWidth + 'px'
@@ -417,27 +462,61 @@ export default class TextEdit {
     this.textEditNode.style.left = rect.left + 'px'
     this.textEditNode.style.top = rect.top + 'px'
     this.textEditNode.style.display = 'block'
-    this.textEditNode.style.maxWidth = Number(textAutoWrapWidth) * scale + 'px'
-    if (isMultiLine) {
-      this.textEditNode.style.lineHeight = String(noneRichTextNodeLineHeight)
-      this.textEditNode.style.transform = `translateY(${
-        (((noneRichTextNodeLineHeight - 1) * fontSize) / 2) * scale
-      }px)`
-    } else {
-      this.textEditNode.style.lineHeight = 'normal'
-    }
+    this.textEditNode.style.maxWidth = editMaxWidthCap + 'px'
+    this.textEditNode.style.lineHeight = String(noneRichTextNodeLineHeight)
+    this.textEditNode.style.transform = 'none'
     this.setIsShowTextEdit(true)
-    // 选中文本
-    // if (!this.cacheEditingText) {
-    //   selectAllInput(this.textEditNode)
-    // }
+    // 选中文本或聚焦编辑器。
     if (isInserting || (selectTextOnEnterEditText && !isFromKeyDown)) {
       selectAllInput(this.textEditNode)
     } else {
       focusInput(this.textEditNode)
     }
+    // 首字符 glyph 对齐；空文本或缺少 SVG 文本时保留自然位置。
+    const domFirstCharTop = (() => {
+      const walker = document.createTreeWalker(
+        this.textEditNode,
+        NodeFilter.SHOW_TEXT
+      )
+      const tn = walker.nextNode()
+      if (!(tn instanceof Text) || !tn.textContent) return null
+      const r = document.createRange()
+      r.setStart(tn, 0)
+      r.setEnd(tn, Math.min(1, tn.textContent.length))
+      return r.getBoundingClientRect().top
+    })()
+    const textData = node._textData
+    let svgNodeEl: SVGElement | null = null
+    if (textData && typeof textData === 'object' && 'node' in textData) {
+      const wrapper = textData.node
+      if (wrapper && typeof wrapper === 'object' && 'node' in wrapper) {
+        const candidate = wrapper.node
+        if (candidate instanceof SVGElement) {
+          svgNodeEl = candidate
+        }
+      }
+    }
+    const firstTspan =
+      svgNodeEl?.querySelector('tspan') ??
+      svgNodeEl?.querySelector('text') ??
+      null
+    const svgFirstTspanTop =
+      firstTspan?.getBoundingClientRect().top ??
+      svgNodeEl?.getBoundingClientRect().top ??
+      null
+    if (
+      typeof domFirstCharTop === 'number' &&
+      typeof svgFirstTspanTop === 'number'
+    ) {
+      const delta = domFirstCharTop - svgFirstTspanTop
+      if (Math.abs(delta) > 0.25) {
+        this.textEditNode.style.transform =
+          'translateY(' + -delta + 'px)'
+      }
+    }
     this.cacheEditingText = ''
   }
+
 
   // 派发节点文本编辑事件
   emitTextChangeEvent() {
@@ -458,20 +537,43 @@ export default class TextEdit {
       return
     }
     const node = this.currentNode
-    const rect = (
-      node._textData as { node: { node: HTMLElement } }
-    ).node.node.getBoundingClientRect()
+    const textData = node._textData
+    if (!textData || typeof textData !== 'object' || !('node' in textData)) return
+    const wrapper = textData.node
+    if (!wrapper || typeof wrapper !== 'object' || !('node' in wrapper)) return
+    const svgElement = wrapper.node
+    if (!(svgElement instanceof SVGElement)) return
+    const rect = svgElement.getBoundingClientRect()
     const scale = this.mindMap.view.scale
-    // 计算编辑框最小宽度：在同层等宽对齐模式下，需要考虑节点实际绘制宽度
-    let editMinWidth = rect.width + this.textNodePaddingX * 2
+    // _textData.width 是逻辑文本宽度；实际 SVG 行宽由 getRenderedTextWrapWidth 补充。
+    let clampedTextScreenWidth = rect.width
+    if ('width' in textData && typeof textData.width === 'number') {
+      clampedTextScreenWidth = textData.width * scale
+    }
+    const configuredWrapWidth =
+      typeof node.hasCustomWidth === 'function' && node.hasCustomWidth()
+        ? node.customTextWidth
+        : Number(this.mindMap.opt.textAutoWrapWidth)
+    const effectiveWrapWidth = this.getRenderedTextWrapWidth(
+      node,
+      configuredWrapWidth,
+      scale
+    )
+    const editMaxWidthCap = effectiveWrapWidth * scale + this.textNodePaddingX * 2
+    let editMinWidth = clampedTextScreenWidth + this.textNodePaddingX * 2
+    if (effectiveWrapWidth > configuredWrapWidth + 0.25) {
+      editMinWidth = editMaxWidthCap
+    }
     if (this.mindMap.opt.alignSameLevelNodeWidth && !node.isRoot && node._alignedWidth) {
       const nodeScreenWidth = node.width * scale
       if (nodeScreenWidth > editMinWidth) {
-        editMinWidth = nodeScreenWidth
+        // 保留 align 视觉意图，但不突破当前 SVG 文本真实行宽。
+        editMinWidth = Math.min(nodeScreenWidth, editMaxWidthCap)
       }
     }
     this.textEditNode.style.minWidth = editMinWidth + 'px'
     this.textEditNode.style.minHeight = rect.height + this.textNodePaddingY * 2 + 'px'
+    this.textEditNode.style.maxWidth = editMaxWidthCap + 'px'
     this.textEditNode.style.left = rect.left + 'px'
     this.textEditNode.style.top = rect.top + 'px'
   }

@@ -314,6 +314,102 @@ export const measureText = (text, { italic, bold, fontSize, fontFamily }) => {
   const height = actualBoundingBoxAscent + actualBoundingBoxDescent
   return { width, height }
 }
+
+// 用浏览器 DOM 排版对文本做换行切分，返回按行拆分好的字符串数组。
+//
+// 存在意义：simple-mind-map 的 SVG 文本用 canvas 2D measureText 做逐字换行估算，
+// 编辑态又用 contenteditable 让浏览器自己排版。两套度量对同一段 CJK 文字的 per-char
+// 宽度差可累积到整字符位移（尤其 Microsoft YaHei 等中文字体），造成"编辑态和非编辑态
+// 换行位置不一样"。此函数让 SVG 侧的换行决策与 DOM 侧使用同一份浏览器排版结果，
+// 从而对齐两态的字符行边界。
+//
+// 输入 maxWidthCss 是文本 CONTENT 盒宽度（不含 padding），单位 CSS px。
+// fontStyle 的 fontSize 已按 view scale 折算成 CSS px。
+let __wrapMirrorEl: HTMLDivElement | null = null
+const __getWrapMirror = (): HTMLDivElement => {
+  if (__wrapMirrorEl && __wrapMirrorEl.isConnected) return __wrapMirrorEl
+  const el = document.createElement('div')
+  // absolute 定位 + visibility hidden 让它不参与用户可见布局；
+  // padding/margin 归零，避免和 caller 传入的 maxWidthCss（content 盒）单位错位。
+  el.style.cssText = [
+    'position: absolute',
+    'visibility: hidden',
+    'pointer-events: none',
+    'left: -99999px',
+    'top: 0',
+    'padding: 0',
+    'margin: 0',
+    'border: 0',
+    'box-sizing: content-box',
+    'white-space: normal',
+    'word-break: break-all',
+    'line-break: anywhere',
+    'contain: layout style',
+  ].join(';')
+  document.body.appendChild(el)
+  __wrapMirrorEl = el
+  return el
+}
+
+export const wrapTextByDom = (
+  text: string,
+  maxWidthCss: number,
+  fontStyle: {
+    fontFamily: string
+    fontSize: number
+    bold?: boolean
+    italic?: boolean
+    lineHeight?: number | string
+  }
+): string[] => {
+  if (text === undefined || text === null) return ['']
+  const str = String(text)
+  if (str === '') return ['']
+  const mirror = __getWrapMirror()
+  mirror.style.fontFamily = fontStyle.fontFamily
+  mirror.style.fontSize = fontStyle.fontSize + 'px'
+  mirror.style.fontWeight = fontStyle.bold ? 'bold' : 'normal'
+  mirror.style.fontStyle = fontStyle.italic ? 'italic' : 'normal'
+  mirror.style.lineHeight = String(fontStyle.lineHeight ?? 'normal')
+  mirror.style.width = maxWidthCss + 'px'
+  mirror.style.maxWidth = maxWidthCss + 'px'
+  const output: string[] = []
+  const paragraphs = str.split(/\n/g)
+  for (let p = 0; p < paragraphs.length; p++) {
+    const para = paragraphs[p]
+    if (para === '') {
+      output.push('')
+      continue
+    }
+    mirror.textContent = para
+    const textNode = mirror.firstChild
+    if (!(textNode instanceof Text)) {
+      output.push(para)
+      continue
+    }
+    const range = document.createRange()
+    const chars = Array.from(para)
+    let lineStart = 0
+    let lastTop: number | null = null
+    let cuOffset = 0
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i]
+      const nextOffset = cuOffset + ch.length
+      range.setStart(textNode, cuOffset)
+      range.setEnd(textNode, nextOffset)
+      const rect = range.getBoundingClientRect()
+      if (lastTop !== null && rect.top > lastTop + 0.5) {
+        output.push(chars.slice(lineStart, i).join(''))
+        lineStart = i
+      }
+      lastTop = rect.top
+      cuOffset = nextOffset
+    }
+    output.push(chars.slice(lineStart).join(''))
+  }
+  mirror.textContent = ''
+  return output
+}
 // 拼接font字符串
 export const joinFontStr = ({ italic, bold, fontSize, fontFamily }) => {
   return `${italic ? 'italic ' : ''} ${bold ? 'bold ' : ''} ${fontSize}px ${fontFamily} `

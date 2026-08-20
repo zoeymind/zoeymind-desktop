@@ -195,11 +195,17 @@ class Render {
     if (openPerformance) {
       this.mindMap.on('view_data_change', onViewDataChange)
     }
-    // 文本编辑时实时更新节点大小
-    this.onNodeTextEditChange = debounce(this.onNodeTextEditChange, 100, this)
+    // 编辑心跳走节点级更新；不节流，避免输入与节点几何不同步。
+    this.onNodeTextEditChange = this.onNodeTextEditChange.bind(this)
     if (openRealtimeRenderOnNodeTextEdit) {
       this.mindMap.on('node_text_edit_change', this.onNodeTextEditChange)
     }
+    // 垂直中心仅在一次编辑生命周期内有效。
+    this.mindMap.on('hide_text_edit', (_editEl, _activeList, currentNode) => {
+      if (currentNode) {
+        currentNode._editVerticalCenter = undefined
+      }
+    })
     // 监听配置改变事件
     this.mindMap.on('after_update_config', (opt, lastOpt) => {
       // 更新openPerformance配置
@@ -225,13 +231,13 @@ class Render {
     // }
   }
 
-  // 监听文本编辑事件，实时更新节点大小
+  // 编辑期间只更新当前节点及相邻连线；提交后再由常规 render 收敛全树布局。
   onNodeTextEditChange({ node, text }) {
+    if (!node || !node.group) return
     node._textData = node.createTextNode(text)
     let { width, height } = node.getNodeRect()
-    // 保存内容自然宽度，供后续对齐使用
     node._contentWidth = width
-    // 如果开启了同层级等宽对齐，编辑中的宽度也需要不小于对齐宽度
+    // 编辑期间同层等宽只涨不缩；最终宽度在提交后的全树布局中收敛。
     if (
       this.mindMap.opt.alignSameLevelNodeWidth &&
       !node.isRoot &&
@@ -240,12 +246,42 @@ class Render {
     ) {
       width = node._alignedWidth
     }
+    // 锁定初始垂直中心，使多行节点向上下对称生长。
+    if (typeof node._editVerticalCenter !== 'number') {
+      node._editVerticalCenter = node.top + node.height / 2
+    }
+
     node.width = width
     node.height = height
+    node.top = node._editVerticalCenter - height / 2
     node.layout()
-    this.mindMap.render(() => {
-      this.textEdit.updateTextEditNode()
-    })
+    node.update()
+    // update() 异步恢复展开按钮；这里同步恢复，避免中间 paint 一帧空白。
+    if (
+      !this.mindMap.opt.notShowExpandBtn &&
+      typeof node.renderExpandBtn === 'function'
+    ) {
+      node.renderExpandBtn()
+    }
+    // 宽度变化后更新当前节点的出向连线和父节点的入向连线。
+    if (node.getChildrenLength() > 0) {
+      node.renderLine()
+    }
+    if (node.parent && typeof node.parent.renderLine === 'function') {
+      node.parent.renderLine()
+    }
+    // 编辑节点置顶；提交后的全树 render 会恢复默认层级。
+    const group = node.group
+    if (
+      group &&
+      typeof group === 'object' &&
+      'front' in group &&
+      typeof group.front === 'function'
+    ) {
+      group.front()
+    }
+    // 同步编辑框位置和有效文本宽度。
+    this.textEdit.updateTextEditNode()
   }
 
   // 强制渲染节点，不考虑是否在画布可视区域内

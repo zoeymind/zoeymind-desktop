@@ -8,7 +8,8 @@ import {
   addXmlns,
   generateColorByContent,
   camelCaseToHyphen,
-  getNodeRichTextStyles
+  getNodeRichTextStyles,
+  wrapTextByDom
 } from '../../../utils'
 import {
   Image as SVGImage,
@@ -363,28 +364,29 @@ function createTextNode(specifyText) {
   let encounteredAmpersand = false // 跨行跟踪是否已遇到 " & "
   let processedLines = [] // 存储处理后的所有行
 
+  // 换行决策统一走 DOM 排版（wrapTextByDom）。
+  // 编辑态是 contenteditable div，SVG 侧复用同一字符断点，避免 canvas 与 DOM
+  // 对 CJK/混排文本的逐字度量差异造成换行位置跳动。
+  const viewScale = (this.mindMap.view && this.mindMap.view.scale) || 1
+  const fontFamilyForWrap = this.getStyle('fontFamily', false)
+  const fontWeightForWrap = this.getStyle('fontWeight', false)
+  const fontStyleForWrap = this.getStyle('fontStyle', false)
+  const measureFontStyle = {
+    fontFamily: String(fontFamilyForWrap || ''),
+    fontSize: fontSize * viewScale,
+    bold:
+      fontWeightForWrap === 'bold' ||
+      Number(fontWeightForWrap) >= 600,
+    italic: fontStyleForWrap === 'italic',
+    lineHeight: noneRichTextNodeLineHeight
+  }
+  const wrapMaxWidthCss = maxWidth * viewScale
   textArr.forEach(item => {
-    let arr = item.split('')
-    let lines = []
-    let line = []
-
-    while (arr.length) {
-      let str = arr.shift()
-      let text = [...line, str].join('')
-      if (measureText(text, this.style).width <= maxWidth) {
-        line.push(str)
-      } else {
-        lines.push(line.join(''))
-        line = [str]
-      }
-    }
-    if (line.length > 0) {
-      lines.push(line.join(''))
-    }
-    if (lines.length > 1) {
+    const wrappedLines = wrapTextByDom(item, wrapMaxWidthCss, measureFontStyle)
+    if (wrappedLines.length > 1) {
       isMultiLine = true
     }
-    lines.forEach(line => {
+    wrappedLines.forEach(line => {
       processedLines.push(line)
     })
   })
@@ -405,13 +407,11 @@ function createTextNode(specifyText) {
 
     // 如果是用例标题，检查当前行是否包含 " & " 分割点
     if (isCaseTitle && !encounteredAmpersand && item.includes(' & ')) {
-      // 当前行包含第一个 " & "，需要分段渲染
       const ampersandIndex = item.indexOf(' & ')
       const beforeText = item.substring(0, ampersandIndex)
-      const afterText = item.substring(ampersandIndex) // 包含 " & " 及后续内容
+      const afterText = item.substring(ampersandIndex)
       encounteredAmpersand = true
 
-      // 使用单个 <text> 元素，通过函数回调方式添加多个 <tspan> 来分段渲染，避免偏移
       const textNode = new Text()
       textNode.addClass('smm-text-node-wrap')
       textNode.attr(
@@ -423,7 +423,6 @@ function createTextNode(specifyText) {
         }[textAlign] || 'start'
       )
       this.style.text(textNode)
-      // 使用 text(fn) 回调方式构建 tspan，确保 rebuild() 被调用
       textNode.text(function (add) {
         if (beforeText) {
           add.tspan(beforeText)
@@ -435,9 +434,7 @@ function createTextNode(specifyText) {
       textNode.y(y)
       g.add(textNode)
     } else {
-      // 普通渲染（不包含 " & "，或已经在 " & " 之后）
       const shouldBeHalfOpacity = isCaseTitle && encounteredAmpersand
-
       const node = new Text().text(item)
       node.addClass('smm-text-node-wrap')
       node.attr(
