@@ -17,9 +17,10 @@
  *   - 不阻塞 UI: getEmbedding() 在 ready 之前返 null, 调用方自己决定要不要 wait
  */
 
-import { env, pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers'
-import { logger } from '@zoeymind/logger'
-import { getMirrorHost } from './settings'
+import { env, pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers"
+import { logger } from "@zoeymind/logger"
+import { getMirrorHost } from "./settings"
+import { describeModelLoadError } from "./model-load-error"
 
 /**
  * 配置模型下载来源.
@@ -35,24 +36,24 @@ function applyMirrorConfig() {
   // env.backends.onnx.wasm.wasmPaths 不动
 }
 
-const MODEL_ID = 'Xenova/all-MiniLM-L6-v2'
+const MODEL_ID = "Xenova/all-MiniLM-L6-v2"
 
 /** 384 维, 跟 MiniLM-L6 一致 */
 export const EMBEDDING_DIMENSION = 384
 
 export type EmbedderStatus =
-  | { kind: 'idle' }
-  | { kind: 'downloading-model'; progress: number; loadedBytes: number; totalBytes: number }
-  | { kind: 'loading-model' }
-  | { kind: 'ready' }
-  | { kind: 'error'; message: string }
+  | { kind: "idle" }
+  | { kind: "downloading-model"; progress: number; loadedBytes: number; totalBytes: number }
+  | { kind: "loading-model" }
+  | { kind: "ready" }
+  | { kind: "error"; message: string }
 
 type Listener = (status: EmbedderStatus) => void
 
 class Embedder {
   private extractor: FeatureExtractionPipeline | null = null
   private loading: Promise<FeatureExtractionPipeline | null> | null = null
-  private status: EmbedderStatus = { kind: 'idle' }
+  private status: EmbedderStatus = { kind: "idle" }
   private listeners = new Set<Listener>()
 
   /** 监听状态变化, 返回 unsubscribe */
@@ -82,19 +83,19 @@ class Embedder {
     try {
       // 应用镜像配置 — 每次 load 都重读, 用户改了 settings 后下次 retry 立刻生效
       applyMirrorConfig()
-      this.setStatus({ kind: 'loading-model' })
-      const ext = (await pipeline('feature-extraction', MODEL_ID, {
-        progress_callback: (data: unknown) => this.handleProgress(data)
+      this.setStatus({ kind: "loading-model" })
+      const ext = (await pipeline("feature-extraction", MODEL_ID, {
+        progress_callback: (data: unknown) => this.handleProgress(data),
       })) as FeatureExtractionPipeline
 
       this.extractor = ext
-      this.setStatus({ kind: 'ready' })
-      logger.info('[Embedder] 模型加载完成', { model: MODEL_ID })
+      this.setStatus({ kind: "ready" })
+      logger.info("[Embedder] 模型加载完成", { model: MODEL_ID })
       return ext
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      logger.error('[Embedder] 模型加载失败', { error: message })
-      this.setStatus({ kind: 'error', message })
+      const message = describeModelLoadError(error)
+      logger.error("[Embedder] 模型加载失败", { error: message })
+      this.setStatus({ kind: "error", message })
       this.loading = null // 允许重试
       return null
     }
@@ -110,14 +111,14 @@ class Embedder {
 
     try {
       const output = await this.extractor(text.trim(), {
-        pooling: 'mean',
-        normalize: true
+        pooling: "mean",
+        normalize: true,
       })
       // output.data 是 Float32Array, length = 384
       return output.data as Float32Array
     } catch (error) {
-      logger.warn('[Embedder] embed 失败', {
-        error: error instanceof Error ? error.message : String(error)
+      logger.warn("[Embedder] embed 失败", {
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -134,20 +135,20 @@ class Embedder {
       loaded?: number
       total?: number
     }
-    if (!evt || typeof evt !== 'object') return
+    if (!evt || typeof evt !== "object") return
 
     // transformers.js 的 progress 事件:
     //   - status: 'initiate' | 'download' | 'progress' | 'done' | 'ready'
     //   - file: model file 名
     //   - progress: 0..100 (注意: 是百分比, 不是 0..1)
     //   - loaded / total: bytes
-    if (evt.status === 'download' || evt.status === 'progress') {
-      const progress = typeof evt.progress === 'number' ? evt.progress / 100 : 0
+    if (evt.status === "download" || evt.status === "progress") {
+      const progress = typeof evt.progress === "number" ? evt.progress / 100 : 0
       this.setStatus({
-        kind: 'downloading-model',
+        kind: "downloading-model",
         progress: Math.min(Math.max(progress, 0), 1),
         loadedBytes: evt.loaded ?? 0,
-        totalBytes: evt.total ?? 0
+        totalBytes: evt.total ?? 0,
       })
     }
     // 'initiate' / 'done' 阶段不切状态, 让 doLoad 的 'loading-model' 持续到 ready

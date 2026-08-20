@@ -3,18 +3,20 @@
  * useMemoryStatus — 合并 embedder + indexer 的状态, 给设置 UI 一站式用.
  */
 
-import { useEffect, useState, useCallback } from 'react'
-import { embedder, type EmbedderStatus } from './embedder'
-import { indexer, type BackfillState } from './indexer'
-import { chatDB } from '../storage/chatDB'
+import { useEffect, useState, useCallback } from "react"
+import { embedder, type EmbedderStatus } from "./embedder"
+import { indexer, type BackfillState } from "./indexer"
+import { chatDB } from "../storage/chatDB"
 import {
   getMemoryEnabled,
   setMemoryEnabled,
   getRecallK,
   setRecallK,
   getRecentN,
-  setRecentN
-} from './settings'
+  setRecentN,
+  getMirrorHost,
+  setMirrorHost,
+} from "./settings"
 
 export interface MemoryStats {
   /** 已索引的消息条数 */
@@ -35,11 +37,13 @@ export interface UseMemoryStatusReturn {
   /** 召回参数 */
   recallK: number
   recentN: number
+  modelSource: string
 
   /** 拨开关; 开启时自动 trigger load() */
   setEnabled: (enabled: boolean) => Promise<void>
   setRecallK: (k: number) => void
   setRecentN: (n: number) => void
+  setModelSource: (source: string) => void
   /** 清空所有 embeddings (不删原消息) */
   clearAll: () => Promise<void>
   /** 重试模型加载 (error 状态时) */
@@ -55,6 +59,7 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
   const [stats, setStats] = useState<MemoryStats>({ indexedCount: 0, storageBytes: 0 })
   const [recallK, setRecallKState] = useState(getRecallK())
   const [recentN, setRecentNState] = useState(getRecentN())
+  const [modelSource, setModelSourceState] = useState(getMirrorHost())
 
   useEffect(() => {
     const off1 = embedder.subscribe(setModelStatus)
@@ -62,10 +67,10 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
 
     // 自动恢复: 用户上次启用过 (localStorage = true), 但 dev 重启 / 页面刷新后
     // embedder 单例回到 idle. 没有这一步, UI 会卡空白 (idle 不命中任何渲染分支).
-    if (enabled && embedder.getStatus().kind === 'idle') {
+    if (enabled && embedder.getStatus().kind === "idle") {
       void embedder.load().then(() => {
         // 模型恢复后, 顺手再次回填一下 (indexer 自己 去重 + 不阻塞)
-        if (embedder.getStatus().kind === 'ready') {
+        if (embedder.getStatus().kind === "ready") {
           void chatDB.getAllMessagesAcrossConversations().then(msgs => {
             void indexer.backfill(msgs)
           })
@@ -82,7 +87,7 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
   const refreshStats = useCallback(async () => {
     const [ids, bytes] = await Promise.all([
       chatDB.getIndexedMessageIds(),
-      chatDB.estimateEmbeddingsBytes()
+      chatDB.estimateEmbeddingsBytes(),
     ])
     setStats({ indexedCount: ids.size, storageBytes: bytes })
   }, [])
@@ -97,11 +102,11 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
     setEnabledState(next)
     if (next) {
       // 启用时主动 trigger 加载, 让用户立刻看到下载进度
-      if (embedder.getStatus().kind !== 'ready') {
+      if (embedder.getStatus().kind !== "ready") {
         await embedder.load()
       }
       // 加载完成后, 异步回填所有已存历史 (不 await, indexer 内部 subscribe 上报进度)
-      if (embedder.getStatus().kind === 'ready') {
+      if (embedder.getStatus().kind === "ready") {
         void chatDB.getAllMessagesAcrossConversations().then(msgs => {
           void indexer.backfill(msgs)
         })
@@ -119,6 +124,10 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
     setRecentNState(n)
   }, [])
 
+  const setModelSourceAndPersist = useCallback((source: string) => {
+    setMirrorHost(source)
+    setModelSourceState(getMirrorHost())
+  }, [])
   const clearAll = useCallback(async () => {
     await chatDB.clearAllEmbeddings()
     await refreshStats()
@@ -138,8 +147,10 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
     setEnabled,
     setRecallK: setRecallKAndPersist,
     setRecentN: setRecentNAndPersist,
+    modelSource,
+    setModelSource: setModelSourceAndPersist,
     clearAll,
     retryLoad,
-    refreshStats
+    refreshStats,
   }
 }
