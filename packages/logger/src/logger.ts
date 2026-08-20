@@ -1,4 +1,4 @@
-import type { LogLevel, LoggerConfig, Logger } from './types'
+import type { LogLevel, LoggerConfig, Logger, LogEntry } from './types'
 import { defaultColors, isBrowser } from './colors'
 import { formatMessage } from './formatter'
 import { showLogo } from './logo'
@@ -87,6 +87,7 @@ export function createLogger(initialConfig: Partial<LoggerConfig> = {}): Logger 
       const consoleMethod =
         level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
       consoleMethod(JSON.stringify(payload))
+      emitToSinks(level, args)
       return
     }
 
@@ -96,6 +97,21 @@ export function createLogger(initialConfig: Partial<LoggerConfig> = {}): Logger 
     const consoleMethod =
       level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
     consoleMethod(...formattedParts, ...extraArgs)
+
+    emitToSinks(level, args)
+  }
+
+  function emitToSinks(level: LogLevel, args: unknown[]): void {
+    const sinks = config.sinks
+    if (!sinks || sinks.length === 0) return
+    const entry: LogEntry = { level, args, timestamp: Date.now(), prefix: config.prefix }
+    for (const sink of sinks) {
+      try {
+        sink(entry)
+      } catch {
+        /* sink 异常吞掉, 保证 logger 主流程不受影响 */
+      }
+    }
   }
 
   return {

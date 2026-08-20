@@ -10,6 +10,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 mod atomic_file;
 mod chat_stream;
 mod http_stream;
+mod log_config;
 use chat_stream::AbortMap;
 use http_stream::HttpAbortMap;
 
@@ -333,6 +334,10 @@ pub fn run() {
       get_latest_release,
       frontend_ready,
       take_pending_open_files,
+      log_config::get_log_config,
+      log_config::set_log_level,
+      log_config::set_log_dir,
+      log_config::clear_logs,
       chat_stream::chat_stream,
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,
@@ -354,13 +359,70 @@ pub fn run() {
         log::info!("tauri window ready: {:?}", window.label());
       }
 
+      // Log 系统: LogDir (~/Library/Logs/{bundleId} 等) 或用户自定义目录 + Stdout (dev).
+      // 级别用 log::set_max_level 控制, 前端切换免重启; 目录改动落盘到 config 但
+      // fern::Dispatch 里 RotatingFile 在 build 时就打开了 handle, 需要重启才切换.
+      // rotation: KeepSome(7) + 每文件 5 MiB, 一周内容够本地翻查.
+      let persisted = log_config::load(app.handle());
+      let active_dir = log_config::resolved_log_dir(app.handle())?;
+      std::fs::create_dir_all(&active_dir)?;
+      log_config::stash_active_dir(active_dir.clone());
+
+      let file_target = if persisted.dir.is_some() {
+        tauri_plugin_log::TargetKind::Folder {
+          path: active_dir,
+          file_name: None,
+        }
+      } else {
+        tauri_plugin_log::TargetKind::LogDir { file_name: None }
+      };
+      let mut targets = vec![tauri_plugin_log::Target::new(file_target)];
       if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
+        targets.push(tauri_plugin_log::Target::new(
+          tauri_plugin_log::TargetKind::Stdout,
+        ));
+        targets.push(tauri_plugin_log::Target::new(
+          tauri_plugin_log::TargetKind::Webview,
+        ));
       }
+      app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+          .targets(targets)
+          .level(log::LevelFilter::Trace)
+          .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(7))
+          .max_file_size(5 * 1024 * 1024)
+          .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
+          .build(),
+      )?;
+      log::set_max_level(persisted.level.to_filter());
+      log::info!(
+        "log system ready, level={:?}, dir={:?}",
+        persisted.level,
+        persisted.dir.as_deref().unwrap_or("<default>")
+      );
+
+      // Panic hook: 让 Rust panic 走同一根 log 管道, 落进 app.log.
+      // 默认 panic 只 print 到 stderr; release 无 stderr, 现场就丢了.
+      // 只安装一次: setup 只跑一次, 但保险起见用 Once.
+      use std::sync::Once;
+      static PANIC_HOOK: Once = Once::new();
+      PANIC_HOOK.call_once(|| {
+        let default_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+          let location = info
+            .location()
+            .map(|l| format!("{}:{}", l.file(), l.line()))
+            .unwrap_or_else(|| "<unknown>".into());
+          let payload = info
+            .payload()
+            .downcast_ref::<&str>()
+            .copied()
+            .or_else(|| info.payload().downcast_ref::<String>().map(String::as_str))
+            .unwrap_or("<non-string panic>");
+          log::error!("panic at {location}: {payload}");
+          default_hook(info);
+        }));
+      });
       Ok(())
     })
     .build(tauri::generate_context!())

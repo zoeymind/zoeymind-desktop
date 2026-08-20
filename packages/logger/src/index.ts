@@ -2,7 +2,7 @@
 export { createLogger, logger, configureLogger, DEFAULT_REDACT_KEYS } from './logger'
 export { showLogo } from './logo'
 export { defaultColors, isBrowser } from './colors'
-export type { LogLevel, LoggerConfig, ColorTheme, LogMessage, Logger } from './types'
+export type { LogLevel, LoggerConfig, ColorTheme, LogMessage, Logger, LogEntry, LogSink } from './types'
 
 // 默认导出logger实例
 import { logger } from './logger'

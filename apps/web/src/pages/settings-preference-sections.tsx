@@ -1,7 +1,8 @@
-import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { Check, ChevronDown, FolderCog, FolderOpen, Trash2 } from "lucide-react"
 import { useTranslation, SUPPORTED_LOCALES, useChangeLocale, useLocale } from "@zoeymind/i18n"
 import {
+  Button,
   Collapsible,
   CollapsibleTrigger,
   Field,
@@ -21,7 +22,20 @@ import {
   Separator,
   Switch,
 } from "@zoeymind/ui"
+import { AnimatePresence, motion } from "motion/react"
 import { ThemeModeToggle, ThemePresetGrid } from "@/shared/app-shared/ThemeMenu"
+import { toast } from "@/shared/app-shared"
+import {
+  clearLogs,
+  getLogConfig,
+  setLogDir,
+  setLogLevel,
+  LOG_LEVEL_OPTIONS,
+  type LogInfo,
+  type LogLevel,
+} from "@/shared/native"
+import { openPath } from "@tauri-apps/plugin-opener"
+import { open as openDialog } from "@tauri-apps/plugin-dialog"
 
 const PERFORMANCE_MODE_KEY = "mind-map-performance-mode"
 const PERFORMANCE_CONFIG_KEY = "mind-map-performance-config"
@@ -43,6 +57,8 @@ export function PreferencesSettingsSection() {
       <ThemePresetSettingsSection />
       <Separator />
       <EditorSettingsSection />
+      <Separator />
+      <LogSettingsSection />
     </div>
   )
 }
@@ -258,5 +274,209 @@ function SettingsSection({
       </div>
       {children}
     </section>
+  )
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
+function LogSettingsSection() {
+  const { t } = useTranslation()
+  const [info, setInfo] = useState<LogInfo | null>(null)
+  const [busy, setBusy] = useState(false)
+  // 清空成功后短暂把 Trash2 换成 Check, 给到明确反馈; 1.2s 自动复位.
+  const [cleared, setCleared] = useState(false)
+
+  const refresh = useCallback(async () => {
+    try {
+      const cfg = await getLogConfig()
+      setInfo(cfg)
+    } catch (error) {
+      console.error("failed to load log config", error)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  useEffect(() => {
+    if (!cleared) return
+    const timer = window.setTimeout(() => setCleared(false), 1200)
+    return () => window.clearTimeout(timer)
+  }, [cleared])
+
+  const handleLevelChange = async (level: LogLevel) => {
+    if (!info) return
+    const prev = info
+    setInfo({ ...prev, level })
+    try {
+      await setLogLevel(level)
+    } catch (error) {
+      setInfo(prev)
+      const detail = error instanceof Error ? error.message : String(error)
+      toast.error(`${t("settings.log.updateFailed")}: ${detail}`)
+    }
+  }
+
+  const handleOpenDir = async () => {
+    if (!info) return
+    try {
+      await openPath(info.activeDir)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      toast.error(`${t("settings.log.openFailed")}: ${detail}`)
+    }
+  }
+
+  const handleChangeDir = async () => {
+    if (!info) return
+    const picked = await openDialog({
+      directory: true,
+      multiple: false,
+      defaultPath: info.configuredDir ?? info.activeDir,
+      title: t("settings.log.pickerTitle"),
+    })
+    if (!picked || typeof picked !== "string") return
+    // 选到默认目录 = 视为重置; 空串传给 Rust 会走"reset to default"分支.
+    const nextConfigured = picked === info.defaultDir ? "" : picked
+    try {
+      await setLogDir(nextConfigured)
+      setInfo({ ...info, configuredDir: nextConfigured || null })
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      toast.error(`${t("settings.log.dirSaveFailed")}: ${detail}`)
+    }
+  }
+
+  const handleClear = async () => {
+    if (!info) return
+    setBusy(true)
+    try {
+      const removed = await clearLogs()
+      setCleared(true)
+      toast.success(t("settings.log.cleared", { count: removed }))
+      // 清完立即刷新 sizeBytes; 活跃文件的 FD 还开着但内容清零, 显示应回到 0 附近.
+      await refresh()
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      toast.error(`${t("settings.log.clearFailed")}: ${detail}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const configured = info?.configuredDir ?? null
+  const effectiveNextDir = configured || info?.defaultDir || ""
+  const needsRestart = Boolean(info && effectiveNextDir && effectiveNextDir !== info.activeDir)
+
+  return (
+    <SettingsSection title={t("settings.log.title")} description={t("settings.log.description")}>
+      <FieldGroup>
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="log-level">{t("settings.log.level")}</FieldLabel>
+            <FieldDescription>{t("settings.log.levelDescription")}</FieldDescription>
+          </FieldContent>
+          <Select
+            value={info?.level ?? "info"}
+            onValueChange={value => void handleLevelChange(value as LogLevel)}
+            disabled={!info}
+          >
+            <SelectTrigger id="log-level" className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LOG_LEVEL_OPTIONS.map(level => (
+                <SelectItem key={level} value={level}>
+                  {t(`settings.log.levels.${level}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field>
+          <FieldLabel>{t("settings.log.location")}</FieldLabel>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleChangeDir()}
+              disabled={!info}
+              className="transition-transform active:scale-[0.96]"
+            >
+              <FolderCog />
+              {t("settings.log.change")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleOpenDir()}
+              disabled={!info}
+              className="transition-transform active:scale-[0.96]"
+            >
+              <FolderOpen />
+              {t("settings.log.open")}
+            </Button>
+          </div>
+          <FieldDescription className="font-mono text-xs break-all">
+            {info?.activeDir ?? "…"}
+          </FieldDescription>
+          {needsRestart && (
+            <FieldDescription className="text-amber-500">
+              {t("settings.log.restartHint")}
+            </FieldDescription>
+          )}
+
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {t("settings.log.sizeUsed", { size: info ? formatBytes(info.sizeBytes) : "…" })}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void handleClear()}
+              disabled={!info || busy}
+              className="relative transition-transform active:scale-[0.96]"
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                {cleared ? (
+                  <motion.span
+                    key="check"
+                    initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                    transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                    className="inline-flex text-emerald-500"
+                  >
+                    <Check />
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="trash"
+                    initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
+                    transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+                    className="inline-flex"
+                  >
+                    <Trash2 />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {t("settings.log.clear")}
+            </Button>
+          </div>
+        </Field>
+      </FieldGroup>
+    </SettingsSection>
   )
 }
