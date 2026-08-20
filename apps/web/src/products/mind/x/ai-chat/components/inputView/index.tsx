@@ -6,19 +6,18 @@
  * 从 store 读取状态，无需 props 传递
  */
 
-import React from 'react'
-import { MessageComposerBox } from './MessageComposerBox'
-import { useImageAttachmentManager } from './useImageAttachmentManager'
-import { useAIChatRuntime } from '../../context/AIChatRuntimeContext'
-import { useAIChatV2Store } from '../../stores/useAIChatV2Store'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import type { AIModel } from '../../../ai-chat/hooks/useModelSelector'
+import React from "react"
+import { MessageComposerBox } from "./MessageComposerBox"
+import { useImageAttachmentManager } from "./useImageAttachmentManager"
+import { useAIChatRuntime } from "../../context/AIChatRuntimeContext"
+import { useAIChatV2Store } from "../../stores/useAIChatV2Store"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 
 interface InputViewProps {
   models: AIModel[]
   selectedModel: string
   setSelectedModel: (modelId: string) => void
-  onOpenPromptManager: () => void
   disabled?: boolean
 }
 
@@ -26,8 +25,7 @@ export const InputView: React.FC<InputViewProps> = ({
   models,
   selectedModel,
   setSelectedModel,
-  onOpenPromptManager,
-  disabled = false
+  disabled = false,
 }) => {
   // 从 store 读取状态 (caseConfirm / simpleAskUser 已搬到 ToolUIRegistry, 不在 store 里)
   const {
@@ -37,11 +35,11 @@ export const InputView: React.FC<InputViewProps> = ({
     setAttachments,
     sendMessage,
     interruptAndSend,
-    stopGeneration
+    stopGeneration,
   } = useAIChatV2Store()
 
   const { status } = useAIChatRuntime()
-  const isProcessing = status === 'submitted' || status === 'streaming'
+  const isProcessing = status === "submitted" || status === "streaming"
 
   const { mindMap } = useMindMapStore()
 
@@ -53,7 +51,7 @@ export const InputView: React.FC<InputViewProps> = ({
   const { isCompressing, addImageFiles } = useImageAttachmentManager({
     supportsVision,
     setAttachments,
-    logPrefix: '[AIchatV2 InputView]'
+    logPrefix: "[AIchatV2 InputView]",
   })
 
   const handleSend = () => {
@@ -74,7 +72,7 @@ export const InputView: React.FC<InputViewProps> = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
@@ -97,7 +95,6 @@ export const InputView: React.FC<InputViewProps> = ({
       onSend={handleSend}
       onStop={stopGeneration}
       onAddImage={addImageFiles}
-      onOpenPromptManager={onOpenPromptManager}
       disabled={disabled}
       isSending={isProcessing}
       isCompressing={isCompressing}

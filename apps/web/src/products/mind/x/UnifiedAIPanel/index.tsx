@@ -173,7 +173,7 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
         <div className="flex-1 overflow-hidden relative rounded-b-lg">
           <div className="absolute inset-0 h-full w-full">
             <div data-unified-ai-content className="h-full rounded-b-lg overflow-hidden">
-              <AIchatV2 isActive={true} embedded={true} />
+              <AIchatV2 isActive={true} />
             </div>
           </div>
         </div>

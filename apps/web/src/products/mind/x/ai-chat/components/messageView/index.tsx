@@ -12,6 +12,7 @@ import { Spinner } from "@zoeymind/ui"
 import { ChevronUp } from "lucide-react"
 import { useTranslation } from "@zoeymind/i18n"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
+import { resolveModelDisplayName } from "../../../ai-chat/utils/modelDisplayName"
 
 const MESSAGES_PER_PAGE = 10
 
@@ -20,7 +21,6 @@ interface MessageViewProps {
   models: AIModel[]
   selectedModel: string
   setSelectedModel: (modelId: string) => void
-  onOpenPromptManager: () => void
 }
 
 export const MessageView: React.FC<MessageViewProps> = ({
@@ -28,7 +28,6 @@ export const MessageView: React.FC<MessageViewProps> = ({
   models,
   selectedModel,
   setSelectedModel,
-  onOpenPromptManager,
 }) => {
   const { t } = useTranslation()
   // ✅ 从 runtime 读 messages + status (AI SDK 单一事实源)
@@ -133,10 +132,14 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
-                onOpenPromptManager={onOpenPromptManager}
               />
             ) : message.role === "assistant" ? (
-              <AssistantMessage message={message} isLast={isLast} isProcessing={isProcessing} />
+              <AssistantMessage
+                message={message}
+                models={models}
+                isLast={isLast}
+                isProcessing={isProcessing}
+              />
             ) : null
           return (
             <React.Fragment key={message.id}>
@@ -145,7 +148,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 <CompactSummaryCard
                   text={compaction.summary}
                   compactedCount={compaction.compactedCount}
-                  modelId={compaction.modelId}
+                  modelId={resolveModelDisplayName(compaction.modelId, models)}
                 />
               )}
             </React.Fragment>

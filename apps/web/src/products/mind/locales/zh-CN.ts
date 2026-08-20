@@ -72,6 +72,7 @@ export default {
         activePromptsEmpty: "未启用任何提示词",
         historyDisabledWhileProcessing: "AI 响应中, 请等待或点停止后再切换",
         newConversationDisabledWhileProcessing: "AI 响应中, 请等待或点停止后再新建",
+        resizePanel: "调整 AI 面板宽度",
         scrollToBottom: "滚动到底部",
         toolRenderFailed: "工具渲染失败",
         unknownError: "未知错误",

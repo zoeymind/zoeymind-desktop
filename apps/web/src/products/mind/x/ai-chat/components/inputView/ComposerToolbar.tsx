@@ -7,10 +7,10 @@
  * AnimatePresence 包裹做高度动画，本组件不感知状态切换。
  */
 
-import React from 'react'
-import { ModelSelector } from './ModelSelector'
-import { ActionButtons } from './ActionButtons'
-import type { AIModel } from '../../../ai-chat/hooks/useModelSelector'
+import React from "react"
+import { ModelSelector } from "./ModelSelector"
+import { ActionButtons } from "./ActionButtons"
+import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 
 interface ComposerToolbarProps {
   models: AIModel[]
@@ -19,7 +19,6 @@ interface ComposerToolbarProps {
   onSend: () => void
   onStop?: () => void
   onAddImage?: (files: File[]) => void
-  onOpenPromptManager?: () => void
   disabled?: boolean
   isSending?: boolean
   isCompressing?: boolean
@@ -34,12 +33,11 @@ export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
   onSend,
   onStop,
   onAddImage,
-  onOpenPromptManager,
   disabled = false,
   isSending = false,
   isCompressing = false,
   hasContent = false,
-  supportsVision = false
+  supportsVision = false,
 }) => {
   return (
     <div className="flex items-center justify-between pt-1">
@@ -54,7 +52,6 @@ export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
           onSend={onSend}
           onStop={onStop}
           onAddImage={supportsVision ? onAddImage : undefined}
-          onOpenPromptSettings={onOpenPromptManager}
           disabled={disabled}
           isSending={isSending}
           isCompressing={isCompressing}

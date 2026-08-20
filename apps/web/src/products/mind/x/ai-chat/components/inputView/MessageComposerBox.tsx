@@ -10,14 +10,14 @@
  * - expanded=false（已发送的用户消息收起态）：编辑器只读，工具栏用 motion 收起。
  */
 
-import React from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import { cn } from '@/shared/app-shared'
-import { InputBox } from './InputBox'
-import { MediaPreview } from './MediaPreview'
-import { ComposerToolbar } from './ComposerToolbar'
-import type { AIModel } from '../../../ai-chat/hooks/useModelSelector'
-import type { Attachment } from '../../../ai-chat/types'
+import React from "react"
+import { AnimatePresence, motion } from "motion/react"
+import { cn } from "@/shared/app-shared"
+import { InputBox } from "./InputBox"
+import { MediaPreview } from "./MediaPreview"
+import { ComposerToolbar } from "./ComposerToolbar"
+import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
+import type { Attachment } from "../../../ai-chat/types"
 
 interface MessageComposerBoxProps {
   value: string
@@ -31,7 +31,6 @@ interface MessageComposerBoxProps {
   onSend: () => void
   onStop?: () => void
   onAddImage?: (files: File[]) => void
-  onOpenPromptManager?: () => void
   /** 是否展开工具栏并允许编辑。默认 true（底部输入框）。false 时为已发送用户消息的收起只读态 */
   expanded?: boolean
   disabled?: boolean
@@ -55,7 +54,6 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
   onSend,
   onStop,
   onAddImage,
-  onOpenPromptManager,
   expanded = true,
   disabled = false,
   isSending = false,
@@ -63,7 +61,7 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
   supportsVision = false,
   placeholder,
   className,
-  dataTour
+  dataTour,
 }) => {
   const hasContent = value.trim().length > 0 || attachments.length > 0
   // 收起态：编辑器只读、附件不可删、工具栏不可用
@@ -72,8 +70,8 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
   return (
     <div
       className={cn(
-        'relative rounded-lg border border-border bg-muted/50 shadow-sm transition-colors duration-100 ease-out motion-reduce:transition-none',
-        'p-2',
+        "relative rounded-lg border border-border bg-muted/50 shadow-sm transition-colors duration-100 ease-out motion-reduce:transition-none",
+        "p-2",
         className
       )}
       data-tour={dataTour}
@@ -104,9 +102,9 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
             <motion.div
               key="toolbar"
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
+              animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.12, ease: 'easeOut' }}
+              transition={{ duration: 0.12, ease: "easeOut" }}
               className="overflow-hidden"
             >
               <ComposerToolbar
@@ -116,7 +114,6 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
                 onSend={onSend}
                 onStop={onStop}
                 onAddImage={onAddImage}
-                onOpenPromptManager={onOpenPromptManager}
                 disabled={disabled}
                 isSending={isSending}
                 isCompressing={isCompressing}

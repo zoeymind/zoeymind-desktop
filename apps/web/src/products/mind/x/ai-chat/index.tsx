@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
-import type { McpServerItem, AiToolListResult, PromptItem } from "../lib/api-types"
+import type { McpServerItem, AiToolListResult } from "../lib/api-types"
 import { ChevronDown, Plus, History, Bot, AlertCircle, Settings, Sparkles } from "lucide-react"
 import { Button, FloatingToolbarButton } from "@zoeymind/ui"
 import { MessageView } from "./components/messageView"
@@ -37,13 +37,10 @@ import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useU
 import { useUIStore } from "@/products/mind/stores"
 
 const EMPTY_MCP_SERVERS: McpServerItem[] = []
-
 interface AIchatV2Props {
   isActive?: boolean
-  embedded?: boolean
 }
-
-export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }) => {
+export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const { t } = useTranslation()
   const { mindMap } = useMindMapStore()
   const closeAIChat = useUIStore(state => state.closeFormatTab)
@@ -160,13 +157,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
   const content = (
     <div className="flex flex-col h-full text-sm" data-ai-chat-panel>
       <div className="relative flex h-12 shrink-0 items-center px-3">
-        <FloatingToolbarButton
-          onClick={closeAIChat}
-          aria-label={t("common.close")}
-          title={t("common.close")}
-        >
-          <Sparkles className="size-5" />
-        </FloatingToolbarButton>
         <div className="flex-1" />
         <div className="flex h-full items-center gap-1">
           {/* Context Usage Indicator */}
@@ -223,6 +213,13 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
           >
             <History className="size-4 text-muted-foreground" />
           </button>
+          <FloatingToolbarButton
+            onClick={closeAIChat}
+            aria-label={t("common.close")}
+            title={t("common.close")}
+          >
+            <Sparkles className="size-5" />
+          </FloatingToolbarButton>
         </div>
 
         {/* 历史聊天面板 */}
@@ -333,7 +330,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
-                onOpenPromptManager={handleOpenPromptManager}
               />
             </MindMapInstanceProvider>
           </ErrorBoundary>
@@ -364,7 +360,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
           models={models}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
-          onOpenPromptManager={handleOpenPromptManager}
           disabled={!isAIConfigured}
         />
       </div>

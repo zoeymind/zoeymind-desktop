@@ -7,22 +7,15 @@
  *   - hooks/useModelSelector.ts: trpc.models.list -> loadModelsConfig()
  */
 // @ts-nocheck
-import React, { Component, type ReactNode } from 'react'
-import { AIchatV2 } from './ai-chat'
-import { AIChatProvider as OriginalAIChatProvider } from './ai-chat/AIChatProvider'
+import React, { Component, type ReactNode } from "react"
+import { AIchatV2 } from "./ai-chat"
+import { AIChatProvider as OriginalAIChatProvider } from "./ai-chat/AIChatProvider"
 
 interface AIFeaturePanelProps {
   isActive?: boolean
-  resizeHandle?: {
-    isDragging: boolean
-    onMouseDown: (event: React.MouseEvent) => void
-  }
 }
 
-class AIChatErrorBoundary extends Component<
-  { children: ReactNode },
-  { error: Error | null }
-> {
+class AIChatErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
 
   static getDerivedStateFromError(error: Error) {
@@ -33,11 +26,11 @@ class AIChatErrorBoundary extends Component<
     // 把 componentStack 完整打印, 便于定位 Maximum update depth 里的具体 Hook
     // eslint-disable-next-line no-console
     console.error(
-      '[AIChatErrorBoundary]',
+      "[AIChatErrorBoundary]",
       error?.message,
-      '\ncomponentStack:',
+      "\ncomponentStack:",
       info.componentStack,
-      '\nfullError:',
+      "\nfullError:",
       error
     )
   }
@@ -69,13 +62,10 @@ export function AIChatProvider(props: { children: React.ReactNode }): JSX.Elemen
   return <OriginalAIChatProvider {...props} />
 }
 
-export function AIFeaturePanel({
-  isActive,
-  resizeHandle,
-}: AIFeaturePanelProps): JSX.Element | null {
+export function AIFeaturePanel({ isActive }: AIFeaturePanelProps): JSX.Element | null {
   return (
     <AIChatErrorBoundary>
-      <AIchatV2 isActive={isActive} resizeHandle={resizeHandle} />
+      <AIchatV2 isActive={isActive} />
     </AIChatErrorBoundary>
   )
 }
@@ -92,4 +82,4 @@ export function resolveMindmapShortId(nodeId: string): string {
   return nodeId
 }
 
-export { attachGhostCompletion } from './plugins/ghost-completion'
+export { attachGhostCompletion } from "./plugins/ghost-completion"

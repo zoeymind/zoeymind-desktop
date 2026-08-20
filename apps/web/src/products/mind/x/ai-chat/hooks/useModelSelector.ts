@@ -26,6 +26,7 @@ const PROVIDER_ICONS: Record<string, string> = {
 
 export interface AIModel {
   id: string
+  configId?: string
   name: string
   description?: string | null
   provider: string
@@ -67,6 +68,7 @@ export function useModelSelector() {
       return [
         {
           id: m.name, // 用 model.name 作为 id, 直接是 provider 那边可识别的字符串
+          configId: m.id,
           name: m.alias,
           description: m.name,
           provider: p.kind,

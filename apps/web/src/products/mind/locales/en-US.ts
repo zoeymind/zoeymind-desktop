@@ -73,6 +73,7 @@ export default {
         activePromptsEmpty: "No prompts active",
         historyDisabledWhileProcessing: "AI responding, please wait or click stop",
         newConversationDisabledWhileProcessing: "AI responding, please wait or click stop",
+        resizePanel: "Resize AI panel",
         scrollToBottom: "Scroll to bottom",
         toolRenderFailed: "Tool render failed",
         unknownError: "Unknown error",

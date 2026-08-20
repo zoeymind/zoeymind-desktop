@@ -9,10 +9,10 @@
  *   - 没启用任何 prompt 时, hover 显示提示 "未启用任何提示词"
  */
 
-import { Sparkles } from 'lucide-react'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@zoeymind/ui'
-import { useTranslation } from '@zoeymind/i18n'
-import { cn } from '@/shared/app-shared'
+import { Sparkles } from "lucide-react"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@zoeymind/ui"
+import { useTranslation } from "@zoeymind/i18n"
+import { cn } from "@/shared/app-shared"
 
 export interface ActivePromptItem {
   id: string
@@ -28,7 +28,7 @@ interface ActivePromptsIndicatorProps {
 export function ActivePromptsIndicator({
   enabledPrompts,
   onClick,
-  title
+  title,
 }: ActivePromptsIndicatorProps) {
   const { t } = useTranslation()
   const count = enabledPrompts.length
@@ -41,22 +41,22 @@ export function ActivePromptsIndicator({
           <button
             type="button"
             onClick={onClick}
-            className="relative flex items-center justify-center size-6 rounded hover:bg-muted transition-colors"
-            title={title ?? t('mindmap.aiChat.core.promptLibrary')}
+            className="relative flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted"
+            title={title ?? t("mindmap.aiChat.core.promptLibrary")}
           >
             <Sparkles
-              className={cn('size-3', count > 0 ? 'text-primary' : 'text-muted-foreground')}
+              className={cn("size-4", count > 0 ? "text-primary" : "text-muted-foreground")}
             />
             {count > 0 && (
               <span
                 className={cn(
-                  'absolute -top-0.5 -right-0.5 min-w-[12px] h-3 px-1',
-                  'rounded-full bg-primary text-primary-foreground',
-                  'text-[9px] leading-3 font-medium',
-                  'flex items-center justify-center'
+                  "absolute -top-0.5 -right-0.5 min-w-[12px] h-3 px-1",
+                  "rounded-full bg-primary text-primary-foreground",
+                  "text-[9px] leading-3 font-medium",
+                  "flex items-center justify-center"
                 )}
               >
-                {count > 9 ? '9+' : count}
+                {count > 9 ? "9+" : count}
               </span>
             )}
           </button>
@@ -64,11 +64,11 @@ export function ActivePromptsIndicator({
       />
       <HoverCardContent className="w-auto max-w-xs p-2 text-xs" side="bottom" align="end">
         {count === 0 ? (
-          <div className="text-muted-foreground">{t('mindmap.aiChat.core.activePromptsEmpty')}</div>
+          <div className="text-muted-foreground">{t("mindmap.aiChat.core.activePromptsEmpty")}</div>
         ) : (
           <div className="flex flex-col gap-1">
             <div className="font-medium text-foreground">
-              {t('mindmap.aiChat.core.activePromptsTitle', { count })}
+              {t("mindmap.aiChat.core.activePromptsTitle", { count })}
             </div>
             <ul className="flex flex-col gap-0.5 text-muted-foreground">
               {enabledPrompts.map(p => (

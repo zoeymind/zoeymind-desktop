@@ -105,6 +105,65 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
 
   const { forceDefaultTemplate, setForceDefaultTemplate } = useUIStore()
   const aiPanelOpen = useUIStore(state => state.activeFormatTab === "ai")
+  const [aiPanelWidth, setAIPanelWidth] = useState(400)
+  const aiPanelRef = useRef<HTMLElement>(null)
+  const aiPanelContentRef = useRef<HTMLDivElement>(null)
+  const aiResizeCleanupRef = useRef<(() => void) | null>(null)
+  const handleAIWidthPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return
+      event.preventDefault()
+      const splitter = event.currentTarget
+      const pointerId = event.pointerId
+      splitter.dataset.dragging = "true"
+      splitter.setPointerCapture(pointerId)
+      if (aiPanelRef.current) aiPanelRef.current.dataset.resizing = "true"
+      const startX = event.clientX
+      const startWidth = aiPanelWidth
+      let nextWidth = startWidth
+      let animationFrame = 0
+
+      const applyWidth = () => {
+        animationFrame = 0
+        if (aiPanelRef.current) aiPanelRef.current.style.width = `${nextWidth + 12}px`
+        if (aiPanelContentRef.current) {
+          aiPanelContentRef.current.style.width = `${nextWidth}px`
+        }
+      }
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        nextWidth = Math.min(800, Math.max(300, startWidth + startX - moveEvent.clientX))
+        if (!animationFrame) animationFrame = requestAnimationFrame(applyWidth)
+      }
+      const cleanup = () => {
+        splitter.removeEventListener("pointermove", handlePointerMove)
+        splitter.removeEventListener("pointerup", handlePointerUp)
+        splitter.removeEventListener("pointercancel", handlePointerUp)
+        if (animationFrame) cancelAnimationFrame(animationFrame)
+        if (splitter.hasPointerCapture(pointerId)) splitter.releasePointerCapture(pointerId)
+        document.body.style.cursor = ""
+        document.body.style.userSelect = ""
+        delete splitter.dataset.dragging
+        if (aiPanelRef.current) delete aiPanelRef.current.dataset.resizing
+        aiResizeCleanupRef.current = null
+      }
+      const handlePointerUp = () => {
+        applyWidth()
+        cleanup()
+        setAIPanelWidth(nextWidth)
+      }
+
+      aiResizeCleanupRef.current?.()
+      aiResizeCleanupRef.current = cleanup
+      document.body.style.cursor = "col-resize"
+      document.body.style.userSelect = "none"
+      splitter.addEventListener("pointermove", handlePointerMove)
+      splitter.addEventListener("pointerup", handlePointerUp)
+      splitter.addEventListener("pointercancel", handlePointerUp)
+    },
+    [aiPanelWidth]
+  )
+
+  useEffect(() => () => aiResizeCleanupRef.current?.(), [])
 
   useEffect(() => {
     const viewport = canvasViewportRef.current
@@ -605,14 +664,25 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
             </main>
             <StatusBar />
           </section>
+          {aiPanelOpen && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t("mindmap.aiChat.core.resizePanel")}
+              onPointerDown={handleAIWidthPointerDown}
+              className="group relative z-20 -mx-1 h-full w-2 shrink-0 cursor-col-resize touch-none"
+            >
+              <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-border group-data-[dragging=true]:bg-border" />
+            </div>
+          )}
           <aside
+            ref={aiPanelRef}
             aria-hidden={!aiPanelOpen}
             inert={!aiPanelOpen ? true : undefined}
-            className={`t-resize h-full shrink-0 overflow-hidden ${
-              aiPanelOpen ? "w-[min(412px,calc(40vw+12px))] pb-3 pr-3" : "w-0"
-            }`}
+            className="t-resize h-full shrink-0 overflow-hidden pb-3 pr-3 data-[resizing=true]:transition-none data-[resizing=true]:will-change-auto"
+            style={{ width: aiPanelOpen ? aiPanelWidth + 12 : 0 }}
           >
-            <div className="h-full w-[min(400px,40vw)] min-w-[320px]">
+            <div ref={aiPanelContentRef} className="h-full" style={{ width: aiPanelWidth }}>
               <AIFeaturePanel isActive={true} />
             </div>
           </aside>
