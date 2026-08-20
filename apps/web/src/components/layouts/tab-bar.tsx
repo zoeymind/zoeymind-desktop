@@ -8,9 +8,8 @@
  * 提供液态过渡 (active tab 底部弧形融进画布) + spring 拖拽重排 + 自适应宽度.
  *
  * items[i].content 一律 null: 真正 content 由 WorkspaceShell 的 EditorPane 在下方
- * 挂载, MorphingTabs 只做 tab strip. classNames.content='hidden' 隐藏其自带面板;
- * classNames.activeTab='!text-background' 让液态 SVG 的 fill 用主题 background 色,
- * 视觉上和下面画布连成一片.
+ * 挂载, MorphingTabs 只做 tab strip. classNames.content='hidden' 隐藏其自带面板；
+ * 激活 Tab 的液态表面与下方工作区统一使用 editor-shell 语义 token。
  */
 import { Home, Loader2, Plus } from "lucide-react"
 import { useState, useSyncExternalStore } from "react"
@@ -122,6 +121,7 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
           trailing={<PlusChip onClick={onPlus} />}
           className="min-w-0 flex-1"
           classNames={{
+            activeTab: "text-editor-shell",
             content: "hidden",
           }}
         />

@@ -33,8 +33,7 @@ export function ZoomControls() {
   const scale = useSyncExternalStore(subscribe, getScale, () => 1)
 
   const setZoom = (percent: number) => {
-    if (!mindMap) return
-    mindMap.view.setScale(percent / 100, mindMap.width / 2, mindMap.height / 2)
+    mindMap?.emit("smooth_zoom_to", percent / 100)
   }
 
   const zoomPercent = Math.round(scale * 100)
@@ -44,7 +43,7 @@ export function ZoomControls() {
       <Button
         variant="ghost"
         size="icon-xs"
-        onClick={() => mindMap?.view.enlarge()}
+        onClick={() => mindMap?.emit("smooth_zoom_in")}
         disabled={!mindMap}
         aria-label={t("mindmap.canvasTool.zoomIn")}
         title={t("mindmap.canvasTool.zoomIn")}
@@ -89,7 +88,7 @@ export function ZoomControls() {
       <Button
         variant="ghost"
         size="icon-xs"
-        onClick={() => mindMap?.view.narrow()}
+        onClick={() => mindMap?.emit("smooth_zoom_out")}
         disabled={!mindMap}
         aria-label={t("mindmap.canvasTool.zoomOut")}
         title={t("mindmap.canvasTool.zoomOut")}

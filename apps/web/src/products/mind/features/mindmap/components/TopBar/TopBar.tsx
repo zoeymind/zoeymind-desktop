@@ -27,10 +27,7 @@ import {
   DialogFooter,
 } from "@zoeymind/ui"
 import { Button, cn, Tooltip, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
-import {
-  EditorSidebarTooltipContent,
-  EDITOR_SIDEBAR_CONTENT_OFFSET,
-} from "../EditorSidebarTooltipContent"
+import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
 import { useCanvasData } from "@/products/mind/features/mindmap/hooks/useCanvasData"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zoeymind/ui"
 import { useMindMapModules } from "@/products/mind/features/mindmap/hooks/useMindMapModules"
@@ -292,9 +289,9 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
   return (
     <>
       <TooltipProvider>
-        <FloatingToolbar position="top-left">
-          {/* 主工具栏 */}
-          <FloatingToolbarGroup orientation="vertical" className="flex-nowrap gap-1">
+        <FloatingToolbar position="custom">
+          {/* 编辑器 Header 主工具栏 */}
+          <FloatingToolbarGroup orientation="horizontal" className="flex-nowrap gap-1">
             {/* 使用shadcn DropdownMenu替换按钮 */}
             <Popover
               open={activeTab === "search"}
@@ -344,12 +341,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
                     {t("mindmap.topbar.title.moreOptions")}
                   </EditorSidebarTooltipContent>
                 </Tooltip>
-                <DropdownMenuContent
-                  side="right"
-                  align="start"
-                  sideOffset={EDITOR_SIDEBAR_CONTENT_OFFSET}
-                  className="w-56"
-                >
+                <DropdownMenuContent side="bottom" align="start" sideOffset={8} className="w-56">
                   <TopMoreDropDown
                     isActive={activeTab === "menu"}
                     cloudMode={cloudMode}
@@ -363,12 +355,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
-              <PopoverContent
-                side="right"
-                align="start"
-                sideOffset={EDITOR_SIDEBAR_CONTENT_OFFSET}
-                className="w-[320px] p-0"
-              >
+              <PopoverContent side="bottom" align="start" sideOffset={8} className="w-[320px] p-0">
                 <TopSearch
                   isActive={activeTab === "search"}
                   onClose={handleCloseSearch}

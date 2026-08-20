@@ -3,19 +3,13 @@ import { logger } from "@zoeymind/logger"
 import { useTranslation } from "@zoeymind/i18n"
 import { useEffect, forwardRef, useImperativeHandle } from "react"
 import { Tags } from "./Tags"
-import { AIFeaturePanel, useAIProcessing } from "@zoeymind-ext-mind"
 import { useFeature } from "@/shared/app-shared"
-import { MessageCircle, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { useUIStore } from "@/products/mind/stores"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
 import { useCommentContext } from "@/products/mind/features/mindmap/contexts/CommentContext"
-import {
-  FloatingToolbar,
-  FloatingToolbarGroup,
-  FloatingToolbarSeparator,
-  FloatingToolbarButton,
-} from "@zoeymind/ui"
+import { FloatingToolbar, FloatingToolbarGroup, FloatingToolbarButton } from "@zoeymind/ui"
 import { Badge, Tooltip, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
 import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
 
@@ -33,131 +27,123 @@ export interface FormatPanelRef {
   closeCommentPanel: () => void
 }
 
-export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>(
-  ({ onPreviewStateChange, setExitPreviewCallback }, ref) => {
-    const { t } = useTranslation()
-    // 从stores获取状态和数据
-    const { mindMap } = useMindMapStore()
-    const canEdit = usePermissionStore(state => state.canEdit)
-    const {
-      activeFormatTab: activeTab,
-      targetNodeUid,
-      openFormatTab,
-      closeFormatTab,
-      toggleFormatTab,
-    } = useUIStore()
-    const { totalComments } = useCommentContext()
-    const hasAiAgent = useFeature("ai-agent")
-    const aiIsProcessing = useAIProcessing()
-    const showAiTab = canEdit && hasAiAgent
+export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>((_props, ref) => {
+  const { t } = useTranslation()
+  // 从stores获取状态和数据
+  const { mindMap } = useMindMapStore()
+  const canEdit = usePermissionStore(state => state.canEdit)
+  const {
+    activeFormatTab: activeTab,
+    targetNodeUid,
+    openFormatTab,
+    closeFormatTab,
+    toggleFormatTab,
+  } = useUIStore()
+  const { totalComments } = useCommentContext()
 
-    // 暴露方法给父组件
-    useImperativeHandle(
-      ref,
-      () => ({
-        openTagsPanel: () => openFormatTab("tags"),
-        closeTagsPanel: () => closeFormatTab(),
-        toggleTagsPanel: () => toggleFormatTab("tags"),
-        openCommentPanel: () => openFormatTab("comment"),
-        openCommentPanelForNode: (nodeUid: string) => openFormatTab("comment", nodeUid),
-        closeCommentPanel: () => closeFormatTab(),
-      }),
-      [openFormatTab, closeFormatTab, toggleFormatTab]
-    )
+  // 暴露方法给父组件
+  useImperativeHandle(
+    ref,
+    () => ({
+      openTagsPanel: () => openFormatTab("tags"),
+      closeTagsPanel: () => closeFormatTab(),
+      toggleTagsPanel: () => toggleFormatTab("tags"),
+      openCommentPanel: () => openFormatTab("comment"),
+      openCommentPanelForNode: (nodeUid: string) => openFormatTab("comment", nodeUid),
+      closeCommentPanel: () => closeFormatTab(),
+    }),
+    [openFormatTab, closeFormatTab, toggleFormatTab]
+  )
 
-    useEffect(() => {
-      logger.debug("FormatPanel: mindMap状态", {
-        exists: !!mindMap,
-        workspaceId: (mindMap as { workspaceId?: string } | null)?.workspaceId,
-        hasRenderer: !!mindMap?.renderer,
-      })
-    }, [mindMap])
+  useEffect(() => {
+    logger.debug("FormatPanel: mindMap状态", {
+      exists: !!mindMap,
+      workspaceId: (mindMap as { workspaceId?: string } | null)?.workspaceId,
+      hasRenderer: !!mindMap?.renderer,
+    })
+  }, [mindMap])
 
-    useEffect(() => {
-      // 只读用户切到只有 owner 可用的 tab 时自动收起 (tags/theme/ai/snapshot 都是编辑向面板)
-      if (
-        !canEdit &&
-        (activeTab === "ai" ||
-          activeTab === "snapshot" ||
-          activeTab === "theme" ||
-          activeTab === "tags")
-      ) {
-        closeFormatTab()
-      }
-    }, [canEdit, activeTab, closeFormatTab])
+  useEffect(() => {
+    // 只读用户切到只有 owner 可用的 tab 时自动收起 (tags/theme/ai/snapshot 都是编辑向面板)
+    if (
+      !canEdit &&
+      (activeTab === "ai" ||
+        activeTab === "snapshot" ||
+        activeTab === "theme" ||
+        activeTab === "tags")
+    ) {
+      closeFormatTab()
+    }
+  }, [canEdit, activeTab, closeFormatTab])
 
-    return (
-      <>
-        <TooltipProvider>
-          <FloatingToolbar position="top-right">
-            {/* 主工具栏 */}
-            <FloatingToolbarGroup orientation="vertical" className="gap-1">
-              {showAiTab && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <FloatingToolbarButton
-                          active={activeTab === "ai"}
-                          onClick={() => toggleFormatTab("ai")}
-                          aria-label={t("mindmap.formatPanel.toolbar.aiAssistant")}
-                          data-tour="ai-button"
-                        >
-                          <div className="relative">
-                            <Sparkles className="size-5" />
-                            {/* 后台 Agent 跑着时, 角标 pulsing dot 提示 */}
-                            {aiIsProcessing && (
-                              <span className="absolute -top-0.5 -right-0.5 size-1.5 animate-pulse rounded-full bg-primary" />
-                            )}
-                          </div>
-                        </FloatingToolbarButton>
-                      }
-                    />
-                    <EditorSidebarTooltipContent>
-                      {t("mindmap.formatPanel.toolbar.aiAssistant")}
-                    </EditorSidebarTooltipContent>
-                  </Tooltip>
-                  <FloatingToolbarSeparator orientation="horizontal" />
-                </>
-              )}
+  return (
+    <>
+      <TooltipProvider>
+        <FloatingToolbar position="custom">
+          {/* Header 次级工具栏 */}
+          <FloatingToolbarGroup orientation="horizontal" className="gap-1">
+            {canEdit && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <FloatingToolbarButton
+                      active={activeTab === "tags"}
+                      onClick={() => toggleFormatTab("tags")}
+                      aria-label={t("mindmap.formatPanel.toolbar.tags")}
+                    >
+                      <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                        <path strokeLinecap="round" strokeWidth="2" d="M8 14s1.5 2 4 2 4-2 4-2" />
+                        <circle cx="9" cy="9" r="1" fill="currentColor" />
+                        <circle cx="15" cy="9" r="1" fill="currentColor" />
+                      </svg>
+                    </FloatingToolbarButton>
+                  }
+                />
+                <EditorSidebarTooltipContent>
+                  {t("mindmap.formatPanel.toolbar.tags")}
+                </EditorSidebarTooltipContent>
+              </Tooltip>
+            )}
+          </FloatingToolbarGroup>
+        </FloatingToolbar>
+      </TooltipProvider>
 
-              {canEdit && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <FloatingToolbarButton
-                        active={activeTab === "tags"}
-                        onClick={() => toggleFormatTab("tags")}
-                        aria-label={t("mindmap.formatPanel.toolbar.tags")}
-                      >
-                        <svg
-                          className="size-5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                        >
-                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                          <path strokeLinecap="round" strokeWidth="2" d="M8 14s1.5 2 4 2 4-2 4-2" />
-                          <circle cx="9" cy="9" r="1" fill="currentColor" />
-                          <circle cx="15" cy="9" r="1" fill="currentColor" />
-                        </svg>
-                      </FloatingToolbarButton>
-                    }
-                  />
-                  <EditorSidebarTooltipContent>
-                    {t("mindmap.formatPanel.toolbar.tags")}
-                  </EditorSidebarTooltipContent>
-                </Tooltip>
-              )}
-            </FloatingToolbarGroup>
-          </FloatingToolbar>
-        </TooltipProvider>
+      {/* 面板内容 - 直接渲染，不包裹在FloatingToolbarContent中 */}
+      {canEdit && activeTab === "tags" && <Tags isActive={true} />}
+    </>
+  )
+})
 
-        {/* 面板内容 - 直接渲染，不包裹在FloatingToolbarContent中 */}
-        {canEdit && activeTab === "tags" && <Tags isActive={true} />}
-        {/* AI 面板始终渲染, 内部用 display:none 收起 — 后台流不会被卸载中断 */}
-        {showAiTab && <AIFeaturePanel isActive={activeTab === "ai"} />}
-      </>
-    )
-  }
-)
+export function AIChatToggle(): React.JSX.Element | null {
+  const { t } = useTranslation()
+  const canEdit = usePermissionStore(state => state.canEdit)
+  const hasAiAgent = useFeature("ai-agent")
+  const activeTab = useUIStore(state => state.activeFormatTab)
+  const toggleFormatTab = useUIStore(state => state.toggleFormatTab)
+
+  if (!canEdit || !hasAiAgent || activeTab === "ai") return null
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <FloatingToolbarButton
+              active={activeTab === "ai"}
+              onClick={() => toggleFormatTab("ai")}
+              aria-expanded={activeTab === "ai"}
+              aria-label={t("mindmap.formatPanel.toolbar.aiAssistant")}
+              data-tour="ai-button"
+            >
+              <Sparkles className="size-5" />
+            </FloatingToolbarButton>
+          }
+        />
+        <EditorSidebarTooltipContent>
+          {t("mindmap.formatPanel.toolbar.aiAssistant")}
+        </EditorSidebarTooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}

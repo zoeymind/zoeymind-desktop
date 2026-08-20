@@ -14,6 +14,10 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
+  --color-editor-shell: var(--editor-shell);
+  --color-canvas-scrollbar: var(--canvas-scrollbar);
+  --color-canvas-scrollbar-hover: var(--canvas-scrollbar-hover);
+  --color-canvas-scrollbar-active: var(--canvas-scrollbar-active);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -79,8 +83,14 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --editor-shell: color-mix(in oklab, var(--muted) 30%, var(--background));
   --acc-expand: 250ms;
   --acc-collapse: 250ms;
+  --resize-dur: 300ms;
+  --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --canvas-scrollbar: color-mix(in oklab, var(--foreground) 10%, transparent);
+  --canvas-scrollbar-hover: color-mix(in oklab, var(--foreground) 18%, transparent);
+  --canvas-scrollbar-active: color-mix(in oklab, var(--foreground) 26%, transparent);
   --acc-chevron: 250ms;
   --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -117,6 +127,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --editor-shell: color-mix(in oklab, var(--muted) 30%, var(--background));
+  --canvas-scrollbar: color-mix(in oklab, var(--foreground) 10%, transparent);
+  --canvas-scrollbar-hover: color-mix(in oklab, var(--foreground) 18%, transparent);
+  --canvas-scrollbar-active: color-mix(in oklab, var(--foreground) 26%, transparent);
 }
 
 /* transitions.dev accordion: grid-template-rows 0fr → 1fr gives a clean height animation
@@ -162,6 +176,19 @@
   .t-acc-panel,
   .t-acc-panel-inner,
   .t-acc-chevron {
+    transition: none !important;
+  }
+}
+
+.t-resize {
+  transition:
+    width var(--resize-dur) var(--resize-ease),
+    height var(--resize-dur) var(--resize-ease);
+  will-change: width, height;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-resize {
     transition: none !important;
   }
 }

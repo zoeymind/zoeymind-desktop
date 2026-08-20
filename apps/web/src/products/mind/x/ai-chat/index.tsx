@@ -8,8 +8,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import type { McpServerItem, AiToolListResult, PromptItem } from "../lib/api-types"
-import { GripVertical, ChevronDown, Plus, History, Bot, AlertCircle, Settings } from "lucide-react"
-import { Button } from "@zoeymind/ui"
+import { ChevronDown, Plus, History, Bot, AlertCircle, Settings, Sparkles } from "lucide-react"
+import { Button, FloatingToolbarButton } from "@zoeymind/ui"
 import { MessageView } from "./components/messageView"
 import { InputView } from "./components/inputView"
 import { ContextUsageIndicator } from "./components/ContextUsageIndicator"
@@ -24,7 +24,6 @@ import { MindMapInstanceProvider } from "./context/MindMapInstanceContext"
 import { ToolUIRenderer } from "./context/ToolUIRenderer"
 import { useQuestionToolUI } from "./tools/ui-handlers/QuestionToolUI"
 import { useCaseConfirmToolUI } from "./tools/ui-handlers/CaseConfirmToolUI"
-import { useResizableWidth } from "./hooks/useResizableWidth"
 import { useMCPTools } from "./hooks/useMCPTools"
 import { useModelSelector } from "./hooks/useModelSelector"
 import { useAIChatV2Store } from "./stores/useAIChatV2Store"
@@ -35,9 +34,8 @@ import { cn } from "@/shared/app-shared"
 import { trpc } from "../lib/trpc"
 import { useTranslation } from "@zoeymind/i18n"
 import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useUserPrompt"
+import { useUIStore } from "@/products/mind/stores"
 
-const MIN_WIDTH = 300
-const MAX_WIDTH = 800
 const EMPTY_MCP_SERVERS: McpServerItem[] = []
 
 interface AIchatV2Props {
@@ -48,6 +46,7 @@ interface AIchatV2Props {
 export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }) => {
   const { t } = useTranslation()
   const { mindMap } = useMindMapStore()
+  const closeAIChat = useUIStore(state => state.closeFormatTab)
   const {
     models,
     selectedModel,
@@ -127,16 +126,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
     }
   }
 
-  const {
-    width,
-    isDragging,
-    onMouseDown: handleMouseDown,
-  } = useResizableWidth({
-    initial: 400,
-    min: MIN_WIDTH,
-    max: MAX_WIDTH,
-  })
-
   const handleScrollToBottom = () => {
     const messageContainer = document.querySelector("[data-message-container-v2]")
     if (messageContainer) {
@@ -170,87 +159,83 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
 
   const content = (
     <div className="flex flex-col h-full text-sm" data-ai-chat-panel>
-      {!embedded && (
-        <div className="relative flex items-center px-3 py-2 border-b border-border">
-          <div
-            className={cn(
-              "flex items-center justify-center size-5 mr-2 cursor-ew-resize rounded hover:bg-muted transition-colors",
-              isDragging ? "bg-muted" : "bg-muted/50"
-            )}
-            onMouseDown={handleMouseDown}
-          >
-            <GripVertical className="size-3 text-muted-foreground" />
-          </div>
-          <div className="text-sm font-medium text-foreground flex-1">Zoey V2</div>
-          <div className="flex items-center gap-2">
-            {/* Context Usage Indicator */}
-            <ContextUsageIndicator
-              usedTokens={totalTokenUsage.total}
-              maxTokens={contextBudget?.contextWindow ?? 128000}
-            />
-            <ActivePromptsIndicator
-              enabledPrompts={(myPrompts ?? [])
-                .filter(p => p.isEnabled)
-                .map(p => ({ id: p.id, name: p.title }))}
-              onClick={handleOpenPromptManager}
-              title={t("mindmap.aiChat.core.promptLibrary")}
-            />
-            <button
-              type="button"
-              onClick={() => setShowSettings(true)}
-              className="flex items-center justify-center size-6 rounded hover:bg-muted transition-colors"
-              title={t("mindmap.aiChat.input.caseReviewSettings")}
-            >
-              <Settings className="size-3 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={handleCreateNewConversation}
-              disabled={isProcessing}
-              className={cn(
-                "flex items-center justify-center size-6 rounded hover:bg-muted transition-colors",
-                isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
-              )}
-              title={
-                isProcessing
-                  ? t("mindmap.aiChat.core.newConversationDisabledWhileProcessing")
-                  : t("mindmap.aiChat.core.newConversation")
-              }
-            >
-              <Plus className="size-3 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={toggleHistory}
-              disabled={isProcessing}
-              className={cn(
-                "flex items-center justify-center size-6 rounded hover:bg-muted transition-colors",
-                showHistory && "bg-muted",
-                isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
-              )}
-              title={
-                isProcessing
-                  ? t("mindmap.aiChat.core.historyDisabledWhileProcessing")
-                  : t("mindmap.aiChat.core.chatHistory")
-              }
-              data-chat-history-trigger
-            >
-              <History className="size-3 text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* 历史聊天面板 */}
-          <ChatHistoryPanel
-            isOpen={showHistory}
-            onClose={() => setShowHistory(false)}
-            workspaceId={
-              (mindMap as { workspaceId?: string } | null)?.workspaceId || "default-project"
-            }
-            onSelectConversation={handleSelectConversation}
-            currentConversationId={currentConversationId}
+      <div className="relative flex h-12 shrink-0 items-center px-3">
+        <FloatingToolbarButton
+          onClick={closeAIChat}
+          aria-label={t("common.close")}
+          title={t("common.close")}
+        >
+          <Sparkles className="size-5" />
+        </FloatingToolbarButton>
+        <div className="flex-1" />
+        <div className="flex h-full items-center gap-1">
+          {/* Context Usage Indicator */}
+          <ContextUsageIndicator
+            usedTokens={totalTokenUsage.total}
+            maxTokens={contextBudget?.contextWindow ?? 128000}
           />
+          <ActivePromptsIndicator
+            enabledPrompts={(myPrompts ?? [])
+              .filter(p => p.isEnabled)
+              .map(p => ({ id: p.id, name: p.title }))}
+            onClick={handleOpenPromptManager}
+            title={t("mindmap.aiChat.core.promptLibrary")}
+          />
+          <button
+            type="button"
+            onClick={() => setShowSettings(true)}
+            className="flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted"
+            title={t("mindmap.aiChat.input.caseReviewSettings")}
+          >
+            <Settings className="size-4 text-muted-foreground" />
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateNewConversation}
+            disabled={isProcessing}
+            className={cn(
+              "flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted",
+              isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
+            )}
+            title={
+              isProcessing
+                ? t("mindmap.aiChat.core.newConversationDisabledWhileProcessing")
+                : t("mindmap.aiChat.core.newConversation")
+            }
+          >
+            <Plus className="size-4 text-muted-foreground" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleHistory}
+            disabled={isProcessing}
+            className={cn(
+              "flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted",
+              showHistory && "bg-muted",
+              isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
+            )}
+            title={
+              isProcessing
+                ? t("mindmap.aiChat.core.historyDisabledWhileProcessing")
+                : t("mindmap.aiChat.core.chatHistory")
+            }
+            data-chat-history-trigger
+          >
+            <History className="size-4 text-muted-foreground" />
+          </button>
         </div>
-      )}
+
+        {/* 历史聊天面板 */}
+        <ChatHistoryPanel
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+          workspaceId={
+            (mindMap as { workspaceId?: string } | null)?.workspaceId || "default-project"
+          }
+          onSelectConversation={handleSelectConversation}
+          currentConversationId={currentConversationId}
+        />
+      </div>
 
       {/* Message Area */}
       <div className="flex-1 min-h-0 relative" data-message-container-v2>
@@ -398,16 +383,5 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
     </div>
   )
 
-  if (embedded) {
-    return <div className="h-full w-full bg-card">{content}</div>
-  }
-
-  return (
-    <div
-      className="fixed top-[var(--mind-floating-top,56px)] right-[var(--mind-floating-right,16px)] bottom-[var(--mind-floating-bottom,32px)] z-10 max-w-[var(--mind-floating-max-width,calc(100vw-32px))] overflow-hidden rounded-lg border border-border bg-card shadow-lg"
-      style={{ width: `${width}px` }}
-    >
-      {content}
-    </div>
-  )
+  return <div className="h-full w-full">{content}</div>
 }

@@ -1,7 +1,7 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { useCallback, useRef, useMemo, useEffect, useState } from "react"
 import { MindMapDropdown } from "./MindMapDropdown.tsx"
-import { FormatPanel, type FormatPanelRef } from "./FormatPanel/FormatPanel.tsx"
+import { AIChatToggle, FormatPanel, type FormatPanelRef } from "./FormatPanel/FormatPanel.tsx"
 import { TopBar } from "./TopBar/TopBar.tsx"
 import { StatusBar } from "./StatusBar/StatusBar"
 import { useEventManager } from "./hooks/useEventManager.ts"
@@ -19,7 +19,7 @@ import { resolveMindMapLoading } from "./hooks/mindmap-loading"
 import { initPlugins, setCurrentOrganizationId } from "./managers/PluginManager.ts"
 import { useCurrentUser } from "@/shared/app-shared"
 import { useCommentYJS } from "@/products/mind/features/mindmap/hooks/useCommentYJS"
-import { AIChatProvider, resolveMindmapShortId } from "@zoeymind-ext-mind"
+import { AIFeaturePanel, AIChatProvider, resolveMindmapShortId } from "@zoeymind-ext-mind"
 import {
   CommentProvider,
   type CommentContextValue,
@@ -104,6 +104,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
   const { mindMap, loadError, setMindMap, setLoadError } = useMindMapStore()
 
   const { forceDefaultTemplate, setForceDefaultTemplate } = useUIStore()
+  const aiPanelOpen = useUIStore(state => state.activeFormatTab === "ai")
 
   useEffect(() => {
     const viewport = canvasViewportRef.current
@@ -539,63 +540,82 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
   return (
     <CommentProvider value={commentContextValue}>
       <AIChatProvider>
-        <div className="flex h-full min-h-0 flex-col overflow-hidden">
-          <div className="flex min-h-0 flex-1">
-            {/* 左侧 icon-only 活动条。全局偏好统一收敛到顶部设置入口。 */}
-            <aside className="z-30 flex w-12 shrink-0 flex-col items-center gap-1 border-r bg-muted/30 py-2">
+        <div className="flex h-full min-h-0 overflow-hidden bg-editor-shell">
+          <section className="flex min-w-0 flex-1 flex-col">
+            <header className="z-30 flex h-12 shrink-0 items-center gap-1 px-3">
               <TopBar collaboration={collaboration} />
+              <div className="flex-1" />
               <FormatPanel
                 ref={formatPanelRef}
                 onPreviewStateChange={handlePreviewStateChange}
                 setExitPreviewCallback={setExitPreviewCallback}
               />
-              <div className="flex-1" />
               <CanvasTool />
-            </aside>
-            <div ref={canvasViewportRef} className="relative min-w-0 flex-1">
+              <AIChatToggle />
+            </header>
+            <main className="flex min-h-0 flex-1 px-3">
               <div
-                ref={containerRef}
-                key="mind-map-container"
-                className="absolute inset-0"
-                style={{ visibility: loading ? "hidden" : "visible" }}
-              />
-              <MindMapDropdown
-                formatPanelRef={formatPanelRef}
-                copyXMindDataToClipboard={copyXMindDataToClipboard}
-              />
-              <MindMapIconToolbar />
-              {saveFlow.conflict && !loadError && (
-                <LoadErrorScreen
-                  title={t("fileConflict.title")}
-                  description={t("fileConflict.description")}
-                  secondaryLabel={t("fileConflict.reload")}
-                  onSecondary={() => {
-                    void saveFlow.reloadFromDisk().then(() => setReloadToken(value => value + 1))
-                  }}
-                  primaryLabel={t("fileConflict.saveCopy")}
-                  onPrimary={() => void saveFlow.saveCopy()}
-                >
-                  <Button variant="destructive" onClick={() => void saveFlow.overwrite()}>
-                    {t("fileConflict.overwrite")}
-                  </Button>
-                </LoadErrorScreen>
-              )}
-              {loadError && (
-                <LoadErrorScreen
-                  title={t("fileRepair.title")}
-                  description={loadError}
-                  secondaryLabel={t("fileRepair.remove")}
-                  onSecondary={() => void handleRemoveMissingProject()}
-                  primaryLabel={t("fileRepair.locate")}
-                  onPrimary={() => void handleLocateMissingFile()}
+                ref={canvasViewportRef}
+                className="relative h-full min-w-0 flex-1 overflow-hidden rounded-xl bg-background ring-1 ring-border/70"
+              >
+                <div
+                  ref={containerRef}
+                  key="mind-map-container"
+                  className="absolute inset-0"
+                  style={{ visibility: loading ? "hidden" : "visible" }}
                 />
-              )}
-              <MindMapScrollbar />
-              <PreviewIndicator />
-              <CollaborationCursorLayer containerRef={containerRef} collaboration={collaboration} />
+                <MindMapDropdown
+                  formatPanelRef={formatPanelRef}
+                  copyXMindDataToClipboard={copyXMindDataToClipboard}
+                />
+                <MindMapIconToolbar />
+                {saveFlow.conflict && !loadError && (
+                  <LoadErrorScreen
+                    title={t("fileConflict.title")}
+                    description={t("fileConflict.description")}
+                    secondaryLabel={t("fileConflict.reload")}
+                    onSecondary={() => {
+                      void saveFlow.reloadFromDisk().then(() => setReloadToken(value => value + 1))
+                    }}
+                    primaryLabel={t("fileConflict.saveCopy")}
+                    onPrimary={() => void saveFlow.saveCopy()}
+                  >
+                    <Button variant="destructive" onClick={() => void saveFlow.overwrite()}>
+                      {t("fileConflict.overwrite")}
+                    </Button>
+                  </LoadErrorScreen>
+                )}
+                {loadError && (
+                  <LoadErrorScreen
+                    title={t("fileRepair.title")}
+                    description={loadError}
+                    secondaryLabel={t("fileRepair.remove")}
+                    onSecondary={() => void handleRemoveMissingProject()}
+                    primaryLabel={t("fileRepair.locate")}
+                    onPrimary={() => void handleLocateMissingFile()}
+                  />
+                )}
+                <MindMapScrollbar />
+                <PreviewIndicator />
+                <CollaborationCursorLayer
+                  containerRef={containerRef}
+                  collaboration={collaboration}
+                />
+              </div>
+            </main>
+            <StatusBar />
+          </section>
+          <aside
+            aria-hidden={!aiPanelOpen}
+            inert={!aiPanelOpen ? true : undefined}
+            className={`t-resize h-full shrink-0 overflow-hidden ${
+              aiPanelOpen ? "w-[min(412px,calc(40vw+12px))] pb-3 pr-3" : "w-0"
+            }`}
+          >
+            <div className="h-full w-[min(400px,40vw)] min-w-[320px]">
+              <AIFeaturePanel isActive={true} />
             </div>
-          </div>
-          <StatusBar />
+          </aside>
         </div>
       </AIChatProvider>
     </CommentProvider>

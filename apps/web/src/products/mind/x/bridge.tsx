@@ -13,6 +13,10 @@ import { AIChatProvider as OriginalAIChatProvider } from './ai-chat/AIChatProvid
 
 interface AIFeaturePanelProps {
   isActive?: boolean
+  resizeHandle?: {
+    isDragging: boolean
+    onMouseDown: (event: React.MouseEvent) => void
+  }
 }
 
 class AIChatErrorBoundary extends Component<
@@ -41,19 +45,19 @@ class AIChatErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div className="fixed top-12 right-4 z-10 w-[380px] rounded-lg border border-destructive bg-card p-4 text-xs shadow-lg">
-          <div className="mb-2 font-semibold text-destructive">
-            AI 面板崩溃 (Error Boundary)
+        <div className="flex h-full items-center justify-center bg-background p-4 text-xs">
+          <div className="w-full rounded-lg border border-destructive p-4">
+            <div className="mb-2 font-semibold text-destructive">AI 面板崩溃</div>
+            <div className="mb-2 whitespace-pre-wrap text-muted-foreground">
+              {this.state.error.message}
+            </div>
+            <button
+              className="rounded bg-primary px-3 py-1 text-xs text-primary-foreground"
+              onClick={() => this.setState({ error: null })}
+            >
+              重试
+            </button>
           </div>
-          <div className="mb-2 whitespace-pre-wrap text-muted-foreground">
-            {this.state.error.message}
-          </div>
-          <button
-            className="rounded bg-primary px-3 py-1 text-xs text-primary-foreground"
-            onClick={() => this.setState({ error: null })}
-          >
-            重试
-          </button>
         </div>
       )
     }
@@ -65,10 +69,13 @@ export function AIChatProvider(props: { children: React.ReactNode }): JSX.Elemen
   return <OriginalAIChatProvider {...props} />
 }
 
-export function AIFeaturePanel({ isActive }: AIFeaturePanelProps): JSX.Element | null {
+export function AIFeaturePanel({
+  isActive,
+  resizeHandle,
+}: AIFeaturePanelProps): JSX.Element | null {
   return (
     <AIChatErrorBoundary>
-      <AIchatV2 isActive={isActive} />
+      <AIchatV2 isActive={isActive} resizeHandle={resizeHandle} />
     </AIChatErrorBoundary>
   )
 }

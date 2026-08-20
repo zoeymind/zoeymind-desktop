@@ -18,8 +18,8 @@ export const CanvasTool: FC = () => {
 
   return (
     <TooltipProvider>
-      <FloatingToolbar position="custom" className="contents">
-        <FloatingToolbarGroup orientation="vertical" className="gap-1">
+      <FloatingToolbar position="custom">
+        <FloatingToolbarGroup orientation="horizontal" className="gap-1">
           <Tooltip>
             <TooltipTrigger
               render={

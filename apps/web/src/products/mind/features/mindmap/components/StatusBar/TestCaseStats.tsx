@@ -9,8 +9,8 @@ interface TestCaseStatsProps {
   p3: number
 }
 
-const SIZE = 20
-const STROKE_WIDTH = 3
+const SIZE = 16
+const STROKE_WIDTH = 2.5
 const RADIUS = (SIZE - STROKE_WIDTH) / 2
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 

@@ -99,7 +99,7 @@ function HomePane({ visible }: { visible: boolean }) {
 
   return (
     <div
-      className={getPanePresentationClass(visible, "flex bg-background")}
+      className={getPanePresentationClass(visible, "flex bg-editor-shell")}
       aria-hidden={!visible}
       inert={!visible ? true : undefined}
     >
