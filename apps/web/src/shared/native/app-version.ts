@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { openUrl } from "@tauri-apps/plugin-opener"
 
 const RELEASES_URL = "https://github.com/zoeymind/zoeymind-desktop/releases"
+const GITHUB_ORGANIZATION_URL = "https://github.com/zoeymind"
 
 export interface LatestRelease {
   tagName: string
@@ -50,4 +51,8 @@ export async function loadAppVersionInfo(): Promise<AppVersionInfo> {
 
 export function openLatestRelease(release: LatestRelease | null): Promise<void> {
   return openUrl(release?.htmlUrl ?? RELEASES_URL)
+}
+
+export function openGitHubSupport(): Promise<void> {
+  return openUrl(GITHUB_ORGANIZATION_URL)
 }

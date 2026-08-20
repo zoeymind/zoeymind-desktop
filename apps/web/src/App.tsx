@@ -20,6 +20,7 @@ import { appLocales } from "@/locales"
 import {
   LoadingProvider,
   ThemePresetProvider,
+  toast,
   useAppVersion,
   useLoading,
 } from "@/shared/app-shared"
@@ -71,8 +72,31 @@ function InnerApp() {
     return teardown
   }, [])
   useEffect(() => {
-    void useAppVersion.getState().initialize()
-  }, [])
+    let cancelled = false
+    void useAppVersion
+      .getState()
+      .initialize()
+      .then(() => {
+        if (cancelled) return
+        const { currentVersion, latestRelease, hasUpdate, openRelease } = useAppVersion.getState()
+        const latestVersion = latestRelease?.tagName.replace(/^v/, "")
+        if (!hasUpdate || !latestVersion) return
+        toast({
+          id: `app-update-${latestVersion}`,
+          variant: "info",
+          title: t("appVersion.latestAvailable", { version: latestVersion }),
+          description: t("appVersion.updateToastDescription", { version: currentVersion }),
+          duration: 0,
+          action: {
+            label: t("appVersion.viewRelease"),
+            onClick: () => void openRelease(),
+          },
+        })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [t])
   return (
     <>
       <RouterProvider router={router} />

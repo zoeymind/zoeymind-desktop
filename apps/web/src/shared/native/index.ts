@@ -36,6 +36,7 @@ export { fetchProviderModels, type FetchedModel } from "./fetch-provider-models"
 export {
   loadAppVersionInfo,
   openLatestRelease,
+  openGitHubSupport,
   isNewerVersion,
   type AppVersionInfo,
   type LatestRelease,

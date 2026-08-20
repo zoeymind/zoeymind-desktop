@@ -17,6 +17,7 @@ import {
   ChevronsUpDown,
   ChevronDown,
   Info,
+  Github,
   Loader2,
   Plus,
   RefreshCw,
@@ -51,6 +52,7 @@ import {
   loadModelsConfig,
   saveModelsConfig,
   fetchProviderModels,
+  openGitHubSupport,
   type FetchedModel,
   type ModelsConfig,
   type ModelProvider,
@@ -726,6 +728,20 @@ function AboutSection() {
       <div className="space-y-1">
         <h2 className="text-base font-semibold text-balance">ZoeyMind Desktop</h2>
         <p className="text-sm text-muted-foreground">本地思维导图编辑器</p>
+      </div>
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{t("settings.githubSupport")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("settings.githubSupportDescription")}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => void openGitHubSupport()}>
+            <Github />
+            {t("settings.githubSupportAction")}
+          </Button>
+        </div>
       </div>
       <dl className="divide-y text-sm">
         <div className="flex justify-between gap-6 py-3">
