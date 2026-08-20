@@ -5,14 +5,15 @@
  */
 
 import type { MindMap } from "@/products/mind/stores"
-import { projectSessionRegistry } from "@/products/mind/editor-session"
+import type { ProjectSessionStore } from "@/products/mind/editor-session"
 
 const DEFAULT_TIMEOUT = 3000
 
 export async function waitForMindMapInstance(
+  sessionStore: ProjectSessionStore,
   timeout: number = DEFAULT_TIMEOUT
 ): Promise<MindMap | null> {
-  const existing = projectSessionRegistry.getActive()?.getState().mindMap
+  const existing = sessionStore.getState().mindMap
   if (existing) return existing
 
   return new Promise<MindMap | null>(resolve => {
@@ -27,13 +28,12 @@ export async function waitForMindMapInstance(
       }
     }, timeout)
 
-    unsubscribe = projectSessionRegistry.subscribe(() => {
-      const mindMap = projectSessionRegistry.getActive()?.getState().mindMap
-      if (mindMap && !settled) {
+    unsubscribe = sessionStore.subscribe(state => {
+      if (state.mindMap && !settled) {
         settled = true
         clearTimeout(timer)
         unsubscribe()
-        resolve(mindMap)
+        resolve(state.mindMap)
       }
     })
   })

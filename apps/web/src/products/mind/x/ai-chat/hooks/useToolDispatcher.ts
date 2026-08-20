@@ -11,27 +11,28 @@
  *   6. 其它 (思维导图 CRUD) → 走 toolExecutor.execute
  */
 
-import { useCallback, useRef } from 'react'
-import { useAIChatV2Store } from '../../ai-chat/stores/useAIChatV2Store'
-import { logger } from '@zoeymind/logger'
-import { toolExecutor } from '../../ai-chat/tools/executor'
+import { useCallback, useRef } from "react"
+import { useProjectSessionStore } from "@/products/mind/editor-session"
+import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
+import { logger } from "@zoeymind/logger"
+import { toolExecutor } from "../../ai-chat/tools/executor"
 import {
   bindPreAssignedIds,
   cacheToolResult,
   toModelOutput,
-  type ExecutionResult
-} from '../../ai-chat/tools/types'
-import type { AddToolOutputParams, ToolArgs } from '../../ai-chat/types'
-import { waitForMindMapInstance } from './internal/waitForMindMap'
-import { resolveToolInput } from './internal/resolveToolInput'
-import { enqueueToolUICall } from '../../ai-chat/context/ToolUIRegistry'
+  type ExecutionResult,
+} from "../../ai-chat/tools/types"
+import type { AddToolOutputParams, ToolArgs } from "../../ai-chat/types"
+import { waitForMindMapInstance } from "./internal/waitForMindMap"
+import { resolveToolInput } from "./internal/resolveToolInput"
+import { enqueueToolUICall } from "../../ai-chat/context/ToolUIRegistry"
 import {
   type ToolUsageSummary,
   createEmptyToolUsageSummary,
-  calculateOperationDelta
-} from './internal/toolUsageRecorder'
-import { useAnalytics, ANALYTICS_EVENTS } from '@/shared/app-shared'
-import type { ChatRuntime } from './internal/chatRuntime'
+  calculateOperationDelta,
+} from "./internal/toolUsageRecorder"
+import { useAnalytics, ANALYTICS_EVENTS } from "@/shared/app-shared"
+import type { ChatRuntime } from "./internal/chatRuntime"
 
 /** AI SDK 6 的 ToolCall 形态: 我们只用 toolName / toolCallId / input / dynamic */
 interface ToolCallLike {
@@ -60,9 +61,10 @@ export interface UseToolDispatcherResult {
 
 export function useToolDispatcher({
   runtime,
-  addToolOutput
+  addToolOutput,
 }: UseToolDispatcherOptions): UseToolDispatcherResult {
   const { trackEvent } = useAnalytics()
+  const sessionStore = useProjectSessionStore()
   const toolUsageRef = useRef<Record<string, ToolUsageSummary>>({})
   const lastReportedRef = useRef<Record<string, ToolUsageSummary>>({})
   const toolUsageProjectRef = useRef<Record<string, string | undefined>>({})
@@ -96,7 +98,7 @@ export function useToolDispatcher({
         moduleDeleted: summary.moduleDeleted - (last?.moduleDeleted ?? 0),
         caseAdded: summary.caseAdded - (last?.caseAdded ?? 0),
         caseUpdated: summary.caseUpdated - (last?.caseUpdated ?? 0),
-        caseDeleted: summary.caseDeleted - (last?.caseDeleted ?? 0)
+        caseDeleted: summary.caseDeleted - (last?.caseDeleted ?? 0),
       }
       if (diff.toolCount <= 0) return
 
@@ -111,35 +113,35 @@ export function useToolDispatcher({
         delta_module_deleted: diff.moduleDeleted,
         delta_case_added: diff.caseAdded,
         delta_case_updated: diff.caseUpdated,
-        delta_case_deleted: diff.caseDeleted
+        delta_case_deleted: diff.caseDeleted,
       }).catch(error => {
-        logger.error('[useToolDispatcher] 工具调用埋点上报失败', { error })
+        logger.error("[useToolDispatcher] 工具调用埋点上报失败", { error })
       })
     },
     [trackEvent]
   )
 
-  const onToolCall = useCallback<UseToolDispatcherResult['onToolCall']>(
+  const onToolCall = useCallback<UseToolDispatcherResult["onToolCall"]>(
     async ({ toolCall }) => {
       // 1. 动态工具
-      if ('dynamic' in toolCall && toolCall.dynamic) {
-        logger.warn('[useToolDispatcher] 不支持动态工具')
+      if ("dynamic" in toolCall && toolCall.dynamic) {
+        logger.warn("[useToolDispatcher] 不支持动态工具")
         return
       }
 
       // 2. MCP 工具 (后端 streamText.tools 注入, AI SDK 自动 execute)
-      if (toolCall.toolName.startsWith('mcp_')) return
+      if (toolCall.toolName.startsWith("mcp_")) return
 
       // 3. 后端 execute 工具
       const backendTools = new Set([
-        'read_feishu_document',
-        'search_feishu_documents',
-        'query_knowledge_bases',
-        'web_search',
-        'web_fetch',
-        'get_figma_metadata',
-        'get_figma_data',
-        'get_figma_image'
+        "read_feishu_document",
+        "search_feishu_documents",
+        "query_knowledge_bases",
+        "web_search",
+        "web_fetch",
+        "get_figma_metadata",
+        "get_figma_data",
+        "get_figma_image",
       ])
       if (backendTools.has(toolCall.toolName)) return
 
@@ -150,31 +152,31 @@ export function useToolDispatcher({
         enqueueToolUICall({
           toolCallId: toolCall.toolCallId,
           toolName: toolCall.toolName,
-          input: toolCall.input
+          input: toolCall.input,
         })
       ) {
         return
       }
 
       // 5. question 工具没注册 UI 但没数据 → 默认报错 (兜底, 一般不会触发)
-      if (toolCall.toolName === 'question') {
+      if (toolCall.toolName === "question") {
         addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
-          output: JSON.stringify({ success: false, error: 'question 缺少 questions 参数' })
+          output: JSON.stringify({ success: false, error: "question 缺少 questions 参数" }),
         })
         return
       }
 
       // 6. 思维导图 CRUD (走 toolExecutor)
-      const currentMindMap = await waitForMindMapInstance()
+      const currentMindMap = await waitForMindMapInstance(sessionStore)
       if (!currentMindMap) {
-        logger.error('[useToolDispatcher] MindMap 实例不存在')
+        logger.error("[useToolDispatcher] MindMap 实例不存在")
         addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
-          state: 'output-error',
-          errorText: 'MindMap 实例不存在'
+          state: "output-error",
+          errorText: "MindMap 实例不存在",
         })
         return
       }
@@ -184,12 +186,12 @@ export function useToolDispatcher({
       const idMapper = runtime.mindmapContextManager.current?.idMapper
 
       if (!idMapper) {
-        logger.error('[useToolDispatcher] idMapper 不存在')
+        logger.error("[useToolDispatcher] idMapper 不存在")
         addToolOutput({
           tool: toolName,
           toolCallId: toolCall.toolCallId,
-          state: 'output-error',
-          errorText: 'ID 映射器未初始化'
+          state: "output-error",
+          errorText: "ID 映射器未初始化",
         })
         return
       }
@@ -217,23 +219,23 @@ export function useToolDispatcher({
         addToolOutput({
           tool: toolName,
           toolCallId: toolCall.toolCallId,
-          output: toModelOutput(result)
+          output: toModelOutput(result),
         })
       } catch (error) {
-        logger.error('[useToolDispatcher] 工具执行失败', {
+        logger.error("[useToolDispatcher] 工具执行失败", {
           toolName,
-          error
+          error,
         })
 
         addToolOutput({
           tool: toolName,
           toolCallId: toolCall.toolCallId,
-          state: 'output-error',
-          errorText: error instanceof Error ? error.message : String(error)
+          state: "output-error",
+          errorText: error instanceof Error ? error.message : String(error),
         })
       }
     },
-    [runtime, addToolOutput, recordToolUsage]
+    [addToolOutput, recordToolUsage, runtime, sessionStore]
   )
 
   return { onToolCall, toolUsageRef, lastReportedRef, toolUsageProjectRef }
