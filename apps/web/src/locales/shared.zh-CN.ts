@@ -53,6 +53,14 @@ export default {
     updateToastDescription: "当前版本 v{{version}}，点击查看更新内容。",
     viewRelease: "查看更新",
     upToDate: "已是最新版本",
+    checking: "正在检查更新",
+    checkForUpdates: "检查更新",
+    installUpdate: "安装 v{{version}}",
+    downloading: "正在下载 {{progress}}%",
+    installing: "正在安装",
+    restart: "重新启动",
+    releaseNotes: "更新说明",
+    operationFailed: "更新服务暂时不可用，请稍后重试",
   },
   projects: {
     dialogs: {

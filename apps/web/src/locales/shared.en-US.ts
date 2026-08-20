@@ -53,6 +53,14 @@ export default {
     updateToastDescription: "You are using v{{version}}. View what’s new.",
     viewRelease: "View release",
     upToDate: "Up to date",
+    checking: "Checking for updates",
+    checkForUpdates: "Check for updates",
+    installUpdate: "Install v{{version}}",
+    downloading: "Downloading {{progress}}%",
+    installing: "Installing",
+    restart: "Restart",
+    releaseNotes: "Release notes",
+    operationFailed: "The update service is unavailable. Try again later.",
   },
   projects: {
     dialogs: {

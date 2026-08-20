@@ -31,6 +31,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -47,7 +48,7 @@
       {
         "name": "ZoeyMind Document",
         "ext": ["zmind"],
-        "description": "ZoeyMind 思维导图文件",
+        "description": "ZoeyMind mind map document",
         "role": "Editor",
         "mimeType": "application/x-zoeymind",
         "exportedType": {
@@ -63,6 +64,14 @@
         "headerImage": "windows/installer-header.bmp",
         "sidebarImage": "windows/installer-sidebar.bmp"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc1QTIyOTVDNkExQjQyNzcKUldSM1FodHFYQ21pZGFFalVYS29Zb0MwYmNnSGRUbmVLZ2M4aFdOWGUwRllwTGVQYncyMTlFWS8K",
+      "endpoints": [
+        "https://github.com/zoeymind/zoeymind-desktop/releases/latest/download/latest.json"
+      ]
     }
   }
 }

@@ -1,56 +1,70 @@
 import { getVersion } from "@tauri-apps/api/app"
-import { invoke } from "@tauri-apps/api/core"
+import { relaunch } from "@tauri-apps/plugin-process"
+import { check, type DownloadEvent, type Update } from "@tauri-apps/plugin-updater"
 import { openUrl } from "@tauri-apps/plugin-opener"
 
-const RELEASES_URL = "https://github.com/zoeymind/zoeymind-desktop/releases"
 const GITHUB_ORGANIZATION_URL = "https://github.com/zoeymind"
 
-export interface LatestRelease {
-  tagName: string
-  htmlUrl: string
-  name?: string
-  publishedAt?: string
-}
-
-export interface AppVersionInfo {
-  currentVersion: string
-  latestRelease: LatestRelease | null
-  hasUpdate: boolean
-}
-
-function parseVersion(value: string): [number, number, number] | null {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value.trim())
-  if (!match) return null
-  return [Number(match[1]), Number(match[2]), Number(match[3])]
+export interface AvailableAppUpdate {
+  version: string
+  body?: string
+  date?: string
 }
 
 export function isNewerVersion(candidate: string, current: string): boolean {
-  const next = parseVersion(candidate)
-  const installed = parseVersion(current)
-  if (!next || !installed) return false
-
-  for (let index = 0; index < next.length; index += 1) {
-    if (next[index] !== installed[index]) return next[index] > installed[index]
+  const parse = (version: string): [number, number, number] | null => {
+    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(version.trim())
+    return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null
   }
-  return false
+  const candidateParts = parse(candidate)
+  const currentParts = parse(current)
+  if (!candidateParts || !currentParts) return false
+  return candidateParts.some((part, index) => {
+    const priorPartsMatch = candidateParts
+      .slice(0, index)
+      .every((value, prior) => value === currentParts[prior])
+    return priorPartsMatch && part > currentParts[index]
+  })
 }
 
-export async function loadAppVersionInfo(): Promise<AppVersionInfo> {
-  const currentVersion = await getVersion()
-  try {
-    const latestRelease = await invoke<LatestRelease>("get_latest_release")
-    return {
-      currentVersion,
-      latestRelease,
-      hasUpdate: isNewerVersion(latestRelease.tagName, currentVersion),
+let pendingUpdate: Update | null = null
+
+export async function getCurrentAppVersion(): Promise<string> {
+  return getVersion()
+}
+
+export async function checkForAppUpdate(): Promise<AvailableAppUpdate | null> {
+  pendingUpdate?.close()
+  pendingUpdate = await check({ timeout: 10_000 })
+  if (!pendingUpdate) return null
+  return {
+    version: pendingUpdate.version,
+    body: pendingUpdate.body,
+    date: pendingUpdate.date,
+  }
+}
+
+export async function installAppUpdate(
+  onProgress: (downloaded: number, total: number | null) => void
+): Promise<void> {
+  if (!pendingUpdate) throw new Error("No application update is ready to install")
+
+  let downloaded = 0
+  let total: number | null = null
+  await pendingUpdate.download((event: DownloadEvent) => {
+    if (event.event === "Started") {
+      total = event.data.contentLength ?? null
+      onProgress(0, total)
+    } else if (event.event === "Progress") {
+      downloaded += event.data.chunkLength
+      onProgress(downloaded, total)
     }
-  } catch {
-    return { currentVersion, latestRelease: null, hasUpdate: false }
-  }
+  })
+  await pendingUpdate.install()
 }
 
-export function openLatestRelease(release: LatestRelease | null): Promise<void> {
-  return openUrl(release?.htmlUrl ?? RELEASES_URL)
+export async function restartApp(): Promise<void> {
+  await relaunch()
 }
 
 export function openGitHubSupport(): Promise<void> {

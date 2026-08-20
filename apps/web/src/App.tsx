@@ -78,18 +78,17 @@ function InnerApp() {
       .initialize()
       .then(() => {
         if (cancelled) return
-        const { currentVersion, latestRelease, hasUpdate, openRelease } = useAppVersion.getState()
-        const latestVersion = latestRelease?.tagName.replace(/^v/, "")
-        if (!hasUpdate || !latestVersion) return
+        const { currentVersion, update, installUpdate } = useAppVersion.getState()
+        if (!update) return
         toast({
-          id: `app-update-${latestVersion}`,
+          id: `app-update-${update.version}`,
           variant: "info",
-          title: t("appVersion.latestAvailable", { version: latestVersion }),
+          title: t("appVersion.latestAvailable", { version: update.version }),
           description: t("appVersion.updateToastDescription", { version: currentVersion }),
           duration: 0,
           action: {
-            label: t("appVersion.viewRelease"),
-            onClick: () => void openRelease(),
+            label: t("appVersion.installUpdate", { version: update.version }),
+            onClick: () => void installUpdate(),
           },
         })
       })

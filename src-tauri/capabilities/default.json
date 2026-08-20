@@ -48,6 +48,8 @@
     "opener:allow-open-url",
     "opener:allow-reveal-item-in-dir",
 
-    "log:default"
+    "log:default",
+    "updater:default",
+    "process:default"
   ]
 }

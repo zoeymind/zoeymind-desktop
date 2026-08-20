@@ -30,3 +30,9 @@ export async function discardAllSessions(sessions: ProjectSessionStore[]): Promi
 export function getGuardedSessions(): ProjectSessionStore[] {
   return guardedSessions(projectSessionRegistry.getAll())
 }
+
+export async function prepareForAppRestart(
+  sessions: ProjectSessionStore[] = getGuardedSessions()
+): Promise<void> {
+  await saveAllSessions(sessions)
+}
