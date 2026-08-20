@@ -36,12 +36,13 @@ export { FileAssociationsListener } from "./file-associations"
 export { setupAppMenu } from "./app-menu"
 export { fetchProviderModels, type FetchedModel } from "./fetch-provider-models"
 export {
-  loadAppVersionInfo,
-  openLatestRelease,
+  getCurrentAppVersion,
+  checkForAppUpdate,
+  installAppUpdate,
+  restartApp,
   openGitHubSupport,
   isNewerVersion,
-  type AppVersionInfo,
-  type LatestRelease,
+  type AvailableAppUpdate,
 } from "./app-version"
 export {
   streamChat,
