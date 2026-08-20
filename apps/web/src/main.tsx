@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client"
 import "./index.css"
 import App from "./App.tsx"
 import { configureLogger } from "@zoeymind/logger"
-import { createTauriLogSink } from "@/shared/native"
+import { createTauriLogSink, initializePreferences } from "@/shared/native"
 
 // 前端 log -> Rust file target 桥. 只在 Tauri 环境生效, 内部级别地板 = info.
 configureLogger({ sinks: [createTauriLogSink()] })
@@ -16,8 +16,10 @@ if (import.meta.hot) {
   })
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-)
+void initializePreferences().then(() => {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  )
+})

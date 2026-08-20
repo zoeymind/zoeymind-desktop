@@ -49,7 +49,7 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
   } = useAIChatV2Store()
   const runtime = useAIChatRuntime()
   const isProcessing = runtime.status === "submitted" || runtime.status === "streaming"
-  const { models, selectedModel } = useModelSelector()
+  const { models, selectedModel, contextBudget } = useModelSelector()
 
   const handleCreateNewConversation = async () => {
     if (!(mindMap as { workspaceId?: string } | null)?.workspaceId) return
@@ -104,7 +104,7 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
           <div className="mr-2">
             <ContextUsageIndicator
               usedTokens={totalTokenUsage.total}
-              maxTokens={models.find(m => m.id === selectedModel)?.maxContextTokens || 128000}
+              maxTokens={contextBudget?.contextWindow ?? 128000}
             />
           </div>
 

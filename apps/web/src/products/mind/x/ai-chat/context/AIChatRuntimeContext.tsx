@@ -25,15 +25,16 @@ import {
   useMemo,
   useRef,
   type ReactNode,
-  type ReactElement
-} from 'react'
-import type { UIMessage } from '@ai-sdk/react'
-import type { AddToolOutputParams, SendMessageParams } from '../../ai-chat/types'
-import type { SessionIdMapper } from '../../ai-chat/tools/session-id-mapper'
+  type ReactElement,
+} from "react"
+import type { UIMessage } from "@ai-sdk/react"
+import type { AddToolOutputParams, SendMessageParams } from "../../ai-chat/types"
+import type { SessionIdMapper } from "../../ai-chat/tools/session-id-mapper"
 
 export interface AIChatRuntime {
   /** useChat 的 sendMessage, 入参为 ai-sdk SendMessageParams */
   sendMessage: (params: SendMessageParams) => void
+  regenerate: (options?: { body?: Record<string, unknown> }) => void
   /** useChat 的 stop, 取消当前流 */
   stop: () => void
   /** useChat 的 setMessages, 覆盖整条消息列表 */
@@ -43,7 +44,7 @@ export interface AIChatRuntime {
   /** 拿当前 MindmapContextManager 的 idMapper 实例 (没初始化时返回 null) */
   getIdMapper: () => SessionIdMapper | null
   /** UUID → 短 ID. 没 mapper 时透传原值. type 暂未使用, 保留兼容旧签名. */
-  shortenId: (uuid: string, type: 'module' | 'case') => string
+  shortenId: (uuid: string, type: "module" | "case") => string
   /** useChat 的 messages — AI SDK 单一事实源 (响应式, 组件直接读) */
   messages: UIMessage[]
   /** useChat 的 status — submitted | streaming | ready | error (响应式) */
@@ -54,12 +55,13 @@ export interface AIChatRuntime {
 
 /** 内部使用: 动作函数用 ref 包一层, 让函数 identity 抖动不会触发 value 重建 */
 interface AIChatRuntimeActionRefs {
-  sendMessage: AIChatRuntime['sendMessage'] | null
-  stop: AIChatRuntime['stop'] | null
-  setMessages: AIChatRuntime['setMessages'] | null
-  addToolOutput: AIChatRuntime['addToolOutput'] | null
-  getIdMapper: AIChatRuntime['getIdMapper'] | null
-  shortenId: AIChatRuntime['shortenId'] | null
+  sendMessage: AIChatRuntime["sendMessage"] | null
+  regenerate: AIChatRuntime["regenerate"] | null
+  stop: AIChatRuntime["stop"] | null
+  setMessages: AIChatRuntime["setMessages"] | null
+  addToolOutput: AIChatRuntime["addToolOutput"] | null
+  getIdMapper: AIChatRuntime["getIdMapper"] | null
+  shortenId: AIChatRuntime["shortenId"] | null
 }
 
 const AIChatRuntimeContext = createContext<AIChatRuntime | null>(null)
@@ -76,19 +78,21 @@ interface AIChatRuntimeProviderProps {
  */
 export function AIChatRuntimeProvider({
   runtime,
-  children
+  children,
 }: AIChatRuntimeProviderProps): ReactElement {
   const actionRefs = useRef<AIChatRuntimeActionRefs>({
     sendMessage: null,
+    regenerate: null,
     stop: null,
     setMessages: null,
     addToolOutput: null,
     getIdMapper: null,
-    shortenId: null
+    shortenId: null,
   })
 
   // 每次渲染刷新动作引用
   actionRefs.current.sendMessage = runtime.sendMessage
+  actionRefs.current.regenerate = runtime.regenerate
   actionRefs.current.stop = runtime.stop
   actionRefs.current.setMessages = runtime.setMessages
   actionRefs.current.addToolOutput = runtime.addToolOutput
@@ -101,6 +105,9 @@ export function AIChatRuntimeProvider({
     () => ({
       sendMessage: params => {
         actionRefs.current.sendMessage?.(params)
+      },
+      regenerate: options => {
+        actionRefs.current.regenerate?.(options)
       },
       stop: () => {
         actionRefs.current.stop?.()
@@ -115,7 +122,7 @@ export function AIChatRuntimeProvider({
       shortenId: (uuid, type) => actionRefs.current.shortenId?.(uuid, type) ?? uuid,
       messages,
       status,
-      error
+      error,
     }),
     [messages, status, error]
   )
@@ -131,7 +138,7 @@ export function AIChatRuntimeProvider({
 export function useAIChatRuntime(): AIChatRuntime {
   const value = useContext(AIChatRuntimeContext)
   if (!value) {
-    throw new Error('useAIChatRuntime must be called inside <AIChatRuntimeProvider>')
+    throw new Error("useAIChatRuntime must be called inside <AIChatRuntimeProvider>")
   }
   return value
 }

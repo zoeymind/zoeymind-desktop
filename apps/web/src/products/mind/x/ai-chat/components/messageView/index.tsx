@@ -1,14 +1,17 @@
 // @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
-import React, { useState, useEffect } from 'react'
-import { UserMessage } from './UserMessage'
-import { AssistantMessage } from './AssistantMessage'
-import { useAutoScroll } from './useAutoScroll'
-import { useAIChatRuntime } from '../../../ai-chat/context/AIChatRuntimeContext'
-import { hasRenderableContent } from '../../../ai-chat/utils/message-content'
-import { Spinner } from '@zoeymind/ui'
-import { ChevronUp } from 'lucide-react'
-import { useTranslation } from '@zoeymind/i18n'
-import type { AIModel } from '../../../ai-chat/hooks/useModelSelector'
+import React, { useState, useEffect } from "react"
+import { UserMessage } from "./UserMessage"
+import { AssistantMessage } from "./AssistantMessage"
+import { CompactSummaryCard } from "./CompactSummaryCard"
+import { useCompactionStore } from "../../compaction/useCompactionStore"
+import { logger } from "@zoeymind/logger"
+import { useAutoScroll } from "./useAutoScroll"
+import { useAIChatRuntime } from "../../../ai-chat/context/AIChatRuntimeContext"
+import { hasRenderableContent } from "../../../ai-chat/utils/message-content"
+import { Spinner } from "@zoeymind/ui"
+import { ChevronUp } from "lucide-react"
+import { useTranslation } from "@zoeymind/i18n"
+import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 
 const MESSAGES_PER_PAGE = 10
 
@@ -25,18 +28,19 @@ export const MessageView: React.FC<MessageViewProps> = ({
   models,
   selectedModel,
   setSelectedModel,
-  onOpenPromptManager
+  onOpenPromptManager,
 }) => {
   const { t } = useTranslation()
   // ✅ 从 runtime 读 messages + status (AI SDK 单一事实源)
   const { messages, status } = useAIChatRuntime()
-  const isProcessing = status === 'submitted' || status === 'streaming'
+  const compaction = useCompactionStore(state => state.compaction)
+  const isProcessing = status === "submitted" || status === "streaming"
   const [displayCount, setDisplayCount] = useState(MESSAGES_PER_PAGE)
 
   const { containerRef, contentRef, messagesEndRef } = useAutoScroll({
     messages,
     isSending: isProcessing,
-    onScrollStatusChange
+    onScrollStatusChange,
   })
 
   // 去重: 消息数组里出现同 id 会让 React 报 "same key" 然后爆炸 (整个 chat 卡死).
@@ -47,8 +51,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
     for (const m of messages) {
       if (!m.id || seen.has(m.id)) {
         if (m.id) {
-          // eslint-disable-next-line no-console
-          console.warn('[MessageView] duplicate message id dropped', { id: m.id, role: m.role })
+          console.warn("[MessageView] duplicate message id dropped", { id: m.id, role: m.role })
         }
         continue
       }
@@ -57,6 +60,16 @@ export const MessageView: React.FC<MessageViewProps> = ({
     }
     return out
   }, [messages])
+  useEffect(() => {
+    if (
+      compaction &&
+      !dedupedMessages.some(message => message.id === compaction.compactedThroughMessageId)
+    ) {
+      logger.warn("[MessageView] compaction boundary missing from transcript", {
+        boundary: compaction.compactedThroughMessageId,
+      })
+    }
+  }, [compaction, dedupedMessages])
 
   const visibleMessages = dedupedMessages.slice(-displayCount)
   const hasMoreMessages = dedupedMessages.length > displayCount
@@ -107,35 +120,36 @@ export const MessageView: React.FC<MessageViewProps> = ({
             className="flex items-center justify-center space-x-1 py-1.5 px-3 bg-muted/50 hover:bg-muted rounded-lg text-xs text-muted-foreground transition-colors mx-auto mb-4 border border-border"
           >
             <ChevronUp className="size-3" />
-            <span>{t('mindmap.aiChat.message.viewHistory')}</span>
+            <span>{t("mindmap.aiChat.message.viewHistory")}</span>
           </button>
         )}
 
         {visibleMessages.map((message, index) => {
           const isLast = index === visibleMessages.length - 1
-          if (message.role === 'user') {
-            return (
+          const rendered =
+            message.role === "user" ? (
               <UserMessage
-                key={message.id}
                 message={message}
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
                 onOpenPromptManager={onOpenPromptManager}
               />
-            )
-          }
-          if (message.role === 'assistant') {
-            return (
-              <AssistantMessage
-                key={message.id}
-                message={message}
-                isLast={isLast}
-                isProcessing={isProcessing}
-              />
-            )
-          }
-          return null
+            ) : message.role === "assistant" ? (
+              <AssistantMessage message={message} isLast={isLast} isProcessing={isProcessing} />
+            ) : null
+          return (
+            <React.Fragment key={message.id}>
+              {rendered}
+              {compaction?.compactedThroughMessageId === message.id && (
+                <CompactSummaryCard
+                  text={compaction.summary}
+                  compactedCount={compaction.compactedCount}
+                  modelId={compaction.modelId}
+                />
+              )}
+            </React.Fragment>
+          )
         })}
         {/* 等待 spinner (官方判定, docs/research/ai-sdk-chat-streaming.md §4.1):
             - submitted: assistant 消息还没 push 到 messages, 直接显示
@@ -145,7 +159,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
           (() => {
             const lastMsg = messages[messages.length - 1]
             const waitingFirstContent =
-              !lastMsg || lastMsg.role === 'user' || !hasRenderableContent(lastMsg)
+              !lastMsg || lastMsg.role === "user" || !hasRenderableContent(lastMsg)
             if (waitingFirstContent) {
               return (
                 <div className="pl-2 mt-2">

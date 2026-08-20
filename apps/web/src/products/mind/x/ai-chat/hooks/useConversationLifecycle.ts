@@ -8,14 +8,14 @@
  *   - status === 'streaming' 时不保存, 等流结束再保存
  */
 
-import { useEffect, useState } from 'react'
-import { useAIChatV2Store } from '../../ai-chat/stores/useAIChatV2Store'
-import { chatDB } from '../../ai-chat/storage/chatDB'
-import { logger } from '@zoeymind/logger'
-import type { UIMessage } from '@ai-sdk/react'
-import type { ChatRuntime } from './internal/chatRuntime'
-import { indexer } from '../../ai-chat/memory/indexer'
-import { restorePendingFromMessages } from '../../ai-chat/context/ToolUIRegistry'
+import { useEffect, useState } from "react"
+import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
+import { chatDB } from "../../ai-chat/storage/chatDB"
+import { logger } from "@zoeymind/logger"
+import type { UIMessage } from "@ai-sdk/react"
+import type { ChatRuntime } from "./internal/chatRuntime"
+import { indexer } from "../../ai-chat/memory/indexer"
+import { restorePendingFromMessages } from "../../ai-chat/context/ToolUIRegistry"
 
 interface UseConversationLifecycleOptions {
   runtime: ChatRuntime
@@ -32,7 +32,7 @@ export function useConversationLifecycle({
   runtime,
   workspaceId,
   messages,
-  status
+  status,
 }: UseConversationLifecycleOptions): UseConversationLifecycleResult {
   const [isInitialized, setIsInitialized] = useState(false)
   const currentConversationId = useAIChatV2Store(s => s.currentConversationId)
@@ -41,17 +41,18 @@ export function useConversationLifecycle({
   // 保存后顺手 enqueue 到长期记忆 indexer (内部检查总开关, 关闭时是 no-op).
   useEffect(() => {
     if (!currentConversationId || !isInitialized || messages.length === 0) return
-    if (status === 'streaming') return
+    if (status === "streaming") return
 
     const timer = setTimeout(async () => {
       try {
         await chatDB.saveMessages(currentConversationId, messages)
         // 增量索引 (indexer 自己去重 + 串行 + 没启用时跳过)
         for (const m of messages) {
+          if ((m.metadata as { isCompactSummary?: boolean } | undefined)?.isCompactSummary) continue
           indexer.enqueue(m, currentConversationId)
         }
       } catch (error) {
-        logger.error('[useConversationLifecycle] Failed to save messages', { error })
+        logger.error("[useConversationLifecycle] Failed to save messages", { error })
       }
     }, 1000)
 
@@ -93,7 +94,7 @@ export function useConversationLifecycle({
         // messages 由 useAIChat 传入, 这里直接用 (已经是 useChat 实时值)
         restorePendingFromMessages(messages)
       } catch (error) {
-        logger.error('[useConversationLifecycle] Failed to initialize conversation', { error })
+        logger.error("[useConversationLifecycle] Failed to initialize conversation", { error })
       }
     }
 

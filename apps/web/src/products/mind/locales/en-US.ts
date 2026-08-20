@@ -83,9 +83,15 @@ export default {
           body: "AI quota is exhausted. Contact your administrator.",
           cta: "Got it",
         },
+        contextOverflow: {
+          title: "Context limit exceeded",
+          body: "Automatic compaction could not free enough room. Start a new conversation or reduce attachments and context.",
+          cta: "Restore input",
+        },
         requestFailed: {
           title: "Request failed",
           body: "Something went wrong talking to the AI service. Please retry.",
+          cta: "Restore input",
         },
       },
       history: {
@@ -163,7 +169,7 @@ export default {
         modelHint: "Summarized by {{model}}",
         pendingHint: "Compacting history to free up context…",
         doneHint: "Auto-compacted {{count}} earlier messages",
-        willTriggerHint: "Context near limit; will auto-compact after next reply",
+        willTriggerHint: "Context near limit; will auto-compact before the next request",
       },
       memory: {
         enableLabel: "Long-term memory",

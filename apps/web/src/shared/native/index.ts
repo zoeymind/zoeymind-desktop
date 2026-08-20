@@ -4,6 +4,7 @@
  * 便于测试和替换。
  */
 export * from "./db"
+export * from "./preferences"
 export * from "./paths"
 export * from "./atomic-file"
 export * from "./file-revision"
@@ -11,6 +12,7 @@ export * from "./zmind-file"
 export * from "./open-zmind"
 export * from "./chat-repo"
 export * from "./models-config"
+export * from "./chat-model"
 export * from "./log-config"
 export { createTauriLogSink } from "./log-sink"
 export * from "./preview"

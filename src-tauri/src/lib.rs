@@ -293,6 +293,51 @@ fn migrations() -> Vec<Migration> {
     "#,
       kind: MigrationKind::Up,
     },
+    Migration {
+      version: 3,
+      description: "unified AI chat runtime persistence",
+      sql: r#"
+      -- AI SDK 完整 transcript、压缩边界、思维导图上下文快照和会话选择。
+      -- transcript_json 单行 UPSERT，避免多条消息替换时出现中间空状态。
+      CREATE TABLE IF NOT EXISTS chat_runtime_state (
+        conversation_id TEXT PRIMARY KEY REFERENCES chat_conversations(id) ON DELETE CASCADE,
+        transcript_json TEXT NOT NULL DEFAULT '[]',
+        compaction_json TEXT,
+        snapshot_json TEXT,
+        selected_knowledge_base_ids_json TEXT NOT NULL DEFAULT '[]',
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS chat_message_embeddings (
+        message_id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        text TEXT NOT NULL,
+        embedding_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_chat_embeddings_conversation
+        ON chat_message_embeddings(conversation_id);
+
+      -- 浏览器 IndexedDB → SQLite 一次性导入完成标记。
+      CREATE TABLE IF NOT EXISTS chat_storage_migrations (
+        migration_key TEXT PRIMARY KEY,
+        completed_at INTEGER NOT NULL
+      );
+    "#,
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 4,
+      description: "scope AI chat runtime by workspace",
+      sql: r#"
+      ALTER TABLE chat_runtime_state
+        ADD COLUMN workspace_id TEXT NOT NULL DEFAULT '';
+      CREATE INDEX IF NOT EXISTS idx_chat_runtime_workspace
+        ON chat_runtime_state(workspace_id, updated_at);
+    "#,
+      kind: MigrationKind::Up,
+    },
   ]
 }
 

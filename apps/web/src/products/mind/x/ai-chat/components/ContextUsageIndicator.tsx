@@ -3,12 +3,12 @@
  * ContextUsageIndicator - Context Token 使用率圆环进度条
  */
 
-import React from 'react'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@zoeymind/ui'
-import { useTranslation } from '@zoeymind/i18n'
-import { Loader2 } from 'lucide-react'
-import { useCompactionStore } from '../../ai-chat/compaction/useCompactionStore'
-import { cn } from '@/shared/app-shared'
+import React from "react"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@zoeymind/ui"
+import { useTranslation } from "@zoeymind/i18n"
+import { Loader2 } from "lucide-react"
+import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
+import { cn } from "@/shared/app-shared"
 
 interface ContextUsageIndicatorProps {
   usedTokens: number
@@ -17,11 +17,11 @@ interface ContextUsageIndicatorProps {
 
 export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
   usedTokens,
-  maxTokens
+  maxTokens,
 }) => {
   const { t } = useTranslation()
   const compactionPhase = useCompactionStore(s => s.phase)
-  const lastResult = useCompactionStore(s => s.lastResult)
+  const compaction = useCompactionStore(s => s.compaction)
   const percentage = maxTokens > 0 ? (usedTokens / maxTokens) * 100 : 0
   const displayPercentage = Math.min(percentage, 100).toFixed(1)
 
@@ -30,10 +30,10 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
   const isWarning = percentage >= 70 && percentage < 95
   const isCritical = percentage >= 95
   const ringClass = isCritical
-    ? 'stroke-destructive'
+    ? "stroke-destructive"
     : isWarning
-      ? 'stroke-amber-500'
-      : 'stroke-foreground'
+      ? "stroke-amber-500"
+      : "stroke-foreground"
 
   // 圆环 SVG 参数
   const size = 14
@@ -58,18 +58,18 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
             {/* 百分比文字（左侧） */}
             <span
               className={cn(
-                'text-xs font-medium',
+                "text-xs font-medium",
                 isCritical
-                  ? 'text-destructive'
+                  ? "text-destructive"
                   : isWarning
-                    ? 'text-warning dark:text-warning'
-                    : 'text-foreground'
+                    ? "text-warning dark:text-warning"
+                    : "text-foreground"
               )}
             >
               {Math.round(percentage)}%
             </span>
             {/* 圆环进度条 / 压缩中 spinner */}
-            {compactionPhase === 'pending' ? (
+            {compactionPhase === "pending" ? (
               <Loader2 className="size-3.5 animate-spin text-warning" />
             ) : (
               <div className="relative" style={{ width: size, height: size }}>
@@ -92,7 +92,7 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
                     strokeDasharray={circumference}
                     strokeDashoffset={offset}
                     strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                    style={{ transition: "stroke-dashoffset 0.3s ease" }}
                   />
                 </svg>
               </div>
@@ -103,27 +103,27 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       <HoverCardContent className="w-auto p-2 text-xs" side="bottom" align="center">
         <div className="flex flex-col gap-1">
           <div className="font-medium text-foreground">
-            {t('mindmap.aiChat.core.contextUsed', {
-              value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`
+            {t("mindmap.aiChat.core.contextUsed", {
+              value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
             })}
           </div>
 
           {/* 压缩状态: 进行中 / 刚完成 提示 */}
-          {compactionPhase === 'pending' && (
+          {compactionPhase === "pending" && (
             <div className="text-warning dark:text-warning">
-              {t('mindmap.aiChat.compaction.pendingHint')}
+              {t("mindmap.aiChat.compaction.pendingHint")}
             </div>
           )}
-          {compactionPhase === 'done' && lastResult && (
+          {compactionPhase === "done" && compaction && (
             <div className="text-success dark:text-success">
-              {t('mindmap.aiChat.compaction.doneHint', {
-                count: lastResult.compactedCount
+              {t("mindmap.aiChat.compaction.doneHint", {
+                count: compaction.compactedCount,
               })}
             </div>
           )}
-          {compactionPhase !== 'pending' && isWarning && (
+          {compactionPhase !== "pending" && isWarning && (
             <div className="text-warning dark:text-warning text-[10px]">
-              {t('mindmap.aiChat.compaction.willTriggerHint')}
+              {t("mindmap.aiChat.compaction.willTriggerHint")}
             </div>
           )}
         </div>

@@ -82,9 +82,15 @@ export default {
           body: "AI 额度已用尽，请联系管理员。",
           cta: "知道了",
         },
+        contextOverflow: {
+          title: "上下文已超出模型上限",
+          body: "自动压缩仍无法释放足够空间。请新建对话，或减少附件和上下文后重试。",
+          cta: "恢复输入",
+        },
         requestFailed: {
           title: "请求失败",
           body: "与 AI 服务通信出错，请稍后重试。",
+          cta: "恢复输入",
         },
       },
       history: {
@@ -160,7 +166,7 @@ export default {
         modelHint: "由 {{model}} 摘要",
         pendingHint: "正在压缩历史以释放上下文...",
         doneHint: "已自动压缩 {{count}} 条历史",
-        willTriggerHint: "上下文接近上限, 下次回复后将自动压缩",
+        willTriggerHint: "上下文接近上限, 下次请求前将自动压缩",
       },
       memory: {
         enableLabel: "长期记忆",

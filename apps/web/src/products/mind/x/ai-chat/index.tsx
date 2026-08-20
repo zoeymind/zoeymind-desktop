@@ -54,6 +54,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
     setSelectedModel,
     isAIConfigured,
     isLoading: modelsLoading,
+    contextBudget,
   } = useModelSelector()
 
   // ✅ 从 runtime 读取 AI SDK 状态 (单一事实源; Provider 由 AIChatProvider 在 Canvas 顶层挂载)
@@ -85,7 +86,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
       myPrompts
         .filter(p => p.isEnabled)
         .map(p => p.content)
-        .join('\n\n')
+        .join("\n\n")
     )
   }, [myPrompts, setMergedUserPrompt])
 
@@ -185,7 +186,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
             {/* Context Usage Indicator */}
             <ContextUsageIndicator
               usedTokens={totalTokenUsage.total}
-              maxTokens={models.find(m => m.id === selectedModel)?.maxContextTokens || 128000}
+              maxTokens={contextBudget?.contextWindow ?? 128000}
             />
             <ActivePromptsIndicator
               enabledPrompts={(myPrompts ?? [])
@@ -382,10 +383,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive, embedded = false }
           disabled={!isAIConfigured}
         />
       </div>
-      <PromptManagerModal
-        isOpen={showPromptManager}
-        onClose={() => setShowPromptManager(false)}
-      />
+      <PromptManagerModal isOpen={showPromptManager} onClose={() => setShowPromptManager(false)} />
       <AIChatSettingsDialog
         open={showSettings}
         onOpenChange={setShowSettings}

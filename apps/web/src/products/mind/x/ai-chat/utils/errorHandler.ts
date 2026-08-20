@@ -13,17 +13,17 @@
  * 因为那会泄露内部 AI 服务链路信息.
  */
 
-import type { UIMessage } from '@ai-sdk/react'
-import { logger } from '@zoeymind/logger'
+import type { UIMessage } from "@ai-sdk/react"
+import { logger } from "@zoeymind/logger"
 
-export type ChatErrorCode = 'INSUFFICIENT_QUOTA' | 'REQUEST_FAILED'
+export type ChatErrorCode = "INSUFFICIENT_QUOTA" | "CONTEXT_OVERFLOW" | "REQUEST_FAILED"
 
 interface GenericPart {
   type: string
   errorText?: string
 }
 
-const KNOWN_CODES: readonly string[] = ['INSUFFICIENT_QUOTA', 'REQUEST_FAILED']
+const KNOWN_CODES: readonly string[] = ["INSUFFICIENT_QUOTA", "CONTEXT_OVERFLOW", "REQUEST_FAILED"]
 
 /**
  * 解析后端返回的错误码. 后端要么直接给字符串 (流模式), 要么 wrap 成 JSON
@@ -32,7 +32,7 @@ const KNOWN_CODES: readonly string[] = ['INSUFFICIENT_QUOTA', 'REQUEST_FAILED']
  */
 export function classifyChatError(error: Error | string | unknown): ChatErrorCode {
   const raw =
-    error instanceof Error ? error.message : typeof error === 'string' ? error : String(error)
+    error instanceof Error ? error.message : typeof error === "string" ? error : String(error)
   const trimmed = raw.trim()
 
   // 直接字符串 (后端 onError 返回值)
@@ -41,19 +41,53 @@ export function classifyChatError(error: Error | string | unknown): ChatErrorCod
   // JSON 形式 `{ error: '...' }`
   try {
     const json = JSON.parse(trimmed) as unknown
-    if (json && typeof json === 'object' && 'error' in json) {
+    if (json && typeof json === "object" && "error" in json) {
       const val = (json as { error: unknown }).error
-      if (typeof val === 'string' && isKnownCode(val)) return val as ChatErrorCode
+      if (typeof val === "string" && isKnownCode(val)) return val as ChatErrorCode
     }
   } catch {
     // 不是 JSON, 走兜底
   }
 
-  return 'REQUEST_FAILED'
+  return "REQUEST_FAILED"
 }
 
 function isKnownCode(s: string): boolean {
   return KNOWN_CODES.includes(s)
+}
+
+const OVERFLOW_PHRASES = [
+  "context_length_exceeded",
+  "maximum context length",
+  "prompt is too long",
+  "too many tokens",
+  "context window",
+]
+
+export function normalizeChatError(error: unknown): ChatErrorCode {
+  const candidate = error as {
+    statusCode?: number
+    status?: number
+    code?: string
+    responseBody?: unknown
+    data?: unknown
+    message?: string
+  }
+  const structured = [candidate?.code, candidate?.responseBody, candidate?.data, candidate?.message]
+    .map(value => {
+      try {
+        return typeof value === "string" ? value : JSON.stringify(value)
+      } catch {
+        return String(value)
+      }
+    })
+    .join(" ")
+    .toLowerCase()
+  if (OVERFLOW_PHRASES.some(phrase => structured.includes(phrase))) return "CONTEXT_OVERFLOW"
+  if (structured.includes("insufficient_quota") || structured.includes("quota exceeded")) {
+    return "INSUFFICIENT_QUOTA"
+  }
+  return "REQUEST_FAILED"
 }
 
 /** part 是否是 error 类型 (展示用) */
@@ -61,7 +95,7 @@ export function hasErrorPart(message: UIMessage): boolean {
   return (
     message.parts?.some(part => {
       const generic = part as GenericPart
-      return generic.type === 'error' || !!generic.errorText
+      return generic.type === "error" || !!generic.errorText
     }) ?? false
   )
 }
@@ -78,30 +112,30 @@ export function addErrorToMessages(
   const code = classifyChatError(error)
 
   if (messages.length === 0) {
-    logger.warn('[errorHandler] 没有消息, 无法添加错误')
+    logger.warn("[errorHandler] 没有消息, 无法添加错误")
     return
   }
 
   const lastMessage = messages[messages.length - 1]
 
-  if (lastMessage.role === 'assistant') {
+  if (lastMessage.role === "assistant") {
     if (hasErrorPart(lastMessage)) {
-      logger.debug('[errorHandler] 最后一条 assistant 已含错误, 跳过')
+      logger.debug("[errorHandler] 最后一条 assistant 已含错误, 跳过")
       return
     }
     const updated = {
       ...lastMessage,
-      parts: [...(lastMessage.parts || []), { type: 'error', errorText: code } as unknown]
+      parts: [...(lastMessage.parts || []), { type: "error", errorText: code } as unknown],
     }
     setMessages([...messages.slice(0, -1), updated] as UIMessage[])
     return
   }
 
-  if (lastMessage.role === 'user') {
+  if (lastMessage.role === "user") {
     const errorMsg = {
       id: `error-${Date.now()}`,
-      role: 'assistant' as const,
-      parts: [{ type: 'error', errorText: code }]
+      role: "assistant" as const,
+      parts: [{ type: "error", errorText: code }],
     }
     setMessages([...messages, errorMsg] as UIMessage[])
   }

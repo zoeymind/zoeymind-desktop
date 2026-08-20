@@ -10,11 +10,11 @@
  * 真要排查问题, admin 看后端 logger.error 的完整记录.
  */
 
-import React from 'react'
-import { AlertCircle, RefreshCcw } from 'lucide-react'
-import { useTranslation } from '@zoeymind/i18n'
-import { useAIChatV2Store } from '../../../ai-chat/stores/useAIChatV2Store'
-import type { ChatErrorCode } from '../../../ai-chat/utils/errorHandler'
+import React from "react"
+import { AlertCircle, RefreshCcw } from "lucide-react"
+import { useTranslation } from "@zoeymind/i18n"
+import { useAIChatV2Store } from "../../../ai-chat/stores/useAIChatV2Store"
+import type { ChatErrorCode } from "../../../ai-chat/utils/errorHandler"
 
 interface ErrorCardProps {
   code: ChatErrorCode
@@ -25,13 +25,15 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ code, isLast = false }) =>
   const { t } = useTranslation()
   const lastSentInput = useAIChatV2Store(s => s.lastSentInput)
 
-  const isQuota = code === 'INSUFFICIENT_QUOTA'
-  const title = isQuota
-    ? t('mindmap.aiChat.error.insufficientQuota.title')
-    : t('mindmap.aiChat.error.requestFailed.title')
-  const body = isQuota
-    ? t('mindmap.aiChat.error.insufficientQuota.body')
-    : t('mindmap.aiChat.error.requestFailed.body')
+  const isQuota = code === "INSUFFICIENT_QUOTA"
+  const isOverflow = code === "CONTEXT_OVERFLOW"
+  const translationKey = isQuota
+    ? "insufficientQuota"
+    : isOverflow
+      ? "contextOverflow"
+      : "requestFailed"
+  const title = t(`mindmap.aiChat.error.${translationKey}.title`)
+  const body = t(`mindmap.aiChat.error.${translationKey}.body`)
 
   const handleRetry = () => {
     const s = useAIChatV2Store.getState()
@@ -55,7 +57,9 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ code, isLast = false }) =>
                 className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
               >
                 <RefreshCcw className="size-3" />
-                {t('mindmap.aiChat.error.requestFailed.cta')}
+                {isOverflow
+                  ? t("mindmap.aiChat.error.contextOverflow.cta")
+                  : t("mindmap.aiChat.error.requestFailed.cta")}
               </button>
             </div>
           )}

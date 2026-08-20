@@ -4,30 +4,27 @@
  * 让 ContextUsageIndicator 等 sibling 组件能读取展示 spinner / 提示.
  */
 
-import { create } from 'zustand'
+import { create } from "zustand"
+import type { CompactionState as PersistedCompactionState } from "../storage/chatDB"
 
-export type CompactionPhase = 'idle' | 'pending' | 'done' | 'error'
+export type CompactionPhase = "idle" | "pending" | "done" | "error"
 
-interface CompactionState {
+interface CompactionStoreState {
   phase: CompactionPhase
-  /** 最近一次成功压缩的信息 */
-  lastResult?: {
-    compactedCount: number
-    modelId: string
-    at: number
-  }
+  compaction: PersistedCompactionState | null
   errorMessage?: string
-
   setPhase: (phase: CompactionPhase) => void
-  setLastResult: (r: { compactedCount: number; modelId: string; at: number }) => void
-  setError: (msg: string) => void
+  setCompaction: (state: PersistedCompactionState | null) => void
+  setError: (message: string) => void
   reset: () => void
 }
 
-export const useCompactionStore = create<CompactionState>(set => ({
-  phase: 'idle',
+export const useCompactionStore = create<CompactionStoreState>(set => ({
+  phase: "idle",
+  compaction: null,
   setPhase: phase => set({ phase, errorMessage: undefined }),
-  setLastResult: r => set({ lastResult: r, phase: 'done', errorMessage: undefined }),
-  setError: msg => set({ phase: 'error', errorMessage: msg }),
-  reset: () => set({ phase: 'idle', lastResult: undefined, errorMessage: undefined })
+  setCompaction: compaction =>
+    set({ compaction, phase: compaction ? "done" : "idle", errorMessage: undefined }),
+  setError: errorMessage => set({ phase: "error", errorMessage }),
+  reset: () => set({ phase: "idle", compaction: null, errorMessage: undefined }),
 }))

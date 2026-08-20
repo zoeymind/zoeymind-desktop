@@ -17,27 +17,28 @@
  *   3. 处理网络错误 → addErrorToMessages
  */
 
-import { useEffect, useMemo, useRef } from 'react'
-import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from 'ai'
-import { useOrganization } from '@/shared/app-shared'
-import { useAIChatV2Store } from '../../ai-chat/stores/useAIChatV2Store'
-import { logger } from '@zoeymind/logger'
-import { addErrorToMessages, classifyChatError } from '../utils/errorHandler'
-import type { MindmapContextManager } from '../../ai-chat/MindmapContextManager'
-import type { PersistedSnapshot } from '../../ai-chat/storage/chatDB'
-import type { ChatRuntime } from './internal/chatRuntime'
-import { useChatTransport } from './useChatTransport'
-import { useToolDispatcher } from './useToolDispatcher'
-import { useMindmapContextSync } from './useMindmapContextSync'
-import { useConversationLifecycle } from './useConversationLifecycle'
-import { useTokenUsageReporter } from './useTokenUsageReporter'
+import { useEffect, useMemo, useRef } from "react"
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
+import { useOrganization } from "@/shared/app-shared"
+import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
+import { logger } from "@zoeymind/logger"
+import { addErrorToMessages, classifyChatError } from "../utils/errorHandler"
+import type { MindmapContextManager } from "../../ai-chat/MindmapContextManager"
+import type { PersistedSnapshot } from "../../ai-chat/storage/chatDB"
+import type { ChatRuntime } from "./internal/chatRuntime"
+import { clearPreparedTurn, useChatTransport } from "./useChatTransport"
+import { useToolDispatcher } from "./useToolDispatcher"
+import { useMindmapContextSync } from "./useMindmapContextSync"
+import { useConversationLifecycle } from "./useConversationLifecycle"
+import { useTokenUsageReporter } from "./useTokenUsageReporter"
 import {
   setModuleAIChatRuntime,
   getModuleAIChatRuntime,
-  type AIChatRuntime
-} from '../../ai-chat/context/AIChatRuntimeContext'
-import { setActiveOrganizationId } from '../../ai-chat/compaction/maybeCompactBeforeSend'
+  type AIChatRuntime,
+} from "../../ai-chat/context/AIChatRuntimeContext"
+
+const overflowAttempts = new Set<string>()
 
 /**
  * 初始化 AI Chat: 创建 useChat 实例, 拉起所有子 effect, 返回 AIChatRuntime.
@@ -56,7 +57,7 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   const runtime = useMemo<ChatRuntime>(
     () => ({
       mindmapContextManager: mindmapContextManagerRef,
-      pendingSnapshot: pendingSnapshotRef
+      pendingSnapshot: pendingSnapshotRef,
     }),
     []
   )
@@ -67,32 +68,38 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   // useChat: SDK 实例 (addToolOutput 由下面的 dispatcher 用, 这里要先拿到)
   const transport = useRef(
     new DefaultChatTransport({
-      api: `${import.meta.env.VITE_API_URL ?? ''}/api/ai-v2/chat`,
-      fetch: customFetch
+      api: `${import.meta.env.VITE_API_URL ?? ""}/api/ai-v2/chat`,
+      fetch: customFetch,
+      prepareSendMessagesRequest: ({ messages, trigger, body }) => {
+        const latestUser = [...messages].reverse().find(message => message.role === "user")
+        const metadata = latestUser?.metadata as { model?: string } | undefined
+        return { body: { ...body, messages, model: metadata?.model, trigger } }
+      },
     })
   ).current
 
   const {
     messages,
     sendMessage: sdkSendMessage,
+    regenerate,
     addToolOutput,
     status,
     setMessages,
     stop,
-    error: chatError
+    error: chatError,
   } = useChat({
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onError: error => {
       const errorMessage = error instanceof Error ? error.message : String(error)
       const code = classifyChatError(errorMessage)
-      logger.error('[useAIChat] 收到错误', { code, raw: errorMessage.slice(0, 200) })
+      logger.error("[useAIChat] 收到错误", { code, raw: errorMessage.slice(0, 200) })
       // 只记日志; 错误 part 的写入统一走下面的 chatError effect (单一路径)
     },
     onToolCall: async event => {
       // 由 dispatcher.onToolCall 处理; 这里只透传, dispatcher 用同一个 addToolOutput 闭包.
       await dispatcher.onToolCall(event)
-    }
+    },
   })
 
   // 把 addToolOutput 给到 dispatcher 用 (用 ref 防止重建)
@@ -104,6 +111,7 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   const runtimeApi = useMemo<AIChatRuntime>(
     () => ({
       sendMessage: params => sdkSendMessage(params),
+      regenerate: options => regenerate(options),
       stop: () => stop(),
       setMessages: msgs => setMessages(msgs),
       addToolOutput: params => addToolOutput(params),
@@ -114,9 +122,9 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
       },
       messages,
       status,
-      error: chatError
+      error: chatError,
     }),
-    [sdkSendMessage, stop, setMessages, addToolOutput, messages, status, chatError]
+    [sdkSendMessage, regenerate, stop, setMessages, addToolOutput, messages, status, chatError]
   )
 
   useEffect(() => {
@@ -132,12 +140,37 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   useEffect(() => {
     if (!chatError) return
     const timer = setTimeout(() => {
-      const s = useAIChatV2Store.getState()
+      const store = useAIChatV2Store.getState()
       const latest = getModuleAIChatRuntime()
-      addErrorToMessages(latest?.messages ?? [], chatError, msgs => latest?.setMessages(msgs))
-      if (s.lastSentInput && !s.inputMessage) {
-        s.restoreInput()
+      const currentMessages = latest?.messages ?? []
+      const user = [...currentMessages].reverse().find(message => message.role === "user")
+      const attemptKey =
+        store.currentConversationId && user ? `${store.currentConversationId}:${user.id}` : null
+      const assistant = [...currentMessages].reverse().find(message => message.role === "assistant")
+      const hasToolPart =
+        assistant?.parts?.some(part => {
+          const candidate = part as { type?: string }
+          return candidate.type?.startsWith("tool-")
+        }) ?? false
+      const code = classifyChatError(chatError)
+      if (
+        code === "CONTEXT_OVERFLOW" &&
+        attemptKey &&
+        !hasToolPart &&
+        !overflowAttempts.has(attemptKey)
+      ) {
+        overflowAttempts.add(attemptKey)
+        latest?.regenerate({
+          body: { compactionMode: "force-overflow-recovery", logicalTurnId: attemptKey },
+        })
+        return
       }
+      if (attemptKey) {
+        overflowAttempts.delete(attemptKey)
+        clearPreparedTurn(attemptKey)
+      }
+      addErrorToMessages(currentMessages, chatError, next => latest?.setMessages(next))
+      if (store.lastSentInput && !store.inputMessage) store.restoreInput()
     }, 200)
     return () => clearTimeout(timer)
   }, [chatError])
@@ -150,16 +183,15 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
     runtime,
     workspaceId,
     messages,
-    status
+    status,
   })
 
   // 思维导图上下文 Manager 生命周期 + 跨对话快照同步
   useMindmapContextSync({ runtime, isInitialized, workspaceId })
 
-  // 把当前 organization id 桥接给 store action 用 (compaction 需要)
   useEffect(() => {
-    setActiveOrganizationId(currentOrgId ?? null)
-  }, [currentOrgId])
+    return () => clearPreparedTurn()
+  }, [])
 
   return runtimeApi
 }

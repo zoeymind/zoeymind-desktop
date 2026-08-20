@@ -8,7 +8,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { logger } from "@zoeymind/logger"
-import { loadModelsConfig, type ModelsConfig } from "@/shared/native"
+import {
+  loadModelsConfig,
+  resolveChatModel,
+  resolveContextBudget,
+  type ModelsConfig,
+} from "@/shared/native"
 
 const PROVIDER_ICONS: Record<string, string> = {
   openai: "/llmLogo/openai.svg",
@@ -104,11 +109,21 @@ export function useModelSelector() {
 
   const isAIConfigured = models.length > 0
 
+  const contextBudget = useMemo(() => {
+    if (!cfg || !effectiveSelectedModel) return undefined
+    try {
+      return resolveContextBudget(resolveChatModel(cfg, effectiveSelectedModel).entry)
+    } catch {
+      return undefined
+    }
+  }, [cfg, effectiveSelectedModel])
+
   return {
     models,
     selectedModel: effectiveSelectedModel,
     setSelectedModel,
     isAIConfigured,
     isLoading,
+    contextBudget,
   }
 }
