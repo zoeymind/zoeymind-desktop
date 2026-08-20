@@ -32,7 +32,7 @@ permissions:
 jobs:
   validate:
     name: Validate release request
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Validate input mode
         env:
@@ -54,7 +54,7 @@ jobs:
     name: Prepare explicit release
     if: inputs.artifact-run-id == ''
     needs: validate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     outputs:
       tag-name: ${{ steps.release.outputs.tag-name }}
       version: ${{ steps.release.outputs.version }}
@@ -202,7 +202,7 @@ jobs:
     name: Publish complete release
     if: needs.build.result == 'success'
     needs: [prepare, build]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     env:
       GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag-name }}
@@ -261,7 +261,7 @@ jobs:
     name: Publish existing build artifacts
     if: inputs.artifact-run-id != '' && inputs.release-tag != ''
     needs: validate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     env:
       GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       RELEASE_TAG: ${{ inputs.release-tag }}
