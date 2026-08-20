@@ -1,7 +1,7 @@
 // @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
-import JSZip from 'jszip'
-import { logger } from '@zoeymind/logger'
-import type { default as MindMap, MindMapNodeTree } from 'simple-mind-map'
+import JSZip from "jszip"
+import { logger } from "@zoeymind/logger"
+import type { default as MindMap, MindMapNodeTree } from "simple-mind-map"
 
 interface XMindTopic {
   add: (options: { title: string }) => void
@@ -55,25 +55,20 @@ export class XMindExporter {
     this.mindMap = mindMap
   }
 
-  public async export(): Promise<void> {
+  public async export(): Promise<Blob> {
     try {
       if (!this.mindMap || !this.mindMap.renderer) {
-        throw new Error('MindMap is not initialized')
+        throw new Error("MindMap is not initialized")
       }
-
       const completeData = this.mindMap.getData()
-      const rootText = (completeData.data?.text as string) || '思维导图'
-
+      const rootText = (completeData.data?.text as string) || "思维导图"
       const mindMapWithXMindExport = this.mindMap as MindMapWithXMindExport
-
       if (!mindMapWithXMindExport.doExportXMind) {
-        throw new Error('XMind 导出插件未注册')
+        throw new Error("XMind 导出插件未注册")
       }
-
-      const blob = await mindMapWithXMindExport.doExportXMind.xmind(completeData, rootText)
-      this.downloadBlob(blob, rootText)
+      return mindMapWithXMindExport.doExportXMind.xmind(completeData, rootText)
     } catch (error) {
-      logger.error('导出失败:', error)
+      logger.error("导出失败:", error)
       throw error
     }
   }
@@ -85,15 +80,15 @@ export class XMindExporter {
    */
   public async exportFromData(
     mindMapData: MindMapNodeTree,
-    fileName: string = '思维导图'
+    fileName: string = "思维导图"
   ): Promise<void> {
     try {
       if (!mindMapData) {
-        throw new Error('MindMap data is required')
+        throw new Error("MindMap data is required")
       }
 
       if (!window.Workbook || !window.Topic || !window.Dumper) {
-        throw new Error('XMind SDK 未加载，请稍后重试')
+        throw new Error("XMind SDK 未加载，请稍后重试")
       }
       const workbook = new window.Workbook()
 
@@ -104,7 +99,7 @@ export class XMindExporter {
       const rootText = completeData.data?.text || fileName
 
       // 创建工作表和主题
-      const sheet = workbook.createSheet('Sheet 1', rootText)
+      const sheet = workbook.createSheet("Sheet 1", rootText)
       const topic = new window.Topic({ sheet })
       const rootId = topic.cid()
 
@@ -118,7 +113,7 @@ export class XMindExporter {
       // 导出为 xmind 文件
       await this.data_to_download(workbook, rootText)
     } catch (error) {
-      logger.error('Export from data failed:', error)
+      logger.error("Export from data failed:", error)
       throw error
     }
   }
@@ -130,38 +125,38 @@ export class XMindExporter {
   ): void {
     try {
       if (!window.Workbook || !window.Topic || !window.Dumper) {
-        throw new Error('XMind SDK 未加载，请稍后重试')
+        throw new Error("XMind SDK 未加载，请稍后重试")
       }
       const marker = new window.Marker()
       const topic = parentTopic
 
       // 添加当前节点
-      topic.add({ title: data.data.text || '' })
+      topic.add({ title: data.data.text || "" })
       const tem_id = topic.cid()
       topic.on(tem_id)
 
       // 处理图标
       const icons = data.data.icon || []
       icons.forEach((icon: string) => {
-        const [type, name] = icon.split('_')
+        const [type, name] = icon.split("_")
         try {
           switch (type) {
-            case 'priority':
+            case "priority":
               topic.marker(marker.priority(name))
               break
-            case 'sign':
+            case "sign":
               switch (name) {
-                case '1':
-                  topic.marker(marker.star('red'))
+                case "1":
+                  topic.marker(marker.star("red"))
                   break
-                case '2':
-                  topic.marker(marker.flag('red'))
+                case "2":
+                  topic.marker(marker.flag("red"))
                   break
               }
               break
           }
         } catch (error) {
-          logger.error('Failed to add marker:', { type, name, error })
+          logger.error("Failed to add marker:", { type, name, error })
         }
       })
 
@@ -175,14 +170,14 @@ export class XMindExporter {
       // 返回到父节点
       topic.on(comp_id)
     } catch (error) {
-      logger.error('Create topic failed:', error)
+      logger.error("Create topic failed:", error)
     }
   }
 
-  private data_to_download(workbook: XMindWorkbook, fileName: string = '思维导图'): void {
+  private data_to_download(workbook: XMindWorkbook, fileName: string = "思维导图"): void {
     const zip = new JSZip()
     if (!window.Workbook || !window.Topic || !window.Dumper) {
-      throw new Error('XMind SDK 未加载，请稍后重试')
+      throw new Error("XMind SDK 未加载，请稍后重试")
     }
     const dumper = new window.Dumper({ workbook })
     const files = dumper.dumping()
@@ -192,27 +187,27 @@ export class XMindExporter {
     })
 
     zip
-      .generateAsync({ type: 'blob' })
+      .generateAsync({ type: "blob" })
       .then(content => {
-        const downloadLink = document.createElement('a')
+        const downloadLink = document.createElement("a")
         downloadLink.href = URL.createObjectURL(content)
         downloadLink.download = `${fileName}.xmind`
-        downloadLink.style.display = 'none'
+        downloadLink.style.display = "none"
         document.body.appendChild(downloadLink)
         downloadLink.click()
         document.body.removeChild(downloadLink)
         URL.revokeObjectURL(downloadLink.href)
       })
       .catch(e => {
-        logger.error('Failed to generate zip:', e)
+        logger.error("Failed to generate zip:", e)
       })
   }
 
   private downloadBlob(blob: Blob, fileName: string): void {
-    const link = document.createElement('a')
+    const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
     link.download = `${fileName}.xmind`
-    link.style.display = 'none'
+    link.style.display = "none"
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

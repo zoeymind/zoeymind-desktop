@@ -40,6 +40,7 @@ import { ShareButton } from "@/products/mind/features/mindmap/components/ShareDi
 import { RequestEditButton } from "./RequestEditButton"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
 import type { CollaborationState } from "@/products/mind/features/mindmap/components/hooks/useCollaborationManager"
+import { IMPORT_ACCEPT } from "@/products/mind/features/mindmap/utils/fileFormats"
 
 // 存储 key
 const TITLE_STORAGE_KEY = "mindmap_title"
@@ -393,7 +394,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
         type="file"
         ref={fileInputRef}
         style={{ display: "none" }}
-        accept=".xmind,.md,.zip"
+        accept={IMPORT_ACCEPT}
         onChange={handleFileChange}
         title={t("mindmap.topbar.import.fileInputLabel")}
         aria-label={t("mindmap.topbar.import.fileInputLabel")}

@@ -882,9 +882,9 @@ export default {
       },
       import: {
         confirm: "Confirm import",
-        description: "Select a file to import.",
+        description: "Supports XMind, Markdown (.md), and nested ZIP files.",
         dialogTitle: "Import file",
-        fileInputLabel: "Import file",
+        fileInputLabel: "Choose an XMind, Markdown, or ZIP file",
         formatStandard: "Standard XMind format",
         formatStandardDesc: "Standard format: general mind map structure.",
         formatZm: "MeterSphere test case format",
@@ -1061,7 +1061,7 @@ export default {
       importMsXmind: "Import MeterSphere XMind",
       importMsXmindDesc: "Import MeterSphere test-case format",
       import: "Import file",
-      importDesc: "Create from XMind / Markdown",
+      importDesc: "Create from XMind, Markdown, or nested ZIP",
     },
     dialogs: {
       deleteDescription:

@@ -12,29 +12,15 @@ import { useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { logger } from "@zoeymind/logger"
-import { bumpProjects, createUUID, findByPath, registerProject } from "@/shared/native"
-import { useTabs } from "@/shared/tabs/store"
+import { openZmindProject } from "@/shared/native"
 
 const openingPaths = new Map<string, Promise<void>>()
 
 async function openZmindPath(path: string): Promise<void> {
   try {
-    const existing = await findByPath(path)
-    let id = existing?.id
-    // 名字权威源: 文件名 (foo.zmind -> foo).
-    const name =
-      path
-        .split(/[\\/]/)
-        .pop()!
-        .replace(/\.zmind$/i, "") || "Untitled"
-    if (!id) {
-      id = createUUID()
-      await registerProject({ id, path, name, nodeCount: 0 })
-      bumpProjects()
-    }
-    useTabs.getState().openTab({ id, kind: "file", title: name, projectId: id })
+    await openZmindProject(path)
   } catch (error) {
-    logger.error("外部 .zmind 打开失败", error)
+    logger.error("external .zmind open failed", error)
   }
 }
 

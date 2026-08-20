@@ -2,13 +2,13 @@
  * Markdown 文件解析工具
  * 基于 simple-mind-map 的 markdown API 实现
  */
-import type { MindMapNodeTree } from 'simple-mind-map'
+import type { MindMapNodeTree } from "simple-mind-map"
 
 /**
  * Emoji到思维导图图标的映射关系
  */
 const EMOJI_TO_ICON_MAPPING: Record<string, string> = {
-  '🚩': 'sign_2' // 红旗 -> 红色标志（模块节点）
+  "🚩": "sign_2", // 红旗 -> 红色标志（模块节点）
   // ⭐ 不再映射到 sign_1，用例节点只通过 priority_* 标识
 }
 
@@ -16,16 +16,16 @@ const EMOJI_TO_ICON_MAPPING: Record<string, string> = {
  * 思维导图图标到Emoji的反向映射关系
  */
 const ICON_TO_EMOJI_MAPPING: Record<string, string> = {
-  sign_2: '🚩' // 红色标志 -> 红旗（模块节点）
+  sign_2: "🚩", // 红色标志 -> 红旗（模块节点）
 }
 
 /**
  * 优先级图标到优先级标记的映射关系
  */
 const ICON_TO_PRIORITY_MAPPING: Record<string, string> = {
-  priority_1: 'P1',
-  priority_2: 'P2',
-  priority_3: 'P3'
+  priority_1: "P1",
+  priority_2: "P2",
+  priority_3: "P3",
 }
 
 /**
@@ -51,7 +51,7 @@ export const extractEmojisAndConvertToIcons = (
       }
 
       // 从文本中移除优先级标记
-      cleanText = cleanText.replace(new RegExp(`\\b${match}\\b`, 'g'), '').trim()
+      cleanText = cleanText.replace(new RegExp(`\\b${match}\\b`, "g"), "").trim()
     })
   }
 
@@ -63,15 +63,15 @@ export const extractEmojisAndConvertToIcons = (
         icons.push(iconId)
       }
       // 从文本中移除emoji
-      cleanText = cleanText.replace(new RegExp(escapeRegExp(emoji), 'g'), '').trim()
+      cleanText = cleanText.replace(new RegExp(escapeRegExp(emoji), "g"), "").trim()
     }
   })
 
   // 3. 清理多余的空格和符号
   cleanText = cleanText
-    .replace(/\s+/g, ' ') // 合并多个空格为一个
-    .replace(/^\s*[&\-\s]*\s*/, '') // 移除开头的&、-、空格等
-    .replace(/\s*[&\-\s]*$/, '') // 移除结尾的&、-、空格等
+    .replace(/\s+/g, " ") // 合并多个空格为一个
+    .replace(/^\s*[&\-\s]*\s*/, "") // 移除开头的&、-、空格等
+    .replace(/\s*[&\-\s]*$/, "") // 移除结尾的&、-、空格等
     .trim() // 最终trim
 
   return { cleanText, icons }
@@ -83,7 +83,7 @@ export const extractEmojisAndConvertToIcons = (
  * @returns 转义后的字符串
  */
 const escapeRegExp = (string: string): string => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 /**
@@ -115,7 +115,7 @@ const convertIconsToEmojiAndPriority = (text: string, icons: string[] = []): str
   }
   parts.push(text)
 
-  return parts.join(' ').trim()
+  return parts.join(" ").trim()
 }
 
 /**
@@ -148,12 +148,12 @@ export const convertMarkdownToMindMapNodeTree = async (
  * @returns 解析后的思维导图数据
  */
 const parseMarkdownContent = (markdownContent: string): MindMapNodeTree => {
-  const lines = markdownContent.split('\n').filter(line => line.trim())
+  const lines = markdownContent.split("\n").filter(line => line.trim())
 
   if (lines.length === 0) {
     return {
-      data: { text: '空文档', uid: generateUID(), expand: true, isActive: false, richText: false },
-      children: []
+      data: { text: "空文档", uid: generateUID(), expand: true, isActive: false, richText: false },
+      children: [],
     }
   }
 
@@ -164,13 +164,13 @@ const parseMarkdownContent = (markdownContent: string): MindMapNodeTree => {
 
   const rootNode: MindMapNodeTree = {
     data: {
-      text: 'Markdown导入',
+      text: "Markdown导入",
       uid: generateUID(),
       expand: true,
       isActive: false,
-      richText: false
+      richText: false,
     },
-    children: []
+    children: [],
   }
 
   const nodeStack: Array<{ node: MindMapNodeTree; level: number }> = [{ node: rootNode, level: 0 }]
@@ -179,7 +179,7 @@ const parseMarkdownContent = (markdownContent: string): MindMapNodeTree => {
     const { cleanText, icons } = extractEmojisAndConvertToIcons(text)
     const node: MindMapNodeTree = {
       data: { text: cleanText, uid: generateUID(), expand: true, isActive: false, richText: false },
-      children: []
+      children: [],
     }
     if (icons.length > 0) node.data.icon = icons
     return node
@@ -192,7 +192,7 @@ const parseMarkdownContent = (markdownContent: string): MindMapNodeTree => {
     const headingLevel = parseHeadingLevel(trimmedLine)
 
     if (headingLevel > 0) {
-      const text = trimmedLine.replace(/^#+\s*/, '')
+      const text = trimmedLine.replace(/^#+\s*/, "")
       const newNode = createNode(text)
 
       while (nodeStack.length > 1 && nodeStack[nodeStack.length - 1].level >= headingLevel) {
@@ -201,8 +201,8 @@ const parseMarkdownContent = (markdownContent: string): MindMapNodeTree => {
 
       nodeStack[nodeStack.length - 1].node.children.push(newNode)
       nodeStack.push({ node: newNode, level: headingLevel })
-    } else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
-      const text = trimmedLine.replace(/^[-*]\s*/, '')
+    } else if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ")) {
+      const text = trimmedLine.replace(/^[-*]\s*/, "")
       const newNode = createNode(text)
       nodeStack[nodeStack.length - 1].node.children.push(newNode)
     } else {
@@ -220,16 +220,11 @@ const parseMarkdownContent = (markdownContent: string): MindMapNodeTree => {
  * @returns Promise<MindMapNodeTree> 解析后的思维导图数据
  */
 export const parseMarkdownFile = async (file: File): Promise<MindMapNodeTree> => {
-  if (!file.name.toLowerCase().endsWith('.md')) {
-    throw new Error('不支持的文件类型，请选择.md文件')
+  if (!file.name.toLowerCase().endsWith(".md")) {
+    throw new Error("不支持的文件类型，请选择.md文件")
   }
 
-  const content = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = e => resolve(e.target?.result as string)
-    reader.onerror = () => reject(new Error('文件读取失败'))
-    reader.readAsText(file, 'utf-8')
-  })
+  const content = await file.text()
 
   return await convertMarkdownToMindMapNodeTree(content)
 }
@@ -243,8 +238,8 @@ export const convertMindMapNodeTreeToMarkdown = async (
   mindMapData: MindMapNodeTree
 ): Promise<string> => {
   const exportNode = (node: MindMapNodeTree, level: number = 0): string => {
-    const indent = '  '.repeat(level)
-    const prefix = level === 0 ? '# ' : '- '
+    const indent = "  ".repeat(level)
+    const prefix = level === 0 ? "# " : "- "
 
     // 将图标转换为emoji和优先级标记，并添加到文本中
     const textWithIcons = convertIconsToEmojiAndPriority(node.data.text, node.data.icon)

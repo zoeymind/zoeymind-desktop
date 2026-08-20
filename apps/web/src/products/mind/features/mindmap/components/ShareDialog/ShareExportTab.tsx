@@ -1,14 +1,16 @@
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { Button, TabsContent } from '@zoeymind/ui'
-import { toast } from '@/shared/app-shared'
-import { logger } from '@zoeymind/logger'
-import { FileImage, FileText, FileCode, FileType, Network } from 'lucide-react'
-import { useTranslation } from '@zoeymind/i18n'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import { XMindExporter } from '@/products/mind/features/mindmap/utils/XMindExporter'
-import { ZMXMindExporter } from '@/products/mind/features/mindmap/utils/ZMXMindExporter'
-import { convertMindMapNodeTreeToMarkdownWithIcons } from '@/products/mind/features/mindmap/utils/markdownParser'
-import { exportToZipNested } from '@/products/mind/features/mindmap/utils/zipNestedExporter'
+import { Button, TabsContent } from "@zoeymind/ui"
+import { toast } from "@/shared/app-shared"
+import { logger } from "@zoeymind/logger"
+import { FileImage, FileText, FileCode, FileType, Network } from "lucide-react"
+import { useTranslation } from "@zoeymind/i18n"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import {
+  EXPORT_FORMATS,
+  EXPORT_FORMAT_I18N_KEYS,
+  exportMindMapToFile,
+  type ExportFormat,
+} from "@/products/mind/features/mindmap/utils/fileFormats"
 
 /**
  * ShareDialog - 导出 Tab。
@@ -18,59 +20,35 @@ export function ShareExportTab() {
   const { t } = useTranslation()
   const { mindMap } = useMindMapStore()
 
-  const handleExport = async (type: string): Promise<void> => {
+  const handleExport = async (type: ExportFormat): Promise<void> => {
     if (!mindMap) return
     try {
-      const fileName = mindMap.getData().data.text
-      const exportMap: Record<string, () => Promise<Blob | string | void> | Blob | string | void> =
-        {
-          png: () => mindMap.doExport?.png(fileName, false),
-          svg: () => mindMap.doExport?.svg(fileName),
-          pdf: () => mindMap.doExport?.pdf(fileName, false),
-          json: () => mindMap.doExport?.json('', true),
-          txt: () => mindMap.doExport?.txt(),
-          md: async () => {
-            const content = await convertMindMapNodeTreeToMarkdownWithIcons(mindMap.getData())
-            return new Blob([content], { type: 'text/markdown' })
-          },
-          xmind: async () => {
-            await new XMindExporter(mindMap).export()
-          },
-          zmxmind: async () => {
-            await new ZMXMindExporter(mindMap).export()
-          },
-          zip: async () => {
-            await exportToZipNested(mindMap)
-          }
-        }
-      const fn = exportMap[type]
-      if (!fn) return
-      const data = await fn()
-      if (type === 'xmind' || type === 'zmxmind' || type === 'zip') return
-      const a = document.createElement('a')
-      a.href = data instanceof Blob ? URL.createObjectURL(data) : data || ''
-      a.download = `${fileName}.${type}`
-      a.click()
-      if (data instanceof Blob) URL.revokeObjectURL(a.href)
+      await exportMindMapToFile(mindMap, type)
     } catch (error) {
-      logger.error('导出失败:', error)
+      logger.error("导出失败:", error)
       toast({
-        title: t('mindmap.shareDialog.exportFailedTitle'),
-        description: t('mindmap.shareDialog.exportFailedDescription'),
-        variant: 'destructive'
+        title: t("mindmap.shareDialog.exportFailedTitle"),
+        description: t("mindmap.shareDialog.exportFailedDescription"),
+        variant: "destructive",
       })
     }
   }
 
-  const exportItems: { type: string; label: string; icon: typeof FileImage }[] = [
-    { type: 'png', label: t('mindmap.shareDialog.exportPNG'), icon: FileImage },
-    { type: 'svg', label: t('mindmap.shareDialog.exportSVG'), icon: FileImage },
-    { type: 'pdf', label: t('mindmap.shareDialog.exportPDF'), icon: FileText },
-    { type: 'md', label: t('mindmap.shareDialog.exportMarkdown'), icon: FileText },
-    { type: 'json', label: t('mindmap.shareDialog.exportJSON'), icon: FileCode },
-    { type: 'txt', label: t('mindmap.shareDialog.exportTXT'), icon: FileType },
-    { type: 'xmind', label: t('mindmap.shareDialog.exportXMind'), icon: Network }
-  ]
+  const exportItems: { type: ExportFormat; label: string; icon: typeof FileImage }[] =
+    EXPORT_FORMATS.map(type => ({
+      type,
+      label: t(EXPORT_FORMAT_I18N_KEYS[type]),
+      icon:
+        type === "png" || type === "svg"
+          ? FileImage
+          : type === "json"
+            ? FileCode
+            : type === "txt"
+              ? FileType
+              : type === "xmind" || type === "zmxmind"
+                ? Network
+                : FileText,
+    }))
 
   return (
     <TabsContent value="export" className="min-h-0 flex-1 overflow-y-auto px-6 py-5">

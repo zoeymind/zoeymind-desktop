@@ -1,7 +1,7 @@
 // @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
-import JSZip from 'jszip'
-import { logger } from '@zoeymind/logger'
-import type { default as MindMap, MindMapNodeTree } from 'simple-mind-map'
+import JSZip from "jszip"
+import { logger } from "@zoeymind/logger"
+import type { default as MindMap, MindMapNodeTree } from "simple-mind-map"
 
 interface XMindTopic {
   add: (options: { title: string }) => void
@@ -52,9 +52,9 @@ declare global {
  * 节点类型枚举
  */
 enum NodeType {
-  MODULE = 'sign_2', // 模块节点（通过 sign_2 图标标识）
-  TEST_CASE = 'priority', // 测试用例节点（通过 priority_* 图标标识）
-  STEP = 'no_icon' // 步骤节点
+  MODULE = "sign_2", // 模块节点（通过 sign_2 图标标识）
+  TEST_CASE = "priority", // 测试用例节点（通过 priority_* 图标标识）
+  STEP = "no_icon", // 步骤节点
 }
 
 /**
@@ -93,28 +93,21 @@ export class ZMXMindExporter {
   /**
    * 导出思维导图为ZM格式的XMind文件
    */
-  public async export(): Promise<void> {
+  public async export(): Promise<Blob> {
     try {
       if (!this.mindMap || !this.mindMap.renderer) {
-        throw new Error('思维导图未初始化')
+        throw new Error("思维导图未初始化")
       }
-
       const completeData = this.mindMap.getData()
-      const rootText = completeData.data?.text || '测试用例'
-
-      // 转换为 MeterSphere 格式（case：前缀、步骤层级、前置条件、优先级）
+      const rootText = completeData.data?.text || "测试用例"
       const zmData = this.transformDataToZMFormat(completeData)
-
       const mindMapWithXMindExport = this.mindMap as MindMapWithXMindExport
-
       if (!mindMapWithXMindExport.doExportXMind) {
-        throw new Error('XMind 导出插件未注册')
+        throw new Error("XMind 导出插件未注册")
       }
-
-      const blob = await mindMapWithXMindExport.doExportXMind.xmind(zmData, rootText)
-      this.downloadBlob(blob, rootText)
+      return mindMapWithXMindExport.doExportXMind.xmind(zmData, rootText)
     } catch (error) {
-      logger.error('MeterSphere XMind 导出失败:', error)
+      logger.error("MeterSphere XMind 导出失败:", error)
       throw error
     }
   }
@@ -126,23 +119,23 @@ export class ZMXMindExporter {
    */
   public async exportFromData(
     mindMapData: MindMapNodeTree,
-    fileName: string = '测试用例'
+    fileName: string = "测试用例"
   ): Promise<void> {
     try {
       // 检查 XMind SDK 是否加载
       if (!window.Workbook || !window.Topic || !window.Dumper) {
-        throw new Error('XMind SDK 未加载，请稍后重试')
+        throw new Error("XMind SDK 未加载，请稍后重试")
       }
 
       if (!mindMapData) {
-        throw new Error('思维导图数据为空')
+        throw new Error("思维导图数据为空")
       }
 
       const workbook = new window.Workbook()
       const completeData = mindMapData
       const rootText = completeData.data?.text || fileName
 
-      const sheet = workbook.createSheet('Sheet 1', rootText)
+      const sheet = workbook.createSheet("Sheet 1", rootText)
       const topic = new window.Topic({ sheet })
       const rootId = topic.cid()
 
@@ -156,7 +149,7 @@ export class ZMXMindExporter {
       // 导出为xmind文件
       this.dataToDownload(workbook, rootText)
     } catch (error) {
-      logger.error('从数据导出 MeterSphere XMind 失败:', error)
+      logger.error("从数据导出 MeterSphere XMind 失败:", error)
       throw error
     }
   }
@@ -168,8 +161,8 @@ export class ZMXMindExporter {
    */
   private identifyNodeType(node: MindMapNodeTree): NodeType {
     const icons = node.data.icon || []
-    if (icons.includes('sign_2')) return NodeType.MODULE
-    if (icons.some((icon: string) => icon.startsWith('priority_'))) return NodeType.TEST_CASE
+    if (icons.includes("sign_2")) return NodeType.MODULE
+    if (icons.some((icon: string) => icon.startsWith("priority_"))) return NodeType.TEST_CASE
     return NodeType.STEP
   }
 
@@ -181,30 +174,30 @@ export class ZMXMindExporter {
    * @returns 解析后的测试用例数据
    */
   private parseTestCase(text: string, icons?: string[]): ParsedTestCase {
-    const separatorIndex = text.indexOf('&')
+    const separatorIndex = text.indexOf("&")
     const baseResult = {
       title: separatorIndex === -1 ? text.trim() : text.substring(0, separatorIndex).trim(),
-      precondition: separatorIndex === -1 ? '' : text.substring(separatorIndex + 1).trim(),
+      precondition: separatorIndex === -1 ? "" : text.substring(separatorIndex + 1).trim(),
       hasPrecondition: separatorIndex !== -1,
-      priority: '',
-      hasPriority: false
+      priority: "",
+      hasPriority: false,
     }
 
     // 解析优先级
     if (icons && icons.length > 0) {
-      const priorityIcon = icons.find(icon => icon.startsWith('priority_'))
+      const priorityIcon = icons.find(icon => icon.startsWith("priority_"))
       if (priorityIcon) {
         const priorityMap: Record<string, string> = {
-          priority_1: 'P0',
-          priority_2: 'P1',
-          priority_3: 'P2'
+          priority_1: "P0",
+          priority_2: "P1",
+          priority_3: "P2",
         }
         const priority = priorityMap[priorityIcon]
         if (priority) {
           return {
             ...baseResult,
             priority,
-            hasPriority: true
+            hasPriority: true,
           }
         }
       }
@@ -220,18 +213,18 @@ export class ZMXMindExporter {
    * @returns 解析后的步骤数据
    */
   private parseStep(stepText: string): ParsedStep {
-    const separatorIndex = stepText.indexOf('&')
+    const separatorIndex = stepText.indexOf("&")
     if (separatorIndex === -1) {
       return {
         description: stepText.trim(),
-        expected: '',
-        isValid: false
+        expected: "",
+        isValid: false,
       }
     }
     return {
       description: stepText.substring(0, separatorIndex).trim(),
       expected: stepText.substring(separatorIndex + 1).trim(),
-      isValid: true
+      isValid: true,
     }
   }
 
@@ -269,7 +262,7 @@ export class ZMXMindExporter {
           break
       }
     } catch (error) {
-      logger.error('创建主题节点失败:', { nodeText: data.data.text, error })
+      logger.error("创建主题节点失败:", { nodeText: data.data.text, error })
     }
   }
 
@@ -278,7 +271,7 @@ export class ZMXMindExporter {
    * 直接显示纯文本，不添加前缀
    */
   private createModuleNode(topic: XMindTopic, parentId: string, data: MindMapNodeTree): void {
-    const title = data.data.text || ''
+    const title = data.data.text || ""
 
     topic.add({ title })
     const temId = topic.cid()
@@ -289,7 +282,7 @@ export class ZMXMindExporter {
     // 递归处理子节点
     if (data.children && data.children.length > 0) {
       data.children.forEach(child => {
-        this.createTopicsFromJson(topic, temId, child, 'sign_2')
+        this.createTopicsFromJson(topic, temId, child, "sign_2")
       })
     }
 
@@ -301,7 +294,7 @@ export class ZMXMindExporter {
    * 添加"case："前缀，提取前置条件和优先级
    */
   private createTestCaseNode(topic: XMindTopic, parentId: string, data: MindMapNodeTree): void {
-    const parsed = this.parseTestCase(data.data.text || '', data.data.icon)
+    const parsed = this.parseTestCase(data.data.text || "", data.data.icon)
     const title = `case：${parsed.title}`
 
     topic.add({ title })
@@ -325,13 +318,13 @@ export class ZMXMindExporter {
     // 处理步骤节点：创建一个"步骤描述"父节点，所有步骤作为其子节点
     if (data.children && data.children.length > 0) {
       // 创建唯一的"步骤描述"节点
-      topic.add({ title: '步骤描述' })
+      topic.add({ title: "步骤描述" })
       const stepDescId = topic.cid()
       topic.on(stepDescId)
 
       // 将所有步骤作为"步骤描述"的子节点
       data.children.forEach(child => {
-        this.createStepChildNode(topic, stepDescId, child.data.text || '')
+        this.createStepChildNode(topic, stepDescId, child.data.text || "")
       })
 
       // 返回到测试用例节点
@@ -345,7 +338,7 @@ export class ZMXMindExporter {
    * 创建普通节点（无特殊图标）
    */
   private createNormalNode(topic: XMindTopic, parentId: string, data: MindMapNodeTree): void {
-    topic.add({ title: data.data.text || '' })
+    topic.add({ title: data.data.text || "" })
     const temId = topic.cid()
     topic.on(temId)
 
@@ -392,7 +385,7 @@ export class ZMXMindExporter {
   /**
    * 生成XMind文件并触发下载
    */
-  private dataToDownload(workbook: XMindWorkbook, fileName: string = '测试用例'): void {
+  private dataToDownload(workbook: XMindWorkbook, fileName: string = "测试用例"): void {
     const zip = new JSZip()
     const dumper = new window.Dumper({ workbook })
     const files = dumper.dumping()
@@ -402,19 +395,19 @@ export class ZMXMindExporter {
     })
 
     zip
-      .generateAsync({ type: 'blob' })
+      .generateAsync({ type: "blob" })
       .then(content => {
-        const downloadLink = document.createElement('a')
+        const downloadLink = document.createElement("a")
         downloadLink.href = URL.createObjectURL(content)
         downloadLink.download = `${fileName}.xmind`
-        downloadLink.style.display = 'none'
+        downloadLink.style.display = "none"
         document.body.appendChild(downloadLink)
         downloadLink.click()
         document.body.removeChild(downloadLink)
         URL.revokeObjectURL(downloadLink.href)
       })
       .catch(e => {
-        logger.error('生成XMind文件失败:', e)
+        logger.error("生成XMind文件失败:", e)
       })
   }
 
@@ -425,7 +418,7 @@ export class ZMXMindExporter {
   private transformDataToZMFormat(data: MindMapNodeTree): MindMapNodeTree {
     const result: MindMapNodeTree = {
       data: { ...data.data },
-      children: []
+      children: [],
     }
 
     if (data.children && data.children.length > 0) {
@@ -457,7 +450,7 @@ export class ZMXMindExporter {
     const icons = node.data.icon || []
 
     // 模块节点 - 保持原样，递归子节点
-    if (icons.includes('sign_2')) {
+    if (icons.includes("sign_2")) {
       const result: MindMapNodeTree = { data: { ...node.data }, children: [] }
       if (node.children && node.children.length > 0) {
         result.children = this.transformChildrenToZMFormat(node.children)
@@ -466,22 +459,22 @@ export class ZMXMindExporter {
     }
 
     // 测试用例节点 - 转换为 MeterSphere 格式
-    if (icons.some((icon: string) => icon.startsWith('priority_'))) {
-      const parsed = this.parseTestCase(node.data.text || '', node.data.icon)
+    if (icons.some((icon: string) => icon.startsWith("priority_"))) {
+      const parsed = this.parseTestCase(node.data.text || "", node.data.icon)
 
       const result: MindMapNodeTree = {
         data: {
           ...node.data,
-          text: `case：${parsed.title}`
+          text: `case：${parsed.title}`,
         },
-        children: []
+        children: [],
       }
 
       // 添加前置条件子节点
       if (parsed.hasPrecondition) {
         result.children.push({
           data: { text: `前置条件：${parsed.precondition}` },
-          children: []
+          children: [],
         })
       }
 
@@ -489,27 +482,27 @@ export class ZMXMindExporter {
       if (parsed.hasPriority) {
         result.children.push({
           data: { text: `用例等级：${parsed.priority}` },
-          children: []
+          children: [],
         })
       }
 
       // 创建步骤层级
       if (node.children && node.children.length > 0) {
         const stepDescNode: MindMapNodeTree = {
-          data: { text: '步骤描述' },
-          children: []
+          data: { text: "步骤描述" },
+          children: [],
         }
 
         for (const child of node.children) {
-          const stepParsed = this.parseStep(child.data.text || '')
+          const stepParsed = this.parseStep(child.data.text || "")
           const stepNode: MindMapNodeTree = {
             data: { text: `步骤：${stepParsed.description}` },
-            children: []
+            children: [],
           }
           if (stepParsed.expected) {
             stepNode.children.push({
               data: { text: `预期结果：${stepParsed.expected}` },
-              children: []
+              children: [],
             })
           }
           stepDescNode.children.push(stepNode)
@@ -530,10 +523,10 @@ export class ZMXMindExporter {
   }
 
   private downloadBlob(blob: Blob, fileName: string): void {
-    const link = document.createElement('a')
+    const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
     link.download = `${fileName}.xmind`
-    link.style.display = 'none'
+    link.style.display = "none"
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

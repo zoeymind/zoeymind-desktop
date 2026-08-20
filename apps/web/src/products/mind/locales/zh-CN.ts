@@ -854,9 +854,9 @@ export default {
       },
       import: {
         confirm: "确认导入",
-        description: "选择要导入的文件",
+        description: "支持 XMind、Markdown（.md）和嵌套 ZIP 文件",
         dialogTitle: "导入文件",
-        fileInputLabel: "导入文件",
+        fileInputLabel: "选择 XMind、Markdown 或 ZIP 文件",
         formatStandard: "标准 XMind 格式",
         formatStandardDesc: "标准格式：常规思维导图结构",
         formatZm: "MeterSphere 测试用例格式",
@@ -1031,7 +1031,7 @@ export default {
       importMsXmind: "导入 MeterSphere XMind",
       importMsXmindDesc: "导入 MeterSphere 用例格式",
       import: "导入文件",
-      importDesc: "从 XMind / Markdown 文件创建",
+      importDesc: "从 XMind、Markdown 或嵌套 ZIP 文件创建",
     },
     dialogs: {
       deleteDescription: "项目将移入回收站，可在 30 天内还原；超期后自动永久删除。",

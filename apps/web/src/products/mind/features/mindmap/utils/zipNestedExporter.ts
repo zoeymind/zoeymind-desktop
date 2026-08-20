@@ -1,19 +1,19 @@
 // @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
-import { logger } from '@zoeymind/logger'
+import { logger } from "@zoeymind/logger"
 
 /**
  * ZIP嵌套文件导入导出工具
  * 支持将思维导图导出为文件夹结构的zip，每个节点对应一个文件夹和index.md
  */
-import JSZip from 'jszip'
-import type { default as MindMap } from 'simple-mind-map'
+import JSZip from "jszip"
+import type { default as MindMap } from "simple-mind-map"
 import {
   convertMindMapNodeTreeToMarkdownWithIcons,
   convertMarkdownToMindMapNodeTree,
   extractEmojisAndConvertToIcons,
-  generateUID
-} from './markdownParser'
-import type { MindMapNodeTree } from 'simple-mind-map'
+  generateUID,
+} from "./markdownParser"
+import type { MindMapNodeTree } from "simple-mind-map"
 
 /**
  * ZIP嵌套导出器
@@ -28,27 +28,16 @@ export class ZipNestedExporter {
   /**
    * 导出为ZIP文件
    */
-  public async export(): Promise<void> {
+  public async export(): Promise<Blob> {
     try {
       if (!this.mindMap || !this.mindMap.renderer) {
-        throw new Error('MindMap is not initialized')
+        throw new Error("MindMap is not initialized")
       }
-
-      // 获取思维导图数据
-      const mindMapData = this.mindMap.getData()
-      const rootText = mindMapData.data.text || '思维导图'
-
-      // 创建ZIP文件
       const zip = new JSZip()
-
-      // 生成文件夹结构
-      await this.generateFolderStructure(zip, mindMapData, '')
-
-      // 生成并下载ZIP文件
-      const content = await zip.generateAsync({ type: 'blob' })
-      this.downloadZip(content, `${rootText}.zip`)
+      await this.generateFolderStructure(zip, this.mindMap.getData(), "")
+      return zip.generateAsync({ type: "blob" })
     } catch (error) {
-      logger.error('ZIP导出失败:', error)
+      logger.error("ZIP导出失败:", error)
       throw error
     }
   }
@@ -113,10 +102,10 @@ export class ZipNestedExporter {
   private async generateCompleteMarkdown(node: MindMapNodeTree): Promise<string> {
     // 只导出子节点内容，不包含当前节点的标题（因为文件夹名称已经是模块名）
     if (!node.children || node.children.length === 0) {
-      return ''
+      return ""
     }
 
-    let content = ''
+    let content = ""
     for (const child of node.children) {
       // 只处理非模块节点（用例节点），跳过子模块
       if (!this.isModuleNode(child)) {
@@ -124,13 +113,13 @@ export class ZipNestedExporter {
         const childMarkdown = await convertMindMapNodeTreeToMarkdownWithIcons(child)
 
         // 将子节点的markdown转换为列表项格式，保持图标信息
-        const lines = childMarkdown.split('\n').filter((line: string) => line.trim())
+        const lines = childMarkdown.split("\n").filter((line: string) => line.trim())
         if (lines.length > 0) {
           // 处理第一行：从标题转换为列表项
           const firstLine = lines[0]
           if (firstLine.match(/^#+\s/)) {
             // 如果是标题格式，转换为列表项
-            const titleContent = firstLine.replace(/^#+\s*/, '')
+            const titleContent = firstLine.replace(/^#+\s*/, "")
             content += `- ${titleContent}\n`
           } else {
             content += `- ${firstLine}\n`
@@ -144,7 +133,7 @@ export class ZipNestedExporter {
             }
           }
 
-          content += '\n' // 在用例之间添加空行
+          content += "\n" // 在用例之间添加空行
         }
       }
       // 子模块节点会在generateFolderStructure中单独处理，不在index.md中包含
@@ -160,8 +149,8 @@ export class ZipNestedExporter {
    */
   private sanitizeFileName(fileName: string): string {
     return fileName
-      .replace(/[<>:"/\\|?*]/g, '') // 移除Windows不允许的字符
-      .replace(/\s+/g, '_') // 空格替换为下划线
+      .replace(/[<>:"/\\|?*]/g, "") // 移除Windows不允许的字符
+      .replace(/\s+/g, "_") // 空格替换为下划线
       .trim()
   }
 
@@ -172,7 +161,7 @@ export class ZipNestedExporter {
    */
   private downloadZip(content: Blob, fileName: string): void {
     const url = URL.createObjectURL(content)
-    const a = document.createElement('a')
+    const a = document.createElement("a")
     a.href = url
     a.download = fileName
     document.body.appendChild(a)
@@ -192,13 +181,13 @@ export class ZipNestedImporter {
    * @returns 思维导图数据
    */
   public async parseZipFile(file: File): Promise<MindMapNodeTree> {
-    if (!file.name.toLowerCase().endsWith('.zip')) {
-      throw new Error('不支持的文件类型，请选择.zip文件')
+    if (!file.name.toLowerCase().endsWith(".zip")) {
+      throw new Error("不支持的文件类型，请选择.zip文件")
     }
     try {
       // 使用JSZip解压文件
       const zip = new JSZip()
-      const zipFile = await zip.loadAsync(file)
+      const zipFile = await zip.loadAsync(await file.arrayBuffer())
 
       // 构建文件结构映射
       const fileStructure = this.buildFileStructure(zipFile)
@@ -206,17 +195,17 @@ export class ZipNestedImporter {
       // 创建根节点
       const rootData: MindMapNodeTree = {
         data: {
-          text: file.name.replace('.zip', ''),
+          text: file.name.replace(".zip", ""),
           uid: generateUID(),
           expand: true,
           isActive: false,
-          richText: false
+          richText: false,
         },
-        children: []
+        children: [],
       }
 
       // 查找所有顶级文件夹
-      const topLevelFolders = this.findSubfolders(fileStructure, '')
+      const topLevelFolders = this.findSubfolders(fileStructure, "")
 
       // 解析每个顶级文件夹
       for (const folder of topLevelFolders) {
@@ -227,10 +216,10 @@ export class ZipNestedImporter {
       }
 
       // 如果根目录有index.md，也处理根目录内容
-      const rootFiles = fileStructure.get('') || []
-      const rootIndexFile = rootFiles.find(f => f.toLowerCase() === 'index.md')
+      const rootFiles = fileStructure.get("") || []
+      const rootIndexFile = rootFiles.find(f => f.toLowerCase() === "index.md")
       if (rootIndexFile) {
-        const rootIndexContent = await zipFile.files[rootIndexFile].async('string')
+        const rootIndexContent = await zipFile.files[rootIndexFile].async("string")
         if (rootIndexContent.trim()) {
           // 解析根目录的index.md内容并添加到根节点的children中
           const rootContentData = await convertMarkdownToMindMapNodeTree(rootIndexContent)
@@ -241,8 +230,8 @@ export class ZipNestedImporter {
 
       return rootData
     } catch (error) {
-      logger.error('ZIP导入失败:', error)
-      throw new Error(`ZIP导入失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      logger.error("ZIP导入失败:", error)
+      throw new Error(`ZIP导入失败: ${error instanceof Error ? error.message : "未知错误"}`)
     }
   }
 
@@ -255,8 +244,8 @@ export class ZipNestedImporter {
     const structure = new Map<string, string[]>()
 
     Object.keys(zipFile.files).forEach(path => {
-      const parts = path.split('/')
-      const dir = parts.slice(0, -1).join('/')
+      const parts = path.split("/")
+      const dir = parts.slice(0, -1).join("/")
       const fileName = parts[parts.length - 1]
 
       if (fileName && !zipFile.files[path].dir) {
@@ -283,7 +272,7 @@ export class ZipNestedImporter {
     folderPath: string
   ): Promise<MindMapNodeTree | null> {
     const files = fileStructure.get(folderPath) || []
-    const indexFile = files.find(f => f.toLowerCase() === 'index.md')
+    const indexFile = files.find(f => f.toLowerCase() === "index.md")
 
     if (!indexFile) {
       return null
@@ -291,10 +280,10 @@ export class ZipNestedImporter {
 
     // 读取index.md文件
     const indexPath = folderPath ? `${folderPath}/${indexFile}` : indexFile
-    const indexContent = await zipFile.files[indexPath].async('string')
+    const indexContent = await zipFile.files[indexPath].async("string")
 
     // 从文件夹路径获取模块名称
-    const folderName = folderPath.split('/').pop() || '模块'
+    const folderName = folderPath.split("/").pop() || "模块"
 
     // 创建当前模块的节点，使用文件夹名作为标题，添加🚩图标
     const baseData: MindMapNodeTree = {
@@ -304,9 +293,9 @@ export class ZipNestedImporter {
         expand: true,
         isActive: false,
         richText: false,
-        icon: ['sign_2'] // 添加🚩图标
+        icon: ["sign_2"], // 添加🚩图标
       },
-      children: []
+      children: [],
     }
 
     // 如果有内容，解析markdown并添加到children中
@@ -343,7 +332,7 @@ export class ZipNestedImporter {
     for (const [path] of fileStructure) {
       if (path.startsWith(parentPath) && path !== parentPath) {
         const relativePath = parentPath ? path.substring(parentPath.length + 1) : path
-        const parts = relativePath.split('/')
+        const parts = relativePath.split("/")
         if (parts.length === 1 && parts[0]) {
           subfolders.push(parts[0])
         }
@@ -359,7 +348,7 @@ export class ZipNestedImporter {
    * @returns 解析后的节点数组
    */
   private parseMarkdownWithIndentation(content: string): MindMapNodeTree[] {
-    const lines = content.split('\n').filter(line => line.trim())
+    const lines = content.split("\n").filter(line => line.trim())
     const result: MindMapNodeTree[] = []
     const stack: Array<{ node: MindMapNodeTree; level: number }> = []
 
@@ -371,7 +360,7 @@ export class ZipNestedImporter {
       const indentLevel = indentMatch ? Math.floor(indentMatch[1].length / 2) : 0
 
       // 提取内容（移除缩进和列表标记）
-      const content = line.trim().replace(/^[-*]\s*/, '')
+      const content = line.trim().replace(/^[-*]\s*/, "")
 
       if (!content) continue
 
@@ -383,9 +372,9 @@ export class ZipNestedImporter {
           uid: generateUID(),
           expand: true,
           isActive: false,
-          richText: false
+          richText: false,
         },
-        children: []
+        children: [],
       }
 
       if (icons.length > 0) {
@@ -416,9 +405,8 @@ export class ZipNestedImporter {
  * 导出思维导图为ZIP嵌套文件结构
  * @param mindMap 思维导图实例
  */
-export const exportToZipNested = async (mindMap: MindMap): Promise<void> => {
-  const exporter = new ZipNestedExporter(mindMap)
-  await exporter.export()
+export const exportToZipNested = async (mindMap: MindMap): Promise<Blob> => {
+  return new ZipNestedExporter(mindMap).export()
 }
 
 /**

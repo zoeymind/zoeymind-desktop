@@ -15,9 +15,13 @@ import { open as openDialog, save as saveNativeDialog } from "@tauri-apps/plugin
 import * as pendingProjects from "./pending-projects"
 import { defaultMindmapData } from "@zoeymind/shared"
 import { useTabs } from "@/shared/tabs/store"
-import { findByPath, registerProject, listProjects } from "./projects-repo"
-import { bumpProjects } from "./projects-events"
-import { createUUID } from "@/shared/app-shared"
+import { listProjects } from "./projects-repo"
+import { openZmindProject } from "./open-zmind"
+import {
+  exportMindMapToFile,
+  EXPORT_FORMATS,
+  EXPORT_FORMAT_I18N_KEYS,
+} from "@/products/mind/features/mindmap/utils/fileFormats"
 import { projectSessionRegistry } from "@/products/mind/editor-session"
 
 // 新建 draft tab
@@ -35,20 +39,7 @@ async function actionOpen(): Promise<void> {
       filters: [{ name: "ZoeyMind", extensions: ["zmind"] }],
     })
     if (!picked || typeof picked !== "string") return
-    const existing = await findByPath(picked)
-    let id = existing?.id
-    // 名字权威源: 文件名 (foo.zmind -> foo).
-    const name =
-      picked
-        .split(/[\\/]/)
-        .pop()!
-        .replace(/\.zmind$/i, "") || "Untitled"
-    if (!id) {
-      id = createUUID()
-      await registerProject({ id, path: picked, name, nodeCount: 0 })
-      bumpProjects()
-    }
-    useTabs.getState().openTab({ id, kind: "file", title: name, projectId: id })
+    await openZmindProject(picked)
   } catch (error) {
     logger.error("open failed", error)
   }
@@ -71,6 +62,15 @@ async function actionSaveAs(): Promise<void> {
     await projectSessionRegistry.getActive()?.getState().commands.saveAs?.(picked)
   } catch (error) {
     logger.error("save as failed", error)
+  }
+}
+async function actionExport(format: (typeof EXPORT_FORMATS)[number]): Promise<void> {
+  const mindMap = projectSessionRegistry.getActive()?.getState().mindMap
+  if (!mindMap) return
+  try {
+    await exportMindMapToFile(mindMap, format)
+  } catch (error) {
+    logger.error(`export ${format} failed`, error)
   }
 }
 
@@ -135,6 +135,21 @@ async function buildRecentSubmenu(): Promise<Submenu> {
   })
 }
 
+async function buildExportSubmenu(): Promise<Submenu> {
+  return Submenu.new({
+    text: i18next.t("mindmap.topbar.more.export", "导出"),
+    items: await Promise.all(
+      EXPORT_FORMATS.map(format =>
+        MenuItem.new({
+          id: `file:export:${format}`,
+          text: i18next.t(EXPORT_FORMAT_I18N_KEYS[format]),
+          action: () => void actionExport(format),
+        })
+      )
+    ),
+  })
+}
+
 /**
  * 构建整个菜单. 每次 locale / recent 变化时重建 (成本低, 系统 API 快).
  */
@@ -189,6 +204,7 @@ export async function installAppMenu(): Promise<void> {
         accelerator: "CmdOrCtrl+Shift+S",
         action: () => void actionSaveAs(),
       }),
+      await buildExportSubmenu(),
       await PredefinedMenuItem.new({ item: "Separator" }),
       await MenuItem.new({
         id: "file:closetab",
