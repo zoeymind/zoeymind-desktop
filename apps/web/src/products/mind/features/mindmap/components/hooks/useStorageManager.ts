@@ -63,7 +63,7 @@ export function useStorageManager(): UseStorageManagerResult {
         return { savedData: defaultData, savedViewData: null }
       }
       nameRef.current = pending.title
-      return { savedData: pending.tree, savedViewData: null }
+      return { savedData: pending.tree, savedViewData: pending.view ?? null }
     }
     try {
       const row = await getProject(workspaceId)

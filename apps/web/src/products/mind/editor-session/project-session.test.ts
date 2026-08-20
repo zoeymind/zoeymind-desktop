@@ -69,3 +69,11 @@ describe("Project Editor Session", () => {
     unsubscribe()
   })
 })
+
+describe("recovered editor session", () => {
+  it("starts dirty so recovered content cannot be closed as a clean file", () => {
+    const recovered = createProjectSessionStore("recovered-tab", { dirty: true })
+
+    expect(recovered.getState().dirty).toBe(true)
+  })
+})

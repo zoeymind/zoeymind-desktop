@@ -11,26 +11,55 @@
  *
  * 现存条目在页面 reload 后清空 —— 未保存的想法本来就该丢。
  */
-import type { MindMapNodeTree } from 'simple-mind-map'
+import type { MindMapNodeTree } from "simple-mind-map"
+import type { FileRevision } from "./file-revision"
+
+export interface RecoveryOrigin {
+  recoveryId: string
+  path: string | null
+  revision: FileRevision | null
+}
 
 export interface PendingProject {
   id: string
   title: string
   tree: MindMapNodeTree
+  view?: unknown
   createdAt: number
+  recovery?: RecoveryOrigin
 }
 
 const store = new Map<string, PendingProject>()
 
-const PREFIX = 'unsaved-'
+const PREFIX = "unsaved-"
 
 export function isPending(id: string): boolean {
   return id.startsWith(PREFIX)
 }
 
-export function stash(input: Omit<PendingProject, 'id' | 'createdAt'>): string {
+export function stash(input: Omit<PendingProject, "id" | "createdAt">): string {
   const id = `${PREFIX}${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`
-  store.set(id, { id, title: input.title, tree: input.tree, createdAt: Date.now() })
+  store.set(id, { ...input, id, createdAt: Date.now() })
+  return id
+}
+export function stashRecovered(input: {
+  title: string
+  tree: MindMapNodeTree
+  view?: unknown
+  recoveryId: string
+  originPath: string | null
+  originRevision: FileRevision | null
+}): string {
+  const id = stash({
+    title: input.title,
+    tree: input.tree,
+    view: input.view,
+    recovery: {
+      recoveryId: input.recoveryId,
+      path: input.originPath,
+      revision: input.originRevision,
+    },
+  })
   return id
 }
 

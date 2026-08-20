@@ -103,9 +103,10 @@ export default {
     description:
       "The app did not close normally. Cancel to preserve every record, or restore all files now.",
     untitled: "Untitled mind map",
-    sourceMissing: "Original file unavailable; a new file will be created in the ZoeyMind folder",
+    sourceMissing: "Original file unavailable; it will be restored as an unsaved document",
     restoreAll: "Restore all",
     restoring: "Restoring…",
+    recoveredTabTitle: "{{name}} — Recovered",
     corruptCount: "{{count}} additional recovery records are corrupt and will be preserved.",
   },
   notifications: {

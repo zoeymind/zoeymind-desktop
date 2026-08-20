@@ -18,9 +18,9 @@ export type TabId = string | "home"
 
 export interface OpenTab {
   id: string
-  kind: "draft" | "file"
+  kind: "draft" | "recovery" | "file"
   title: string
-  /** 已保存/已入库项目在 SqlProjectRepo 里的 uuid; draft 未定. */
+  /** 已保存/已入库项目在 SqlProjectRepo 里的 uuid; draft/recovery 未定. */
   projectId?: string
 }
 

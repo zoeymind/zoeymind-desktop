@@ -100,9 +100,10 @@ export default {
     title: "检测到 {{count}} 个包含未保存修改的文件",
     description: "应用上次未正常关闭。可以取消并保留全部记录，或一次恢复所有文件。",
     untitled: "未命名思维导图",
-    sourceMissing: "原文件不可用，将自动保存到 ZoeyMind 文件夹",
+    sourceMissing: "原文件不可用，将作为未保存文档恢复",
     restoreAll: "恢复全部",
     restoring: "正在恢复…",
+    recoveredTabTitle: "{{name}} — 已恢复",
     corruptCount: "另有 {{count}} 个恢复记录已损坏，将继续保留。",
   },
   notifications: {

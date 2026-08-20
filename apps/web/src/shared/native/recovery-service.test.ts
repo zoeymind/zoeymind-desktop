@@ -1,33 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const fs = vi.hoisted(() => ({ exists: vi.fn(), mkdir: vi.fn() }))
-const paths = vi.hoisted(() => ({
-  join: vi.fn(async (directory: string, filename: string) => `${directory}/${filename}`),
-}))
 const recovery = vi.hoisted(() => ({
   clearRecovery: vi.fn(),
   readRecoveryBundle: vi.fn(),
 }))
-const projects = vi.hoisted(() => ({
-  findByPath: vi.fn(),
-  refreshProjectIndex: vi.fn(),
-  registerProject: vi.fn(),
-}))
-const revisions = vi.hoisted(() => ({
-  readFileRevision: vi.fn(),
-  revisionsEqual: vi.fn(),
-}))
-const bundles = vi.hoisted(() => ({ writeBundle: vi.fn() }))
+const pending = vi.hoisted(() => ({ stashRecovered: vi.fn() }))
 const tabs = vi.hoisted(() => ({ openTab: vi.fn(), setActive: vi.fn() }))
 
-vi.mock("@tauri-apps/plugin-fs", () => fs)
-vi.mock("@tauri-apps/api/path", () => paths)
 vi.mock("./recovery", () => recovery)
-vi.mock("./projects-repo", () => projects)
-vi.mock("./file-revision", () => revisions)
-vi.mock("./zmind-file", () => bundles)
-vi.mock("./paths", () => ({ defaultVaultDir: vi.fn(async () => "/vault") }))
-vi.mock("@/shared/app-shared", () => ({ createUUID: vi.fn(() => "new-project") }))
+vi.mock("./pending-projects", () => ({ stashRecovered: pending.stashRecovered }))
 vi.mock("@/shared/tabs/store", () => ({ useTabs: { getState: () => tabs } }))
 
 import { restoreAllRecoveries } from "./recovery-service"
@@ -37,11 +18,11 @@ const bundle = {
   meta: { name: "Recovered", tags: [], createdAt: 1, updatedAt: 2, nodeCount: 1 },
 }
 
-function descriptor(projectId: string, savedAt: number) {
+function descriptor(projectId: string, savedAt: number, sourcePath: string | null = null) {
   return {
     projectId,
-    sourcePath: `/vault/${projectId}.zmind`,
-    sourceRevision: { size: 10, mtime: 20 },
+    sourcePath,
+    sourceRevision: sourcePath ? { size: 10, mtime: 20 } : null,
     savedAt,
     name: projectId,
   }
@@ -51,48 +32,55 @@ describe("restoreAllRecoveries", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     recovery.readRecoveryBundle.mockResolvedValue(bundle)
-    recovery.clearRecovery.mockResolvedValue(undefined)
-    fs.exists.mockResolvedValue(true)
-    projects.findByPath.mockResolvedValue({ id: "existing" })
-    revisions.readFileRevision.mockResolvedValue({ size: 10, mtime: 20 })
-    revisions.revisionsEqual.mockReturnValue(true)
+    pending.stashRecovered.mockImplementation(
+      ({ recoveryId }: { recoveryId: string }) => `unsaved-recovery-${recoveryId}`
+    )
   })
 
-  it("restores oldest first and clears only fully successful records", async () => {
-    bundles.writeBundle
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error("disk full"))
-
-    const result = await restoreAllRecoveries([descriptor("newer", 2), descriptor("older", 1)])
-
-    expect(bundles.writeBundle.mock.calls.map(call => call[0])).toEqual([
-      "/vault/older.zmind",
-      "/vault/newer.zmind",
-    ])
-    expect(recovery.clearRecovery).toHaveBeenCalledTimes(1)
-    expect(recovery.clearRecovery).toHaveBeenCalledWith("older")
-    expect(result.succeeded).toHaveLength(1)
-    expect(result.failed).toEqual([{ recoveryId: "newer", message: "disk full" }])
-    expect(tabs.setActive).toHaveBeenCalledWith("existing")
-  })
-
-  it("preserves a changed source and creates a unique recovery copy", async () => {
-    revisions.revisionsEqual.mockReturnValue(false)
-    projects.findByPath.mockResolvedValue(null)
-    fs.exists.mockImplementation(async (path: string) => path.endsWith("source.zmind"))
-    bundles.writeBundle.mockResolvedValue(undefined)
-
+  it("opens recoveries oldest first as unsaved dirty documents without consuming backups", async () => {
     const result = await restoreAllRecoveries([
+      descriptor("newer", 2, "/documents/newer.zmind"),
+      descriptor("older", 1),
+    ])
+
+    expect(pending.stashRecovered.mock.calls.map(call => call[0])).toEqual([
       {
-        ...descriptor("source", 1),
-        name: "Plan",
+        title: "Recovered",
+        tree: bundle.tree,
+        recoveryId: "older",
+        originPath: null,
+        originRevision: null,
+      },
+      {
+        title: "Recovered",
+        tree: bundle.tree,
+        recoveryId: "newer",
+        originPath: "/documents/newer.zmind",
+        originRevision: { size: 10, mtime: 20 },
       },
     ])
-
-    expect(bundles.writeBundle).toHaveBeenCalledWith("/vault/Plan-恢复.zmind", bundle)
-    expect(projects.registerProject).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "new-project", path: "/vault/Plan-恢复.zmind" })
-    )
+    expect(tabs.openTab).toHaveBeenNthCalledWith(1, {
+      id: "unsaved-recovery-older",
+      kind: "recovery",
+      title: "Recovered",
+    })
+    expect(tabs.openTab).toHaveBeenNthCalledWith(2, {
+      id: "unsaved-recovery-newer",
+      kind: "recovery",
+      title: "Recovered",
+    })
+    expect(tabs.setActive).toHaveBeenCalledWith("unsaved-recovery-newer")
+    expect(recovery.clearRecovery).not.toHaveBeenCalled()
     expect(result.failed).toEqual([])
+  })
+
+  it("keeps a failed recovery available and continues restoring the remaining records", async () => {
+    recovery.readRecoveryBundle.mockResolvedValueOnce(null).mockResolvedValueOnce(bundle)
+
+    const result = await restoreAllRecoveries([descriptor("missing", 1), descriptor("valid", 2)])
+
+    expect(result.failed).toEqual([{ recoveryId: "missing", message: "恢复文件不存在" }])
+    expect(tabs.openTab).toHaveBeenCalledOnce()
+    expect(recovery.clearRecovery).not.toHaveBeenCalled()
   })
 })

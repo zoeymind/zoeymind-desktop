@@ -156,7 +156,7 @@ function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
       inert={!visible ? true : undefined}
     >
       {mounted ? (
-        <ProjectSessionProvider projectId={tab.id}>
+        <ProjectSessionProvider projectId={tab.id} initialDirty={tab.kind === "recovery"}>
           <SaveFlowProvider projectId={tab.id}>
             <EditorPaneInner id={tab.id} visible={visible} />
           </SaveFlowProvider>

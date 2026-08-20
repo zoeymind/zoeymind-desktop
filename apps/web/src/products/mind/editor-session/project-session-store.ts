@@ -73,13 +73,16 @@ const initialIconToolbarState: IconToolbarState = {
   nodeIconList: [],
 }
 
-export function createProjectSessionStore(projectId: string): ProjectSessionStore {
+export function createProjectSessionStore(
+  projectId: string,
+  initial: { dirty?: boolean } = {}
+): ProjectSessionStore {
   return createStore<ProjectSessionState>()(set => ({
     projectId,
     lifecycle: PROJECT_SESSION_LIFECYCLE.IDLE,
     loadError: null,
     mindMap: null,
-    dirty: false,
+    dirty: initial.dirty ?? false,
     title: null,
     previewActive: false,
     exitPreview: null,

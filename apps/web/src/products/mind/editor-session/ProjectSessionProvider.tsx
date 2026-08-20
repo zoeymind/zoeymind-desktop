@@ -5,12 +5,14 @@ import { ProjectSessionContext } from "./project-session-context"
 
 export function ProjectSessionProvider({
   projectId,
+  initialDirty = false,
   children,
 }: {
   projectId: string
+  initialDirty?: boolean
   children: ReactNode
 }) {
-  const [store] = useState(() => createProjectSessionStore(projectId))
+  const [store] = useState(() => createProjectSessionStore(projectId, { dirty: initialDirty }))
 
   useEffect(() => {
     projectSessionRegistry.register(store)

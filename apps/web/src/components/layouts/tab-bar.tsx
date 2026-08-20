@@ -56,7 +56,7 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
     const tab = tabs.find(t => t.id === id)
     if (!tab) return
     const dirty = projectSessionRegistry.get(tab.id)?.getState().dirty ?? false
-    const pending = tab.kind === "draft" && pendingProjects.isPending(tab.id)
+    const pending = tab.kind !== "file" && pendingProjects.isPending(tab.id)
     if (dirty || pending) {
       setPendingCloseId(tab.id)
     } else {
@@ -78,10 +78,16 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
     ...tabs.map(tab => {
       const loading = tabLoading[tab.id] === true
       const dirty =
-        tab.kind === "draft" || (projectSessionRegistry.get(tab.id)?.getState().dirty ?? false)
+        tab.kind !== "file" || (projectSessionRegistry.get(tab.id)?.getState().dirty ?? false)
+      const title =
+        tab.kind === "recovery"
+          ? i18next.t("recovery.recoveredTabTitle", {
+              name: tab.title || "无标题",
+            })
+          : tab.title || "无标题"
       return {
         id: tab.id,
-        label: loading ? "加载中…" : tab.title || "无标题",
+        label: loading ? "加载中…" : title,
         icon: loading ? (
           <Loader2 className="size-3 animate-spin text-muted-foreground" />
         ) : dirty ? (
@@ -126,7 +132,7 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
           tab={pendingTab}
           onCancel={() => setPendingCloseId(null)}
           onDiscard={() => {
-            if (pendingTab.kind === "draft") pendingProjects.clear(pendingTab.id)
+            if (pendingTab.kind !== "file") pendingProjects.clear(pendingTab.id)
             projectSessionRegistry.get(pendingTab.id)?.getState().setDirty(false)
             closeTab(pendingTab.id)
             setPendingCloseId(null)
