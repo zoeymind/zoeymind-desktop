@@ -70,7 +70,7 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
   return (
     <div
       className={cn(
-        "relative rounded-lg border border-border bg-muted/50 shadow-sm transition-colors duration-100 ease-out motion-reduce:transition-none",
+        "relative rounded-xl border border-border bg-muted/50 shadow-sm transition-colors duration-100 ease-out motion-reduce:transition-none",
         "p-2",
         className
       )}
