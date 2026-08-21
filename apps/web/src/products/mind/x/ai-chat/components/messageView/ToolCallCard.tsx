@@ -1,6 +1,6 @@
 /** Generic card for built-in and external tool calls. */
 
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import {
   ChevronDown,
   Loader2,
@@ -13,13 +13,59 @@ import {
   Figma,
   Image,
 } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/shared/app-shared"
 import { getToolLabel } from "../../../ai-chat/agent-tools"
 import { useTranslation } from "@zoeymind/i18n"
 
 import { countTokensInValue } from "../../../ai-chat/utils/tokenCounter"
+import { TOOL_EXECUTION_INTERRUPTED } from "../../../ai-chat/utils/pendingToolCalls"
 
+const MAX_TOOL_DETAIL_CHARS = 4_000
+
+function boundedDetail(value: unknown): { text: string; truncated: boolean } {
+  const text = typeof value === "string" ? value : JSON.stringify(value, null, 2)
+  return text.length > MAX_TOOL_DETAIL_CHARS
+    ? { text: text.slice(0, MAX_TOOL_DETAIL_CHARS), truncated: true }
+    : { text, truncated: false }
+}
+function boundedStreamingInput(input: Record<string, unknown> | undefined) {
+  if (!input) return null
+  const patch = typeof input.patch === "string" ? input.patch : ""
+  if (!patch) return boundedDetail(input)
+  const truncated = patch.length > MAX_TOOL_DETAIL_CHARS
+  return {
+    text: JSON.stringify(
+      { ...input, patch: truncated ? patch.slice(0, MAX_TOOL_DETAIL_CHARS) : patch },
+      null,
+      2
+    ),
+    truncated,
+  }
+}
+
+const STREAM_STALLED_AFTER_MS = 3_000
+
+function estimateStreamingTokens(input: Record<string, unknown> | undefined): number {
+  if (!input) return 0
+  const patch = typeof input.patch === "string" ? input.patch : ""
+  return Math.ceil(patch.length / 2)
+}
+
+function useStreamingStalled(active: boolean, estimatedTokens: number) {
+  const [stalled, setStalled] = useState(false)
+
+  useEffect(() => {
+    if (!active) return
+    const progressTimer = window.setTimeout(() => setStalled(false), 0)
+    const stalledTimer = window.setTimeout(() => setStalled(true), STREAM_STALLED_AFTER_MS)
+    return () => {
+      window.clearTimeout(progressTimer)
+      window.clearTimeout(stalledTimer)
+    }
+  }, [active, estimatedTokens])
+
+  return stalled
+}
 type ToolOutput = Record<string, unknown>
 
 /**
@@ -58,15 +104,16 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const toolName = part.type.replace("tool-", "")
-  const fullOutput = part.output
 
+  const isInputStreaming = part.state === "input-streaming"
   const isAskUser = toolName === "question"
-  const isPending = part.state === "input-streaming" || part.state === "input-available"
+  const isPending = isInputStreaming || part.state === "input-available"
   const isWaitingUser = isAskUser && isPending
   const isFailed = part.state === "output-error"
-  const isInterrupted =
-    isFailed && part.errorText === t("mindmap.aiChat.message.executionInterrupted")
+  const isInterrupted = isFailed && part.errorText === TOOL_EXECUTION_INTERRUPTED
   const isComplete = part.state === "output-available"
+  const streamingTokenEstimate = isInputStreaming ? estimateStreamingTokens(part.input) : 0
+  const streamStalled = useStreamingStalled(isInputStreaming, streamingTokenEstimate)
 
   // 单个工具可能与同一模型响应中的其它工具并行产生，无法把网络和流式生成耗时
   // 诚实归属到某一个工具。整轮 wall-clock 由聚合卡和消息 footer 展示。
@@ -90,25 +137,34 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
 
   const Icon = toolIcons[toolName]
 
-  // Token 计数 (UI 显示用), 走 js-tiktoken o200k_base. input-streaming 阶段 SDK 只给 {}, 跳过.
-  // 真实 token 走 streamText.finish.totalUsage, 那个在 metadata 里精确.
   const tokenCount = useMemo(() => {
+    if (isPending) return 0
     let n = 0
-    if (part.input && typeof part.input === "object" && Object.keys(part.input).length > 0) {
+    if (part.input && typeof part.input === "object" && Object.keys(part.input).length > 0)
       n += countTokensInValue(part.input)
-    }
     if (part.output) n += countTokensInValue(part.output)
     return n
-  }, [part.input, part.output])
+  }, [isPending, part.input, part.output])
 
+  const inputDetail = useMemo(
+    () =>
+      isInputStreaming
+        ? boundedStreamingInput(part.input)
+        : part.input === undefined
+          ? null
+          : boundedDetail(part.input),
+    [isInputStreaming, part.input]
+  )
+  const outputDetail = useMemo(
+    () => (part.output === undefined ? null : boundedDetail(part.output)),
+    [part.output]
+  )
   const hasExpandableContent = part.input !== undefined || isFailed || isComplete
-
   return (
     <div className="w-full max-w-full">
-      {/* 头部行：状态点 + 工具名 + 耗时（参考 opencode 的单行 tool step 风格） */}
       <button
         type="button"
-        aria-expanded={isExpanded}
+        aria-expanded={hasExpandableContent ? isExpanded : false}
         disabled={!hasExpandableContent}
         className={cn(
           "flex w-full items-center gap-1.5 rounded-sm py-0.5 text-left transition-colors",
@@ -151,9 +207,27 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
             {t("mindmap.aiChat.message.waitingFeedback")}
           </span>
         )}
-        {isPending && !isWaitingUser && (
+        {isInputStreaming && !isWaitingUser && (
           <span className="text-[10px] text-primary/70">
-            {t("mindmap.aiChat.message.executing")}
+            {t(
+              streamStalled
+                ? "mindmap.aiChat.message.toolStreamStalled"
+                : "mindmap.aiChat.message.toolStreamGenerating"
+            )}
+          </span>
+        )}
+        {part.state === "input-available" && !isWaitingUser && (
+          <span className="text-[10px] text-primary/70">
+            {t(
+              toolName === "edit_current_mindmap"
+                ? "mindmap.aiChat.message.applyingEdit"
+                : "mindmap.aiChat.message.executingTool"
+            )}
+          </span>
+        )}
+        {isInputStreaming && streamingTokenEstimate > 0 && (
+          <span className="text-[10px] tabular-nums flex-shrink-0 text-primary/60">
+            ~{streamingTokenEstimate.toLocaleString()} tokens
           </span>
         )}
         {isInterrupted && (
@@ -188,65 +262,67 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
       </button>
 
       {/* 展开内容 */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden"
-          >
-            <div className="ml-3 pl-2 border-l border-muted mt-0.5 max-h-[500px] overflow-y-auto space-y-2">
-              {isPending && part.input !== undefined && (
+      {isExpanded && hasExpandableContent && (
+        <div className="ml-3 mt-0.5 max-h-[500px] space-y-2 overflow-y-auto border-l border-muted pl-2">
+          {isPending && inputDetail && (
+            <div className="rounded-sm bg-muted p-2">
+              <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+                {t("mindmap.aiChat.message.inputLabel")}
+              </div>
+              <div className="whitespace-pre-wrap break-all font-mono text-xs text-foreground">
+                {inputDetail.text}
+              </div>
+              {inputDetail.truncated && (
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  内容过长，仅显示前 {MAX_TOOL_DETAIL_CHARS.toLocaleString()} 个字符
+                </div>
+              )}
+            </div>
+          )}
+          {isFailed && part.errorText && !isInterrupted && (
+            <div className="rounded-sm bg-destructive/10 p-2">
+              <div className="mb-1 text-[10px] font-medium text-destructive">
+                {t("mindmap.aiChat.message.errorLabel")}
+              </div>
+              <div className="whitespace-pre-wrap text-xs text-destructive">{part.errorText}</div>
+            </div>
+          )}
+          {isComplete && (
+            <div className="space-y-2">
+              {inputDetail && (
                 <div className="rounded-sm bg-muted p-2">
                   <div className="mb-1 text-[10px] font-medium text-muted-foreground">
                     {t("mindmap.aiChat.message.inputLabel")}
                   </div>
-                  <div className="whitespace-pre-wrap break-all font-mono text-xs text-foreground">
-                    {typeof part.input === "string"
-                      ? part.input
-                      : JSON.stringify(part.input, null, 2)}
+                  <div className="whitespace-pre-wrap font-mono text-xs text-foreground">
+                    {inputDetail.text}
                   </div>
-                </div>
-              )}
-              {isFailed && part.errorText && (
-                <div className="rounded-sm bg-destructive/10 p-2">
-                  <div className="mb-1 text-[10px] font-medium text-destructive">
-                    {t("mindmap.aiChat.message.errorLabel")}
-                  </div>
-                  <div className="whitespace-pre-wrap text-xs text-destructive">
-                    {part.errorText}
-                  </div>
-                </div>
-              )}
-
-              {isComplete && fullOutput && (
-                <div className="space-y-2">
-                  {part.input && (
-                    <div className="rounded-sm bg-muted p-2">
-                      <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                        {t("mindmap.aiChat.message.inputLabel")}
-                      </div>
-                      <div className="whitespace-pre-wrap font-mono text-xs text-foreground">
-                        {JSON.stringify(part.input, null, 2)}
-                      </div>
+                  {inputDetail.truncated && (
+                    <div className="mt-1 text-[10px] text-muted-foreground">
+                      内容过长，仅显示前 {MAX_TOOL_DETAIL_CHARS.toLocaleString()} 个字符
                     </div>
                   )}
-                  <div className="rounded-sm bg-muted p-2">
-                    <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                      {t("mindmap.aiChat.message.outputLabel")}
-                    </div>
-                    <div className="whitespace-pre-wrap font-mono text-xs text-foreground">
-                      {JSON.stringify(fullOutput, null, 2)}
-                    </div>
+                </div>
+              )}
+              {outputDetail && (
+                <div className="rounded-sm bg-muted p-2">
+                  <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+                    {t("mindmap.aiChat.message.outputLabel")}
                   </div>
+                  <div className="whitespace-pre-wrap font-mono text-xs text-foreground">
+                    {outputDetail.text}
+                  </div>
+                  {outputDetail.truncated && (
+                    <div className="mt-1 text-[10px] text-muted-foreground">
+                      内容过长，仅显示前 {MAX_TOOL_DETAIL_CHARS.toLocaleString()} 个字符
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      )}
     </div>
   )
 }
