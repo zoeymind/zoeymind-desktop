@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * AIchatV2 类型定义
  *
@@ -19,36 +18,6 @@ export interface Attachment {
   type: "image"
   name: string
   dataUrl: string
-}
-
-/**
- * 用例确认项
- */
-export interface CaseConfirmItem {
-  caseId: string
-  caseText: string
-  steps?: string[]
-  operation: "add" | "update" | "delete"
-  action?: "accept" | "reject"
-  feedback?: string
-  /** AI 预分配的短 ID（仅 add_cases 时可能存在） */
-  preAssignedShortId?: string
-}
-
-/**
- * 用例确认结果
- */
-export interface CaseConfirmResult {
-  accepted: Array<{
-    caseId: string
-    caseText: string
-    steps?: string[]
-  }>
-  rejected: Array<{
-    caseId: string
-    caseText: string
-    feedback?: string
-  }>
 }
 
 // ============================================

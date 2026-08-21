@@ -9,6 +9,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod atomic_file;
 mod chat_stream;
+mod document_portal;
 mod http_stream;
 mod log_config;
 use chat_stream::AbortMap;
@@ -388,9 +389,12 @@ pub fn run() {
       chat_stream::chat_stream,
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,
-      http_stream::http_stream_abort
+      http_stream::http_stream_abort,
+      document_portal::document_portal_respond
     ])
     .setup(|app| {
+      let broker = document_portal::DocumentPortalBroker::start(app.handle())?;
+      app.manage(broker);
       #[cfg(any(windows, target_os = "linux"))]
       enqueue_open_files(
         app.handle(),

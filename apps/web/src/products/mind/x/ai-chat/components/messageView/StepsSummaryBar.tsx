@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * StepsSummaryBar - 工具调用步骤折叠摘要栏
  *
@@ -8,10 +7,9 @@
  * - 可点击切换折叠/展开
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/shared/app-shared"
-import { getToolLabel } from "../../../ai-chat/tools/registry"
 import { useTranslation } from "@zoeymind/i18n"
 import type { ToolCallPart } from "./ToolCallCard"
 import { formatElapsedMs } from "../../../ai-chat/utils/duration"
@@ -38,53 +36,18 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  // Inline switch avoids i18next strict-key union-type incompatibility
-  const getToolStatusText = (toolName: string): string => {
-    switch (toolName) {
-      case "list_modules":
-        return t("mindmap.aiChat.message.toolStatus.listModules")
-      case "search_cases":
-        return t("mindmap.aiChat.message.toolStatus.searchCases")
-      case "get_module_cases":
-        return t("mindmap.aiChat.message.toolStatus.getModuleCases")
-      case "add_cases":
-        return t("mindmap.aiChat.message.toolStatus.addCases")
-      case "add_module":
-        return t("mindmap.aiChat.message.toolStatus.addModule")
-      case "update_cases":
-        return t("mindmap.aiChat.message.toolStatus.updateCases")
-      case "update_module":
-        return t("mindmap.aiChat.message.toolStatus.updateModule")
-      case "delete_cases":
-        return t("mindmap.aiChat.message.toolStatus.deleteCases")
-      case "delete_module":
-        return t("mindmap.aiChat.message.toolStatus.deleteModule")
-      case "web_search":
-        return t("mindmap.aiChat.message.toolStatus.webSearch")
-      case "web_fetch":
-        return t("mindmap.aiChat.message.toolStatus.webFetch")
-      case "get_figma_metadata":
-        return t("mindmap.aiChat.message.toolStatus.getFigmaMetadata")
-      case "get_figma_data":
-        return t("mindmap.aiChat.message.toolStatus.getFigmaData")
-      case "get_figma_image":
-        return t("mindmap.aiChat.message.toolStatus.getFigmaImage")
-      case "read_feishu_document":
-        return t("mindmap.aiChat.message.toolStatus.readFeishuDocument")
-      case "search_feishu_documents":
-        return t("mindmap.aiChat.message.toolStatus.searchFeishuDocuments")
-      case "query_knowledge_bases":
-        return t("mindmap.aiChat.message.toolStatus.queryKnowledgeBases")
-      case "question":
-        return t("mindmap.aiChat.message.toolStatus.question")
-      default:
-        return t("mindmap.aiChat.message.toolStatus.defaultPending", {
-          name: getToolLabel(toolName) || toolName,
-        })
-    }
-  }
+  const getToolStatusText = useCallback(
+    (toolName: string): string => {
+      if (toolName === "search") return "正在搜索当前文档"
+      if (toolName === "read") return "正在读取当前文档"
+      if (toolName === "edit") return "正在编辑当前文档"
+      if (toolName === "question") return "正在等待你的回答"
+      return t("mindmap.aiChat.message.toolStatus.executing")
+    },
+    [t]
+  )
   // ---- 实时计时器（参考 opencode 的 duration 逻辑） ----
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState<number | null>(null)
 
   // 判断是否有正在执行的工具（排除 question 等待用户反馈的场景）
   const hasActiveTool = toolParts.some(p => {
@@ -103,12 +66,13 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
     return () => clearInterval(timer)
   }, [isWorking])
 
-  const liveDurationMs = isWorking && typeof turnStartedAt === "number" ? now - turnStartedAt : null
+  const liveDurationMs =
+    isWorking && typeof turnStartedAt === "number" && now !== null ? now - turnStartedAt : null
   const durationDisplay = formatElapsedMs(isWorking ? liveDurationMs : turnDurationMs)
   // ---- 状态文字（参考 opencode：working 显示实时状态，完成后显示"显示/隐藏步骤"） ----
 
   // 计算实时状态（仅 working 时有效）
-  const rawWorkingStatus = useMemo(() => {
+  const rawWorkingStatus = (() => {
     // 从末尾找最后一个正在执行的工具
     for (let i = toolParts.length - 1; i >= 0; i--) {
       const part = toolParts[i]
@@ -119,15 +83,17 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
       }
     }
     return t("mindmap.aiChat.message.thinking")
-  }, [toolParts, t])
+  })()
 
   // 防抖 working 状态文字（1.5s，避免工具快速切换时闪烁）
   const [debouncedWorkingStatus, setDebouncedWorkingStatus] = useState(rawWorkingStatus)
-  const lastStatusChangeRef = useRef(Date.now())
+  const lastStatusChangeRef = useRef<number | null>(null)
   const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const updateDebouncedStatus = useCallback((newStatus: string) => {
-    const timeSinceLastChange = Date.now() - lastStatusChangeRef.current
+    const lastStatusChangeAt = lastStatusChangeRef.current
+    const timeSinceLastChange =
+      lastStatusChangeAt === null ? Infinity : Date.now() - lastStatusChangeAt
     if (timeSinceLastChange >= 1500) {
       setDebouncedWorkingStatus(newStatus)
       lastStatusChangeRef.current = Date.now()

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * AIchatV2 专用 Zustand Store
  *
@@ -25,11 +24,9 @@ const buildSendMessageParams = ({
   attachments,
   selectedModel,
   provider,
-  shortenId,
 }: MessageDraftPayload & {
   selectedModel: string
   provider?: string
-  shortenId: (uuid: string, type: "module" | "case") => string
 }): SendMessageParams => {
   const filesParts = attachments
     .filter(attachment => attachment.type === "image" && attachment.dataUrl)
@@ -40,16 +37,8 @@ const buildSendMessageParams = ({
       url: attachment.dataUrl,
     }))
 
-  const messageText = text.replace(
-    /@\[([^\]]+)\]\(([^)]+)\)/g,
-    (_match: string, name: string, id: string) => {
-      const shortId = shortenId(id, "module")
-      return `M:${shortId}「${name}」`
-    }
-  )
-
   return {
-    text: messageText,
+    text,
     files: filesParts.length > 0 ? filesParts : undefined,
     metadata: {
       model: selectedModel,
@@ -285,7 +274,6 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
         attachments,
         selectedModel,
         provider,
-        shortenId: runtime.shortenId,
       })
 
       runtime.sendMessage(sendParams)
@@ -413,7 +401,6 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
         attachments: draft.attachments,
         selectedModel,
         provider,
-        shortenId: runtime.shortenId,
       })
 
       runtime.sendMessage(sendParams)

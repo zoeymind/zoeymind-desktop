@@ -24,18 +24,19 @@ import { useCompactionStore } from "./useCompactionStore"
 export const COMPACTION_HEADER =
   "📦 [对话历史已自动压缩 — 以下是工作交接备忘, 不是新的用户请求]\n\n"
 
-const FIRST_SUMMARY_PROMPT = `这个对话快要超出上下文窗口了。请把提供的历史写成可继续工作的交接备忘。
+export const FIRST_SUMMARY_PROMPT = `这个对话快要超出上下文窗口了。请把提供的历史写成可继续工作的交接备忘。
 严格输出以下八个 Markdown 章节，不要代码围栏、寒暄、最终总结或编造内容：
 ## 1. 用户的总意图
 包含用户最近一次明确请求的逐字引用。
 ## 2. 已对思维导图做过的改动
-保留成功工具、节点名称、数量及 M:/C: 短 ID。
+保留成功的 Portal 工具调用及其结构化证据。
 ## 3. 关键约定 / 用户偏好
 ## 4. 失败 / 已尝试过的操作
 ## 5. 当前在做的事
 包含用户最近一条消息的逐字引用。
 ## 6. 下一步该做什么
-## 7. 关键短 ID 映射
+## 7. 关键 Portal 证据
+保留仍适用的 scope、path、anchorTag 和 revision。
 ## 8. 涉及到的知识库 / 外部资料
 没有内容的章节写“无”。先思考时可用 <thinking> 标签，该标签内容不会保留。`
 
@@ -214,13 +215,10 @@ export function serializeForSummary(messages: UIMessage[]): string {
       else if (candidate.type === "reasoning" && candidate.text)
         lines.push(`[${role} 思考] ${safeJson(candidate.text, 100)}`)
       else if (candidate.type?.startsWith("tool-")) {
-        const output = candidate.output as
-          { ztdl?: string; error?: string; data?: unknown } | undefined
-        const outputText = output?.ztdl
-          ? safeJson(output.ztdl, 2_000)
-          : output?.error
-            ? `失败: ${safeJson(output.error, 2_000)}`
-            : safeJson(output?.data ?? candidate.output, 2_000)
+        const output = candidate.output as { error?: string; data?: unknown } | undefined
+        const outputText = output?.error
+          ? `失败: ${safeJson(output.error, 2_000)}`
+          : safeJson(output ?? candidate.output, 2_000)
         lines.push(
           `[${role} 工具调用] ${candidate.type.slice(5)}(${safeJson(candidate.input, 200)}) → ${outputText}`
         )

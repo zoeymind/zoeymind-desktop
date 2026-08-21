@@ -2,26 +2,6 @@ import type { UIMessage } from "ai"
 import { execute, select, type Row } from "@/shared/native/db"
 import { importLegacyChatData } from "./legacyChatImport"
 
-export interface PersistedSnapshot {
-  version: number
-  nodes: Array<{
-    uid: string
-    parentUid: string | null
-    text: string
-    type: "根节点" | "模块" | "用例" | "步骤" | "普通节点"
-    depth: number
-    steps?: string[]
-    childCount: number
-  }>
-  timestamp: number
-  idMapping?: {
-    shortToUuid: Record<string, string>
-    uuidToShort: Record<string, string>
-    counter: number
-    reserved: string[]
-  }
-}
-
 export interface Conversation {
   id: string
   workspaceId: string
@@ -30,7 +10,6 @@ export interface Conversation {
   updatedAt: number
   selectedKnowledgeBaseIds?: string[]
   selectedRAGDataSources?: string[]
-  mindmapSnapshot?: PersistedSnapshot
 }
 
 export interface ChatMessage extends UIMessage {
@@ -106,7 +85,6 @@ function firstUserText(messages: UIMessage[]): string | undefined {
 
 function toConversation(row: ConversationRow): Conversation {
   const selectedKnowledgeBaseIds = parseJson<string[]>(row.selected_knowledge_base_ids_json, [])
-  const snapshot = parseJson<PersistedSnapshot | null>(row.snapshot_json, null)
   return {
     id: row.id,
     workspaceId: row.workspace_id ?? row.project_id ?? "",
@@ -116,7 +94,6 @@ function toConversation(row: ConversationRow): Conversation {
     selectedKnowledgeBaseIds: selectedKnowledgeBaseIds.length
       ? selectedKnowledgeBaseIds
       : undefined,
-    mindmapSnapshot: snapshot ?? undefined,
   }
 }
 
@@ -286,20 +263,6 @@ export class ChatDBService {
     return (await this.loadConversationState(conversationId)).transcript
   }
 
-  async saveSnapshot(conversationId: string, snapshot: PersistedSnapshot): Promise<void> {
-    await this.ready()
-    const now = Date.now()
-    await this.ensureRuntimeState(conversationId, now)
-    await this.sql.execute(
-      "UPDATE chat_runtime_state SET snapshot_json = $1, updated_at = $2 WHERE conversation_id = $3",
-      [JSON.stringify(snapshot), now, conversationId]
-    )
-  }
-
-  async loadSnapshot(conversationId: string): Promise<PersistedSnapshot | undefined> {
-    return (await this.getConversation(conversationId))?.mindmapSnapshot
-  }
-
   async clearProjectChats(workspaceId: string): Promise<void> {
     await this.ready()
     await this.sql.execute(
@@ -394,7 +357,7 @@ export class ChatDBService {
         conversation.workspaceId,
         JSON.stringify(transcript),
         compaction ? JSON.stringify(compaction) : null,
-        conversation.mindmapSnapshot ? JSON.stringify(conversation.mindmapSnapshot) : null,
+        null,
         JSON.stringify(
           conversation.selectedKnowledgeBaseIds ?? conversation.selectedRAGDataSources ?? []
         ),

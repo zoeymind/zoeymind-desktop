@@ -88,6 +88,7 @@ dependencies = [
  "base64 0.22.1",
  "futures-util",
  "log",
+ "rand 0.8.5",
  "reqwest",
  "serde",
  "serde_json",

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop AI chat transport
 import { useMemo } from "react"
 import {
   convertToModelMessages,
@@ -10,7 +9,7 @@ import {
   type UIMessage,
 } from "ai"
 import { logger } from "@zoeymind/logger"
-import { useProjectSessionStore } from "@/products/mind/editor-session"
+import { readCurrentDocumentOutline } from "@/products/mind/document-portal/current-document-adapter"
 import {
   createLanguageModel,
   loadModelsConfig,
@@ -19,19 +18,12 @@ import {
 } from "@/shared/native"
 import { getAgentTools } from "../agent-tools"
 import { contextCompactor } from "../compaction/ContextCompactor"
-import { getMindmapContextEnabled } from "./useUserPrompt"
 import { getEnabledToolNames } from "./useToolSettings"
 import { buildSystemPrompt } from "../prompts/system-prompt"
-import { chatDB } from "../storage/chatDB"
 import { useAIChatV2Store } from "../stores/useAIChatV2Store"
 import { normalizeChatError } from "../utils/errorHandler"
 import { extractLatestUserText, getRecentMessageIds, recallForQuery } from "../memory/recall"
-import type { ChatRuntime } from "./internal/chatRuntime"
-
-interface UseChatTransportOptions {
-  runtime: ChatRuntime
-  currentOrgId?: string
-}
+import { getMindmapContextEnabled } from "./useUserPrompt"
 
 interface PreparedTurn {
   userPrompt: string | undefined
@@ -68,21 +60,7 @@ export function readTurnStartedAt(messages: UIMessage[]): number | undefined {
 function cloneMessages(messages: UIMessage[]): UIMessage[] {
   return messages.map(message => ({
     ...message,
-    parts: message.parts?.map(part => {
-      const candidate = part as {
-        type?: string
-        output?: { ztdl?: string; success?: boolean; error?: string }
-      }
-      if (!candidate.type?.startsWith("tool-") || !candidate.output?.ztdl) return { ...part }
-      return {
-        ...part,
-        output: {
-          success: candidate.output.success,
-          data: candidate.output.ztdl,
-          error: candidate.output.error,
-        },
-      }
-    }),
+    parts: message.parts?.map(part => ({ ...part })),
   })) as UIMessage[]
 }
 
@@ -99,8 +77,7 @@ export function clearPreparedTurn(key?: string): void {
   else preparedTurnCache.clear()
 }
 
-export function useChatTransport({ runtime }: UseChatTransportOptions) {
-  const sessionStore = useProjectSessionStore()
+export function useChatTransport() {
   return useMemo(
     () =>
       async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -127,23 +104,9 @@ export function useChatTransport({ runtime }: UseChatTransportOptions) {
 
           if (getMindmapContextEnabled() && !isToolResultRoundtrip) {
             try {
-              const mindMap = sessionStore.getState().mindMap
-              const manager = runtime.mindmapContextManager.current
-              if (mindMap && manager) {
-                mindmapContextText = manager.prepareContext().text
-                manager.markSent()
-                const snapshot = manager.getSnapshot()
-                if (snapshot) {
-                  void chatDB.saveSnapshot(conversationId, {
-                    version: snapshot.version,
-                    nodes: snapshot.nodes.map(({ path: _, ...rest }) => rest),
-                    timestamp: snapshot.timestamp,
-                    idMapping: manager.idMapper.serialize(),
-                  })
-                }
-              }
+              mindmapContextText = readCurrentDocumentOutline().content
             } catch (error) {
-              logger.warn("[useChatTransport] 获取思维导图上下文失败", { error })
+              logger.warn("[useChatTransport] 获取文档大纲失败", { error })
             }
           }
           if (!isToolResultRoundtrip) {
@@ -183,7 +146,7 @@ export function useChatTransport({ runtime }: UseChatTransportOptions) {
           init?.signal ?? undefined
         )
       },
-    [runtime, sessionStore]
+    []
   )
 }
 

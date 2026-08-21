@@ -4,9 +4,9 @@ import { hasPendingToolCalls, isPendingToolPart } from "./pendingToolCalls"
 
 describe("pending tool call state", () => {
   it("recognizes streaming and available tool inputs", () => {
-    expect(isPendingToolPart({ type: "tool-add_cases", state: "input-streaming" })).toBe(true)
-    expect(isPendingToolPart({ type: "tool-update_cases", state: "input-available" })).toBe(true)
-    expect(isPendingToolPart({ type: "tool-delete_cases", state: "output-available" })).toBe(false)
+    expect(isPendingToolPart({ type: "tool-edit", state: "input-streaming" })).toBe(true)
+    expect(isPendingToolPart({ type: "tool-question", state: "input-available" })).toBe(true)
+    expect(isPendingToolPart({ type: "tool-read", state: "output-available" })).toBe(false)
   })
 
   it("derives processing from the latest assistant message when SDK status is ready", () => {
@@ -15,7 +15,7 @@ describe("pending tool call state", () => {
       {
         id: "assistant",
         role: "assistant",
-        parts: [{ type: "tool-add_cases", state: "input-available" }],
+        parts: [{ type: "tool-edit", state: "input-available" }],
       },
     ] as UIMessage[]
 

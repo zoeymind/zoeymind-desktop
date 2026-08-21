@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * AIChatSettingsDialog — AI 聊天的设置面板.
  *
@@ -11,8 +10,8 @@
  *   - mcp     MCP 服务器
  */
 
-import { useState, type ReactNode } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
+import { useState, type ReactNode } from "react"
+import { useTranslation } from "@zoeymind/i18n"
 import {
   Card,
   CardContent,
@@ -25,24 +24,22 @@ import {
   FieldGroup,
   FieldLabel,
   SettingsShell,
-  Switch
-} from '@zoeymind/ui'
-import { Settings, Sparkles, Server, Wrench } from 'lucide-react'
-import { TOGGLEABLE_TOOL_NAMES, type ToggleableToolName } from '@zoeymind/shared'
-import { MemorySettingsTab } from './MemorySettingsTab'
-import { MCPTab } from '../../settings/MCPTab'
-import { useToolSettings } from '../../hooks/useToolSettings'
+  Switch,
+} from "@zoeymind/ui"
+import { Settings, Sparkles, Server, Wrench } from "lucide-react"
+import { TOGGLEABLE_TOOL_NAMES, type ToggleableToolName } from "@zoeymind/shared"
+import { MemorySettingsTab } from "./MemorySettingsTab"
+import { MCPTab } from "../../settings/MCPTab"
+import { useToolSettings } from "../../hooks/useToolSettings"
 
 export interface AIChatSettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  reviewEnabled: boolean
-  onReviewEnabledChange: (enabled: boolean) => void
   mindmapContextEnabled: boolean
   onMindmapContextEnabledChange: (enabled: boolean) => void
 }
 
-type SectionId = 'general' | 'tools' | 'memory' | 'mcp'
+type SectionId = "general" | "tools" | "memory" | "mcp"
 
 interface Section {
   id: SectionId
@@ -53,54 +50,50 @@ interface Section {
 export function AIChatSettingsDialog({
   open,
   onOpenChange,
-  reviewEnabled,
-  onReviewEnabledChange,
   mindmapContextEnabled,
-  onMindmapContextEnabledChange
+  onMindmapContextEnabledChange,
 }: AIChatSettingsDialogProps) {
   const { t } = useTranslation()
-  const [activeSection, setActiveSection] = useState<SectionId>('general')
+  const [activeSection, setActiveSection] = useState<SectionId>("general")
 
   const sections: Section[] = [
-    { id: 'general', labelKey: 'mindmap.aiChat.input.tabGeneral', icon: Settings },
-    { id: 'tools', labelKey: 'mindmap.aiChat.input.tabTools', icon: Wrench },
-    { id: 'memory', labelKey: 'mindmap.aiChat.input.tabMemory', icon: Sparkles },
-    { id: 'mcp', labelKey: 'mindmap.aiChat.input.tabMcp', icon: Server }
+    { id: "general", labelKey: "mindmap.aiChat.input.tabGeneral", icon: Settings },
+    { id: "tools", labelKey: "mindmap.aiChat.input.tabTools", icon: Wrench },
+    { id: "memory", labelKey: "mindmap.aiChat.input.tabMemory", icon: Sparkles },
+    { id: "mcp", labelKey: "mindmap.aiChat.input.tabMcp", icon: Server },
   ]
 
   return (
     <SettingsShell
       open={open}
       onOpenChange={onOpenChange}
-      title={t('common.settings')}
+      title={t("common.settings")}
       items={sections.map(s => ({ id: s.id, label: t(s.labelKey), icon: s.icon }))}
       activeId={activeSection}
       onActiveChange={id => setActiveSection(id as SectionId)}
     >
-      {activeSection === 'general' && (
+      {activeSection === "general" && (
         <GeneralSection
-          reviewEnabled={reviewEnabled}
-          onReviewEnabledChange={onReviewEnabledChange}
           mindmapContextEnabled={mindmapContextEnabled}
           onMindmapContextEnabledChange={onMindmapContextEnabledChange}
         />
       )}
 
-      {activeSection === 'tools' && <ToolsSection />}
+      {activeSection === "tools" && <ToolsSection />}
 
-      {activeSection === 'memory' && (
+      {activeSection === "memory" && (
         <SectionCard
-          title={t('mindmap.aiChat.input.tabMemory')}
-          description={t('mindmap.aiChat.memory.enableHint')}
+          title={t("mindmap.aiChat.input.tabMemory")}
+          description={t("mindmap.aiChat.memory.enableHint")}
         >
           <MemorySettingsTab />
         </SectionCard>
       )}
 
-      {activeSection === 'mcp' && (
+      {activeSection === "mcp" && (
         <SectionCard
-          title={t('mindmap.aiChat.input.tabMcp')}
-          description={t('mindmap.aiChat.mcp.sectionDescription', { defaultValue: '' })}
+          title={t("mindmap.aiChat.input.tabMcp")}
+          description={t("mindmap.aiChat.mcp.sectionDescription", { defaultValue: "" })}
         >
           <MCPTab />
         </SectionCard>
@@ -113,7 +106,7 @@ export function AIChatSettingsDialog({
 function SectionCard({
   title,
   description,
-  children
+  children,
 }: {
   title: string
   description?: string
@@ -131,36 +124,24 @@ function SectionCard({
 }
 
 interface GeneralSectionProps {
-  reviewEnabled: boolean
-  onReviewEnabledChange: (enabled: boolean) => void
   mindmapContextEnabled: boolean
   onMindmapContextEnabledChange: (enabled: boolean) => void
 }
 
 function GeneralSection({
-  reviewEnabled,
-  onReviewEnabledChange,
   mindmapContextEnabled,
-  onMindmapContextEnabledChange
+  onMindmapContextEnabledChange,
 }: GeneralSectionProps) {
   const { t } = useTranslation()
 
   return (
-    <SectionCard title={t('mindmap.aiChat.input.tabGeneral')}>
+    <SectionCard title={t("mindmap.aiChat.input.tabGeneral")}>
       <FieldGroup>
-        {/* 用例审查开关 */}
-        <ToggleRow
-          id="case-review"
-          label={t('mindmap.aiChat.input.reviewToggleLabel')}
-          checked={reviewEnabled}
-          onCheckedChange={onReviewEnabledChange}
-        />
-
         {/* 思维导图数据感知开关 */}
         <ToggleRow
           id="mindmap-context"
-          label={t('mindmap.aiChat.input.mindmapContextLabel')}
-          hint={t('mindmap.aiChat.input.mindmapContextHint')}
+          label={t("mindmap.aiChat.input.mindmapContextLabel")}
+          hint={t("mindmap.aiChat.input.mindmapContextHint")}
           checked={mindmapContextEnabled}
           onCheckedChange={onMindmapContextEnabledChange}
         />
@@ -202,8 +183,8 @@ function ToolsSection() {
 
   return (
     <SectionCard
-      title={t('mindmap.aiChat.input.tabTools')}
-      description={t('mindmap.aiChat.toolToggles.sectionDescription')}
+      title={t("mindmap.aiChat.input.tabTools")}
+      description={t("mindmap.aiChat.toolToggles.sectionDescription")}
     >
       <FieldGroup>
         {TOGGLEABLE_TOOL_NAMES.map(toolName => (

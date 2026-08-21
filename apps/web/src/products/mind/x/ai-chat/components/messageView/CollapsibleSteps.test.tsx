@@ -16,23 +16,19 @@ vi.mock("border-beam", () => ({
   BorderBeam: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock("../../../ai-chat/tools/registry", () => ({
-  getToolLabel: (name: string) => name,
-}))
-
 describe("CollapsibleSteps active disclosure", () => {
   it("expands completed and active steps while processing", () => {
     const first = {
-      type: "tool-list_modules",
+      type: "tool-read",
       toolCallId: "call-1",
       state: "output-available" as const,
       output: { success: true },
     }
     const second = {
-      type: "tool-add_module",
+      type: "tool-edit",
       toolCallId: "call-2",
       state: "input-available" as const,
-      input: { modules: [{ name: "Checkout" }] },
+      input: { anchorTag: "a", patch: "update" },
     }
     const allParts = [first, second]
 

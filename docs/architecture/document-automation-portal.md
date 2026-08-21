@@ -17,6 +17,63 @@ Portal 是文档自动化内核，不是某个 Agent 的 Adapter。AI SDK、CLI 
 
 第一阶段只操作当前已经打开且 ready 的文档标签。未打开文档的后台加载与保存不属于本 Epic。
 
+外部 CLI 与 MCP Adapter 始终暴露 `documents`、`search`、`read`、`edit` 四个通用操作，并要求调用方在 document-scoped 请求中显式传入 `documentId`。内置 AI Chat 是例外：它不向模型暴露 `documents`，并在每次工具调用开始时解析一次当前活动且 ready 的 `ProjectSession`，将得到的 `documentId` 注入同一个通用 Portal 请求。当前文档解析器是独立 seam，后续 `search` 与 `edit` 复用它；它不会改变 Portal 的多文档协议。
+
+## MCP 配置
+
+先启动 ZoeyMind Desktop 并等待文档 Portal ready。MCP server 是无状态 stdio shim；每次工具调用都会重新读取本机 Broker descriptor，不保存 documentId 或 Broker token。把 `<mcp-command>` 替换为已安装包的 `zoeymind-document-portal-mcp` 可执行路径，或开发工作区中的 `pnpm --dir /absolute/path/to/apps/desktop --filter @zoeymind-desktop/mcp exec tsx src/index.ts`。
+
+### Claude Code
+
+在 `~/.claude.json` 的 `mcpServers` 中添加：
+
+```json
+{
+  "zoeymind-document-portal": {
+    "command": "<mcp-command>",
+    "args": []
+  }
+}
+```
+
+### Codex
+
+在 `~/.codex/config.toml` 中添加：
+
+```toml
+[mcp_servers.zoeymind-document-portal]
+command = "<mcp-command>"
+args = []
+```
+
+### OpenCode
+
+在 OpenCode 配置的 `mcp` 节点中添加：
+
+```json
+{
+  "zoeymind-document-portal": {
+    "type": "local",
+    "command": ["<mcp-command>"]
+  }
+}
+```
+
+### OMP
+
+在 OMP MCP server 配置中添加：
+
+```json
+{
+  "zoeymind-document-portal": {
+    "command": "<mcp-command>",
+    "args": []
+  }
+}
+```
+
+`documents`、`search` 与 `read` 为只读工具。`edit` 是 destructive、非幂等写操作；调用前应先使用 `read` 返回的 anchor tag。应用不可用、文档未 ready/已关闭或 anchor 冲突时，工具返回可处理的 MCP `isError` response，并保留 Broker 的 `errorCode`。
+
 ## 2. 最终使用形式
 
 测试项目在 Agent 面前表现为一份可搜索、可局部读取、可打补丁的 Test Document。每个已打开文档只有一个 `ProjectSession` 和一个实时 MindMap 实例，它们是唯一数据源；内部继续保留稳定节点 UID、样式、图标、布局和保存状态。所有 Portal 写操作进入该文档自己的串行任务队列，并直接修改这个实时实例，画布随每次提交立即更新。
@@ -112,7 +169,7 @@ classDiagram
     }
 
     class AiSdkAdapter {
-      +createTools(portal) ToolSet
+      +createCurrentDocumentTools(portal, resolver) ToolSet
     }
 
     class CliAdapter {
@@ -154,22 +211,23 @@ sequenceDiagram
     participant Queue as DocumentTaskQueue
     participant Session as Unique Live ProjectSession
 
-    User->>Agent: 修改退款超时用例
-    Agent->>Adapter: search(document, "退款超时")
-    Adapter->>Portal: search(request)
+    User->>Agent: 修改当前文档中的退款超时用例
+    Agent->>Adapter: search("退款超时")
+    Adapter->>Adapter: resolve current ready documentId once
+    Adapter->>Portal: search({ documentId, request })
     Portal->>Index: search(query, scope, fields)
     Index-->>Portal: hits with paths
     Portal-->>Agent: matches + total + truncation
-
     Agent->>Adapter: read(match, subtree=true)
-    Adapter->>Portal: read(request)
+    Adapter->>Adapter: resolve current ready documentId once
+    Adapter->>Portal: read({ documentId, request })
     Portal->>Session: read current domain tree
     Portal->>Anchors: register local line anchors
     Anchors-->>Portal: lines + anchor tag
     Portal-->>Agent: Test Document read result
-
     Agent->>Adapter: edit(anchorTag, patch)
-    Adapter->>Portal: edit(request)
+    Adapter->>Adapter: resolve current ready documentId once
+    Adapter->>Portal: edit({ documentId, request })
     Portal->>Anchors: validate and resolve anchors
     Anchors-->>Portal: node UID operations
     Portal->>Queue: enqueue(documentId, transaction)
@@ -302,9 +360,6 @@ apps/web/src/products/mind/document-portal/
 └── adapters/
     └── ai-sdk.ts                   # 内置 AI Chat tools
 
-apps/web/src/products/mind/x/ai-chat/
-└── ...                             # 迁移为 Portal caller；删除模型可见 ZTDL 与重复 CRUD
-
 src-tauri/src/document_portal/
 ├── mod.rs                          # 本地 Broker 生命周期
 ├── transport.rs                    # UDS / named pipe 或安全 loopback transport
@@ -325,7 +380,7 @@ apps/mcp/
 
 ```text
 AI request
-→ documents/search/read/edit
+→ current-document AI Adapter (documentId injected once per tool call)
 → DocumentPortal
 → ProjectSession domain tree
 → undo + dirty + layout + save lifecycle

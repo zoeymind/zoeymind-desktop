@@ -16,7 +16,7 @@ describe("readTurnStartedAt", () => {
         role: "assistant",
         parts: [
           {
-            type: "tool-add_module",
+            type: "tool-edit",
             toolCallId: "call-1",
             state: "output-available",
             input: {},

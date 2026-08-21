@@ -1,37 +1,22 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * AssistantMessage - 助手消息组件
  */
 
-import React, { useMemo, useEffect, useCallback, useState } from "react"
+import React, { useMemo, useCallback, useState } from "react"
 import type { UIMessage } from "@ai-sdk/react"
 import ReactMarkdown from "react-markdown"
 import type { Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeRaw from "rehype-raw"
-import { useMindMapInstance } from "../../../ai-chat/context/MindMapInstanceContext"
 import { useAIChatV2Store } from "../../../ai-chat/stores/useAIChatV2Store"
-import { SessionIdMapper } from "../../../ai-chat/tools/session-id-mapper"
-import { getModuleAIChatRuntime } from "../../../ai-chat/context/AIChatRuntimeContext"
 import { ToolCallCard, type ToolCallPart } from "./ToolCallCard"
 import { ThinkingIndicator } from "./ThinkingIndicator"
 import { ErrorCard } from "./ErrorCard"
 import { classifyChatError } from "../../../ai-chat/utils/errorHandler"
 import { CollapsibleSteps } from "./CollapsibleSteps"
 import { CompactSummaryCard } from "./CompactSummaryCard"
-import { extractNodeIdFromClass } from "../../../ai-chat/utils/mentions"
-import { processMentions, stripMentionsForCodeBlock } from "@/shared/app-shared"
-import { INLINE_CODE_ZTDL_REGEX } from "../../../ai-chat/utils/ztdl-mention-regex"
 import { cn } from "@/shared/app-shared"
-import {
-  FileText,
-  FolderOpen,
-  Minus,
-  FolderClosed,
-  ClipboardList,
-  Ban,
-  HelpCircle,
-} from "lucide-react"
+import { FileText, FolderOpen, Ban } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@zoeymind/ui"
 import { Spinner } from "@zoeymind/ui"
 import { CodeBlock } from "@/shared/app-shared"
@@ -75,60 +60,9 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   isProcessing = false,
 }) => {
   const { t } = useTranslation()
-  const mindMap = useMindMapInstance()
   const abortedMessageId = useAIChatV2Store(s => s.abortedMessageId)
   const isAborted = abortedMessageId === message.id
   const [selectedResource, setSelectedResource] = useState<RetrieverResource | null>(null)
-  const [dataVersion, setDataVersion] = useState(0)
-
-  // 订阅 mindMap 数据变化, 触发 mention 渲染重算
-  useEffect(() => {
-    if (!mindMap) return
-    const onDataChange = () => setDataVersion(v => v + 1)
-    mindMap.on("data_change", onDataChange)
-    mindMap.on("set_data", onDataChange)
-    return () => {
-      mindMap.off("data_change", onDataChange)
-      mindMap.off("set_data", onDataChange)
-    }
-  }, [mindMap])
-
-  type MindMapNode = {
-    data?: {
-      uid?: string
-      text?: string
-      icon?: string[]
-    }
-    children?: MindMapNode[]
-  }
-
-  const findNode = useCallback(
-    (uid: string): MindMapNode | null => {
-      const mm = mindMap
-      if (!mm) return null
-      try {
-        const tree = (mm as { renderer?: { renderTree?: MindMapNode | null } }).renderer?.renderTree
-        if (!tree) return null
-
-        const walk = (node: MindMapNode | null): MindMapNode | null => {
-          if (!node) return null
-          if (node.data?.uid === uid) return node
-          if (node.children) {
-            for (const child of node.children) {
-              const found = walk(child)
-              if (found) return found
-            }
-          }
-          return null
-        }
-        return walk(tree)
-      } catch {
-        return null
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mindMap, dataVersion]
-  )
 
   // 删除了 resolveShortId，现在由 mentions-processor 内部处理
 
@@ -163,15 +97,12 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
           )
         }
         const language = match?.[1] || "text"
-        const title = match?.[2]
         const contentRaw = Array.isArray(children) ? children.join("") : String(children || "")
 
-        const content = stripMentionsForCodeBlock(contentRaw)
         return (
           <CodeBlock
-            code={content.replace(/\n$/, "")}
+            code={contentRaw.replace(/<[^>]+>/g, "").replace(/\n$/, "")}
             language={language}
-            title={title}
             className="my-2"
           />
         )
@@ -244,90 +175,11 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
           </a>
         )
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      span(props: any) {
-        const { className = "", children } = props
-        const nodeId = extractNodeIdFromClass(className)
-
-        if (className.includes("mention-tag") && nodeId) {
-          const isFound = className.includes("ztdl-found")
-          const isModule = className.includes("ztdl-M")
-
-          const getPriorityBadge = () => {
-            if (isModule)
-              return <FolderClosed className="size-3 inline-block text-muted-foreground" />
-            const priorityConfig: Record<string, { label: string; bg: string }> = {
-              "ztdl-p1": { label: "1", bg: "bg-destructive" },
-              "ztdl-p2": { label: "2", bg: "bg-warning" },
-              "ztdl-p3": { label: "3", bg: "bg-muted" },
-            }
-            for (const [cls, config] of Object.entries(priorityConfig)) {
-              if (className.includes(cls)) {
-                return (
-                  <span
-                    className={`inline-flex size-3.5 items-center justify-center rounded-full ${config.bg} flex-shrink-0`}
-                  >
-                    <span className="text-[8px] font-semibold text-white">{config.label}</span>
-                  </span>
-                )
-              }
-            }
-            return <ClipboardList className="size-3 inline-block text-muted-foreground" />
-          }
-
-          if (isFound) {
-            return (
-              <span
-                className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-xs text-primary cursor-pointer hover:underline bg-primary/10 dark:bg-primary/30"
-                onClick={(e: React.MouseEvent) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  if (!mindMap) return
-
-                  // 显式 resolve 短 ID → UUID
-                  let resolvedId = nodeId
-                  const mapper = getModuleAIChatRuntime()?.getIdMapper() ?? null
-                  if (mapper && SessionIdMapper.isShortId(nodeId)) {
-                    resolvedId = mapper.tryResolve(nodeId)
-                  }
-
-                  mindMap?.execCommand?.("GO_TARGET_NODE", resolvedId)
-                }}
-                title={t("mindmap.aiChat.message.locateNode")}
-              >
-                {getPriorityBadge()}
-                {children}
-              </span>
-            )
-          } else if (className.includes("ztdl-unrecognized")) {
-            return (
-              <span
-                className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-xs text-warning bg-warning/10 dark:bg-warning/30 border border-dashed border-warning/20 dark:border-warning"
-                title={t("mindmap.aiChat.message.nodeUnrecognized")}
-              >
-                <HelpCircle className="size-3 flex-shrink-0 text-warning" />
-                {getPriorityBadge()}
-                {children}
-              </span>
-            )
-          } else {
-            return (
-              <span
-                className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-xs text-muted-foreground line-through cursor-default bg-muted/50"
-                title={t("mindmap.aiChat.message.nodeDeleted")}
-              >
-                <Minus className="size-3 flex-shrink-0 text-destructive" />
-                {getPriorityBadge()}
-                {children}
-              </span>
-            )
-          }
-        }
-
+      span({ className, children }) {
         return <span className={className}>{children}</span>
       },
     }),
-    [mindMap, t]
+    []
   )
 
   // ---- 分离 parts ----
@@ -413,22 +265,6 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
     (part: GenericMessagePart, key: number | string) => {
       const textContent = typeof part.text === "string" ? part.text : String(part.text || "")
       if (!textContent.trim()) return null
-
-      // 1. 处理转义字符（如 JSON 里的 \+ 变 +）
-      const unescaped = textContent.replace(/\\([+\-~>=!])/g, "$1")
-
-      // 2. 处理内联代码块中的 ZTDL 引用
-      const codeUnescaped = unescaped.replace(INLINE_CODE_ZTDL_REGEX, "$1")
-
-      // 3. 让 processMentions 把 ZTDL 格式转换为 HTML span
-      const processedContent = processMentions(codeUnescaped, {
-        resolveShortId: id => {
-          const mapper = getModuleAIChatRuntime()?.getIdMapper() ?? null
-          return mapper ? mapper.tryResolve(id) : id
-        },
-        findNode,
-      })
-
       return (
         <div key={key}>
           <ReactMarkdown
@@ -436,12 +272,12 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
             rehypePlugins={[rehypeRaw]}
             components={markdownComponents}
           >
-            {processedContent}
+            {textContent}
           </ReactMarkdown>
         </div>
       )
     },
-    [findNode, markdownComponents]
+    [markdownComponents]
   )
 
   const lastActivePartIndex = useMemo(() => {

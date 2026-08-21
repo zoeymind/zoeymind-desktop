@@ -1,0 +1,23 @@
+{
+  "name": "@zoeymind-desktop/mcp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "bin": { "zoeymind-document-portal-mcp": "./src/index.ts" },
+  "scripts": {
+    "smoke": "tsx src/smoke.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@zoeymind-desktop/document-portal-client": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0"
+  }
+}

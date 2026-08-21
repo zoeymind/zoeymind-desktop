@@ -16,10 +16,10 @@ describe("ToolCallCard active disclosure", () => {
     render(
       <ToolCallCard
         part={{
-          type: "tool-add_module",
+          type: "tool-edit",
           toolCallId: "call-1",
           state: "input-available",
-          input: { modules: [{ name: "Checkout" }] },
+          input: { anchorTag: "a", patch: "update" },
         }}
       />
     )
@@ -28,6 +28,6 @@ describe("ToolCallCard active disclosure", () => {
     expect(trigger.hasAttribute("disabled")).toBe(false)
     fireEvent.click(trigger)
     expect(trigger.getAttribute("aria-expanded")).toBe("true")
-    expect(screen.getByText(/Checkout/)).toBeTruthy()
+    expect(screen.getByText(/anchorTag/)).toBeTruthy()
   })
 })

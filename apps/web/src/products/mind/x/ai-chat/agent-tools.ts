@@ -1,105 +1,41 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
-/**
- * 桌面端 agent 工具集 —— 精简自 apps/zoeymind/x/api/services/ai-v2/tools.ts.
- * 结构完全一致 (AI SDK `tool({description, inputSchema, ...})`), 只做用例/模块 CRUD
- * + question, 不含 figma / MCP (那些 provider 要后端上下文, 桌面端未实装).
- */
-
-import { tool } from 'ai'
+import { tool } from "ai"
+import { QuestionSchema } from "@zoeymind/shared"
 import {
-  ListModulesSchema,
-  GetModuleCasesSchema,
-  SearchCasesSchema,
-  AddModuleSchema,
-  AddCasesSchema,
-  UpdateModuleSchema,
-  UpdateCasesSchema,
-  DeleteModuleSchema,
-  DeleteCasesSchema,
-  EnsureCasesSchema,
-  QuestionSchema
-} from '@zoeymind/shared'
-import {
-  DocumentsToolInputSchema,
-  ReadDocumentToolInputSchema
-} from '@/products/mind/document-portal/ai-sdk-adapter'
+  CurrentDocumentEditToolInputSchema,
+  CurrentDocumentReadToolInputSchema,
+  CurrentDocumentSearchToolInputSchema,
+} from "@/products/mind/document-portal/current-document-adapter"
 
+const AGENT_TOOL_LABELS: Record<string, string> = {
+  search: "搜索当前文档",
+  read: "读取当前文档",
+  edit: "编辑当前文档",
+  question: "向用户提问",
+}
+
+export function getToolLabel(toolName: string): string {
+  return AGENT_TOOL_LABELS[toolName] ?? toolName
+}
 export function getAgentTools() {
   return {
-    documents: tool({
+    search: tool({
       description:
-        '列出当前已打开的 Test Document。返回稳定 documentId、标题、活动状态、ready 状态、未保存状态和 revision。读取文档前先用此工具确认目标，不要猜测当前活动文档。',
-      inputSchema: DocumentsToolInputSchema
+        "Search the current ready Test Document. Read a hit's readPath for local content.",
+      inputSchema: CurrentDocumentSearchToolInputSchema,
     }),
-
     read: tool({
       description:
-        '显式读取一个已打开且 ready 的 Test Document。outline 返回有界模块目录；subtree 按模块名称路径返回局部树。不会返回内部节点 ID，也不会默认读取完整大型文档。',
-      inputSchema: ReadDocumentToolInputSchema
+        "Read the current ready Test Document. Use outline first, then subtree for bounded local content.",
+      inputSchema: CurrentDocumentReadToolInputSchema,
     }),
-
-    list_modules: tool({
-      description: '列出所有测试模块的基本信息（名称和ID）',
-      inputSchema: ListModulesSchema
-    }),
-
-    get_module_cases: tool({
+    edit: tool({
       description:
-        '获取一个或多个模块的测试用例。只返回模块下直接的测试用例，不包含子模块的用例',
-      inputSchema: GetModuleCasesSchema
+        "Apply an atomic patch to the current ready Test Document using a read anchorTag. Use preview before destructive changes.",
+      inputSchema: CurrentDocumentEditToolInputSchema,
     }),
-
-    search_cases: tool({
-      description: '在思维导图中跨模块搜索测试用例（支持模糊匹配）',
-      inputSchema: SearchCasesSchema
-    }),
-
-    add_module: tool({
-      description:
-        '在指定父模块下批量添加同层级子模块。支持预分配 ID（modules[].id），后续调用可直接引用。\n\n规则：\n1. 每次调用只创建同一父节点下的一层子模块\n2. 要创建多层嵌套需分多次调用\n3. 若父模块下已有用例，不能再添加子模块（模块和用例不能混放）\n4. 不指定 parentModuleId 时添加到根节点',
-      inputSchema: AddModuleSchema
-    }),
-
-    add_cases: tool({
-      description:
-        '批量添加测试用例到指定模块（仅叶子模块）。\n\n规则：\n1. 目标模块下若已有子模块，不能添加用例\n2. case 必须以 [P1]/[P2]/[P3] 开头，可追加 " & 前置条件"\n3. steps 每一项必须包含 "&"，格式为 "操作 & 预期结果"',
-      inputSchema: AddCasesSchema
-    }),
-
-    update_module: tool({
-      description:
-        '批量更新测试模块信息（名称、描述等）。**建议一次性更新所有需要修改的模块**，而不是逐个更新，可以提高效率。',
-      inputSchema: UpdateModuleSchema
-    }),
-
-    update_cases: tool({
-      description:
-        '批量更新测试用例信息（名称、步骤等），建议一次性提交所有变更。\n\n规则：\n1. case 字段（如提供）必须以 [P1]/[P2]/[P3] 开头\n2. steps 字段（如提供）每一项必须包含 "&"，格式为 "操作 & 预期结果"',
-      inputSchema: UpdateCasesSchema
-    }),
-
-    delete_module: tool({
-      description:
-        '批量删除测试模块。**建议一次性删除所有需要删除的模块**，而不是逐个删除，可以提高效率。注意：删除模块会同时删除其下的所有子模块和用例',
-      inputSchema: DeleteModuleSchema
-    }),
-
-    delete_cases: tool({
-      description:
-        '批量删除测试用例。**建议一次性删除所有需要删除的用例**，而不是逐个删除，可以提高效率。',
-      inputSchema: DeleteCasesSchema
-    }),
-
-    ensure_cases: tool({
-      description:
-        '确保指定模块下存在目标用例：按用例名称匹配，存在则更新，不存在则创建。优先用于同步同名用例，避免重复新增。',
-      inputSchema: EnsureCasesSchema
-    }),
-
     question: tool({
-      description:
-        '向用户发起结构化提问获取答案。使用批量问题（推荐）: {questions: [{header, question, options?, multiple?}], allowSkip?}. options 存在则为选择题, 不存在为文本输入题.',
-      inputSchema: QuestionSchema
-    })
+      description: "Ask the user structured questions.",
+      inputSchema: QuestionSchema,
+    }),
   }
 }

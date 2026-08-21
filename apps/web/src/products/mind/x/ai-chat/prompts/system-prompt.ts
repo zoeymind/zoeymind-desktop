@@ -1,16 +1,14 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 构建完整的 System Prompt
  *
  * 顺序策略：技术参考在前，行为约束在后（Recency Bias — 越靠后的内容 AI 越容易遵守）
  */
 
-import { role } from './role'
-import { behavior } from './behavior'
-import { generationStrategy } from './generation-strategy'
-import { testcaseWriting } from './testcase-writing'
-import { ztdlProtocol } from './ztdl-protocol'
-import { a2uiProtocol } from './ask-user-guide'
+import { role } from "./role"
+import { behavior } from "./behavior"
+import { generationStrategy } from "./generation-strategy"
+import { testcaseWriting } from "./testcase-writing"
+import { a2uiProtocol } from "./ask-user-guide"
 
 /**
  * 生成完整的 System Prompt
@@ -21,11 +19,6 @@ export function buildSystemPrompt(): string {
   return `
 ${role()}
 
----
-
-${ztdlProtocol()}
-
----
 
 ${a2uiProtocol()}
 

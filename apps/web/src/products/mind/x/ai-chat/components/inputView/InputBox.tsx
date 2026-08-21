@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * InputBox - AI 对话文本输入框（@模块提及）。
  *
@@ -7,15 +6,15 @@
  * 对外接口（value/onChange/onKeyDown/onPasteMedia）与历史实现保持一致。
  */
 
-import React, { useCallback } from 'react'
+import React, { useCallback } from "react"
 import {
   MentionEditor,
-  type MentionEditorSuggestion
-} from '@/products/mind/features/mindmap/components/MentionEditor/MentionEditor'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import { useMindMapModules } from '@/products/mind/features/mindmap/hooks/useMindMapModules'
-import { MENTION_PILL_CLASS } from '../../../ai-chat/utils/mentions'
-import { useTranslation } from '@zoeymind/i18n'
+  type MentionEditorSuggestion,
+} from "@/products/mind/features/mindmap/components/MentionEditor/MentionEditor"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import { useMindMapModules } from "@/products/mind/features/mindmap/hooks/useMindMapModules"
+import { useTranslation } from "@zoeymind/i18n"
+const MENTION_PILL_CLASS = "bg-primary/10 text-primary border-primary/20"
 
 interface InputBoxProps {
   value: string
@@ -32,10 +31,10 @@ export const InputBox: React.FC<InputBoxProps> = ({
   onKeyDown,
   placeholder,
   disabled = false,
-  onPasteMedia
+  onPasteMedia,
 }) => {
   const { t } = useTranslation()
-  const effectivePlaceholder = placeholder ?? t('mindmap.aiChat.input.inputPlaceholder')
+  const effectivePlaceholder = placeholder ?? t("mindmap.aiChat.input.inputPlaceholder")
   const { mindMap } = useMindMapStore()
   const { moduleList, refreshModules } = useMindMapModules(mindMap)
 

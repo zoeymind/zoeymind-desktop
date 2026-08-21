@@ -1,67 +1,36 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
- * AIChatRuntimeContext — 把 useChat 的 SDK 句柄 + 响应式状态暴露给消费组件和派生 hook.
- *
- * 用法 (Provider 由 AIChatProvider 组件在 MindMapCanvas 顶层挂载):
- *   <AIChatRuntimeProvider runtime={runtimeApi}>
- *     <MindMapCanvas 内容 />
- *   </AIChatRuntimeProvider>
- *
- *   function Foo() {
- *     const { sendMessage, messages, status } = useAIChatRuntime()
- *   }
- *
- * 设计要点:
- *   - 动作函数经 ref 稳定 (identity 抖动不触发重渲染)
- *   - messages / status / error 是数据, 必须驱动重渲染 — context value 的 useMemo
- *     以它们为 dep, 每次流式更新都换新 value, 订阅组件跟着更新.
- *     NEVER 把数据藏进 ref+getter: value identity 不变 = 订阅者永不重渲染 = UI 冻结.
- *   - getIdMapper / shortenId 是延迟访问, 调用时才读 MindmapContextManager.idMapper
+ * AIChatRuntimeContext — exposes the SDK handles and reactive chat state.
  */
 
 import {
   createContext,
   useContext,
+  useLayoutEffect,
   useMemo,
   useRef,
   type ReactNode,
   type ReactElement,
 } from "react"
-import type { UIMessage } from "@ai-sdk/react"
 import type { AddToolOutputParams, SendMessageParams } from "../../ai-chat/types"
-import type { SessionIdMapper } from "../../ai-chat/tools/session-id-mapper"
+import type { UIMessage } from "@ai-sdk/react"
 
 export interface AIChatRuntime {
-  /** useChat 的 sendMessage, 入参为 ai-sdk SendMessageParams */
   sendMessage: (params: SendMessageParams) => void
   regenerate: (options?: { body?: Record<string, unknown> }) => void
-  /** useChat 的 stop, 取消当前流 */
   stop: () => void
-  /** useChat 的 setMessages, 覆盖整条消息列表 */
   setMessages: (messages: UIMessage[]) => void
-  /** useChat 的 addToolOutput, 让前端工具结果回传给 SDK */
   addToolOutput: (params: AddToolOutputParams) => Promise<void>
-  /** 拿当前 MindmapContextManager 的 idMapper 实例 (没初始化时返回 null) */
-  getIdMapper: () => SessionIdMapper | null
-  /** UUID → 短 ID. 没 mapper 时透传原值. type 暂未使用, 保留兼容旧签名. */
-  shortenId: (uuid: string, type: "module" | "case") => string
-  /** useChat 的 messages — AI SDK 单一事实源 (响应式, 组件直接读) */
   messages: UIMessage[]
-  /** useChat 的 status — submitted | streaming | ready | error (响应式) */
   status: string
-  /** useChat 的 error — 错误对象或 undefined (响应式) */
   error: Error | undefined
 }
 
-/** 内部使用: 动作函数用 ref 包一层, 让函数 identity 抖动不会触发 value 重建 */
 interface AIChatRuntimeActionRefs {
   sendMessage: AIChatRuntime["sendMessage"] | null
   regenerate: AIChatRuntime["regenerate"] | null
   stop: AIChatRuntime["stop"] | null
   setMessages: AIChatRuntime["setMessages"] | null
   addToolOutput: AIChatRuntime["addToolOutput"] | null
-  getIdMapper: AIChatRuntime["getIdMapper"] | null
-  shortenId: AIChatRuntime["shortenId"] | null
 }
 
 const AIChatRuntimeContext = createContext<AIChatRuntime | null>(null)
@@ -86,18 +55,23 @@ export function AIChatRuntimeProvider({
     stop: null,
     setMessages: null,
     addToolOutput: null,
-    getIdMapper: null,
-    shortenId: null,
   })
 
-  // 每次渲染刷新动作引用
-  actionRefs.current.sendMessage = runtime.sendMessage
-  actionRefs.current.regenerate = runtime.regenerate
-  actionRefs.current.stop = runtime.stop
-  actionRefs.current.setMessages = runtime.setMessages
-  actionRefs.current.addToolOutput = runtime.addToolOutput
-  actionRefs.current.getIdMapper = runtime.getIdMapper
-  actionRefs.current.shortenId = runtime.shortenId
+  useLayoutEffect(() => {
+    actionRefs.current = {
+      sendMessage: runtime.sendMessage,
+      regenerate: runtime.regenerate,
+      stop: runtime.stop,
+      setMessages: runtime.setMessages,
+      addToolOutput: runtime.addToolOutput,
+    }
+  }, [
+    runtime.addToolOutput,
+    runtime.regenerate,
+    runtime.sendMessage,
+    runtime.setMessages,
+    runtime.stop,
+  ])
 
   const { messages, status, error } = runtime
 
@@ -116,8 +90,6 @@ export function AIChatRuntimeProvider({
         actionRefs.current.setMessages?.(msgs)
       },
       addToolOutput: params => actionRefs.current.addToolOutput?.(params) ?? Promise.resolve(),
-      getIdMapper: () => actionRefs.current.getIdMapper?.() ?? null,
-      shortenId: (uuid, type) => actionRefs.current.shortenId?.(uuid, type) ?? uuid,
       messages,
       status,
       error,

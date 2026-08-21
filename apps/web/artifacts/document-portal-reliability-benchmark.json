@@ -1,0 +1,200 @@
+{
+  "corpus": {
+    "cases": 3000,
+    "modules": 30,
+    "projectedLines": 9031
+  },
+  "thresholds": {
+    "searchRecall": 1,
+    "targetLocationCorrectness": 1,
+    "patchFirstAttemptSuccess": 1,
+    "wrongEditRate": 0,
+    "defaultReadBounded": 1,
+    "paginationCompleteness": 1,
+    "conflictRejection": 1,
+    "atomicBatchEdit": 1
+  },
+  "metrics": {
+    "searchRecall": 1,
+    "targetLocationCorrectness": 1,
+    "patchFirstAttemptSuccess": 1,
+    "wrongEditRate": 0,
+    "defaultReadBounded": 1,
+    "paginationCompleteness": 1,
+    "conflictRejection": 1,
+    "atomicBatchEdit": 1,
+    "tokenEstimate": 97332,
+    "elapsedMs": 3335.907291
+  },
+  "outcomes": {
+    "passed": true,
+    "failuresByPhase": {
+      "retrieval": 0,
+      "understanding": 0,
+      "anchor": 2,
+      "validation": 1,
+      "application": 1
+    },
+    "failureClassification": {
+      "retrieval": "not-exercised",
+      "understanding": "not-exercised",
+      "anchor": "classified",
+      "validation": "classified",
+      "application": "classified"
+    },
+    "samples": [
+      {
+        "id": "default-read",
+        "operation": "read",
+        "elapsedMs": 4.405750000000012,
+        "outcome": "passed",
+        "tokenEstimate": 1052,
+        "detail": "default context is bounded and truncated"
+      },
+      {
+        "id": "cross-module-search-1733",
+        "operation": "search",
+        "elapsedMs": 26.477708000000007,
+        "outcome": "passed",
+        "tokenEstimate": 53,
+        "detail": "known cross-module case-title target"
+      },
+      {
+        "id": "cross-module-search-1",
+        "operation": "search",
+        "elapsedMs": 10.598584000000017,
+        "outcome": "passed",
+        "tokenEstimate": 53,
+        "detail": "known cross-module case-title target"
+      },
+      {
+        "id": "cross-module-search-2900",
+        "operation": "search",
+        "elapsedMs": 5.309125000000051,
+        "outcome": "passed",
+        "tokenEstimate": 53,
+        "detail": "known cross-module case-title target"
+      },
+      {
+        "id": "target-read-1733",
+        "operation": "read",
+        "elapsedMs": 0.3288329999999746,
+        "outcome": "passed",
+        "tokenEstimate": 98,
+        "detail": "target subtree reaches the searched case"
+      },
+      {
+        "id": "target-read-1",
+        "operation": "read",
+        "elapsedMs": 0.14145800000000008,
+        "outcome": "passed",
+        "tokenEstimate": 98,
+        "detail": "target subtree reaches the searched case"
+      },
+      {
+        "id": "target-read-2900",
+        "operation": "read",
+        "elapsedMs": 0.05366699999996172,
+        "outcome": "passed",
+        "tokenEstimate": 98,
+        "detail": "target subtree reaches the searched case"
+      },
+      {
+        "id": "pagination",
+        "operation": "search",
+        "elapsedMs": 50.73233299999998,
+        "outcome": "passed",
+        "tokenEstimate": 84001,
+        "detail": "pagination returns every cross-module case without treating one page as the document"
+      },
+      {
+        "id": "edit-read-module-1",
+        "operation": "read",
+        "elapsedMs": 0.8943749999999682,
+        "outcome": "passed",
+        "tokenEstimate": 3658,
+        "detail": "module slice supplies edit anchors"
+      },
+      {
+        "id": "edit-read-module-3",
+        "operation": "read",
+        "elapsedMs": 0.5079170000000204,
+        "outcome": "passed",
+        "tokenEstimate": 3658,
+        "detail": "module slice supplies edit anchors"
+      },
+      {
+        "id": "edit-read-module-5",
+        "operation": "read",
+        "elapsedMs": 0.314625000000035,
+        "outcome": "passed",
+        "tokenEstimate": 3658,
+        "detail": "module slice supplies edit anchors"
+      },
+      {
+        "id": "atomic-batch-edit-module-1",
+        "operation": "edit",
+        "elapsedMs": 1252.8649999999998,
+        "outcome": "passed",
+        "tokenEstimate": 284,
+        "detail": "first-attempt atomic two-subtree replacement"
+      },
+      {
+        "id": "atomic-batch-edit-module-3",
+        "operation": "edit",
+        "elapsedMs": 1574.618625,
+        "outcome": "passed",
+        "tokenEstimate": 284,
+        "detail": "first-attempt atomic two-subtree replacement"
+      },
+      {
+        "id": "atomic-batch-edit-module-5",
+        "operation": "edit",
+        "elapsedMs": 1879.425,
+        "outcome": "passed",
+        "tokenEstimate": 284,
+        "detail": "first-attempt atomic two-subtree replacement"
+      },
+      {
+        "id": "invalid-patch",
+        "operation": "edit",
+        "elapsedMs": 336.46858299999985,
+        "outcome": "failed",
+        "tokenEstimate": 0,
+        "failurePhase": "validation",
+        "expectedSafetyRejection": true,
+        "detail": "invalid patch must be rejected before live application: Cannot move a subtree into itself"
+      },
+      {
+        "id": "anchor-conflict-module-9",
+        "operation": "edit",
+        "elapsedMs": 347.00562500000024,
+        "outcome": "failed",
+        "tokenEstimate": 0,
+        "failurePhase": "anchor",
+        "expectedSafetyRejection": true,
+        "detail": "concurrent anchor conflict must reject: Document changed since this line was read"
+      },
+      {
+        "id": "anchor-conflict-module-10",
+        "operation": "edit",
+        "elapsedMs": 669.1551249999998,
+        "outcome": "failed",
+        "tokenEstimate": 0,
+        "failurePhase": "anchor",
+        "expectedSafetyRejection": true,
+        "detail": "concurrent anchor conflict must reject: Document changed since this line was read"
+      },
+      {
+        "id": "live-engine-failure",
+        "operation": "edit",
+        "elapsedMs": 338.990084,
+        "outcome": "failed",
+        "tokenEstimate": 0,
+        "failurePhase": "application",
+        "expectedProductFailure": true,
+        "detail": "fault-injecting live engine reports application failure: benchmark live engine failure"
+      }
+    ]
+  }
+}

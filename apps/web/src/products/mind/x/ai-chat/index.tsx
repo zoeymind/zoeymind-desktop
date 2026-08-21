@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * AIchatV2 - 基于 Vercel AI SDK 的 AI 聊天组件
  *
@@ -32,8 +31,6 @@ import { ErrorBoundary } from "./components/ErrorBoundary"
 import { MindMapInstanceProvider } from "./context/MindMapInstanceContext"
 import { ToolUIRenderer } from "./context/ToolUIRenderer"
 import { restorePendingFromMessages } from "./context/ToolUIRegistry"
-import { useQuestionToolUI } from "./tools/ui-handlers/QuestionToolUI"
-import { useCaseConfirmToolUI } from "./tools/ui-handlers/CaseConfirmToolUI"
 import { useMCPTools } from "./hooks/useMCPTools"
 import { useModelSelector } from "./hooks/useModelSelector"
 import { useAIChatV2Store } from "./stores/useAIChatV2Store"
@@ -44,6 +41,7 @@ import { cn } from "@/shared/app-shared"
 import { trpc } from "../lib/trpc"
 import { useTranslation } from "@zoeymind/i18n"
 import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useUserPrompt"
+import { useQuestionToolUI } from "./tools/ui-handlers/QuestionToolUI"
 import { useUIStore } from "@/products/mind/stores"
 import zoeyLogoLightUrl from "@/assets/logo.svg"
 import zoeyLogoDarkUrl from "@/assets/logo-dark.svg"
@@ -115,35 +113,16 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const mcpServers = mcpServersData ?? EMPTY_MCP_SERVERS
   const mcpServerStatus = useMCPStore(state => state.serverStatus)
 
-  // ✅ 声明哪些工具弹 UI (借鉴 CopilotKit useCopilotAction({ renderAndWaitForResponse }) 设计)
   useQuestionToolUI()
-  useCaseConfirmToolUI()
 
-  // 设置弹窗内容状态 (localStorage 持久化)
-  const REVIEW_SETTING_KEY = "ai-case-review-enabled"
-  const [reviewEnabled, setReviewEnabled] = useState(() => {
-    if (typeof window === "undefined") return false
-    return localStorage.getItem(REVIEW_SETTING_KEY) === "true"
-  })
   const [mindmapContextEnabled, setMindmapContextEnabledState] = useState(() => {
     if (typeof window === "undefined") return true
     return getMindmapContextEnabled()
   })
 
-  const handleReviewToggle = (enabled: boolean) => {
-    setReviewEnabled(enabled)
-    if (typeof window !== "undefined") {
-      localStorage.setItem(REVIEW_SETTING_KEY, String(enabled))
-    }
-  }
-
-  // ToolUIRegistry 是内存态；旧 transcript、切换会话或 HMR 后都要从当前消息恢复。
-  // 此 effect 声明在 useCaseConfirmToolUI 之后，执行时 handler 已完成注册；内部按
-  // toolCallId 去重，多次运行不会重复显示同一审核。
   useEffect(() => {
-    if (!reviewEnabled) return
     restorePendingFromMessages(messages)
-  }, [messages, reviewEnabled])
+  }, [messages])
 
   const handleScrollToBottom = () => {
     const messageContainer = document.querySelector("[data-message-container-v2]")
@@ -400,8 +379,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
       <AIChatSettingsDialog
         open={showSettings}
         onOpenChange={setShowSettings}
-        reviewEnabled={reviewEnabled}
-        onReviewEnabledChange={handleReviewToggle}
         mindmapContextEnabled={mindmapContextEnabled}
         onMindmapContextEnabledChange={enabled => {
           setMindmapContextEnabled(enabled)
