@@ -19,6 +19,8 @@ export interface ExecutionResult {
   success: boolean
   data?: unknown
   error?: string
+  errorCode?: string
+  details?: Record<string, unknown>
   /**
    * ZTDL 格式文本（面向 AI 的紧凑表示）
    * 如果存在，addToolResult 时会用此字段替代 data 传给 AI，
@@ -63,7 +65,12 @@ export function toModelOutput(result: ExecutionResult): unknown {
     return out
   }
   if (!result.success) {
-    return { success: false, error: result.error }
+    return {
+      success: false,
+      error: result.error,
+      errorCode: result.errorCode,
+      details: result.details,
+    }
   }
   // 成功但无 ztdl：返回精简版
   if (result.data && typeof result.data === "object") {

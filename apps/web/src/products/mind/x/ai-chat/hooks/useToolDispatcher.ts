@@ -205,6 +205,20 @@ export function useToolDispatcher({
 
         const result = await toolExecutor.execute(toolName, resolved, currentMindMap, idMapper)
 
+        if (
+          toolName === "add_cases" &&
+          result.errorCode === "MODULE_NOT_FOUND" &&
+          typeof rawInput.moduleId === "string" &&
+          typeof resolved.moduleId === "string"
+        ) {
+          result.details = {
+            ...result.details,
+            inputModuleId: rawInput.moduleId,
+            resolvedModuleId: resolved.moduleId,
+            resolutionLayer: "resolveToolInput.moduleId",
+          }
+        }
+
         bindPreAssignedIds(toolName, result, preAssignedIds, idMapper)
 
         recordToolUsage(
