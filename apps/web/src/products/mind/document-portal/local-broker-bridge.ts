@@ -1,8 +1,11 @@
 import { listen } from "@tauri-apps/api/event"
 import { invoke } from "@tauri-apps/api/core"
 import { logger } from "@zoeymind/logger"
-import { executeDocumentPortalTool, isDocumentPortalTool } from "./ai-sdk-adapter"
-import { mindMapDocumentPortal } from "./mindmap-document-portal"
+import {
+  executeCurrentDocumentPortalTool,
+  isCurrentDocumentPortalTool,
+} from "./current-document-adapter"
+import { activateProject, controlProjects } from "./project-controller"
 
 type BrokerRequest = { requestId: string; tool: string; input: unknown }
 
@@ -16,17 +19,32 @@ export function startDocumentPortalBrokerBridge(): void {
 export async function dispatchDocumentPortalBrokerRequest(
   request: BrokerRequest
 ): Promise<Record<string, unknown>> {
-  if (!isDocumentPortalTool(request.tool)) {
+  if (request.tool === "projects") {
+    try {
+      return { success: true, ...(await controlProjects(request.input as never)) }
+    } catch (error) {
+      return { success: false, errorCode: "PROJECT_CONTROL_FAILED", error: String(error) }
+    }
+  }
+  if (request.tool === "activate_project") {
+    try {
+      const input = request.input as { projectId?: unknown }
+      if (typeof input.projectId !== "string" || !input.projectId)
+        return { success: false, errorCode: "INVALID_REQUEST", error: "projectId is required" }
+      return { success: true, ...(await activateProject(input.projectId)) }
+    } catch (error) {
+      return { success: false, errorCode: "PROJECT_ACTIVATION_FAILED", error: String(error) }
+    }
+  }
+  if (!isCurrentDocumentPortalTool(request.tool)) {
     return {
       success: false,
       errorCode: "INVALID_REQUEST",
-      error: "Expected a Document Portal tool request",
+      error: "Expected a project-control or current-mind-map tool request",
     }
   }
   try {
-    return await Promise.resolve(
-      executeDocumentPortalTool(request.tool, request.input, mindMapDocumentPortal)
-    )
+    return await Promise.resolve(executeCurrentDocumentPortalTool(request.tool, request.input))
   } catch (error) {
     logger.error("Document Portal broker dispatch failed", { tool: request.tool, error })
     return { success: false, errorCode: "PORTAL_FAILURE", error: "Document Portal request failed" }

@@ -198,7 +198,12 @@ fn serve(mut stream: TcpStream, app: &AppHandle, token: &str, pending: &Arc<Mute
   }
 }
 
-fn valid_tool(tool: &str) -> bool { matches!(tool, "documents" | "search" | "read" | "edit") }
+fn valid_tool(tool: &str) -> bool {
+  matches!(
+    tool,
+    "projects" | "activate_project" | "query_current_mindmap" | "edit_current_mindmap"
+  )
+}
 fn invalid_envelope() -> Value { json!({"success":false,"errorCode":"INVALID_REQUEST","error":"Expected a Document Portal tool request"}) }
 fn unavailable() -> Value { json!({"success":false,"errorCode":"BROKER_UNAVAILABLE","error":"ZoeyMind Document Portal is not ready"}) }
 fn write_response(stream: &mut TcpStream, status: u16, body: Value) {
@@ -210,7 +215,14 @@ mod tests {
   use super::*;
 
   #[test]
-  fn accepts_only_portal_tools() { assert!(valid_tool("edit")); assert!(!valid_tool("delete")); }
+  fn accepts_only_portal_tools() {
+    assert!(valid_tool("projects"));
+    assert!(valid_tool("activate_project"));
+    assert!(valid_tool("query_current_mindmap"));
+    assert!(valid_tool("edit_current_mindmap"));
+    assert!(!valid_tool("edit"));
+    assert!(!valid_tool("delete"));
+  }
 
   #[test]
   fn errors_are_stable() { assert_eq!(invalid_envelope()["errorCode"], "INVALID_REQUEST"); assert_eq!(unavailable()["errorCode"], "BROKER_UNAVAILABLE"); }
