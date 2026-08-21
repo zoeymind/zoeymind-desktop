@@ -1,11 +1,11 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy mirrored chat module remains untyped */
 // @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
-import React, { useState, useEffect } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { UserMessage } from "./UserMessage"
 import { AssistantMessage } from "./AssistantMessage"
 import { CompactSummaryCard } from "./CompactSummaryCard"
 import { useCompactionStore } from "../../compaction/useCompactionStore"
 import { logger } from "@zoeymind/logger"
-import { useAutoScroll } from "./useAutoScroll"
 import { useAIChatRuntime } from "../../../ai-chat/context/AIChatRuntimeContext"
 import { hasRenderableContent } from "../../../ai-chat/utils/message-content"
 import { Spinner } from "@zoeymind/ui"
@@ -15,6 +15,7 @@ import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 import { resolveModelDisplayName } from "../../../ai-chat/utils/modelDisplayName"
 import { mapUserMessageTokenUsage } from "../../../ai-chat/utils/messageTokenUsage"
 import { hasPendingToolCalls } from "../../../ai-chat/utils/pendingToolCalls"
+import { MessageScroller } from "@/components/agents/message-scroller"
 
 const MESSAGES_PER_PAGE = 10
 
@@ -41,11 +42,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
     status === "submitted" || status === "streaming" || hasPendingToolCalls(messages)
   const [displayCount, setDisplayCount] = useState(MESSAGES_PER_PAGE)
 
-  const { containerRef, contentRef, messagesEndRef } = useAutoScroll({
-    messages,
-    isSending: isProcessing,
-    onScrollStatusChange,
-  })
+  const containerRef = useRef<HTMLElement>(null)
 
   // 去重: 消息数组里出现同 id 会让 React 报 "same key" 然后爆炸 (整个 chat 卡死).
   // 见 chat store / DB 载入 / 重发路径任一处若把同一条消息 push 两遍, 这里兜底.
@@ -111,81 +108,86 @@ export const MessageView: React.FC<MessageViewProps> = ({
   }
 
   // 重置显示数量（当对话切换时）
-  useEffect(() => {
-    if (messages.length > 0 && messages.length <= MESSAGES_PER_PAGE) {
-      setDisplayCount(MESSAGES_PER_PAGE)
-    }
-  }, [messages.length])
 
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto no-scrollbar">
-      <div ref={contentRef} className="flex flex-col p-4 min-h-full pb-6">
-        {/* 加载更多按钮 */}
-        {hasMoreMessages && (
-          <button
-            type="button"
-            onClick={loadMoreMessages}
-            className="flex items-center justify-center space-x-1 py-1.5 px-3 bg-muted/50 hover:bg-muted rounded-lg text-xs text-muted-foreground transition-colors mx-auto mb-4 border border-border"
-          >
-            <ChevronUp className="size-3" />
-            <span>{t("mindmap.aiChat.message.viewHistory")}</span>
-          </button>
-        )}
+    <MessageScroller
+      className="h-full"
+      viewportRef={containerRef}
+      viewportClassName="no-scrollbar"
+      contentClassName="flex min-h-full flex-col p-4 pb-6"
+      followOutput
+      navigation="rail"
+      navigationLabel={t("mindmap.aiChat.core.messageNavigation")}
+      smooth
+      busy={isProcessing}
+      label={t("mindmap.aiChat.core.conversation")}
+      onFollowChange={onScrollStatusChange}
+    >
+      {/* 加载更多按钮 */}
+      {hasMoreMessages && (
+        <button
+          type="button"
+          onClick={loadMoreMessages}
+          className="flex items-center justify-center space-x-1 py-1.5 px-3 bg-muted/50 hover:bg-muted rounded-lg text-xs text-muted-foreground transition-colors mx-auto mb-4 border border-border"
+        >
+          <ChevronUp className="size-3" />
+          <span>{t("mindmap.aiChat.message.viewHistory")}</span>
+        </button>
+      )}
 
-        {visibleMessages.map((message, index) => {
-          const isLast = index === visibleMessages.length - 1
-          const messageTokenUsage = tokenUsageByUserMessageId.get(message.id)
-          const rendered =
-            message.role === "user" ? (
-              <UserMessage
-                message={message}
-                models={models}
-                selectedModel={selectedModel}
-                setSelectedModel={setSelectedModel}
-                tokenUsage={messageTokenUsage}
+      {visibleMessages.map((message, index) => {
+        const isLast = index === visibleMessages.length - 1
+        const messageTokenUsage = tokenUsageByUserMessageId.get(message.id)
+        const rendered =
+          message.role === "user" ? (
+            <UserMessage
+              message={message}
+              models={models}
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+              tokenUsage={messageTokenUsage}
+            />
+          ) : message.role === "assistant" ? (
+            <AssistantMessage
+              message={message}
+              models={models}
+              isLast={isLast}
+              isProcessing={isProcessing}
+            />
+          ) : null
+        return (
+          <div key={message.id} data-slot="message" data-from={message.role}>
+            {rendered}
+            {compaction?.compactedThroughMessageId === message.id && (
+              <CompactSummaryCard
+                text={compaction.summary}
+                compactedCount={compaction.compactedCount}
+                modelId={resolveModelDisplayName(compaction.modelId, models)}
               />
-            ) : message.role === "assistant" ? (
-              <AssistantMessage
-                message={message}
-                models={models}
-                isLast={isLast}
-                isProcessing={isProcessing}
-              />
-            ) : null
-          return (
-            <React.Fragment key={message.id}>
-              {rendered}
-              {compaction?.compactedThroughMessageId === message.id && (
-                <CompactSummaryCard
-                  text={compaction.summary}
-                  compactedCount={compaction.compactedCount}
-                  modelId={resolveModelDisplayName(compaction.modelId, models)}
-                />
-              )}
-            </React.Fragment>
-          )
-        })}
-        {/* 等待 spinner (官方判定, docs/research/ai-sdk-chat-streaming.md §4.1):
+            )}
+          </div>
+        )
+      })}
+      {/* 等待 spinner (官方判定, docs/research/ai-sdk-chat-streaming.md §4.1):
             - submitted: assistant 消息还没 push 到 messages, 直接显示
             - streaming 但 last assistant 尚无可渲染内容 (含空 text part 瞬态): 显示
             有内容后由 AssistantMessage 尾部的 spinner 接管. */}
-        {isProcessing &&
-          (() => {
-            const lastMsg = messages[messages.length - 1]
-            const waitingFirstContent =
-              !lastMsg || lastMsg.role === "user" || !hasRenderableContent(lastMsg)
-            if (waitingFirstContent) {
-              return (
-                <div className="pl-2 mt-2">
-                  <Spinner variant="ellipsis" size={16} className="text-foreground" />
-                </div>
-              )
-            }
-            return null
-          })()}
+      {isProcessing &&
+        (() => {
+          const lastMsg = messages[messages.length - 1]
+          const waitingFirstContent =
+            !lastMsg || lastMsg.role === "user" || !hasRenderableContent(lastMsg)
+          if (waitingFirstContent) {
+            return (
+              <div className="pl-2 mt-2">
+                <Spinner variant="ellipsis" size={16} className="text-foreground" />
+              </div>
+            )
+          }
+          return null
+        })()}
 
-        <div ref={messagesEndRef} data-scroll-end />
-      </div>
-    </div>
+      <div data-scroll-end />
+    </MessageScroller>
   )
 }

@@ -23,14 +23,6 @@ vi.mock("../../compaction/useCompactionStore", () => ({
     selector({ compaction: undefined }),
 }))
 
-vi.mock("./useAutoScroll", () => ({
-  useAutoScroll: () => ({
-    containerRef: { current: null },
-    contentRef: { current: null },
-    messagesEndRef: { current: null },
-  }),
-}))
-
 describe("MessageView", () => {
   it("renders an empty transcript without a runtime pagination error", () => {
     render(
@@ -38,5 +30,14 @@ describe("MessageView", () => {
     )
 
     expect(screen.queryByText("mindmap.aiChat.message.viewHistory")).toBeNull()
+
+    expect(screen.getByRole("region", { name: "mindmap.aiChat.core.conversation" })).toBeTruthy()
+    expect(
+      screen.getByRole("region", { name: "mindmap.aiChat.core.conversation" }).className
+    ).toContain("no-scrollbar")
+    expect(screen.getByRole("log").getAttribute("aria-busy")).toBe("false")
+    expect(
+      screen.getByRole("navigation", { name: "mindmap.aiChat.core.messageNavigation" })
+    ).toBeTruthy()
   })
 })
