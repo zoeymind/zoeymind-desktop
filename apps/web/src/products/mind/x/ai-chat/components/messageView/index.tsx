@@ -21,6 +21,8 @@ interface MessageViewProps {
   models: AIModel[]
   selectedModel: string
   setSelectedModel: (modelId: string) => void
+  usedTokens: number
+  maxTokens: number
 }
 
 export const MessageView: React.FC<MessageViewProps> = ({
@@ -28,6 +30,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
   models,
   selectedModel,
   setSelectedModel,
+  usedTokens,
+  maxTokens,
 }) => {
   const { t } = useTranslation()
   // ✅ 从 runtime 读 messages + status (AI SDK 单一事实源)
@@ -132,6 +136,8 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
+                usedTokens={usedTokens}
+                maxTokens={maxTokens}
               />
             ) : message.role === "assistant" ? (
               <AssistantMessage

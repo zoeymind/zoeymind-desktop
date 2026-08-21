@@ -22,7 +22,6 @@ import {
 } from "@zoeymind/ui"
 import { MessageView } from "./components/messageView"
 import { InputView } from "./components/inputView"
-import { ContextUsageIndicator } from "./components/ContextUsageIndicator"
 import { ActivePromptsIndicator } from "./components/ActivePromptsIndicator"
 import { ChatHistoryPanel } from "./components/historyView/ChatHistoryPanel"
 import { AIChatSettingsDialog } from "./components/inputView/AIChatSettingsDialog"
@@ -173,10 +172,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
       <div className="relative flex h-12 shrink-0 items-center px-3">
         <div className="flex-1" />
         <div className="flex h-full items-center gap-1">
-          <ContextUsageIndicator
-            usedTokens={totalTokenUsage.total}
-            maxTokens={contextBudget?.contextWindow ?? 128000}
-          />
           <ActivePromptsIndicator
             enabledPrompts={(myPrompts ?? [])
               .filter(p => p.isEnabled)
@@ -356,6 +351,8 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
+                usedTokens={totalTokenUsage.total}
+                maxTokens={contextBudget?.contextWindow ?? 128000}
               />
             </MindMapInstanceProvider>
           </ErrorBoundary>
@@ -387,6 +384,8 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
           disabled={!isAIConfigured}
+          usedTokens={totalTokenUsage.total}
+          maxTokens={contextBudget?.contextWindow ?? 128000}
         />
       </div>
       <PromptManagerModal isOpen={showPromptManager} onClose={() => setShowPromptManager(false)} />

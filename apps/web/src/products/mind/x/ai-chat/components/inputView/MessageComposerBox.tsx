@@ -37,6 +37,8 @@ interface MessageComposerBoxProps {
   isSending?: boolean
   isCompressing?: boolean
   supportsVision?: boolean
+  usedTokens: number
+  maxTokens: number
   placeholder?: string
   className?: string
   dataTour?: string
@@ -59,6 +61,8 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
   isSending = false,
   isCompressing = false,
   supportsVision = false,
+  usedTokens,
+  maxTokens,
   placeholder,
   className,
   dataTour,
@@ -119,6 +123,8 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
                 isCompressing={isCompressing}
                 hasContent={hasContent}
                 supportsVision={supportsVision}
+                usedTokens={usedTokens}
+                maxTokens={maxTokens}
               />
             </motion.div>
           )}

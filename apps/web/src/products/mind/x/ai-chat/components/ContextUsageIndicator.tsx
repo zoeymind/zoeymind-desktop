@@ -35,8 +35,8 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       ? "stroke-amber-500"
       : "stroke-foreground"
 
-  // 圆环 SVG 参数
-  const size = 14
+  // 与 24px 发送按钮对齐；圆环本身保留少量内边距，避免描边贴边。
+  const size = 20
   const strokeWidth = 2
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
@@ -54,48 +54,37 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       <HoverCardTrigger
         delay={200}
         render={
-          <div className="flex items-center gap-1.5 cursor-pointer">
-            {/* 百分比文字（左侧） */}
-            <span
-              className={cn(
-                "text-xs font-medium",
-                isCritical
-                  ? "text-destructive"
-                  : isWarning
-                    ? "text-warning dark:text-warning"
-                    : "text-foreground"
-              )}
-            >
-              {Math.round(percentage)}%
-            </span>
-            {/* 圆环进度条 / 压缩中 spinner */}
+          <div
+            className="flex size-6 cursor-pointer items-center justify-center rounded-full"
+            aria-label={t("mindmap.aiChat.core.contextUsed", {
+              value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
+            })}
+          >
             {compactionPhase === "pending" ? (
-              <Loader2 className="size-3.5 animate-spin text-warning" />
+              <Loader2 className="size-5 animate-spin text-warning" />
             ) : (
-              <div className="relative" style={{ width: size, height: size }}>
-                <svg className="transform -rotate-90" width={size} height={size}>
-                  <circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    fill="none"
-                    className="stroke-muted"
-                    strokeWidth={strokeWidth}
-                  />
-                  <circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    fill="none"
-                    className={ringClass}
-                    strokeWidth={strokeWidth}
-                    strokeDasharray={circumference}
-                    strokeDashoffset={offset}
-                    strokeLinecap="round"
-                    style={{ transition: "stroke-dashoffset 0.3s ease" }}
-                  />
-                </svg>
-              </div>
+              <svg className="-rotate-90" width={size} height={size} aria-hidden="true">
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  fill="none"
+                  className="stroke-muted"
+                  strokeWidth={strokeWidth}
+                />
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  fill="none"
+                  className={ringClass}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  strokeLinecap="round"
+                  style={{ transition: "stroke-dashoffset 0.3s ease" }}
+                />
+              </svg>
             )}
           </div>
         }

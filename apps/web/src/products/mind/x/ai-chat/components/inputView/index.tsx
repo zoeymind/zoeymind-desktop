@@ -19,6 +19,8 @@ interface InputViewProps {
   selectedModel: string
   setSelectedModel: (modelId: string) => void
   disabled?: boolean
+  usedTokens: number
+  maxTokens: number
 }
 
 export const InputView: React.FC<InputViewProps> = ({
@@ -26,6 +28,8 @@ export const InputView: React.FC<InputViewProps> = ({
   selectedModel,
   setSelectedModel,
   disabled = false,
+  usedTokens,
+  maxTokens,
 }) => {
   // 从 store 读取状态 (caseConfirm / simpleAskUser 已搬到 ToolUIRegistry, 不在 store 里)
   const {
@@ -99,6 +103,8 @@ export const InputView: React.FC<InputViewProps> = ({
       isSending={isProcessing}
       isCompressing={isCompressing}
       supportsVision={supportsVision}
+      usedTokens={usedTokens}
+      maxTokens={maxTokens}
       className="mx-3 mb-4"
       dataTour="ai-panel-input"
     />

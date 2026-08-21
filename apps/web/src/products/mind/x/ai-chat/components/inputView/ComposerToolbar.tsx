@@ -2,7 +2,7 @@
 /**
  * ComposerToolbar - 消息组合框的底部工具栏模块（独立模块）。
  *
- * 左：附件 + 模型选择器；右：发送 / 停止。
+ * 左：附件 + 模型选择器；右：Context 用量圆环 + 发送 / 停止。
  * 只负责工具栏内容与布局；收起 ↔ 展开的动画由外层（MessageComposerBox）用
  * AnimatePresence 包裹做高度动画，本组件不感知状态切换。
  */
@@ -10,6 +10,7 @@
 import React from "react"
 import { ModelSelector } from "./ModelSelector"
 import { ActionButtons, AttachmentButton } from "./ActionButtons"
+import { ContextUsageIndicator } from "../ContextUsageIndicator"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 
 interface ComposerToolbarProps {
@@ -24,6 +25,8 @@ interface ComposerToolbarProps {
   isCompressing?: boolean
   hasContent?: boolean
   supportsVision?: boolean
+  usedTokens: number
+  maxTokens: number
 }
 
 export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
@@ -38,6 +41,8 @@ export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
   isCompressing = false,
   hasContent = false,
   supportsVision = false,
+  usedTokens,
+  maxTokens,
 }) => {
   return (
     <div className="flex items-center justify-between pt-1">
@@ -55,13 +60,16 @@ export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
           disabled={disabled}
         />
       </div>
-      <ActionButtons
-        onSend={onSend}
-        onStop={onStop}
-        disabled={disabled}
-        isSending={isSending}
-        hasContent={hasContent}
-      />
+      <div className="flex items-center gap-1">
+        <ContextUsageIndicator usedTokens={usedTokens} maxTokens={maxTokens} />
+        <ActionButtons
+          onSend={onSend}
+          onStop={onStop}
+          disabled={disabled}
+          isSending={isSending}
+          hasContent={hasContent}
+        />
+      </div>
     </div>
   )
 }

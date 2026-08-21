@@ -25,6 +25,8 @@ interface UserMessageProps {
   models: AIModel[]
   selectedModel: string
   setSelectedModel: (modelId: string) => void
+  usedTokens: number
+  maxTokens: number
 }
 
 const UserMessageImpl: React.FC<UserMessageProps> = ({
@@ -32,6 +34,8 @@ const UserMessageImpl: React.FC<UserMessageProps> = ({
   models,
   selectedModel,
   setSelectedModel,
+  usedTokens,
+  maxTokens,
 }) => {
   const { t } = useTranslation()
   const { mindMap: storeMindMap } = useMindMapStore()
@@ -272,6 +276,8 @@ const UserMessageImpl: React.FC<UserMessageProps> = ({
           isSending={false}
           isCompressing={isCompressing}
           supportsVision={supportsVision}
+          usedTokens={usedTokens}
+          maxTokens={maxTokens}
           className={composerCardClassName(isEditing)}
         />
       </div>
