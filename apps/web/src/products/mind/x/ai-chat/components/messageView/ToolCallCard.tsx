@@ -210,18 +210,21 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
     return n
   }, [part.input, part.output])
 
-  const hasExpandableContent = !isPending && (isFailed || isComplete)
+  const hasExpandableContent = part.input !== undefined || isFailed || isComplete
 
   return (
     <div className="w-full max-w-full">
       {/* 头部行：状态点 + 工具名 + 耗时（参考 opencode 的单行 tool step 风格） */}
-      <div
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        disabled={!hasExpandableContent}
         className={cn(
-          "flex items-center gap-1.5 py-0.5 rounded-sm transition-colors",
+          "flex w-full items-center gap-1.5 rounded-sm py-0.5 text-left transition-colors",
           hasExpandableContent && "cursor-pointer hover:bg-muted/40",
           isExpanded && "bg-muted/30"
         )}
-        onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
+        onClick={() => setIsExpanded(expanded => !expanded)}
       >
         {/* 状态指示 */}
         {isPending && !isWaitingUser ? (
@@ -291,11 +294,11 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
             )}
           />
         )}
-      </div>
+      </button>
 
       {/* 展开内容 */}
       <AnimatePresence>
-        {isExpanded && !isPending && (
+        {isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -304,6 +307,18 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
             className="overflow-hidden"
           >
             <div className="ml-3 pl-2 border-l border-muted mt-0.5 max-h-[500px] overflow-y-auto space-y-2">
+              {isPending && part.input !== undefined && (
+                <div className="rounded-sm bg-muted p-2">
+                  <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+                    {t("mindmap.aiChat.message.inputLabel")}
+                  </div>
+                  <div className="whitespace-pre-wrap break-all font-mono text-xs text-foreground">
+                    {typeof part.input === "string"
+                      ? part.input
+                      : JSON.stringify(part.input, null, 2)}
+                  </div>
+                </div>
+              )}
               {isFailed && part.errorText && (
                 <div className="rounded-sm bg-destructive/10 p-2">
                   <div className="mb-1 text-[10px] font-medium text-destructive">
