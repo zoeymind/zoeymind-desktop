@@ -70,7 +70,6 @@ const editInput = z.object({
   anchorTag: z.string().min(1),
   patch: z.string().min(1),
   preview: z.boolean().optional(),
-  confirmationToken: z.string().min(1).optional(),
   returnView: z
     .object({
       view: z.enum(["outline", "subtree"]).optional(),

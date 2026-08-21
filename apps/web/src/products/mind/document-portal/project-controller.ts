@@ -3,7 +3,10 @@ import { PROJECT_SESSION_LIFECYCLE, projectSessionRegistry } from "../editor-ses
 import { getProject, listProjects, pendingProjects } from "@/shared/native"
 import { useTabs } from "@/shared/tabs/store"
 
-export type ProjectControlRequest = { action: "list" } | { action: "create"; title?: string }
+export type ProjectControlRequest =
+  | { action: "list" }
+  | { action: "create"; title?: string }
+  | { action: "discard"; projectId: string }
 
 export async function controlProjects(request: ProjectControlRequest) {
   if (request.action === "create") {
@@ -11,6 +14,13 @@ export async function controlProjects(request: ProjectControlRequest) {
     const projectId = pendingProjects.stash({ title, tree: structuredClone(defaultMindmapData) })
     useTabs.getState().openTab({ id: projectId, kind: "draft", title })
     return { projectId, title, active: true, ready: false }
+  }
+  if (request.action === "discard") {
+    if (!pendingProjects.isPending(request.projectId))
+      throw new Error(`Only unsaved projects can be discarded: ${request.projectId}`)
+    useTabs.getState().closeTab(request.projectId)
+    pendingProjects.clear(request.projectId)
+    return { projectId: request.projectId, discarded: true }
   }
 
   const persisted = await listProjects({ includeArchived: true })

@@ -2,6 +2,7 @@ import { listen } from "@tauri-apps/api/event"
 import { invoke } from "@tauri-apps/api/core"
 import { logger } from "@zoeymind/logger"
 import {
+  approveCurrentDocumentEdit,
   executeCurrentDocumentPortalTool,
   isCurrentDocumentPortalTool,
 } from "./current-document-adapter"
@@ -44,6 +45,22 @@ export async function dispatchDocumentPortalBrokerRequest(
     }
   }
   try {
+    if (request.tool === "edit_current_mindmap") {
+      const input = request.input as Record<string, unknown>
+      const preview = await Promise.resolve(
+        executeCurrentDocumentPortalTool(request.tool, { ...input, preview: true })
+      )
+      if (preview.success === false) return preview
+      if (typeof preview.confirmationToken !== "string")
+        return await Promise.resolve(executeCurrentDocumentPortalTool(request.tool, input))
+      return {
+        success: true,
+        ...(await approveCurrentDocumentEdit(
+          preview.confirmationToken,
+          input.returnView as { view?: "outline" | "subtree"; maxLines?: number } | undefined
+        )),
+      }
+    }
     return await Promise.resolve(executeCurrentDocumentPortalTool(request.tool, request.input))
   } catch (error) {
     logger.error("Document Portal broker dispatch failed", { tool: request.tool, error })

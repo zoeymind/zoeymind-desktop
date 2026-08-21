@@ -101,26 +101,7 @@ async function applyRepair(
   anchorTag: string,
   patch: string,
 ): Promise<PortalResponse> {
-  const direct = (await requestDocumentPortal("edit_current_mindmap", {
-    anchorTag,
-    patch,
-  })) as PortalResponse;
-  if (direct.success === true) return direct;
-  assert(
-    direct.errorCode === "DOCUMENT_PREVIEW_REQUIRED",
-    `Localized repair failed: ${JSON.stringify(direct)}`,
-  );
-  const preview = await call("edit_current_mindmap", {
-    anchorTag,
-    patch,
-    preview: true,
-  });
-  const confirmationToken = preview.confirmationToken;
-  assert(
-    typeof confirmationToken === "string",
-    "Repair preview omitted confirmation token",
-  );
-  return call("edit_current_mindmap", { anchorTag, patch, confirmationToken });
+  return call("edit_current_mindmap", { anchorTag, patch });
 }
 
 await waitForBroker();
@@ -281,37 +262,17 @@ const caseBLine = String(finalRead.content)
 assert(caseBLine, "Final subtree omitted case B line");
 const caseBLineNumber = Number(caseBLine.split(":", 1)[0]);
 const destructivePatch = `CUT ${caseBLineNumber}:`;
-const preview = await call("edit_current_mindmap", {
+const confirmed = await call("edit_current_mindmap", {
   anchorTag: destructiveAnchor,
   patch: destructivePatch,
-  preview: true,
-});
-const confirmationToken = preview.confirmationToken;
-assert(
-  typeof confirmationToken === "string",
-  "Destructive preview returned no token",
-);
-const fakeConfirmation = (await requestDocumentPortal("edit_current_mindmap", {
-  confirmationToken: "fake-token",
-})) as PortalResponse;
-assert(
-  fakeConfirmation.success === false,
-  "Fake destructive confirmation unexpectedly succeeded",
-);
-assert(
-  fakeConfirmation.errorCode === "DOCUMENT_PREVIEW_REQUIRED",
-  "Fake token returned wrong error",
-);
-const confirmed = await call("edit_current_mindmap", {
-  confirmationToken,
   returnView: { view: "subtree", maxLines: 100 },
 });
 assert(
   !String(returnedView(confirmed).content).includes("完整用例B"),
-  "Confirmed deletion retained case B",
+  "Deletion retained case B",
 );
 process.stdout.write(
-  "PASS destructive preview rejects fake token and accepts one-time token\n",
+  "PASS destructive edit committed atomically in one external call\n",
 );
 
 const staleEdit = (await requestDocumentPortal("edit_current_mindmap", {
@@ -361,20 +322,9 @@ const rootReplacementPatch = [
   "+      [P2] 打开评论通知 & 存在未读评论通知",
   "+        点击通知 & 跳转对应动态并标记已读",
 ].join("\n");
-const rootPreview = await call("edit_current_mindmap", {
-  anchorTag: anchor(wholeTree),
-  patch: rootReplacementPatch,
-  preview: true,
-});
-const rootConfirmationToken = rootPreview.confirmationToken;
-assert(
-  typeof rootConfirmationToken === "string",
-  "Root replacement returned no token",
-);
 const rootEdit = await call("edit_current_mindmap", {
   anchorTag: anchor(wholeTree),
   patch: rootReplacementPatch,
-  confirmationToken: rootConfirmationToken,
   returnView: { view: "outline", maxLines: 200 },
 });
 const rootView = returnedView(rootEdit);
@@ -504,9 +454,19 @@ assert(
 process.stdout.write(
   "PASS final full-tree read verifies nested convergence without truncation\n",
 );
-process.stdout.write(
-  "PASS final live subtree contains complete cases and steps\n",
+await call("projects", { action: "discard", projectId: created.projectId });
+const projectsAfterCleanupResponse = await call("projects", { action: "list" });
+const projectsAfterCleanup = Array.isArray(
+  projectsAfterCleanupResponse.projects,
+)
+  ? (projectsAfterCleanupResponse.projects as ProjectState[])
+  : [];
+assert(
+  !projectsAfterCleanup.some(
+    (project) => project.projectId === created.projectId,
+  ),
+  "Integration project remained after cleanup",
 );
 process.stdout.write(
-  `PASS live app CLI integration complete; project retained as ${title}\n`,
+  "PASS live app CLI integration complete; temporary project discarded\n",
 );
