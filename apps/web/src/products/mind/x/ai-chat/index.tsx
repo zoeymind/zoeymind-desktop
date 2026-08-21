@@ -371,8 +371,8 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
         )}
       </div>
 
-      {/* HITL 工具 UI 统一渲染点 (question / case-confirm panels) */}
-      <div className="px-3">
+      {/* HITL 工具 UI 在正常文档流中，始终位于输入框上方。 */}
+      <div className="shrink-0 px-3">
         <ToolUIRenderer />
       </div>
 
