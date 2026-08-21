@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * useAIChat — AI 聊天的薄壳编排器.
  *
@@ -23,11 +22,18 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } fro
 import { useOrganization } from "@/shared/app-shared"
 import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
 import { logger } from "@zoeymind/logger"
-import { addErrorToMessages, classifyChatError } from "../utils/errorHandler"
+import { addErrorToMessages, classifyChatError, type ChatErrorCode } from "../utils/errorHandler"
 import type { MindmapContextManager } from "../../ai-chat/MindmapContextManager"
 import type { PersistedSnapshot } from "../../ai-chat/storage/chatDB"
 import type { ChatRuntime } from "./internal/chatRuntime"
 import { clearPreparedTurn, useChatTransport } from "./useChatTransport"
+import {
+  clearOverflowRecovery,
+  markOverflowError,
+  resetOverflowRecovery,
+  scheduleOverflowRecovery,
+  shouldSuppressOverflowError,
+} from "./overflowRecovery"
 import { useToolDispatcher } from "./useToolDispatcher"
 import { useMindmapContextSync } from "./useMindmapContextSync"
 import { useConversationLifecycle } from "./useConversationLifecycle"
@@ -38,7 +44,24 @@ import {
   type AIChatRuntime,
 } from "../../ai-chat/context/AIChatRuntimeContext"
 
-const overflowAttempts = new Set<string>()
+function getAttemptKey(): string | null {
+  const store = useAIChatV2Store.getState()
+  const runtime = getModuleAIChatRuntime()
+  const user = [...(runtime?.messages ?? [])].reverse().find(message => message.role === "user")
+  return store.currentConversationId && user ? `${store.currentConversationId}:${user.id}` : null
+}
+
+function hasToolPart(message: unknown): boolean {
+  if (!message || typeof message !== "object" || !("parts" in message)) return false
+  const parts = message.parts
+  return (
+    Array.isArray(parts) &&
+    parts.some(part => {
+      if (!part || typeof part !== "object" || !("type" in part)) return false
+      return typeof part.type === "string" && part.type.startsWith("tool-")
+    })
+  )
+}
 
 /**
  * 初始化 AI Chat: 创建 useChat 实例, 拉起所有子 effect, 返回 AIChatRuntime.
@@ -54,6 +77,7 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   // 导致 AI 看不到现有 mindmap 结构, 只能在根目录瞎建.
   const mindmapContextManagerRef = useRef<MindmapContextManager | null>(null)
   const pendingSnapshotRef = useRef<PersistedSnapshot | null>(null)
+  const lastErrorCodeRef = useRef<ChatErrorCode | null>(null)
   const runtime = useMemo<ChatRuntime>(
     () => ({
       mindmapContextManager: mindmapContextManagerRef,
@@ -66,17 +90,19 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   const customFetch = useChatTransport({ runtime, currentOrgId })
 
   // useChat: SDK 实例 (addToolOutput 由下面的 dispatcher 用, 这里要先拿到)
-  const transport = useRef(
-    new DefaultChatTransport({
-      api: `${import.meta.env.VITE_API_URL ?? ""}/api/ai-v2/chat`,
-      fetch: customFetch,
-      prepareSendMessagesRequest: ({ messages, trigger, body }) => {
-        const latestUser = [...messages].reverse().find(message => message.role === "user")
-        const metadata = latestUser?.metadata as { model?: string } | undefined
-        return { body: { ...body, messages, model: metadata?.model, trigger } }
-      },
-    })
-  ).current
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: `${import.meta.env.VITE_API_URL ?? ""}/api/ai-v2/chat`,
+        fetch: customFetch,
+        prepareSendMessagesRequest: ({ messages, trigger, body }) => {
+          const latestUser = [...messages].reverse().find(message => message.role === "user")
+          const metadata = latestUser?.metadata as { model?: string } | undefined
+          return { body: { ...body, messages, model: metadata?.model, trigger } }
+        },
+      }),
+    [customFetch]
+  )
 
   const {
     messages,
@@ -93,8 +119,22 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
     onError: error => {
       const errorMessage = error instanceof Error ? error.message : String(error)
       const code = classifyChatError(errorMessage)
+      lastErrorCodeRef.current = code
+      markOverflowError(code, getAttemptKey())
       logger.error("[useAIChat] 收到错误", { code, raw: errorMessage.slice(0, 200) })
-      // 只记日志; 错误 part 的写入统一走下面的 chatError effect (单一路径)
+    },
+    onFinish: ({ message, isError }) => {
+      scheduleOverflowRecovery({
+        code: lastErrorCodeRef.current,
+        attemptKey: getAttemptKey(),
+        isError,
+        hasToolPart: hasToolPart(message),
+        regenerate: attemptKey => {
+          getModuleAIChatRuntime()?.regenerate({
+            body: { compactionMode: "force-overflow-recovery", logicalTurnId: attemptKey },
+          })
+        },
+      })
     },
     onToolCall: async event => {
       // 由 dispatcher.onToolCall 处理; 这里只透传, dispatcher 用同一个 addToolOutput 闭包.
@@ -143,30 +183,11 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
       const store = useAIChatV2Store.getState()
       const latest = getModuleAIChatRuntime()
       const currentMessages = latest?.messages ?? []
-      const user = [...currentMessages].reverse().find(message => message.role === "user")
-      const attemptKey =
-        store.currentConversationId && user ? `${store.currentConversationId}:${user.id}` : null
-      const assistant = [...currentMessages].reverse().find(message => message.role === "assistant")
-      const hasToolPart =
-        assistant?.parts?.some(part => {
-          const candidate = part as { type?: string }
-          return candidate.type?.startsWith("tool-")
-        }) ?? false
+      const attemptKey = getAttemptKey()
       const code = classifyChatError(chatError)
-      if (
-        code === "CONTEXT_OVERFLOW" &&
-        attemptKey &&
-        !hasToolPart &&
-        !overflowAttempts.has(attemptKey)
-      ) {
-        overflowAttempts.add(attemptKey)
-        latest?.regenerate({
-          body: { compactionMode: "force-overflow-recovery", logicalTurnId: attemptKey },
-        })
-        return
-      }
+      if (shouldSuppressOverflowError(code, attemptKey)) return
       if (attemptKey) {
-        overflowAttempts.delete(attemptKey)
+        clearOverflowRecovery(attemptKey)
         clearPreparedTurn(attemptKey)
       }
       addErrorToMessages(currentMessages, chatError, next => latest?.setMessages(next))
@@ -190,7 +211,10 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   useMindmapContextSync({ runtime, isInitialized, workspaceId })
 
   useEffect(() => {
-    return () => clearPreparedTurn()
+    return () => {
+      resetOverflowRecovery()
+      clearPreparedTurn()
+    }
   }, [])
 
   return runtimeApi
