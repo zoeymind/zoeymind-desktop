@@ -7,17 +7,17 @@
  * 自带 duration-100 快展开动画。触发按钮只负责展示当前模型与旋转的 chevron。
  */
 
-import React, { useState } from 'react'
-import { Check, ChevronDown, Eye } from 'lucide-react'
+import React, { useState } from "react"
+import { Check, ChevronDown, Eye } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem
-} from '@zoeymind/ui'
-import { cn } from '@/shared/app-shared'
-import { useTranslation } from '@zoeymind/i18n'
-import type { AIModel } from '../../../ai-chat/hooks/useModelSelector'
+  DropdownMenuItem,
+} from "@zoeymind/ui"
+import { cn } from "@/shared/app-shared"
+import { useTranslation } from "@zoeymind/i18n"
+import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 
 interface ModelSelectorProps {
   models: AIModel[]
@@ -30,7 +30,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   models,
   selectedModel,
   setSelectedModel,
-  disabled = false
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -40,8 +40,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   // 模型列表为空时显示占位 (API 加载中或服务暂时不可用)
   if (!currentModel) {
     return (
-      <div className="flex h-6 items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground opacity-50">
-        <span>{t('mindmap.aiChat.input.noModelConfigured')}</span>
+      <div className="flex h-7 items-center gap-1 rounded-full border border-border bg-card px-2 text-xs text-muted-foreground opacity-50">
+        <span>{t("mindmap.aiChat.input.noModelConfigured")}</span>
       </div>
     )
   }
@@ -55,21 +55,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           <button
             type="button"
             className={cn(
-              'flex h-6 items-center gap-1 rounded-md px-2 py-0.5 text-xs transition-colors outline-none',
-              'text-muted-foreground hover:bg-muted hover:text-foreground',
-              'focus-visible:ring-1 focus-visible:ring-ring',
-              disabled && 'cursor-not-allowed opacity-50'
+              "flex h-7 items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-colors outline-none",
+              "text-muted-foreground hover:bg-muted hover:text-foreground",
+              "focus-visible:ring-1 focus-visible:ring-ring",
+              disabled && "cursor-not-allowed opacity-50"
             )}
-            title={t('mindmap.aiChat.input.selectModel')}
+            title={t("mindmap.aiChat.input.selectModel")}
           >
             {currentModel.icon && <img src={currentModel.icon} alt="" className="size-3" />}
             <span className="max-w-[80px] truncate">{currentModel.name}</span>
             {currentModel.hasVision && (
-              <span title={t('mindmap.aiChat.input.supportsVision')}>
+              <span title={t("mindmap.aiChat.input.supportsVision")}>
                 <Eye className="size-3 text-primary" />
               </span>
             )}
-            <ChevronDown className={cn('size-3 transition-transform', open && 'rotate-180')} />
+            <ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} />
           </button>
         }
       />
@@ -79,8 +79,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             key={model.id}
             onSelect={() => setSelectedModel(model.id)}
             className={cn(
-              'justify-between gap-2 px-2 py-1 text-xs',
-              model.id === selectedModel && 'bg-accent'
+              "justify-between gap-2 px-2 py-1 text-xs",
+              model.id === selectedModel && "bg-accent"
             )}
           >
             <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -89,7 +89,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             </div>
             <div className="flex items-center gap-1">
               {model.hasVision && (
-                <span title={t('mindmap.aiChat.input.supportsVision')}>
+                <span title={t("mindmap.aiChat.input.supportsVision")}>
                   <Eye className="size-3 text-primary" />
                 </span>
               )}

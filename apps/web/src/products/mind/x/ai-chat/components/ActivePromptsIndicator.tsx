@@ -10,7 +10,7 @@
  */
 
 import { Sparkles } from "lucide-react"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@zoeymind/ui"
+import { Button, HoverCard, HoverCardContent, HoverCardTrigger } from "@zoeymind/ui"
 import { useTranslation } from "@zoeymind/i18n"
 import { cn } from "@/shared/app-shared"
 
@@ -38,10 +38,12 @@ export function ActivePromptsIndicator({
       <HoverCardTrigger
         delay={200}
         render={
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClick}
-            className="relative flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted"
+            className="relative rounded-full"
             title={title ?? t("mindmap.aiChat.core.promptLibrary")}
           >
             <Sparkles
@@ -59,7 +61,7 @@ export function ActivePromptsIndicator({
                 {count > 9 ? "9+" : count}
               </span>
             )}
-          </button>
+          </Button>
         }
       />
       <HoverCardContent className="w-auto max-w-xs p-2 text-xs" side="bottom" align="end">

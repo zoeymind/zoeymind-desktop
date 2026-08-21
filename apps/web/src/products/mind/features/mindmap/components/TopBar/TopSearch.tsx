@@ -1,12 +1,12 @@
-import React, { type FC, useState, useEffect, useRef, useCallback } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import { ArrowLeftRight, RefreshCw, X, Search, FileQuestion } from 'lucide-react'
-import { motion, AnimatePresence } from 'motion/react'
-import { Button } from '@zoeymind/ui'
-import { InputGroup, InputGroupInput, InputGroupAddon, InputGroupButton } from '@zoeymind/ui'
-import { ScrollArea } from '@zoeymind/ui'
-import type { default as MindMap, MindMapNode } from 'simple-mind-map'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
+import React, { type FC, useState, useEffect, useRef, useCallback } from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { ArrowLeftRight, RefreshCw, X, Search, FileQuestion } from "lucide-react"
+import { motion, AnimatePresence } from "motion/react"
+import { Button } from "@zoeymind/ui"
+import { InputGroup, InputGroupInput, InputGroupAddon, InputGroupButton } from "@zoeymind/ui"
+import { ScrollArea } from "@zoeymind/ui"
+import type { default as MindMap, MindMapNode } from "simple-mind-map"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 
 interface SearchEventData {
   current: number
@@ -40,11 +40,11 @@ const getSearchPlugin = (map: MindMap | null): MindMapSearchPlugin | null => {
   const search = map?.search as Partial<MindMapSearchPlugin> | undefined
   if (
     search &&
-    typeof search.search === 'function' &&
-    typeof search.endSearch === 'function' &&
-    typeof search.jump === 'function' &&
-    typeof search.replace === 'function' &&
-    typeof search.replaceAll === 'function' &&
+    typeof search.search === "function" &&
+    typeof search.endSearch === "function" &&
+    typeof search.jump === "function" &&
+    typeof search.replace === "function" &&
+    typeof search.replaceAll === "function" &&
     Array.isArray(search.matchNodeList)
   ) {
     return search as MindMapSearchPlugin
@@ -52,11 +52,11 @@ const getSearchPlugin = (map: MindMap | null): MindMapSearchPlugin | null => {
   return null
 }
 
-export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText = '' }) => {
+export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText = "" }) => {
   const { t } = useTranslation()
   const { mindMap } = useMindMapStore()
-  const [searchText, setSearchText] = useState<string>(initialText || '')
-  const [replaceText, setReplaceText] = useState('')
+  const [searchText, setSearchText] = useState<string>(initialText || "")
+  const [replaceText, setReplaceText] = useState("")
   const [showReplace, setShowReplace] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -67,7 +67,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
   useEffect(() => {
     if (!isActive) {
       // 组件关闭时清理状态
-      setSearchText('')
+      setSearchText("")
       setHasSearched(false)
       setSearchResults([])
       setCurrentIndex(0)
@@ -110,7 +110,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
 
   // 转义正则表达式特殊字符
   const escapeRegExp = (string: string): string => {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   }
 
   // 高亮搜索文本
@@ -120,7 +120,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
     try {
       // 转义搜索文本中的正则表达式特殊字符
       const escapedSearchText = escapeRegExp(searchText)
-      const parts = text.split(new RegExp(`(${escapedSearchText})`, 'gi'))
+      const parts = text.split(new RegExp(`(${escapedSearchText})`, "gi"))
       return (
         <React.Fragment>
           {parts.map((part, i) =>
@@ -153,13 +153,13 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
     return matchList
       .map(node => {
         const textValue =
-          typeof node.getData === 'function'
-            ? (node.getData('text') as string | undefined)
+          typeof node.getData === "function"
+            ? (node.getData("text") as string | undefined)
             : node.data?.text
         return {
-          text: textValue || '',
+          text: textValue || "",
           path: getNodePath(node),
-          node
+          node,
         }
       })
       .filter((result): result is SearchResult => Boolean(result.text))
@@ -195,7 +195,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
 
   // 处理清除
   const handleClear = () => {
-    setSearchText('')
+    setSearchText("")
     setHasSearched(false)
     const searchPlugin = getSearchPlugin(mindMap)
     if (searchPlugin) {
@@ -222,10 +222,10 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
       }
     }
 
-    mindMap.on('search_info_change', handleSearchInfoChange)
+    mindMap.on("search_info_change", handleSearchInfoChange)
 
     return () => {
-      mindMap.off('search_info_change', handleSearchInfoChange)
+      mindMap.off("search_info_change", handleSearchInfoChange)
     }
   }, [mindMap])
 
@@ -252,7 +252,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
       searchPlugin.endSearch()
       const results = getAllMatchedNodes()
       setSearchResults(results)
-      setReplaceText('')
+      setReplaceText("")
     })
   }
 
@@ -275,8 +275,8 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
           transition={{ duration: 0.3 }}
         >
           <Search className="size-10 text-muted-foreground mb-2 opacity-50" />
-          <p className="text-sm text-muted-foreground">{t('mindmap.topbar.search.hint')}</p>
-          <p className="text-xs text-muted-foreground mt-1">{t('mindmap.topbar.search.subHint')}</p>
+          <p className="text-sm text-muted-foreground">{t("mindmap.topbar.search.hint")}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("mindmap.topbar.search.subHint")}</p>
         </motion.div>
       )
     }
@@ -291,9 +291,9 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
           transition={{ duration: 0.3 }}
         >
           <FileQuestion className="size-10 text-muted-foreground mb-2 opacity-50" />
-          <p className="text-sm text-muted-foreground">{t('mindmap.topbar.search.noResults')}</p>
+          <p className="text-sm text-muted-foreground">{t("mindmap.topbar.search.noResults")}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {t('mindmap.topbar.search.tryOther')}
+            {t("mindmap.topbar.search.tryOther")}
           </p>
         </motion.div>
       )
@@ -309,7 +309,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
           transition={{ duration: 0.3 }}
         >
           <div className="text-sm font-medium mb-2">
-            {t('mindmap.topbar.search.results', { value: searchResults.length })}
+            {t("mindmap.topbar.search.results", { value: searchResults.length })}
           </div>
           <ScrollArea className="h-[240px]">
             <motion.div className="space-y-1">
@@ -317,7 +317,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
                 <motion.div
                   key={index}
                   className={`p-2 rounded-md cursor-pointer text-sm hover:bg-muted ${
-                    index === currentIndex ? 'bg-muted' : ''
+                    index === currentIndex ? "bg-muted" : ""
                   }`}
                   onClick={() => jumpToResult(index)}
                   initial={{ opacity: 0, x: -10 }}
@@ -328,7 +328,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
                   <div className="font-medium">{highlightText(result.text, searchText)}</div>
                   {result.path.length > 1 && (
                     <div className="text-xs text-muted-foreground mt-1">
-                      {t('mindmap.topbar.search.path', { value: result.path.join(' > ') })}
+                      {t("mindmap.topbar.search.path", { value: result.path.join(" > ") })}
                     </div>
                   )}
                 </motion.div>
@@ -347,8 +347,8 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
   return (
     <div>
       <div className="flex items-center justify-between border-b px-3 py-2">
-        <span className="text-sm font-medium">{t('common.search')}</span>
-        <Button variant="ghost" size="icon" onClick={onClose} className="size-7">
+        <span className="text-sm font-medium">{t("common.search")}</span>
+        <Button variant="ghost" size="icon" onClick={onClose} className="size-7 rounded-full">
           <X className="size-4" />
         </Button>
       </div>
@@ -363,20 +363,25 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
               ref={searchInputRef}
               value={searchText}
               onChange={handleSearchChange}
-              placeholder={t('mindmap.topbar.search.placeholder')}
+              placeholder={t("mindmap.topbar.search.placeholder")}
             />
             <InputGroupAddon align="inline-end">
               {searchText && (
-                <InputGroupButton size="icon-xs" aria-label="clear" onClick={handleClear}>
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label="clear"
+                  onClick={handleClear}
+                  className="rounded-full"
+                >
                   <X />
                 </InputGroupButton>
               )}
               <InputGroupButton
                 size="icon-xs"
-                aria-label={t('mindmap.topbar.search.toggleReplace')}
-                title={t('mindmap.topbar.search.toggleReplace')}
+                aria-label={t("mindmap.topbar.search.toggleReplace")}
+                title={t("mindmap.topbar.search.toggleReplace")}
                 onClick={toggleReplacePanel}
-                className={showReplace ? 'text-primary' : undefined}
+                className={showReplace ? "rounded-full text-primary" : "rounded-full"}
               >
                 <ArrowLeftRight />
               </InputGroupButton>
@@ -389,7 +394,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
               <motion.div
                 className="space-y-2"
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.1 }}
               >
@@ -400,14 +405,15 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
                   <InputGroupInput
                     value={replaceText}
                     onChange={e => setReplaceText(e.target.value)}
-                    placeholder={t('mindmap.topbar.search.replacePlaceholder')}
+                    placeholder={t("mindmap.topbar.search.replacePlaceholder")}
                   />
                   {replaceText && (
                     <InputGroupAddon align="inline-end">
                       <InputGroupButton
                         size="icon-xs"
                         aria-label="clear"
-                        onClick={() => setReplaceText('')}
+                        onClick={() => setReplaceText("")}
+                        className="rounded-full"
                       >
                         <X />
                       </InputGroupButton>
@@ -423,7 +429,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
                     disabled={!searchText || !replaceText}
                     className="flex-1"
                   >
-                    {t('mindmap.topbar.search.replaceCurrent')}
+                    {t("mindmap.topbar.search.replaceCurrent")}
                   </Button>
                   <Button
                     size="sm"
@@ -432,7 +438,7 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
                     disabled={!searchText || !replaceText}
                     className="flex-1"
                   >
-                    {t('mindmap.topbar.search.replaceAll')}
+                    {t("mindmap.topbar.search.replaceAll")}
                   </Button>
                 </div>
               </motion.div>

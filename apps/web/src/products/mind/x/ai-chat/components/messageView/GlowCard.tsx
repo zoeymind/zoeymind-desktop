@@ -1,20 +1,33 @@
 // @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
- * GlowCard - 光效卡片组件
- *
- * active 时边框做呼吸脉冲动画（border 透明度渐变），
- * 简洁地表示 AI 运行中状态。
+ * 多步骤工具卡片的执行态边框。
+ * 仅在工具仍在运行时播放流光；完成后保留普通主题边框。
  */
 
-import React from 'react'
+import React from "react"
+import { BorderBeam } from "border-beam"
+import { useTheme } from "@zoeymind/ui"
 
 interface GlowCardProps {
   children: React.ReactNode
   active?: boolean
 }
 
-export const GlowCard: React.FC<GlowCardProps> = ({ children, active = true }) => (
-  <div className={`rounded-xl border transition-colors ${active ? 'glow-pulse' : 'border-border'}`}>
-    {children}
-  </div>
-)
+export const GlowCard: React.FC<GlowCardProps> = ({ children, active = true }) => {
+  const { resolvedTheme } = useTheme()
+
+  return (
+    <BorderBeam
+      active={active}
+      borderRadius={12}
+      colorVariant="ocean"
+      duration={2.4}
+      size="md"
+      strength={0.72}
+      theme={resolvedTheme}
+      className="w-full"
+    >
+      <div className="w-full rounded-xl border border-border">{children}</div>
+    </BorderBeam>
+  )
+}

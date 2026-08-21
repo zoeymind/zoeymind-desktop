@@ -160,7 +160,7 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
   )
 }
 
-// '+' 按钮: 浏览器风格 - 紧贴最后一个 tab 右侧, 简约小方块 (不做胶囊/圆角药丸).
+// '+' 按钮：紧贴最后一个 tab，使用通用圆形图标按钮。
 function PlusChip({ onClick }: { onClick: () => void }) {
   return (
     <Button
@@ -171,7 +171,7 @@ function PlusChip({ onClick }: { onClick: () => void }) {
       aria-label="New tab"
       title="新项目"
       data-tauri-drag-region="false"
-      className="ml-1 shrink-0 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+      className="ml-1 shrink-0 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
     >
       <Plus className="size-3.5" />
     </Button>

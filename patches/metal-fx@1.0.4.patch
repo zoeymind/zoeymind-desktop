@@ -1,0 +1,26 @@
+diff --git a/dist/index.es.js b/dist/index.es.js
+index 93ff2e2beeeea960a7073331f2dcc3193f0dd560..3cd5f6f8f55c64e6dcd53e600146344d46851e3b 100644
+--- a/dist/index.es.js
++++ b/dist/index.es.js
+@@ -409,7 +409,7 @@ function ke(e) {
+ }
+ function et() {
+   if (i) return i;
+-  const e = Math.min(Tt, typeof window < "u" && window.devicePixelRatio || 1), t = Math.round(St * e), n = typeof OffscreenCanvas < "u";
++  const e = Math.min(Tt, typeof window < "u" && window.devicePixelRatio || 1), t = Math.round(St * e), n = typeof OffscreenCanvas < "u" && !(typeof window < "u" && "__TAURI_INTERNALS__" in window);
+   let o, r;
+   if (n)
+     o = new OffscreenCanvas(t, t), r = o.getContext("webgl", {
+@@ -461,11 +461,10 @@ function et() {
+   }, i;
+ }
+ function $t() {
+-  var r;
+   if (!i) return;
+   const { gl: e, program: t, buffer: n, frameBitmap: o } = i;
+   try {
+-    o == null || o.close(), e.deleteBuffer(n), e.deleteProgram(t), (r = e.getExtension("WEBGL_lose_context")) == null || r.loseContext();
++    o == null || o.close(), e.deleteBuffer(n), e.deleteProgram(t);
+   } catch {
+   }
+   i = null;

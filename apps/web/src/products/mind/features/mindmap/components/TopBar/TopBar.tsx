@@ -315,6 +315,7 @@ export const TopBar: FC<TopBarProps> = ({ collaboration }) => {
                             render={
                               <FloatingToolbarButton
                                 active={activeTab === "menu"}
+                                className="rounded-full"
                                 aria-label={t("mindmap.topbar.title.moreOptions")}
                               >
                                 <svg

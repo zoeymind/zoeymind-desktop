@@ -27,6 +27,7 @@ export const CanvasTool: FC = () => {
                   onClick={panTool.togglePanMode}
                   disabled={!mindMap}
                   active={panTool.isActive}
+                  className="rounded-full"
                 >
                   <Hand className="size-5" />
                 </FloatingToolbarButton>

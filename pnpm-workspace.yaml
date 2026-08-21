@@ -1,3 +1,5 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
+  - apps/*
+  - packages/*
+patchedDependencies:
+  metal-fx@1.0.4: patches/metal-fx@1.0.4.patch

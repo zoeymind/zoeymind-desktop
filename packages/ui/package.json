@@ -23,11 +23,11 @@
     "#hooks/*": "./src/hooks/*.tsx"
   },
   "dependencies": {
-    "@zoeymind/i18n": "workspace:*",
     "@base-ui/react": "^1.6.0",
     "@date-fns/tz": "^1.5.0",
     "@tanstack/react-router": "^1.157.18",
     "@tanstack/react-table": "^8.21.3",
+    "@zoeymind/i18n": "workspace:*",
     "ace-builds": "^1.43.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -37,6 +37,7 @@
     "frimousse": "^0.3.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.469.0",
+    "metal-fx": "1.0.4",
     "motion": "^12.23.24",
     "nuqs": "^2.9.0",
     "radix-ui": "^1.6.0",

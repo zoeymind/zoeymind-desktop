@@ -8,8 +8,18 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import type { McpServerItem, AiToolListResult } from "../lib/api-types"
-import { ChevronDown, Plus, History, Bot, AlertCircle, Settings, Sparkles } from "lucide-react"
-import { Button, FloatingToolbarButton } from "@zoeymind/ui"
+import { ChevronDown, Plus, History, AlertCircle, Settings, X } from "lucide-react"
+import {
+  Badge,
+  Button,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  useTheme,
+} from "@zoeymind/ui"
 import { MessageView } from "./components/messageView"
 import { InputView } from "./components/inputView"
 import { ContextUsageIndicator } from "./components/ContextUsageIndicator"
@@ -35,6 +45,8 @@ import { trpc } from "../lib/trpc"
 import { useTranslation } from "@zoeymind/i18n"
 import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useUserPrompt"
 import { useUIStore } from "@/products/mind/stores"
+import zoeyLogoLightUrl from "@/assets/logo.svg"
+import zoeyLogoDarkUrl from "@/assets/logo-dark.svg"
 
 const EMPTY_MCP_SERVERS: McpServerItem[] = []
 interface AIchatV2Props {
@@ -42,6 +54,8 @@ interface AIchatV2Props {
 }
 export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const { t } = useTranslation()
+  const { resolvedTheme } = useTheme()
+  const zoeyLogoUrl = resolvedTheme === "dark" ? zoeyLogoDarkUrl : zoeyLogoLightUrl
   const { mindMap } = useMindMapStore()
   const closeAIChat = useUIStore(state => state.closeFormatTab)
   const {
@@ -159,7 +173,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
       <div className="relative flex h-12 shrink-0 items-center px-3">
         <div className="flex-1" />
         <div className="flex h-full items-center gap-1">
-          {/* Context Usage Indicator */}
           <ContextUsageIndicator
             usedTokens={totalTokenUsage.total}
             maxTokens={contextBudget?.contextWindow ?? 128000}
@@ -171,21 +184,25 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
             onClick={handleOpenPromptManager}
             title={t("mindmap.aiChat.core.promptLibrary")}
           />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => setShowSettings(true)}
-            className="flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted"
+            className="rounded-full"
             title={t("mindmap.aiChat.input.caseReviewSettings")}
           >
             <Settings className="size-4 text-muted-foreground" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={handleCreateNewConversation}
             disabled={isProcessing}
             className={cn(
-              "flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted",
-              isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
+              "rounded-full",
+              isProcessing && "cursor-not-allowed hover:bg-transparent"
             )}
             title={
               isProcessing
@@ -194,15 +211,17 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
             }
           >
             <Plus className="size-4 text-muted-foreground" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={toggleHistory}
             disabled={isProcessing}
             className={cn(
-              "flex size-8 items-center justify-center rounded-md transition-colors hover:bg-muted",
+              "rounded-full",
               showHistory && "bg-muted",
-              isProcessing && "opacity-40 cursor-not-allowed hover:bg-transparent"
+              isProcessing && "cursor-not-allowed hover:bg-transparent"
             )}
             title={
               isProcessing
@@ -212,14 +231,18 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
             data-chat-history-trigger
           >
             <History className="size-4 text-muted-foreground" />
-          </button>
-          <FloatingToolbarButton
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={closeAIChat}
             aria-label={t("common.close")}
             title={t("common.close")}
+            className="rounded-full text-muted-foreground hover:text-foreground"
           >
-            <Sparkles className="size-5" />
-          </FloatingToolbarButton>
+            <X className="size-4" />
+          </Button>
         </div>
 
         {/* 历史聊天面板 */}
@@ -247,81 +270,84 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
             </div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-4">
-            <Bot className="size-12 mb-2 text-muted-foreground/70" />
-            <div className="text-lg font-medium">{t("mindmap.aiChat.core.agentMode")}</div>
-            <div className="text-sm text-center text-muted-foreground/70 max-w-[320px]">
-              {t("mindmap.aiChat.core.agentDescription")}
+          <Empty className="h-full rounded-none border-0">
+            <EmptyHeader>
+              <EmptyMedia className="mb-1 size-16 rounded-2xl bg-muted/50 shadow-sm ring-1 ring-foreground/10 dark:ring-white/10">
+                <img
+                  src={zoeyLogoUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="size-10 object-contain"
+                />
+              </EmptyMedia>
+              <EmptyTitle className="text-lg text-foreground">
+                {t("mindmap.aiChat.core.agentMode")}
+              </EmptyTitle>
+              <EmptyDescription className="max-w-[320px]">
+                {t("mindmap.aiChat.core.agentDescription")}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
               {toolsLoading || mcpToolsLoading ? (
-                <div className="mt-3 text-muted-foreground/70">
-                  {t("mindmap.aiChat.core.loadingTools")}
-                </div>
+                <EmptyDescription>{t("mindmap.aiChat.core.loadingTools")}</EmptyDescription>
               ) : (
                 <>
-                  {/* 内置工具 */}
                   {toolsData?.tools && toolsData.tools.length > 0 && (
-                    <div className="mt-3">
-                      <div className="text-xs text-muted-foreground/70 mb-1.5">
-                        {t("mindmap.aiChat.core.builtinTools")}
-                      </div>
+                    <EmptyContent className="gap-1.5">
+                      <EmptyDescription>{t("mindmap.aiChat.core.builtinTools")}</EmptyDescription>
                       <div className="flex flex-wrap justify-center gap-1.5">
                         {toolsData.tools.map(tool => (
-                          <span
+                          <Badge
                             key={tool.name}
-                            className="px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground border border-border/50"
+                            variant="secondary"
+                            className="rounded-full font-normal"
                           >
                             {tool.label}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
-                    </div>
+                    </EmptyContent>
                   )}
-
-                  {/* MCP 服务器状态（V2 面板仅展示名称 + 连接状态） */}
-                  <div className="mt-3">
-                    <div className="text-xs text-muted-foreground/70 mb-1.5">
-                      {t("mindmap.aiChat.core.mcpConnection")}
-                    </div>
+                  <EmptyContent className="gap-1.5">
+                    <EmptyDescription>{t("mindmap.aiChat.core.mcpConnection")}</EmptyDescription>
                     {mcpToolsLoading ? (
-                      <div className="text-muted-foreground/70 text-xs">
+                      <EmptyDescription>
                         {t("mindmap.aiChat.core.detectingConnection")}
-                      </div>
-                    ) : mcpServers.filter(s => !s.disabled).length > 0 ? (
-                      <div className="text-xs text-muted-foreground/80 flex flex-wrap justify-center gap-x-3 gap-y-1">
+                      </EmptyDescription>
+                    ) : mcpServers.filter(server => !server.disabled).length > 0 ? (
+                      <div className="flex flex-wrap justify-center gap-1.5">
                         {mcpServers
-                          .filter(s => !s.disabled)
+                          .filter(server => !server.disabled)
                           .map(server => {
                             const connected = server.preset
                               ? true
                               : mcpServerStatus[server.id]?.connected === true
                             return (
-                              <span key={server.id}>
-                                {server.name}{" "}
+                              <Badge
+                                key={server.id}
+                                variant="outline"
+                                className="rounded-full font-normal"
+                              >
+                                {server.name} ·{" "}
                                 {connected
                                   ? t("mindmap.aiChat.core.mcpConnected")
                                   : t("mindmap.aiChat.core.mcpDisconnected")}
-                              </span>
+                              </Badge>
                             )
                           })}
                       </div>
                     ) : (
-                      <div className="text-muted-foreground/70 text-xs">
-                        {t("mindmap.aiChat.core.noActiveMcp")}
-                      </div>
+                      <EmptyDescription>{t("mindmap.aiChat.core.noActiveMcp")}</EmptyDescription>
                     )}
-                  </div>
-
-                  {/* 无工具提示 */}
+                  </EmptyContent>
                   {(!toolsData?.tools || toolsData.tools.length === 0) &&
-                    mcpServers.filter(s => !s.disabled).length === 0 && (
-                      <div className="mt-3 text-muted-foreground/70">
-                        {t("mindmap.aiChat.core.noTools")}
-                      </div>
+                    mcpServers.filter(server => !server.disabled).length === 0 && (
+                      <EmptyDescription>{t("mindmap.aiChat.core.noTools")}</EmptyDescription>
                     )}
                 </>
               )}
-            </div>
-          </div>
+            </EmptyContent>
+          </Empty>
         ) : (
           <ErrorBoundary>
             <MindMapInstanceProvider mindMap={mindMap}>

@@ -43,6 +43,7 @@ export function ZoomControls() {
       <Button
         variant="ghost"
         size="icon-xs"
+        className="rounded-full"
         onClick={() => mindMap?.emit("smooth_zoom_in")}
         disabled={!mindMap}
         aria-label={t("mindmap.canvasTool.zoomIn")}
@@ -88,6 +89,7 @@ export function ZoomControls() {
       <Button
         variant="ghost"
         size="icon-xs"
+        className="rounded-full"
         onClick={() => mindMap?.emit("smooth_zoom_out")}
         disabled={!mindMap}
         aria-label={t("mindmap.canvasTool.zoomOut")}

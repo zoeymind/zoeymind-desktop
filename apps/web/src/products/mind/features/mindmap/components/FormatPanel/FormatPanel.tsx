@@ -4,14 +4,24 @@ import { useTranslation } from "@zoeymind/i18n"
 import { useEffect, forwardRef, useImperativeHandle } from "react"
 import { Tags } from "./Tags"
 import { useFeature } from "@/shared/app-shared"
-import { Sparkles } from "lucide-react"
 import { useUIStore } from "@/products/mind/stores"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
 import { useCommentContext } from "@/products/mind/features/mindmap/contexts/CommentContext"
-import { FloatingToolbar, FloatingToolbarGroup, FloatingToolbarButton } from "@zoeymind/ui"
-import { Badge, Tooltip, TooltipProvider, TooltipTrigger } from "@zoeymind/ui"
+import {
+  Badge,
+  FloatingToolbar,
+  FloatingToolbarButton,
+  FloatingToolbarGroup,
+  MetallicButton,
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  useTheme,
+} from "@zoeymind/ui"
 import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
+import zoeyLogoLightUrl from "@/assets/logo.svg"
+import zoeyLogoDarkUrl from "@/assets/logo-dark.svg"
 
 interface FormatPanelProps {
   onPreviewStateChange?: (isPreview: boolean) => void
@@ -121,29 +131,40 @@ export function AIChatToggle(): React.JSX.Element | null {
   const hasAiAgent = useFeature("ai-agent")
   const activeTab = useUIStore(state => state.activeFormatTab)
   const toggleFormatTab = useUIStore(state => state.toggleFormatTab)
+  const { resolvedTheme } = useTheme()
+  const zoeyLogoUrl = resolvedTheme === "dark" ? zoeyLogoDarkUrl : zoeyLogoLightUrl
 
-  if (!canEdit || !hasAiAgent || activeTab === "ai") return null
+  if (!canEdit || !hasAiAgent) return null
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <FloatingToolbarButton
-              active={activeTab === "ai"}
-              onClick={() => toggleFormatTab("ai")}
-              aria-expanded={activeTab === "ai"}
-              aria-label={t("mindmap.formatPanel.toolbar.aiAssistant")}
-              data-tour="ai-button"
-            >
-              <Sparkles className="size-5" />
-            </FloatingToolbarButton>
-          }
+    <div
+      aria-hidden={activeTab === "ai"}
+      className={
+        activeTab === "ai"
+          ? "w-0 shrink-0 overflow-hidden opacity-0 pointer-events-none"
+          : "w-auto shrink-0 overflow-visible opacity-100"
+      }
+    >
+      <MetallicButton
+        type="button"
+        size="default"
+        onClick={() => toggleFormatTab("ai")}
+        metalTheme={resolvedTheme}
+        disabled={activeTab === "ai"}
+        tabIndex={activeTab === "ai" ? -1 : 0}
+        aria-expanded={activeTab === "ai"}
+        aria-label={t("mindmap.formatPanel.toolbar.aiAssistant")}
+        data-tour="ai-button"
+        className="h-8 gap-2 text-xs"
+      >
+        <img
+          aria-hidden="true"
+          src={zoeyLogoUrl}
+          alt=""
+          className="size-4 shrink-0 object-contain"
         />
-        <EditorSidebarTooltipContent>
-          {t("mindmap.formatPanel.toolbar.aiAssistant")}
-        </EditorSidebarTooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+        <span>Zoey Agent</span>
+      </MetallicButton>
+    </div>
   )
 }

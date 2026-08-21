@@ -4,9 +4,10 @@
  */
 
 import React, { useRef } from "react"
-import { SendIcon, Square, Image as ImageIcon, Loader2 } from "lucide-react"
+import { ArrowUp, Square, Plus, Loader2 } from "lucide-react"
 import { cn } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
+import { Button, MetallicButton } from "@zoeymind/ui"
 
 interface ActionButtonsProps {
   onSend: () => void
@@ -57,15 +58,13 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             onChange={handleFileSelect}
             aria-label={t("mindmap.aiChat.input.addImage")}
           />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || isCompressing}
-            className={cn(
-              "flex size-6 items-center justify-center rounded-md",
-              "text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-95",
-              (disabled || isCompressing) && "opacity-50 cursor-not-allowed"
-            )}
+            className="size-7 rounded-full"
             aria-label={
               isCompressing
                 ? t("mindmap.aiChat.input.compressingImage")
@@ -80,9 +79,9 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             {isCompressing ? (
               <Loader2 className="size-3 animate-spin" />
             ) : (
-              <ImageIcon className="size-3" />
+              <Plus className="size-4" />
             )}
-          </button>
+          </Button>
         </>
       )}
 
@@ -93,6 +92,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         // 有内容 + AI 处理中 → "中断并发送"
         const isInterruptSend = showSend && isSending
 
+        const isIdle = !showSend && !showStop
+        const SendButton = isIdle ? MetallicButton : Button
         const label = showStop
           ? t("mindmap.aiChat.input.stopGeneration")
           : isInterruptSend
@@ -100,19 +101,22 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             : t("mindmap.aiChat.input.sendMessage")
 
         return (
-          <button
+          <SendButton
             type="button"
+            variant="ghost"
+            size="icon-xs"
+            metalScale={0.5}
             onClick={showStop ? onStop : onSend}
             disabled={!showSend && !showStop}
             className={cn(
-              "flex size-6 items-center justify-center rounded-md transition-all",
+              "size-6 rounded-full shadow-sm",
               showStop
-                ? "bg-muted-foreground text-background hover:bg-muted-foreground/80 active:scale-95"
+                ? "bg-muted-foreground text-background hover:bg-muted-foreground/80"
                 : isInterruptSend
-                  ? "bg-warning text-white hover:bg-warning/90 active:scale-95"
+                  ? "bg-warning text-white hover:bg-warning/90"
                   : showSend
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
-                    : "text-muted-foreground/40 cursor-not-allowed"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-foreground"
             )}
             aria-label={label}
             title={label}
@@ -120,11 +124,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
             {showStop ? (
               <Square className="size-3 fill-current" />
             ) : isInterruptSend ? (
-              <SendIcon className="size-3" />
+              <ArrowUp className="size-4" />
             ) : (
-              <SendIcon className="size-3" />
+              <ArrowUp className="size-4" />
             )}
-          </button>
+          </SendButton>
         )
       })()}
     </div>

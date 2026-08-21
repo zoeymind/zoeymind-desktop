@@ -784,7 +784,8 @@ export function MorphingTabs({
                       className={cn(
                         // [ZoeyMind] 缩到 bottom-1 让 hover pill 底部留 4px 缝,
                         // 不贴下面的 panel; 左右也各 2px 让开 tab 边.
-                        "absolute inset-x-0.5 bottom-1 top-1 rounded-md transition-colors duration-200",
+                        "absolute inset-x-0.5 bottom-1 top-1 transition-colors duration-200",
+                        item.pinned ? "rounded-full" : "rounded-md",
                         isDragging
                           ? "bg-foreground/15"
                           : "bg-transparent group-hover:bg-foreground/10"
@@ -813,15 +814,16 @@ export function MorphingTabs({
                     className={cn(
                       // [ZoeyMind] pinned 图标 tab 用 justify-center 让 icon 居中而非左靠 padding;
                       // 圆角对齐 TAB_RADIUS 常量, 避免和液态 SVG 曲线错位.
-                      "group relative z-10 flex h-full w-full min-w-0 items-center justify-center gap-1.5 overflow-hidden outline-none transition-colors cursor-pointer",
-                      item.pinned ? "px-0" : onClose ? "pl-3 pr-7" : "px-3",
+                      "group relative z-10 flex h-full w-full min-w-0 cursor-pointer items-center justify-center gap-1.5 overflow-hidden outline-none transition-colors",
+                      item.pinned ? "rounded-full px-0" : onClose ? "pl-3 pr-7" : "px-3",
                       isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                       classNames?.tab
                     )}
-                    style={{
-                      borderTopLeftRadius: TAB_RADIUS,
-                      borderTopRightRadius: TAB_RADIUS,
-                    }}
+                    style={
+                      item.pinned
+                        ? undefined
+                        : { borderTopLeftRadius: TAB_RADIUS, borderTopRightRadius: TAB_RADIUS }
+                    }
                   >
                     <span
                       aria-hidden
@@ -864,7 +866,7 @@ export function MorphingTabs({
                           onClose(item.id)
                         }}
                         className={cn(
-                          "text-muted-foreground hover:text-foreground",
+                          "rounded-full text-muted-foreground hover:text-foreground",
                           classNames?.close
                         )}
                       >
