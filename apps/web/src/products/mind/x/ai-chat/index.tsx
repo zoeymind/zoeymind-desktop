@@ -31,6 +31,7 @@ import { usePromptsQuery } from "./hooks/usePrompts"
 import { ErrorBoundary } from "./components/ErrorBoundary"
 import { MindMapInstanceProvider } from "./context/MindMapInstanceContext"
 import { ToolUIRenderer } from "./context/ToolUIRenderer"
+import { restorePendingFromMessages } from "./context/ToolUIRegistry"
 import { useQuestionToolUI } from "./tools/ui-handlers/QuestionToolUI"
 import { useCaseConfirmToolUI } from "./tools/ui-handlers/CaseConfirmToolUI"
 import { useMCPTools } from "./hooks/useMCPTools"
@@ -135,6 +136,14 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
       localStorage.setItem(REVIEW_SETTING_KEY, String(enabled))
     }
   }
+
+  // ToolUIRegistry 是内存态；旧 transcript、切换会话或 HMR 后都要从当前消息恢复。
+  // 此 effect 声明在 useCaseConfirmToolUI 之后，执行时 handler 已完成注册；内部按
+  // toolCallId 去重，多次运行不会重复显示同一审核。
+  useEffect(() => {
+    if (!reviewEnabled) return
+    restorePendingFromMessages(messages)
+  }, [messages, reviewEnabled])
 
   const handleScrollToBottom = () => {
     const messageContainer = document.querySelector("[data-message-container-v2]")
