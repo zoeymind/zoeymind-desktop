@@ -16,8 +16,16 @@ describe("ErrorCard overflow", () => {
   it("restores input without initiating another retry", () => {
     render(<ErrorCard code="CONTEXT_OVERFLOW" isLast />)
     expect(screen.getByText("mindmap.aiChat.error.contextOverflow.body")).toBeTruthy()
-    fireEvent.click(screen.getByRole("button"))
+    fireEvent.click(screen.getByText("mindmap.aiChat.error.contextOverflow.cta"))
     expect(useAIChatV2Store.getState().inputMessage).toBe("original")
     expect(useAIChatV2Store.getState().lastSentInput).toBe("")
+  })
+
+  it("renders as a collapsible message part", () => {
+    render(<ErrorCard code="REQUEST_FAILED" />)
+    const trigger = screen.getByText("mindmap.aiChat.error.requestFailed.title").closest("button")
+    expect(trigger?.getAttribute("aria-expanded")).toBe("true")
+    fireEvent.click(trigger!)
+    expect(trigger?.getAttribute("aria-expanded")).toBe("false")
   })
 })

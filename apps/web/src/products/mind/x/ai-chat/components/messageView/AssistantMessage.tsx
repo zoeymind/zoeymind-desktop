@@ -446,16 +446,14 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   const lastActivePartIndex = useMemo(() => {
     if (!message.parts) return -1
     for (let i = message.parts.length - 1; i >= 0; i--) {
-      const p = message.parts[i] as GenericMessagePart
-      const isToolType = typeof p.type === "string" && p.type.startsWith("tool-")
-      if (p.type === "error" || p.errorText) continue
-      if (p.type === "text") {
-        const text = typeof p.text === "string" ? p.text : String(p.text || "")
+      const part = message.parts[i] as GenericMessagePart
+      const isToolType = typeof part.type === "string" && part.type.startsWith("tool-")
+      if (part.type === "error" || part.errorText) return i
+      if (part.type === "text") {
+        const text = typeof part.text === "string" ? part.text : String(part.text || "")
         if (text.trim()) return i
       }
-      if (isReasoningPart(p)) {
-        if (p.text.trim()) return i
-      }
+      if (isReasoningPart(part) && part.text.trim()) return i
       if (isToolType) return i
     }
     return -1
@@ -467,8 +465,14 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
       const genericPart = part as GenericMessagePart
       const isToolType =
         typeof genericPart.type === "string" && genericPart.type.startsWith("tool-")
+      const isError = !isToolType && (genericPart.type === "error" || genericPart.errorText)
 
-      if (!isToolType && (genericPart.type === "error" || genericPart.errorText)) return null
+      if (isError) {
+        const raw = genericPart.errorText || genericPart.error || ""
+        return (
+          <ErrorCard key={`error-${partIndex}`} code={classifyChatError(raw)} isLast={isLast} />
+        )
+      }
 
       if (isReasoningPart(part)) {
         if (!part.text.trim()) return null
@@ -543,12 +547,6 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
     <div className="relative group flex flex-col items-start">
       <div className="flex flex-col p-2 rounded-lg w-full max-w-full break-words overflow-hidden">
         <div className="text-xs">
-          {errorParts.map(({ part, index }) => {
-            const raw = part.errorText || part.error || ""
-            const code = classifyChatError(raw)
-            return <ErrorCard key={index} code={code} isLast={isLast} />
-          })}
-
           {useCollapsible ? (
             <CollapsibleSteps
               toolParts={toolParts}

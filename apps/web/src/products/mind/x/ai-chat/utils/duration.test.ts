@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest"
 import { formatElapsedMs } from "./duration"
 
 describe("formatElapsedMs", () => {
-  it("shows sub-second completed work instead of zero", () => {
-    expect(formatElapsedMs(0)).toBe("< 1s")
-    expect(formatElapsedMs(450)).toBe("< 1s")
+  it("preserves sub-second precision", () => {
+    expect(formatElapsedMs(0)).toBe("0ms")
+    expect(formatElapsedMs(51.6)).toBe("52ms")
+    expect(formatElapsedMs(450)).toBe("450ms")
   })
 
   it("formats seconds and minutes", () => {
