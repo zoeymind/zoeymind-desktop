@@ -119,6 +119,10 @@ function createMindMap(root: BenchmarkNode, failCommandAt?: number): EditableMin
     execCommand: (command: string, ...args: unknown[]) => {
       commandCount += 1
       if (failCommandAt === commandCount) throw new Error("benchmark live engine failure")
+      if (command === "PATCH_NODE_DATA_TREE") {
+        ;(args[0] as (ownedRoot: BenchmarkNode) => void)(root)
+        return
+      }
       if (command === "SET_NODE_TEXT") {
         const node = findNode(root, String((args[0] as LiveNode).getData("uid")))
         if (node) node.data.text = String(args[1])

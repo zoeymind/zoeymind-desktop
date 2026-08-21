@@ -211,7 +211,7 @@ async function applyDestructiveEdit(portal: DocumentPortal, anchorTag: string, p
     patch,
     preview: true,
   })
-  const confirmationToken = preview.preview?.confirmationToken
+  const confirmationToken = preview.confirmationToken
   if (!confirmationToken)
     throw new Error("benchmark destructive preview did not issue a confirmation token")
   return portal.edit({ documentId: BENCHMARK_DOCUMENT_ID, anchorTag, patch, confirmationToken })

@@ -96,7 +96,7 @@ describe("Portal reliability benchmark", () => {
         documentId: "portal-reliability",
         anchorTag: read.anchorTag,
         patch,
-        confirmationToken: preview.preview?.confirmationToken,
+        confirmationToken: preview.confirmationToken,
       })
     ).resolves.toMatchObject({ dirty: true })
     expect(
