@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { z, ZodError } from "zod"
 import {
   PROJECT_SESSION_LIFECYCLE,
   projectSessionRegistry,
@@ -153,6 +153,9 @@ export function executeCurrentDocumentPortalTool(
   } catch (error) {
     if (error instanceof DocumentPortalError) {
       return { success: false, error: error.message, errorCode: error.code }
+    }
+    if (error instanceof ZodError) {
+      return { success: false, error: error.message, errorCode: "INVALID_REQUEST" }
     }
     throw error
   }
