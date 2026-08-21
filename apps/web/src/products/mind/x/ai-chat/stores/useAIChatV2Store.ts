@@ -5,14 +5,18 @@
  */
 
 import { create } from "zustand"
-import type { UIMessage } from "@ai-sdk/react"
 import { logger } from "@zoeymind/logger"
 import type { Attachment, SendMessageParams, TokenUsage } from "../../ai-chat/types"
 import { chatDB } from "../../ai-chat/storage/chatDB"
 import type { Conversation } from "../../ai-chat/storage/chatDB"
 import { getModuleAIChatRuntime } from "../../ai-chat/context/AIChatRuntimeContext"
 import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
-import { restorePendingFromMessages } from "../../ai-chat/context/ToolUIRegistry"
+import { resetToolUI, restorePendingFromMessages } from "../../ai-chat/context/ToolUIRegistry"
+import {
+  interruptPendingToolParts,
+  pendingToolCallIds,
+  TOOL_EXECUTION_INTERRUPTED,
+} from "../../ai-chat/utils/pendingToolCalls"
 
 interface MessageDraftPayload {
   text: string
@@ -47,6 +51,7 @@ const buildSendMessageParams = ({
     },
   }
 }
+const activeResends = new Set<string>()
 
 interface AIchatV2State {
   // 核心状态 (messages 已移到 runtime context, 不在 store)
@@ -72,6 +77,7 @@ interface AIchatV2State {
 
   // 异常/中断状态
   abortedMessageId: string | null
+  interruptedToolCallIds: string[]
   lastSentInput: string
 
   // 用户 prompt (来自 trpc)
@@ -99,7 +105,7 @@ interface AIchatV2State {
     workspaceId: string,
     selectedModel: string,
     provider?: string
-  ) => Promise<void>
+  ) => Promise<boolean>
   createNewConversation: (workspaceId: string) => Promise<void>
   loadConversation: (conversationId: string) => Promise<void>
   loadConversations: (workspaceId: string) => Promise<void>
@@ -118,6 +124,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   showSettings: false,
   selectedKnowledgeBaseIds: [],
   abortedMessageId: null,
+  interruptedToolCallIds: [],
   lastSentInput: "",
   mergedUserPrompt: "",
 
@@ -229,6 +236,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
     set({
       lastSentInput: inputMessage,
       abortedMessageId: null,
+      interruptedToolCallIds: [],
     })
 
     const messages = runtime.messages
@@ -291,36 +299,22 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   // 否则下一轮 SDK 会以为还有 pending tool 拒绝发送.
   stopGeneration: () => {
     const runtime = getModuleAIChatRuntime()
+    runtime?.stop()
+    resetToolUI()
     const messages = runtime?.messages ?? []
 
     const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null
     if (lastMsg?.role === "assistant") {
-      set({ abortedMessageId: lastMsg.id })
-
-      const parts = lastMsg.parts || []
-      let hasIncompleteTools = false
-      const updatedParts = parts.map(part => {
-        const p = part as { type?: string; state?: string }
-        if (
-          p.type?.startsWith("tool-") &&
-          (p.state === "input-streaming" || p.state === "input-available")
-        ) {
-          hasIncompleteTools = true
-          return { ...part, state: "output-error", errorText: "执行被中断" }
-        }
-        return part
+      set({
+        abortedMessageId: lastMsg.id,
+        interruptedToolCallIds: pendingToolCallIds(lastMsg),
       })
 
-      if (hasIncompleteTools && runtime) {
-        const updatedMessages = [
-          ...messages.slice(0, -1),
-          { ...lastMsg, parts: updatedParts },
-        ] as UIMessage[]
-        runtime.setMessages(updatedMessages)
+      const interruptedMessage = interruptPendingToolParts(lastMsg, TOOL_EXECUTION_INTERRUPTED)
+      if (interruptedMessage !== lastMsg && runtime) {
+        runtime.setMessages([...messages.slice(0, -1), interruptedMessage])
       }
     }
-
-    runtime?.stop()
   },
 
   interruptAndSend: async (workspaceId, selectedModel, provider) => {
@@ -359,24 +353,37 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       logger.warn("[AIchatV2Store] 无法重新发送消息：输入为空或 runtime 未初始化", {
         messageId,
       })
-      return
+      return false
     }
 
-    const messages = runtime.messages
-    const messageIndex = messages.findIndex(message => message.id === messageId)
-    if (messageIndex === -1) {
-      logger.warn("[AIchatV2Store] 未找到要重新发送的消息", { messageId })
-      return
-    }
-
-    runtime.stop()
-    set({
-      lastSentInput: draft.text,
-      abortedMessageId: null,
-    })
+    const resendKey = `${currentConversationId ?? "new"}:${messageId}`
+    if (activeResends.has(resendKey)) return false
+    activeResends.add(resendKey)
 
     try {
       let conversationId = currentConversationId
+      let messages = runtime.messages
+      let messageIndex = messages.findIndex(message => message.id === messageId)
+
+      if (messageIndex === -1 && conversationId) {
+        const persisted = await chatDB.loadConversationState(conversationId)
+        messages = persisted.transcript
+        messageIndex = messages.findIndex(message => message.id === messageId)
+      }
+      if (messageIndex === -1) {
+        logger.warn("[AIchatV2Store] 未找到要重新发送的消息", {
+          messageId,
+          conversationId,
+        })
+        return false
+      }
+
+      set({
+        lastSentInput: draft.text,
+        abortedMessageId: null,
+        interruptedToolCallIds: [],
+      })
+
       if (!conversationId) {
         await get().createNewConversation(workspaceId)
         conversationId = get().currentConversationId
@@ -396,22 +403,26 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
         useCompactionStore.getState().setCompaction(loaded.compaction)
       }
 
-      const sendParams = buildSendMessageParams({
-        text: draft.text,
-        attachments: draft.attachments,
-        selectedModel,
-        provider,
-      })
-
-      runtime.sendMessage(sendParams)
+      runtime.sendMessage(
+        buildSendMessageParams({
+          text: draft.text,
+          attachments: draft.attachments,
+          selectedModel,
+          provider,
+        })
+      )
 
       logger.info("[AIchatV2Store] 已从用户消息重新发送", {
         messageId,
         contentLength: draft.text.length,
         attachmentsCount: draft.attachments.length,
       })
+      return true
     } catch (error) {
       logger.error("[AIchatV2Store] 重新发送消息失败", { error, messageId })
+      return false
+    } finally {
+      activeResends.delete(resendKey)
     }
   },
 

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * InputView - 消息输入框 (AIchatV2)
  *
@@ -13,7 +12,7 @@ import { useAIChatRuntime } from "../../context/AIChatRuntimeContext"
 import { useAIChatV2Store } from "../../stores/useAIChatV2Store"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
-import { hasPendingToolCalls } from "../../../ai-chat/utils/pendingToolCalls"
+import { isChatProcessing } from "../../../ai-chat/utils/pendingToolCalls"
 
 interface InputViewProps {
   models: AIModel[]
@@ -44,8 +43,8 @@ export const InputView: React.FC<InputViewProps> = ({
   } = useAIChatV2Store()
 
   const { status, messages } = useAIChatRuntime()
-  const isProcessing =
-    status === "submitted" || status === "streaming" || hasPendingToolCalls(messages)
+  const abortedMessageId = useAIChatV2Store(state => state.abortedMessageId)
+  const isProcessing = isChatProcessing(status, messages, abortedMessageId)
 
   const { mindMap } = useMindMapStore()
 

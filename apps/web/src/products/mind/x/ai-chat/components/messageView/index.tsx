@@ -14,7 +14,8 @@ import { useTranslation } from "@zoeymind/i18n"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 import { resolveModelDisplayName } from "../../../ai-chat/utils/modelDisplayName"
 import { mapUserMessageTokenUsage } from "../../../ai-chat/utils/messageTokenUsage"
-import { hasPendingToolCalls } from "../../../ai-chat/utils/pendingToolCalls"
+import { isChatProcessing } from "../../../ai-chat/utils/pendingToolCalls"
+import { useAIChatV2Store } from "../../stores/useAIChatV2Store"
 import { MessageScroller } from "@/components/agents/message-scroller"
 
 const MESSAGES_PER_PAGE = 10
@@ -37,9 +38,9 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const { t } = useTranslation()
   // ✅ 从 runtime 读 messages + status (AI SDK 单一事实源)
   const { messages, status } = useAIChatRuntime()
+  const abortedMessageId = useAIChatV2Store(state => state.abortedMessageId)
+  const isProcessing = isChatProcessing(status, messages, abortedMessageId)
   const compaction = useCompactionStore(state => state.compaction)
-  const isProcessing =
-    status === "submitted" || status === "streaming" || hasPendingToolCalls(messages)
   const [displayCount, setDisplayCount] = useState(MESSAGES_PER_PAGE)
 
   const containerRef = useRef<HTMLElement>(null)

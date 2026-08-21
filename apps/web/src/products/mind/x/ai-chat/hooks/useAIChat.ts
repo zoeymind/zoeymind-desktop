@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef } from "react"
 import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
+import { DefaultChatTransport } from "ai"
 import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
 import { logger } from "@zoeymind/logger"
 import {
@@ -15,6 +15,7 @@ import {
   isClientRuntimeError,
   type ChatErrorCode,
 } from "../utils/errorHandler"
+import { shouldAutoContinueAfterTools } from "../utils/pendingToolCalls"
 import type { ChatRuntime } from "./internal/chatRuntime"
 import { clearPreparedTurn, useChatTransport } from "./useChatTransport"
 import {
@@ -92,7 +93,8 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
     // WKWebView 中形成高密度外部 store 更新；官方建议节流 UI 通知以避免更新深度溢出。
     experimental_throttle: 50,
     transport,
-    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    sendAutomaticallyWhen: ({ messages: currentMessages }) =>
+      shouldAutoContinueAfterTools(currentMessages, useAIChatV2Store.getState().abortedMessageId),
     onError: error => {
       const errorMessage = error instanceof Error ? error.message : String(error)
       if (isClientRuntimeError(error)) {

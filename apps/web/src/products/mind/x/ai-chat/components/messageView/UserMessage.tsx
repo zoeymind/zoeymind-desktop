@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * UserMessage - 用户消息组件
  *
@@ -221,7 +220,7 @@ const UserMessageImpl: React.FC<UserMessageProps> = ({
 
     setIsResending(true)
     try {
-      await resendMessageFrom(
+      const sent = await resendMessageFrom(
         message.id,
         {
           text: draftMessage,
@@ -231,8 +230,10 @@ const UserMessageImpl: React.FC<UserMessageProps> = ({
         selectedModel,
         currentModel?.provider
       )
-      setShowResendConfirm(false)
-      setIsEditing(false)
+      if (sent) {
+        setShowResendConfirm(false)
+        setIsEditing(false)
+      }
     } catch (error) {
       logger.error("[UserMessage] 重新发送消息失败", { error, messageId: message.id })
     } finally {
