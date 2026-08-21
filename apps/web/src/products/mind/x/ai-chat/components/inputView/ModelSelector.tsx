@@ -40,7 +40,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   // 模型列表为空时显示占位 (API 加载中或服务暂时不可用)
   if (!currentModel) {
     return (
-      <div className="flex h-7 items-center gap-1 rounded-full border border-border bg-card px-2 text-xs text-muted-foreground opacity-50">
+      <div className="flex h-[27px] items-center gap-1 rounded-full border border-border bg-card px-2 text-xs text-muted-foreground opacity-50">
         <span>{t("mindmap.aiChat.input.noModelConfigured")}</span>
       </div>
     )
@@ -55,7 +55,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           <button
             type="button"
             className={cn(
-              "flex h-7 items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-colors outline-none",
+              "flex h-[27px] items-center gap-1 rounded-full px-2 py-0.5 text-xs transition-colors outline-none",
               "text-muted-foreground hover:bg-muted hover:text-foreground",
               "focus-visible:ring-1 focus-visible:ring-ring",
               disabled && "cursor-not-allowed opacity-50"

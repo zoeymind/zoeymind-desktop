@@ -35,7 +35,7 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       ? "stroke-amber-500"
       : "stroke-foreground"
 
-  // 保留 Header 原始圆环尺寸；承载层与附件按钮同为 28px Ghost 圆形按钮。
+  // 保留 Header 原始圆环尺寸；承载层与附件、模型控件统一为 27px。
   const size = 14
   const strokeWidth = 2
   const radius = (size - strokeWidth) / 2
@@ -58,15 +58,15 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="size-7 rounded-full"
+            className="size-[27px] rounded-full"
             aria-label={t("mindmap.aiChat.core.contextUsed", {
               value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
             })}
           >
             {compactionPhase === "pending" ? (
-              <Loader2 className="size-3.5 animate-spin text-warning" />
+              <Loader2 className="size-3.5 shrink-0 animate-spin text-warning" />
             ) : (
-              <svg className="-rotate-90" width={size} height={size} aria-hidden="true">
+              <svg className="size-3.5 shrink-0 -rotate-90" aria-hidden="true">
                 <circle
                   cx={size / 2}
                   cy={size / 2}

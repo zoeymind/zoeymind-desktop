@@ -52,7 +52,7 @@ export const AttachmentButton: React.FC<AttachmentButtonProps> = ({
         size="icon-sm"
         onClick={() => fileInputRef.current?.click()}
         disabled={disabled || isCompressing}
-        className="size-7 rounded-full"
+        className="size-[27px] rounded-full"
         aria-label={label}
         title={label}
       >
