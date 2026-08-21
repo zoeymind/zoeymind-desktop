@@ -337,6 +337,8 @@ class Render {
     this.mindMap.command.add('INSERT_BEFORE', this.insertBefore)
     this.moveNodeTo = this.moveNodeTo.bind(this)
     this.mindMap.command.add('MOVE_NODE_TO', this.moveNodeTo)
+    this.moveNodeDataToIndex = this.moveNodeDataToIndex.bind(this)
+    this.mindMap.command.add('MOVE_NODE_DATA_TO_INDEX', this.moveNodeDataToIndex)
     // 删除节点
     this.removeNode = this.removeNode.bind(this)
     this.mindMap.command.add('REMOVE_NODE', this.removeNode)
@@ -1604,6 +1606,25 @@ class Render {
     this.emitNodeActiveEvent()
     this.mindMap.render()
   }
+
+  // 精确移动节点数据，不依赖渲染树已完成刷新。
+  // transaction rollback 在连续命令间可能看到旧 renderer parent。
+  moveNodeDataToIndex(nodeData, fromParentData, toParentData, index) {
+    if (!nodeData || !fromParentData || !toParentData) {
+      throw new Error('Cannot restore moved node without complete node data')
+    }
+    const fromChildren = fromParentData.children || []
+    const currentIndex = fromChildren.indexOf(nodeData)
+    if (currentIndex === -1) {
+      throw new Error('Cannot restore moved node from its current parent')
+    }
+    fromChildren.splice(currentIndex, 1)
+    const toChildren = toParentData.children || (toParentData.children = [])
+    const insertIndex = Math.max(0, Math.min(index, toChildren.length))
+    toChildren.splice(insertIndex, 0, nodeData)
+    this.mindMap.render()
+  }
+
 
   //   粘贴节点到节点
   pasteNode(data) {

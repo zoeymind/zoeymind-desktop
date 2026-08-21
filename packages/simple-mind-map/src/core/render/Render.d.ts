@@ -96,6 +96,12 @@ declare class Render {
   copyNode(): any[]
   cutNode(callback: any): void
   moveNodeTo(node: any, toNode: any): void
+  moveNodeDataToIndex(
+    nodeData: { data: Record<string, unknown>; children?: unknown[] },
+    fromParentData: { data: Record<string, unknown>; children?: unknown[] },
+    toParentData: { data: Record<string, unknown>; children?: unknown[] },
+    index: number
+  ): void
   pasteNode(data: any): void
   setNodeStyle(node: any, prop: any, value: any): void
   setNodeStyles(node: any, style: any): void

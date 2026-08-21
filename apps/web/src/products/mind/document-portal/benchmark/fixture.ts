@@ -17,11 +17,17 @@ export interface BenchmarkNode {
   children: BenchmarkNode[]
 }
 
-type LiveNode = { getData: (key: string) => unknown }
+type LiveNode = { getData: (key: string) => unknown; nodeData: BenchmarkNode }
 type EditableMindMap = MindMap & {
   renderer: { findNodeByUid: (uid: string) => LiveNode | null }
   execCommand: (command: string, ...args: unknown[]) => void
-  command: { pause: () => void; recovery: () => void; addHistory: () => void }
+  command: {
+    pause: () => void
+    recovery: () => void
+    addHistory: () => void
+    commitHistoryNow: () => void
+    restoreCurrentHistory: () => void
+  }
 }
 
 function caseNumber(moduleIndex: number, caseIndex: number): number {
@@ -92,6 +98,7 @@ function createMindMap(root: BenchmarkNode, failCommandAt?: number): EditableMin
   let commandCount = 0
   const live = (node: BenchmarkNode): LiveNode => ({
     getData: key => node.data[key as keyof BenchmarkNode["data"]],
+    nodeData: node,
   })
   const mindMap = {
     getData: () => root,
@@ -102,7 +109,13 @@ function createMindMap(root: BenchmarkNode, failCommandAt?: number): EditableMin
         return node ? live(node) : null
       },
     },
-    command: { pause: () => undefined, recovery: () => undefined, addHistory: () => undefined },
+    command: {
+      pause: () => undefined,
+      recovery: () => undefined,
+      addHistory: () => undefined,
+      commitHistoryNow: () => undefined,
+      restoreCurrentHistory: () => undefined,
+    },
     execCommand: (command: string, ...args: unknown[]) => {
       commandCount += 1
       if (failCommandAt === commandCount) throw new Error("benchmark live engine failure")

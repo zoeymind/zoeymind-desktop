@@ -119,6 +119,7 @@ export const DOCUMENT_PORTAL_ERROR_CODE = {
   PREVIEW_REQUIRED: "DOCUMENT_PREVIEW_REQUIRED",
   EDIT_CONFLICT: "DOCUMENT_EDIT_CONFLICT",
   ANCHOR_EXPIRED: "DOCUMENT_ANCHOR_EXPIRED",
+  CONSISTENCY: "DOCUMENT_CONSISTENCY_ERROR",
 }
 
 export type DocumentPortalErrorCode =
@@ -126,9 +127,8 @@ export type DocumentPortalErrorCode =
 
 export class DocumentPortalError extends Error {
   readonly code: DocumentPortalErrorCode
-
-  constructor(code: DocumentPortalErrorCode, message: string) {
-    super(message)
+  constructor(code: DocumentPortalErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options)
     this.name = "DocumentPortalError"
     this.code = code
   }

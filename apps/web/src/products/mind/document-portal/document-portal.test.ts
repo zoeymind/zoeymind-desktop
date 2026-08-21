@@ -27,7 +27,7 @@ function createMindMap(data: unknown): MindMap {
   } as unknown as MindMap
 }
 
-function createStatefulMindMap(root: RuntimeNode, throwOnCommand?: number) {
+function createStatefulMindMap(root: RuntimeNode, throwOnCommand?: number | number[]) {
   let sequence = 0
   let commandCount = 0
   const find = (node: typeof root, uid: string): typeof root | null =>
@@ -46,7 +46,14 @@ function createStatefulMindMap(root: RuntimeNode, throwOnCommand?: number) {
         )
   const live = (node: typeof root) => ({
     getData: (key: string) => node.data[key as keyof typeof node.data],
+    nodeData: node,
   })
+  const historyCheckpoint = structuredClone(root)
+  const restoreCheckpoint = () => {
+    const restored = structuredClone(historyCheckpoint)
+    root.data = restored.data
+    root.children = restored.children
+  }
   const mindMap = createMindMap(root) as EditableMindMap
   Object.defineProperties(mindMap, {
     renderer: {
@@ -57,11 +64,22 @@ function createStatefulMindMap(root: RuntimeNode, throwOnCommand?: number) {
         }),
       },
     },
-    command: { value: { pause: vi.fn(), recovery: vi.fn(), addHistory: vi.fn() } },
+    command: {
+      value: {
+        pause: vi.fn(),
+        recovery: vi.fn(),
+        addHistory: vi.fn(),
+        commitHistoryNow: vi.fn(),
+        restoreCurrentHistory: vi.fn(restoreCheckpoint),
+      },
+    },
     execCommand: {
       value: vi.fn((command: string, ...args: unknown[]) => {
         commandCount += 1
-        if (throwOnCommand === commandCount) throw new Error("engine failure")
+        if (
+          (Array.isArray(throwOnCommand) ? throwOnCommand : [throwOnCommand]).includes(commandCount)
+        )
+          throw new Error("engine failure")
         if (command === "SET_NODE_TEXT") {
           const node = find(
             root,
@@ -120,6 +138,13 @@ function createStatefulMindMap(root: RuntimeNode, throwOnCommand?: number) {
             newParent.children.push(node)
           }
         }
+        if (command === "MOVE_NODE_DATA_TO_INDEX") {
+          const node = args[0] as RuntimeNode
+          const oldParent = args[1] as RuntimeNode
+          const newParent = args[2] as RuntimeNode
+          oldParent.children = oldParent.children.filter(child => child !== node)
+          newParent.children.splice(Number(args[3]), 0, node)
+        }
       }),
     },
   })
@@ -128,7 +153,7 @@ function createStatefulMindMap(root: RuntimeNode, throwOnCommand?: number) {
 
 function registerLivePortal(
   root: Parameters<typeof createStatefulMindMap>[0],
-  throwOnCommand?: number
+  throwOnCommand?: number | number[]
 ) {
   const tabs: OpenTab[] = [{ id: "patches", kind: "file", title: "补丁", projectId: "patches" }]
   const { portal, registry } = createPortalFixture({ tabs })
@@ -470,14 +495,27 @@ describe("DocumentPortal", () => {
       { id: "payments", kind: "file", title: "支付测试", projectId: "payments" },
     ]
     const { portal, registry } = createPortalFixture({ tabs })
-    const node = { uid: "private-node", getData: vi.fn(() => "支付用例") }
+    const nodeData = { data: { uid: "private-node", text: "支付用例" }, children: [] }
+    const node = {
+      uid: "private-node",
+      getData: vi.fn(() => "支付用例"),
+      nodeData,
+    }
     const mindMap = createMindMap({
       data: { text: "电商测试" },
-      children: [{ data: { uid: "private-node", text: "支付用例" }, children: [] }],
+      children: [nodeData],
     }) as EditableMindMap
     Object.defineProperties(mindMap, {
       renderer: { value: { findNodeByUid: vi.fn(() => node) } },
-      command: { value: { pause: vi.fn(), recovery: vi.fn(), addHistory: vi.fn() } },
+      command: {
+        value: {
+          pause: vi.fn(),
+          recovery: vi.fn(),
+          addHistory: vi.fn(),
+          commitHistoryNow: vi.fn(),
+          restoreCurrentHistory: vi.fn(),
+        },
+      },
       execCommand: { value: vi.fn() },
     })
     const session = createProjectSessionStore("payments")
@@ -498,7 +536,7 @@ describe("DocumentPortal", () => {
     expect(mindMap.execCommand).toHaveBeenCalledWith("SET_NODE_TEXT", node, "已支付用例")
     expect(mindMap.command.pause).toHaveBeenCalledOnce()
     expect(mindMap.command.recovery).toHaveBeenCalledOnce()
-    expect(mindMap.command.addHistory).toHaveBeenCalledOnce()
+    expect(mindMap.command.commitHistoryNow).toHaveBeenCalledTimes(2)
     expect(session.getState().dirty).toBe(true)
   })
 
@@ -804,11 +842,11 @@ describe("DocumentPortal", () => {
         patch,
         confirmationToken: preview.preview?.confirmationToken,
       })
-    ).rejects.toThrow("engine failure")
+    ).rejects.toMatchObject({ code: "DOCUMENT_CONSISTENCY_ERROR" })
 
     expect(root).toEqual(initial)
     expect(session.getState().dirty).toBe(false)
-    expect(mindMap.command.addHistory).not.toHaveBeenCalled()
+    expect(mindMap.command.commitHistoryNow).toHaveBeenCalledOnce()
   })
 
   it("restores a cut middle sibling at its original index after a later failure", async () => {
@@ -843,7 +881,7 @@ describe("DocumentPortal", () => {
         patch,
         confirmationToken: preview.preview?.confirmationToken,
       })
-    ).rejects.toThrow("engine failure")
+    ).rejects.toMatchObject({ code: "DOCUMENT_CONSISTENCY_ERROR" })
     expect(root.children[0]?.children.map(node => node.data.text)).toEqual([
       "用例A",
       "用例B",
@@ -890,7 +928,35 @@ describe("DocumentPortal", () => {
     ).rejects.toThrow("engine failure")
     expect(failed.root).toEqual(initial)
     expect(failed.session.getState().dirty).toBe(false)
-    expect(failed.mindMap.command.addHistory).not.toHaveBeenCalled()
+    expect(failed.mindMap.command.commitHistoryNow).toHaveBeenCalledOnce()
+  })
+  it("reports a consistency error when an inverse command also fails", async () => {
+    const fixture = registerLivePortal(
+      {
+        data: { uid: "root", text: "文档" },
+        children: [
+          {
+            data: { uid: "module", text: "模块", icon: ["sign_2"] },
+            children: [
+              { data: { uid: "case-a", text: "用例A", icon: ["priority_1"] }, children: [] },
+              { data: { uid: "case-b", text: "用例B", icon: ["priority_1"] }, children: [] },
+            ],
+          },
+        ],
+      },
+      [2, 3]
+    )
+    const read = fixture.portal.read({ documentId: "patches", view: "subtree" })
+
+    await expect(
+      fixture.portal.edit({
+        documentId: "patches",
+        anchorTag: read.anchorTag,
+        patch: "PUT 3.=3:\n+已改\nPUT 4.=4:\n+也已改",
+      })
+    ).rejects.toMatchObject({ code: "DOCUMENT_CONSISTENCY_ERROR" })
+    expect(fixture.mindMap.command.restoreCurrentHistory).toHaveBeenCalledOnce()
+    expect(fixture.session.getState().dirty).toBe(false)
   })
   it("commits a successful multi-operation patch as one dirty history entry", async () => {
     const { portal, session, mindMap, root } = registerLivePortal({
@@ -927,7 +993,7 @@ describe("DocumentPortal", () => {
       "步骤二",
     ])
     expect(session.getState().dirty).toBe(true)
-    expect(mindMap.command.addHistory).toHaveBeenCalledTimes(1)
+    expect(mindMap.command.commitHistoryNow).toHaveBeenCalledTimes(2)
     expect(mindMap.command.pause).toHaveBeenCalledOnce()
     expect(mindMap.command.recovery).toHaveBeenCalledOnce()
   })

@@ -43,6 +43,7 @@ interface ReadAnchor {
 
 interface LiveMindMapNode {
   getData: (key: string) => unknown
+  nodeData: MindMapNodeTree
 }
 
 interface PlannedNode {
@@ -69,7 +70,8 @@ function isLiveMindMapNode(value: unknown): value is LiveMindMapNode {
     typeof value === "object" &&
     value !== null &&
     "getData" in value &&
-    typeof value.getData === "function"
+    typeof value.getData === "function" &&
+    "nodeData" in value
   )
 }
 
@@ -200,24 +202,15 @@ function validateParsedSubtree(node: ParsedTreeNode): void {
 
 function asEngineNodes(
   nodes: readonly ParsedTreeNode[]
-): Array<{ data: { text: string; icon?: string[]; uid?: string }; children: unknown[] }> {
+): Array<{ data: { text: string; icon?: string[]; uid: string }; children: unknown[] }> {
   return nodes.map(node => ({
     data: {
       text: node.text,
       ...(node.icon ? { icon: node.icon } : {}),
-      ...(node.uid ? { uid: node.uid } : {}),
+      uid: node.uid ?? crypto.randomUUID(),
     },
     children: asEngineNodes(node.children),
   }))
-}
-
-function asParsedPlanNode(node: PlannedNode): ParsedTreeNode {
-  return {
-    uid: node.uid,
-    text: node.text,
-    ...(node.icon.length ? { icon: node.icon } : {}),
-    children: node.children.map(asParsedPlanNode),
-  }
 }
 
 function collectNodeUids(node: MindMapNodeTree, uids: Set<string>): void {
@@ -242,7 +235,7 @@ function findLiveNodes(mindMap: MindMap, uids: Iterable<string>): LiveMindMapNod
   return nodes
 }
 
-function insertAtOriginalPosition(
+function insertParsedAtOriginalPosition(
   mindMap: MindMap,
   parent: PlannedNode,
   nextSibling: PlannedNode | undefined,
@@ -706,6 +699,7 @@ export function createMindMapDocumentPortal(
             )
           destructivePreviews.delete(request.confirmationToken!)
         }
+        mindMap.command.commitHistoryNow()
         mindMap.command.pause()
         const inverseOperations: Array<() => void> = []
         try {
@@ -716,88 +710,107 @@ export function createMindMapDocumentPortal(
               operation.nodes[0]?.children.length === 0
             ) {
               const previousText = String(target.live!.getData("text") ?? "")
-              mindMap.execCommand("SET_NODE_TEXT", target.live!, operation.nodes[0].text)
               inverseOperations.push(() =>
                 mindMap.execCommand("SET_NODE_TEXT", target.live!, previousText)
               )
+              mindMap.execCommand("SET_NODE_TEXT", target.live!, operation.nodes[0].text)
             } else if (operation.kind === "put") {
               const parent = target.parent!
               const nextSibling = parent.children[parent.children.indexOf(target) + 1]
-              const original = asParsedPlanNode(target)
-              const uidsBeforeReplacement = getCurrentNodeUids(mindMap)
               const replacement = operation.nodes!.map((node, index) =>
                 index === 0 ? { ...node, uid: target.uid } : node
               )
+              let applied = false
               inverseOperations.push(() => {
-                const inserted = [...getCurrentNodeUids(mindMap)].filter(
-                  uid => !uidsBeforeReplacement.has(uid)
-                )
-                const liveInserted = findLiveNodes(mindMap, inserted)
-                if (liveInserted.length > 0) mindMap.execCommand("REMOVE_NODE", liveInserted)
-                const liveReplacement = mindMap.renderer?.findNodeByUid(target.uid)
-                if (isLiveMindMapNode(liveReplacement))
-                  mindMap.execCommand("REMOVE_NODE", [liveReplacement])
-                if (!isLiveMindMapNode(mindMap.renderer?.findNodeByUid(target.uid)))
-                  insertAtOriginalPosition(mindMap, parent, nextSibling, [original])
+                if (applied)
+                  throw new Error("Structural replacement requires checkpoint restoration")
               })
               mindMap.execCommand("REMOVE_NODE", [target.live!])
-              insertAtOriginalPosition(mindMap, parent, nextSibling, replacement)
+              applied = true
+              insertParsedAtOriginalPosition(mindMap, parent, nextSibling, replacement)
             } else if (operation.kind === "cut") {
-              const parent = target.parent!
-              const nextSibling = parent.children[parent.children.indexOf(target) + 1]
+              let applied = false
+              inverseOperations.push(() => {
+                if (applied) throw new Error("Structural deletion requires checkpoint restoration")
+              })
               mindMap.execCommand("REMOVE_NODE", [target.live!])
-              inverseOperations.push(() =>
-                insertAtOriginalPosition(mindMap, parent, nextSibling, [asParsedPlanNode(target)])
-              )
+              applied = true
             } else if (operation.kind === "insert-after") {
               const parent = target.parent!
               const nextSibling = parent.children[parent.children.indexOf(target) + 1]
               const beforeInsertion = getCurrentNodeUids(mindMap)
-              insertAtOriginalPosition(mindMap, parent, nextSibling, operation.nodes!)
-              const inserted = [...getCurrentNodeUids(mindMap)].filter(
-                uid => !beforeInsertion.has(uid)
-              )
+              let inserted: string[] = []
               inverseOperations.push(() => {
                 const liveInserted = findLiveNodes(mindMap, inserted)
+                if (liveInserted.length !== inserted.length)
+                  throw new Error("Portal rollback could not locate inserted nodes")
                 if (liveInserted.length > 0) mindMap.execCommand("REMOVE_NODE", liveInserted)
               })
+              insertParsedAtOriginalPosition(mindMap, parent, nextSibling, operation.nodes!)
+              inserted = [...getCurrentNodeUids(mindMap)].filter(uid => !beforeInsertion.has(uid))
             } else if (operation.kind === "insert-before") {
               const beforeInsertion = getCurrentNodeUids(mindMap)
+              let inserted: string[] = []
+              inverseOperations.push(() => {
+                const liveInserted = findLiveNodes(mindMap, inserted)
+                if (liveInserted.length !== inserted.length)
+                  throw new Error("Portal rollback could not locate inserted nodes")
+                if (liveInserted.length > 0) mindMap.execCommand("REMOVE_NODE", liveInserted)
+              })
               mindMap.execCommand(
                 "INSERT_MULTI_NODE",
                 [target.live!],
                 asEngineNodes(operation.nodes!)
               )
-              const inserted = [...getCurrentNodeUids(mindMap)].filter(
-                uid => !beforeInsertion.has(uid)
-              )
-              inverseOperations.push(() => {
-                const liveInserted = findLiveNodes(mindMap, inserted)
-                if (liveInserted.length !== inserted.length)
-                  throw new Error("Portal rollback could not locate inserted nodes")
-                mindMap.execCommand("REMOVE_NODE", liveInserted)
-              })
+              inserted = [...getCurrentNodeUids(mindMap)].filter(uid => !beforeInsertion.has(uid))
             } else if (operation.kind === "move") {
               const previousParent = target.parent!
-              mindMap.execCommand("MOVE_NODE_TO", [target.live!], destination!.live!)
+              const previousIndex = previousParent.children.indexOf(target)
+              const movedNodeData = target.live!.nodeData
+              const destinationData = destination!.live!.nodeData
+              const previousParentData = previousParent.live!.nodeData
               inverseOperations.push(() =>
-                mindMap.execCommand("MOVE_NODE_TO", [target.live!], previousParent.live!)
+                mindMap.execCommand(
+                  "MOVE_NODE_DATA_TO_INDEX",
+                  movedNodeData,
+                  destinationData,
+                  previousParentData,
+                  previousIndex
+                )
               )
+              mindMap.execCommand("MOVE_NODE_TO", [target.live!], destination!.live!)
             }
           }
         } catch (error) {
+          let rollbackError: unknown
           for (let index = inverseOperations.length - 1; index >= 0; index -= 1) {
             try {
               inverseOperations[index]!()
-            } catch {
-              /* preserve original command error */
+            } catch (inverseError) {
+              rollbackError ??= inverseError
             }
+          }
+          if (rollbackError) {
+            try {
+              mindMap.command.restoreCurrentHistory()
+            } catch (restoreError) {
+              throw new DocumentPortalError(
+                DOCUMENT_PORTAL_ERROR_CODE.CONSISTENCY,
+                "Document edit failed and the live document could not be restored",
+                { cause: restoreError }
+              )
+            }
+            throw new DocumentPortalError(
+              DOCUMENT_PORTAL_ERROR_CODE.CONSISTENCY,
+              "Document edit failed; the live document was restored from its transaction checkpoint",
+              { cause: rollbackError }
+            )
           }
           throw error
         } finally {
           mindMap.command.recovery()
         }
-        mindMap.command.addHistory()
+        mindMap.command.commitHistoryNow()
         state.setDirty(true)
         readAnchors.delete(request.anchorTag)
         return {

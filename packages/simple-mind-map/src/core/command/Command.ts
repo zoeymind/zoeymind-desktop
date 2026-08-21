@@ -46,6 +46,23 @@ class Command {
     this.isPause = false
   }
 
+  // 立即提交当前渲染树，供已自行管理批处理边界的调用方使用。
+  // 不经过节流包装，避免与相邻用户命令共用或丢失撤销点。
+  commitHistoryNow() {
+    this.originAddHistory()
+  }
+
+  // 恢复当前历史检查点，不改变撤销栈。
+  // 仅用于事务逆操作无法完成时，保证实时文档回到批处理前状态。
+  restoreCurrentHistory() {
+    const dataStr = this.history[this.activeHistoryIndex]
+    if (!dataStr) throw new Error('No history checkpoint is available for restoration')
+    const data = JSON.parse(dataStr)
+    this.mindMap.renderer.setData(data)
+    this.mindMap.render()
+    this.mindMap.emit('data_change', data)
+  }
+
   //  清空历史数据
   clearHistory() {
     this.history = []

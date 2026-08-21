@@ -13,6 +13,8 @@ declare class Command {
   constructor(opt?: { mindMap: MindMap; [key: string]: unknown })
   pause(): void
   recovery(): void
+  commitHistoryNow(): void
+  restoreCurrentHistory(): void
   clearHistory(): void
   registerShortcutKeys(): void
   static NODE_ADD_COMMANDS: string[]
