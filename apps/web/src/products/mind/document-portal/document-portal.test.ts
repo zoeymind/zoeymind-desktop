@@ -80,6 +80,7 @@ function createStatefulMindMap(root: RuntimeNode, throwOnCommand?: number | numb
           (Array.isArray(throwOnCommand) ? throwOnCommand : [throwOnCommand]).includes(commandCount)
         )
           throw new Error("engine failure")
+        if (command === "PATCH_NODE_DATA_TREE") (args[0] as (ownedRoot: RuntimeNode) => void)(root)
         if (command === "SET_NODE_TEXT") {
           const node = find(
             root,
@@ -288,6 +289,170 @@ describe("DocumentPortal", () => {
     })
     expect(result.anchorTag).toEqual(expect.any(String))
     expect(result.content).not.toContain("secret")
+  })
+
+  it("shows nested case titles in outline reads without exposing steps", () => {
+    const tabs: OpenTab[] = [{ id: "payments", kind: "file", title: "支付测试" }]
+    const { portal, registry } = createPortalFixture({ tabs })
+    const session = createProjectSessionStore("payments")
+    session.getState().setLifecycle(PROJECT_SESSION_LIFECYCLE.READY)
+    session.getState().setMindMap(
+      createMindMap({
+        data: { text: "支付测试" },
+        children: [
+          {
+            data: { text: "订单", icon: ["sign_2"] },
+            children: [
+              {
+                data: { text: "退款", icon: ["sign_2"] },
+                children: [
+                  {
+                    data: { text: "申请退款 & 已支付", icon: ["priority_1"] },
+                    children: [{ data: { text: "点击退款 & 显示确认框" }, children: [] }],
+                  },
+                  { data: { text: "退款超时", icon: ["priority_2"] }, children: [] },
+                ],
+              },
+            ],
+          },
+          { data: { text: "账户", icon: ["sign_2"] }, children: [] },
+        ],
+      })
+    )
+    registry.register(session)
+
+    expect(portal.read({ documentId: "payments", view: "outline" }).content).toBe(
+      [
+        "1: # 支付测试",
+        "2:   # 订单",
+        "3:     # 退款",
+        "4:       [P1] 申请退款 & 已支付",
+        "5:       [P2] 退款超时",
+        "6:   # 账户",
+      ].join("\n")
+    )
+  })
+
+  it("uses displayed outline case lines as edit anchors", async () => {
+    const root = {
+      data: { uid: "root", text: "根" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            { data: { uid: "case-a", text: "用例A", icon: ["priority_1"] }, children: [] },
+          ],
+        },
+      ],
+    }
+    const { portal } = registerLivePortal(root)
+    const read = portal.read({ documentId: "patches", view: "outline" })
+    expect(read.content).toContain("3:     [P1] 用例A")
+
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT 3.=3:\n+[P1] 已更新用例A",
+    })
+
+    expect(root.children[0]?.children[0]?.data.text).toBe("已更新用例A")
+  })
+
+  it("does not traverse hidden case steps while building a bounded outline", () => {
+    const hiddenStep = {
+      get data(): never {
+        throw new Error("outline traversed a hidden case step")
+      },
+      children: [],
+    }
+    const tabs: OpenTab[] = [{ id: "bounded", kind: "file", title: "Bounded" }]
+    const { portal, registry } = createPortalFixture({ tabs })
+    const session = createProjectSessionStore("bounded")
+    session.getState().setLifecycle(PROJECT_SESSION_LIFECYCLE.READY)
+    session.getState().setMindMap(
+      createMindMap({
+        data: { text: "Bounded" },
+        children: [
+          {
+            data: { uid: "module", text: "模块", icon: ["sign_2"] },
+            children: [
+              {
+                data: { uid: "case", text: "用例", icon: ["priority_1"] },
+                children: [hiddenStep],
+              },
+            ],
+          },
+        ],
+      })
+    )
+    registry.register(session)
+
+    expect(portal.read({ documentId: "bounded", view: "outline" }).content).toContain(
+      "3:     [P1] 用例"
+    )
+  })
+
+  it("inserts a multi-level UI module tree after an outline module line", async () => {
+    const root = {
+      data: { uid: "root", text: "XX模块" },
+      children: [
+        {
+          data: { uid: "module-d", text: "核心模块D", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case-d", text: "测试标题2 & 前置条件2", icon: ["priority_2"] },
+              children: [],
+            },
+          ],
+        },
+      ],
+    }
+    const { portal } = registerLivePortal(root)
+    const read = portal.read({ documentId: "patches", view: "outline" })
+    expect(read.content).toContain("2:   # 核心模块D")
+
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: [
+        "PUT >2:",
+        "+  # 朋友圈首页",
+        "+    # 动态卡片",
+        "+      # 点赞按钮",
+        "+        [P1] 点赞按钮-点赞动态 & 已登录且当前动态未点赞",
+        "+          点击动态卡片底部的“点赞”按钮 & 按钮切换为已点赞状态，点赞数增加1",
+        "+          刷新朋友圈首页 & 该动态仍保持已点赞状态，点赞数与刷新前一致",
+      ].join("\n"),
+    })
+
+    expect(root.children).toHaveLength(2)
+    expect(JSON.stringify(root.children[1])).toContain("朋友圈首页")
+    expect(JSON.stringify(root.children[1])).toContain("点赞按钮-点赞动态")
+  })
+
+  it("explains how to replace Git Patch and natural-language edit syntax", async () => {
+    const root = {
+      data: { uid: "root", text: "根" },
+      children: [{ data: { uid: "module", text: "模块", icon: ["sign_2"] }, children: [] }],
+    }
+    const { portal } = registerLivePortal(root)
+    const read = portal.read({ documentId: "patches", view: "outline" })
+
+    await expect(
+      portal.edit({
+        documentId: "patches",
+        anchorTag: read.anchorTag,
+        patch: "*** Begin Patch\n*** Update File\n@@\n+  # 新模块\n*** End Patch",
+      })
+    ).rejects.toThrow("Git Patch is not valid Tree Hashline syntax; use PUT >N:")
+
+    await expect(
+      portal.edit({
+        documentId: "patches",
+        anchorTag: read.anchorTag,
+        patch: "ADD AFTER line 2:\n+  # 新模块",
+      })
+    ).rejects.toThrow("ADD AFTER is not valid Tree Hashline syntax; use PUT >2:")
   })
 
   it("bounds default outline reads instead of returning the complete document", () => {
@@ -533,7 +698,7 @@ describe("DocumentPortal", () => {
         patch: "PUT 2.=2:\n+已支付用例",
       })
     ).resolves.toMatchObject({ documentId: "payments", dirty: true })
-    expect(mindMap.execCommand).toHaveBeenCalledWith("SET_NODE_TEXT", node, "已支付用例")
+    expect(mindMap.execCommand).toHaveBeenCalledWith("PATCH_NODE_DATA_TREE", expect.any(Function))
     expect(mindMap.command.pause).toHaveBeenCalledOnce()
     expect(mindMap.command.recovery).toHaveBeenCalledOnce()
     expect(mindMap.command.commitHistoryNow).toHaveBeenCalledTimes(2)
@@ -585,7 +750,7 @@ describe("DocumentPortal", () => {
       ],
     })
     const read = portal.read({ documentId: "patches", view: "subtree" })
-    const patch = "PUT 3.=3:\n+[P1] 新用例\n+  前置\n+  操作"
+    const patch = "PUT 3.=3:\n+[P1] 新用例\n+  操作一 & 预期一\n+  操作二 & 预期二"
     const preview = await portal.edit({
       documentId: "patches",
       anchorTag: read.anchorTag,
@@ -596,16 +761,196 @@ describe("DocumentPortal", () => {
       documentId: "patches",
       anchorTag: read.anchorTag,
       patch,
-      confirmationToken: preview.preview?.confirmationToken,
+      confirmationToken: preview.confirmationToken,
     })
     expect(root.children[0]?.children[0]?.data.text).toBe("新用例")
     expect(root.children[0]?.children[0]?.children.map(node => node.data.text)).toEqual([
-      "前置",
-      "操作",
+      "操作一 & 预期一",
+      "操作二 & 预期二",
     ])
   })
 
-  it("requires a matching preview confirmation before applying the complete deletion cascade", async () => {
+  it("applies a new case without steps and returns a localized repair warning", async () => {
+    const { portal, root, mindMap } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "已有用例", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "outline" })
+
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT >3:\n+[P3] 不完整用例 & 前置条件",
+    })
+
+    expect(root.children[0]?.children).toHaveLength(2)
+    expect(mindMap.execCommand).toHaveBeenCalledOnce()
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        code: "CASE_HAS_NO_STEPS",
+        path: ["模块", "不完整用例 & 前置条件"],
+        line: 4,
+        repairPatchHint: "PUT 4.=4:\n+[P3] 不完整用例 & 前置条件\n+  操作 & 预期结果",
+      }),
+    ])
+  })
+
+  it("marks outline as structure-only and subtree as complete replacement evidence", () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "用例", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(portal.read({ documentId: "patches", view: "outline" })).toMatchObject({
+      completeness: "structure-only",
+      canReplaceCompleteSubtree: false,
+    })
+    expect(portal.read({ documentId: "patches", view: "subtree" })).toMatchObject({
+      completeness: "complete",
+      canReplaceCompleteSubtree: true,
+    })
+    expect(portal.read({ documentId: "patches", view: "subtree", maxLines: 2 })).toMatchObject({
+      completeness: "complete",
+      truncated: true,
+      canReplaceCompleteSubtree: false,
+    })
+  })
+
+  it("treats adding steps to an unchanged empty case as non-destructive", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            { data: { uid: "case", text: "草稿用例", icon: ["priority_2"] }, children: [] },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT 3.=3:\n+[P2] 草稿用例\n+  执行操作 & 得到结果",
+    })
+
+    expect(result.changeSummary.destructive).toBe(false)
+    expect(result.diagnostics).toEqual([])
+    expect(root.children[0]?.children[0]?.children[0]?.data.text).toBe("执行操作 & 得到结果")
+  })
+
+  it("explains that sibling insertion must anchor a peer rather than its child", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "已有用例", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+
+    await expect(
+      portal.edit({
+        documentId: "patches",
+        anchorTag: read.anchorTag,
+        patch: "PUT >4:\n+[P2] 新用例\n+  操作 & 预期",
+      })
+    ).rejects.toMatchObject({
+      code: "INVALID_DOCUMENT_EDIT_PATCH",
+      message: expect.stringContaining("PUT >N inserts a sibling"),
+    })
+    expect.assertions(1)
+  })
+
+  it("allows an existing incomplete case title to change without replacing its structure", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            { data: { uid: "legacy-case", text: "历史草稿", icon: ["priority_1"] }, children: [] },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "outline" })
+
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT 3.=3:\n+[P2] 历史草稿改名",
+    })
+    expect(root.children[0]?.children[0]?.data.text).toBe("历史草稿改名")
+    expect(root.children[0]?.children[0]?.children).toEqual([])
+  })
+  it("applies a new incomplete step and returns a localized replacement warning", async () => {
+    const { portal, root, mindMap } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "已有用例", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "outline" })
+
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT >3:\n+[P2] 新用例 & 前置条件\n+  只有操作没有预期",
+      returnView: { view: "subtree" },
+    })
+
+    expect(root.children[0]?.children).toHaveLength(2)
+    expect(mindMap.execCommand).toHaveBeenCalledOnce()
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        code: "STEP_HAS_NO_EXPECTED_RESULT",
+        path: ["模块", "新用例 & 前置条件", "只有操作没有预期"],
+        line: 5,
+        repairPatchHint: "PUT 5.=5:\n+只有操作没有预期 & 预期结果",
+      }),
+    ])
+  })
+
+  it("commits a reviewed deletion without retransmitting its patch", async () => {
     const { portal, root } = registerLivePortal({
       data: { uid: "root", text: "文档" },
       children: [
@@ -627,24 +972,23 @@ describe("DocumentPortal", () => {
       patch: "CUT 3:",
       preview: true,
     })
-    expect(preview.preview).toMatchObject({
-      destructive: true,
-      removedNodes: 2,
-      affectedNodes: [
-        { path: ["模块", "用例"], type: "case", text: "用例", depth: 0, count: 2 },
-        { path: ["模块", "用例", "步骤"], type: "step", text: "步骤", depth: 1, count: 1 },
-      ],
+    expect(preview).toMatchObject({
+      phase: "preview",
+      changeSummary: {
+        destructive: true,
+        affectedNodes: expect.arrayContaining([
+          expect.objectContaining({ path: ["模块", "用例"], count: 2 }),
+        ]),
+      },
+      confirmationToken: expect.any(String),
     })
-    expect(preview.preview?.confirmationToken).toEqual(expect.any(String))
     await expect(
       portal.edit({ documentId: "patches", anchorTag: read.anchorTag, patch: "CUT 3:" })
     ).rejects.toMatchObject({ code: "DOCUMENT_PREVIEW_REQUIRED" })
     expect(root.children[0]?.children).toHaveLength(1)
     await portal.edit({
       documentId: "patches",
-      anchorTag: read.anchorTag,
-      patch: "CUT 3:",
-      confirmationToken: preview.preview?.confirmationToken,
+      confirmationToken: preview.confirmationToken,
     })
     expect(root.children[0]?.children).toEqual([])
   })
@@ -678,12 +1022,121 @@ describe("DocumentPortal", () => {
     await expect(
       portal.edit({
         documentId: "patches",
-        anchorTag: read.anchorTag,
-        patch: "CUT 3:",
-        confirmationToken: preview.preview?.confirmationToken,
+        confirmationToken: preview.confirmationToken,
       })
     ).rejects.toMatchObject({ code: "DOCUMENT_EDIT_CONFLICT" })
     expect(root.children[0]?.children).toHaveLength(1)
+  })
+
+  it("rejects replaying a consumed edit review", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [{ data: { uid: "case", text: "用例", icon: ["priority_1"] }, children: [] }],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    const preview = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "CUT 3:",
+      preview: true,
+    })
+    await portal.edit({ documentId: "patches", confirmationToken: preview.confirmationToken })
+    await expect(
+      portal.edit({ documentId: "patches", confirmationToken: preview.confirmationToken })
+    ).rejects.toMatchObject({ code: "DOCUMENT_PREVIEW_REQUIRED" })
+  })
+
+  it("accepts root labels and slash sentinels as public root paths", () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "XX模块" },
+      children: [{ data: { uid: "module", text: "核心模块", icon: ["sign_2"] }, children: [] }],
+    })
+
+    expect(
+      portal.read({ documentId: "patches", view: "subtree", path: ["XX模块"] }).content
+    ).toContain("XX模块")
+    expect(
+      portal.search({
+        documentId: "patches",
+        query: "核心模块",
+        scope: ["/"],
+        fields: ["module"],
+      }).total
+    ).toBe(1)
+  })
+
+  it("normalizes a full visible root range into a root-content replacement", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "旧文档" },
+      children: [
+        {
+          data: { uid: "module", text: "旧模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "旧用例", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "旧步骤" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    const patch =
+      "PUT 1.=4:\n+朋友圈首页\n+  # 动态卡片\n+    # 点赞按钮\n+      [P1] 点赞好友动态 & 已登录\n+        点击点赞按钮 & 点赞数增加 1"
+
+    const preview = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch,
+      preview: true,
+      confirmationToken: ":preview:",
+    })
+
+    expect(preview).toMatchObject({
+      phase: "preview",
+      changeSummary: { destructive: true, removedNodes: 3 },
+      confirmationToken: expect.any(String),
+    })
+    expect(root.data).toEqual({ uid: "root", text: "旧文档" })
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch,
+      confirmationToken: preview.confirmationToken,
+    })
+    expect(root.data).toEqual({ uid: "root", text: "朋友圈首页" })
+    expect(root.children[0]?.data.text).toBe("动态卡片")
+    expect(root.children[0]?.children[0]?.data.text).toBe("点赞按钮")
+    expect(root.children[0]?.children[0]?.children[0]?.data.text).toBe("点赞好友动态 & 已登录")
+  })
+
+  it("normalizes a single-line structural PUT on root into the same root-content replacement", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "旧文档" },
+      children: [{ data: { uid: "module", text: "旧模块", icon: ["sign_2"] }, children: [] }],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    const patch = "PUT 1.=1:\n+朋友圈首页\n+  # 动态卡片"
+    const preview = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch,
+      preview: true,
+    })
+
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch,
+      confirmationToken: preview.confirmationToken,
+    })
+    expect(root.data).toEqual({ uid: "root", text: "朋友圈首页" })
+    expect(root.children.map(node => node.data.text)).toEqual(["动态卡片"])
   })
 
   it("rejects inclusive PUT and CUT ranges before issuing live commands", async () => {
@@ -724,20 +1177,18 @@ describe("DocumentPortal", () => {
         },
       ],
     }
-    const { portal, root, mindMap } = registerLivePortal(structuredClone(initial), 3)
+    const { portal, root } = registerLivePortal(structuredClone(initial), 1)
     const read = portal.read({ documentId: "patches", view: "subtree" })
 
     await expect(
       portal.edit({
         documentId: "patches",
         anchorTag: read.anchorTag,
-        patch: "PUT >3:\n+[P1] 用例A\nPUT >3:\n+[P1] 用例B\nPUT >3:\n+[P1] 用例C",
+        patch:
+          "PUT >3:\n+[P1] 用例A\n+  操作A & 预期A\nPUT >3:\n+[P1] 用例B\n+  操作B & 预期B\nPUT >3:\n+[P1] 用例C\n+  操作C & 预期C",
       })
     ).rejects.toThrow("engine failure")
     expect(root).toEqual(initial)
-    expect(
-      vi.mocked(mindMap.execCommand).mock.calls.filter(([command]) => command === "REMOVE_NODE")
-    ).toHaveLength(2)
   })
 
   it("replaces a middle sibling at its original index", async () => {
@@ -766,7 +1217,7 @@ describe("DocumentPortal", () => {
       documentId: "patches",
       anchorTag: read.anchorTag,
       patch: "PUT 4.=4:\n+[P1] 新用例",
-      confirmationToken: preview.preview?.confirmationToken,
+      confirmationToken: preview.confirmationToken,
     })
     expect(root.children[0]?.children.map(node => node.data.text)).toEqual([
       "用例A",
@@ -796,7 +1247,7 @@ describe("DocumentPortal", () => {
     await portal.edit({
       documentId: "patches",
       anchorTag: read.anchorTag,
-      patch: "PUT >3*:\n+[P1] 用例新",
+      patch: "PUT >3*:\n+[P1] 用例新\n+  新操作 & 新预期",
     })
 
     expect(parseTreeHashlinePatch("PUT >3:\n+[P1] 用例新")?.[0]?.kind).toBe("insert-after")
@@ -825,9 +1276,9 @@ describe("DocumentPortal", () => {
         },
       ],
     }
-    const { portal, root, session, mindMap } = registerLivePortal(structuredClone(initial), 2)
+    const { portal, root, session, mindMap } = registerLivePortal(structuredClone(initial), 1)
     const read = portal.read({ documentId: "patches", view: "subtree" })
-    const patch = "PUT 4.=4:\n+[P2] 新用例\n+  新步骤"
+    const patch = "PUT 4.=4:\n+[P2] 新用例\n+  新操作 & 新预期"
     const preview = await portal.edit({
       documentId: "patches",
       anchorTag: read.anchorTag,
@@ -840,9 +1291,9 @@ describe("DocumentPortal", () => {
         documentId: "patches",
         anchorTag: read.anchorTag,
         patch,
-        confirmationToken: preview.preview?.confirmationToken,
+        confirmationToken: preview.confirmationToken,
       })
-    ).rejects.toMatchObject({ code: "DOCUMENT_CONSISTENCY_ERROR" })
+    ).rejects.toThrow("engine failure")
 
     expect(root).toEqual(initial)
     expect(session.getState().dirty).toBe(false)
@@ -864,7 +1315,7 @@ describe("DocumentPortal", () => {
         { data: { uid: "module-b", text: "模块B", icon: ["sign_2"] }, children: [] },
       ],
     }
-    const { portal, root } = registerLivePortal(structuredClone(initial), 2)
+    const { portal, root } = registerLivePortal(structuredClone(initial), 1)
     const read = portal.read({ documentId: "patches", view: "subtree" })
     const patch = "CUT 4:\nPUT <2:\n+# 模块C"
     const preview = await portal.edit({
@@ -879,9 +1330,9 @@ describe("DocumentPortal", () => {
         documentId: "patches",
         anchorTag: read.anchorTag,
         patch,
-        confirmationToken: preview.preview?.confirmationToken,
+        confirmationToken: preview.confirmationToken,
       })
-    ).rejects.toMatchObject({ code: "DOCUMENT_CONSISTENCY_ERROR" })
+    ).rejects.toThrow("engine failure")
     expect(root.children[0]?.children.map(node => node.data.text)).toEqual([
       "用例A",
       "用例B",
@@ -917,7 +1368,7 @@ describe("DocumentPortal", () => {
         patch: "MOVE 2 -> 3:",
       })
     ).rejects.toMatchObject({ code: "INVALID_DOCUMENT_EDIT_PATCH" })
-    const failed = registerLivePortal(structuredClone(initial), 2)
+    const failed = registerLivePortal(structuredClone(initial), 1)
     const failedRead = failed.portal.read({ documentId: "patches", view: "subtree" })
     await expect(
       failed.portal.edit({
@@ -944,7 +1395,7 @@ describe("DocumentPortal", () => {
           },
         ],
       },
-      [2, 3]
+      [1, 2]
     )
     const read = fixture.portal.read({ documentId: "patches", view: "subtree" })
 
@@ -955,9 +1406,36 @@ describe("DocumentPortal", () => {
         patch: "PUT 3.=3:\n+已改\nPUT 4.=4:\n+也已改",
       })
     ).rejects.toMatchObject({ code: "DOCUMENT_CONSISTENCY_ERROR" })
-    expect(fixture.mindMap.command.restoreCurrentHistory).toHaveBeenCalledOnce()
+    expect(fixture.mindMap.execCommand).toHaveBeenCalledTimes(2)
     expect(fixture.session.getState().dirty).toBe(false)
   })
+  it("updates case priority during a single-line Tree Hashline replacement", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "用例", icon: ["priority_2"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT 3.=3:\n+[P1] 用例",
+    })
+
+    expect(root.children[0]?.children[0]?.data.icon).toEqual(["priority_1"])
+    expect(portal.read({ documentId: "patches", view: "outline" }).content).toContain("[P1] 用例")
+  })
+
   it("commits a successful multi-operation patch as one dirty history entry", async () => {
     const { portal, session, mindMap, root } = registerLivePortal({
       data: { uid: "root", text: "文档" },
@@ -974,7 +1452,8 @@ describe("DocumentPortal", () => {
       ],
     })
     const read = portal.read({ documentId: "patches", view: "subtree" })
-    const patch = "PUT 3.=3:\n+[P2] 已更新\n+  步骤一\n+  步骤二\nPUT >3:\n+[P1] 新用例\n+  新步骤"
+    const patch =
+      "PUT 3.=3:\n+[P2] 已更新\n+  操作一 & 预期一\n+  操作二 & 预期二\nPUT >3:\n+[P1] 新用例\n+  新操作 & 新预期"
     const preview = await portal.edit({
       documentId: "patches",
       anchorTag: read.anchorTag,
@@ -985,16 +1464,62 @@ describe("DocumentPortal", () => {
       documentId: "patches",
       anchorTag: read.anchorTag,
       patch,
-      confirmationToken: preview.preview?.confirmationToken,
+      confirmationToken: preview.confirmationToken,
     })
     expect(root.children[0]?.children.map(node => node.data.text)).toEqual(["已更新", "新用例"])
     expect(root.children[0]?.children[0]?.children.map(node => node.data.text)).toEqual([
-      "步骤一",
-      "步骤二",
+      "操作一 & 预期一",
+      "操作二 & 预期二",
     ])
     expect(session.getState().dirty).toBe(true)
     expect(mindMap.command.commitHistoryNow).toHaveBeenCalledTimes(2)
     expect(mindMap.command.pause).toHaveBeenCalledOnce()
     expect(mindMap.command.recovery).toHaveBeenCalledOnce()
+  })
+  it("returns a new bounded view and anchor after a successful edit", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [{ data: { uid: "case", text: "旧用例", icon: ["priority_1"] }, children: [] }],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "outline" })
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT >3:\n+[P2] 新用例\n+  新操作 & 新预期",
+    })
+
+    expect(result.view).toMatchObject({
+      view: "outline",
+      path: ["模块"],
+      content: "1: # 模块\n2:   [P1] 旧用例\n3:   [P2] 新用例",
+      truncated: false,
+    })
+    expect(result.view?.anchorTag).not.toBe(read.anchorTag)
+  })
+
+  it("honors an explicit post-edit subtree view", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [{ data: { uid: "case", text: "旧用例", icon: ["priority_1"] }, children: [] }],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree", path: ["模块"] })
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT >2:\n+[P2] 新用例\n+  操作 & 预期",
+      returnView: { view: "subtree", maxLines: 20 },
+    })
+    expect(result.view?.content).toContain("操作 & 预期")
+    expect(result.view?.path).toEqual(["模块"])
   })
 })

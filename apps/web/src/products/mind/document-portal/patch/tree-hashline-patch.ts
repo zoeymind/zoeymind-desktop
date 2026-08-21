@@ -19,7 +19,7 @@ const OPERATION =
   /^(PUT (?:([<>])?([1-9]\d*)(?:\*)?(?:\.=([1-9]\d*))?)|CUT ([1-9]\d*)(?:\.=([1-9]\d*))?|(?:MOVE|MV) ([1-9]\d*)\s*(?:->|TO)\s*([1-9]\d*)):\s*$/
 
 function parseNode(line: string): { depth: number; node: ParsedTreeNode } | null {
-  const match = /^( *)(?:(#) |\[P([1-3])\] )?(.+)$/.exec(line)
+  const match = /^( *)(?:(#) |\[P([1-3])\]\s*)?(.+)$/.exec(line)
   if (!match || match[1].length % 2 !== 0) return null
   const text = match[4].trim()
   if (!text) return null
@@ -28,20 +28,35 @@ function parseNode(line: string): { depth: number; node: ParsedTreeNode } | null
 }
 
 function parseTree(lines: string[]): ParsedTreeNode[] | null {
-  const roots: ParsedTreeNode[] = []
-  const stack: Array<{ depth: number; node: ParsedTreeNode }> = []
+  const parsedLines: Array<{ depth: number; node: ParsedTreeNode }> = []
   for (const line of lines) {
     if (!line.startsWith("+")) return null
     const parsed = parseNode(line.slice(1))
     if (!parsed) return null
-    while (stack.length && stack[stack.length - 1]!.depth >= parsed.depth) stack.pop()
-    if (parsed.depth > 0 && (!stack.length || stack[stack.length - 1]!.depth !== parsed.depth - 1))
-      return null
+    parsedLines.push(parsed)
+  }
+  if (parsedLines.length === 0) return null
+  const baseDepth = Math.min(...parsedLines.map(line => line.depth))
+  const roots: ParsedTreeNode[] = []
+  const stack: Array<{ depth: number; node: ParsedTreeNode }> = []
+  for (const parsed of parsedLines) {
+    const depth = parsed.depth - baseDepth
+    while (stack.length && stack[stack.length - 1]!.depth >= depth) stack.pop()
+    if (depth > 0 && (!stack.length || stack[stack.length - 1]!.depth !== depth - 1)) return null
     if (stack.length) stack[stack.length - 1]!.node.children.push(parsed.node)
     else roots.push(parsed.node)
-    stack.push(parsed)
+    stack.push({ depth, node: parsed.node })
   }
   return roots.length ? roots : null
+}
+
+export function explainInvalidTreeHashlinePatch(patch: string): string {
+  if (/^\*\*\* (?:Begin Patch|Update File)/m.test(patch) || /^@@/m.test(patch))
+    return "Git Patch is not valid Tree Hashline syntax; use PUT >N: followed by +tree rows"
+  const addAfter = /^ADD AFTER line ([1-9]\d*):/im.exec(patch)
+  if (addAfter)
+    return `ADD AFTER is not valid Tree Hashline syntax; use PUT >${addAfter[1]}: followed by +tree rows`
+  return "Patch must use Tree Hashline operations: PUT N.=M:, PUT >N:, PUT <N:, CUT N.=M:, or MOVE N -> M:"
 }
 
 export function parseTreeHashlinePatch(patch: string): TreePatchOperation[] | null {

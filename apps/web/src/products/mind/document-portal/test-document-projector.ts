@@ -74,13 +74,15 @@ function collectProjection(
     if (!current) break
 
     const rootLike = current.depth === 0
-    const include = view === "subtree" || rootLike || isModule(current.node)
+    const include =
+      view === "subtree" || rootLike || isModule(current.node) || priority(current.node) !== null
     if (include) {
       const label =
         rootLike && view === "outline" ? `# ${getText(current.node)}` : formatNode(current.node)
       lines.push(`${"  ".repeat(current.depth)}${label}`)
     }
 
+    if (view === "outline" && priority(current.node) !== null) continue
     for (let index = current.node.children.length - 1; index >= 0; index -= 1) {
       const child = current.node.children[index]
       pending.push({ node: child, depth: current.depth + 1 })
