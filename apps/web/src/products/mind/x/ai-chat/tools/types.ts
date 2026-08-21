@@ -5,9 +5,9 @@
  * 独立的类型定义，不依赖 @zoeymind/ai-agent
  */
 
-import type MindMap from 'simple-mind-map'
-import type { ToolArgs } from '../../ai-chat/types'
-import type { SessionIdMapper } from './session-id-mapper'
+import type MindMap from "simple-mind-map"
+import type { ToolArgs } from "../../ai-chat/types"
+import type { SessionIdMapper } from "./session-id-mapper"
 
 // 重新导出 ToolArgs 供其他模块使用
 export type { ToolArgs }
@@ -19,6 +19,7 @@ export interface ExecutionResult {
   success: boolean
   data?: unknown
   error?: string
+  /** 工具实际执行耗时，单位毫秒。 */
   duration?: number
   /**
    * ZTDL 格式文本（面向 AI 的紧凑表示）
@@ -53,28 +54,31 @@ export function getCachedToolResult(toolCallId: string): ExecutionResult | undef
  * ⚠️ ztdl 必须是纯文本，不能包含 HTML 标签
  */
 export function toModelOutput(result: ExecutionResult): unknown {
+  const duration = typeof result.duration === "number" ? result.duration : undefined
   if (result.ztdl) {
     // 确保 ztdl 是纯文本，去除可能的 HTML 标签
-    const cleanZtdl = result.ztdl.replace(/<[^>]*>/g, '')
-    const out: { success: boolean; ztdl: string; error?: string } = {
+    const cleanZtdl = result.ztdl.replace(/<[^>]*>/g, "")
+    const out: { success: boolean; ztdl: string; error?: string; duration?: number } = {
       success: result.success,
-      ztdl: cleanZtdl
+      ztdl: cleanZtdl,
+      duration,
     }
     if (!result.success && result.error) out.error = result.error
     return out
   }
   if (!result.success) {
-    return { success: false, error: result.error }
+    return { success: false, error: result.error, duration }
   }
   // 成功但无 ztdl：返回精简版
-  if (result.data && typeof result.data === 'object') {
+  if (result.data && typeof result.data === "object") {
     const data = result.data as Record<string, unknown>
     return {
       success: true,
-      message: data.message || '操作成功'
+      message: data.message || "操作成功",
+      duration,
     }
   }
-  return { success: true }
+  return { success: true, duration }
 }
 
 /**
@@ -122,7 +126,7 @@ export function bindPreAssignedIds(
     return
   }
 
-  if (toolName === 'add_module' && Array.isArray(result.data)) {
+  if (toolName === "add_module" && Array.isArray(result.data)) {
     for (const { shortId, index } of preAssignedIds) {
       const item = (result.data as Array<{ moduleId?: string }>)[index]
       if (item?.moduleId) {
@@ -135,13 +139,13 @@ export function bindPreAssignedIds(
     // 重新生成 ztdl，使用实际分配的 ID
     const results = result.data as Array<{ moduleId?: string; moduleName: string }>
     const ztdlLines = results.map(r => {
-      const shortId = r.moduleId ? mapper.shorten(r.moduleId) : '?'
+      const shortId = r.moduleId ? mapper.shorten(r.moduleId) : "?"
       return `M:${shortId} ${r.moduleName}`
     })
-    result.ztdl = `+${results.length}模块:\n${ztdlLines.join('\n')}`
+    result.ztdl = `+${results.length}模块:\n${ztdlLines.join("\n")}`
   }
 
-  if (toolName === 'add_cases') {
+  if (toolName === "add_cases") {
     const data = result.data
     if (isAddCasesResult(data)) {
       const { moduleId, caseIds } = data
@@ -160,7 +164,7 @@ export function bindPreAssignedIds(
         const shortId = mapper.shorten(uid)
         return `+C:${shortId} > M:${moduleShort}`
       })
-      result.ztdl = `+${caseIds.length}用例:\n${ztdlLines.join('\n')}`
+      result.ztdl = `+${caseIds.length}用例:\n${ztdlLines.join("\n")}`
     } else {
       for (const { shortId } of preAssignedIds) {
         mapper.unreserve(shortId)
@@ -176,7 +180,7 @@ export function bindPreAssignedIds(
  * 类型守卫辅助函数
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
 function isAddCasesResult(data: unknown): data is { moduleId: string; caseIds: string[] } {
@@ -186,9 +190,9 @@ function isAddCasesResult(data: unknown): data is { moduleId: string; caseIds: s
   const caseIds = data.caseIds
 
   return (
-    typeof moduleId === 'string' &&
+    typeof moduleId === "string" &&
     Array.isArray(caseIds) &&
-    caseIds.every(id => typeof id === 'string')
+    caseIds.every(id => typeof id === "string")
   )
 }
 

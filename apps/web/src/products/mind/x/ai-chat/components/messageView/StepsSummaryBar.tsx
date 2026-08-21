@@ -8,17 +8,13 @@
  * - 可点击切换折叠/展开
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { cn } from '@/shared/app-shared'
-import { getToolLabel } from '../../../ai-chat/tools/registry'
-import { useTranslation } from '@zoeymind/i18n'
-import type { ToolCallPart } from './ToolCallCard'
-
-/**
- * 格式化秒数为用户友好的文字
- */
-import { formatDuration } from '@/shared/app-shared'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { ChevronDown } from "lucide-react"
+import { cn } from "@/shared/app-shared"
+import { getToolLabel } from "../../../ai-chat/tools/registry"
+import { useTranslation } from "@zoeymind/i18n"
+import type { ToolCallPart } from "./ToolCallCard"
+import { formatElapsedMs } from "../../../ai-chat/utils/duration"
 
 interface StepsSummaryBarProps {
   toolParts: ToolCallPart[]
@@ -38,52 +34,52 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
   isExpanded,
   onToggle,
   isProcessing,
-  startTime
+  startTime,
 }) => {
   const { t } = useTranslation()
 
   // Inline switch avoids i18next strict-key union-type incompatibility
   const getToolStatusText = (toolName: string): string => {
     switch (toolName) {
-      case 'list_modules':
-        return t('mindmap.aiChat.message.toolStatus.listModules')
-      case 'search_cases':
-        return t('mindmap.aiChat.message.toolStatus.searchCases')
-      case 'get_module_cases':
-        return t('mindmap.aiChat.message.toolStatus.getModuleCases')
-      case 'add_cases':
-        return t('mindmap.aiChat.message.toolStatus.addCases')
-      case 'add_module':
-        return t('mindmap.aiChat.message.toolStatus.addModule')
-      case 'update_cases':
-        return t('mindmap.aiChat.message.toolStatus.updateCases')
-      case 'update_module':
-        return t('mindmap.aiChat.message.toolStatus.updateModule')
-      case 'delete_cases':
-        return t('mindmap.aiChat.message.toolStatus.deleteCases')
-      case 'delete_module':
-        return t('mindmap.aiChat.message.toolStatus.deleteModule')
-      case 'web_search':
-        return t('mindmap.aiChat.message.toolStatus.webSearch')
-      case 'web_fetch':
-        return t('mindmap.aiChat.message.toolStatus.webFetch')
-      case 'get_figma_metadata':
-        return t('mindmap.aiChat.message.toolStatus.getFigmaMetadata')
-      case 'get_figma_data':
-        return t('mindmap.aiChat.message.toolStatus.getFigmaData')
-      case 'get_figma_image':
-        return t('mindmap.aiChat.message.toolStatus.getFigmaImage')
-      case 'read_feishu_document':
-        return t('mindmap.aiChat.message.toolStatus.readFeishuDocument')
-      case 'search_feishu_documents':
-        return t('mindmap.aiChat.message.toolStatus.searchFeishuDocuments')
-      case 'query_knowledge_bases':
-        return t('mindmap.aiChat.message.toolStatus.queryKnowledgeBases')
-      case 'question':
-        return t('mindmap.aiChat.message.toolStatus.question')
+      case "list_modules":
+        return t("mindmap.aiChat.message.toolStatus.listModules")
+      case "search_cases":
+        return t("mindmap.aiChat.message.toolStatus.searchCases")
+      case "get_module_cases":
+        return t("mindmap.aiChat.message.toolStatus.getModuleCases")
+      case "add_cases":
+        return t("mindmap.aiChat.message.toolStatus.addCases")
+      case "add_module":
+        return t("mindmap.aiChat.message.toolStatus.addModule")
+      case "update_cases":
+        return t("mindmap.aiChat.message.toolStatus.updateCases")
+      case "update_module":
+        return t("mindmap.aiChat.message.toolStatus.updateModule")
+      case "delete_cases":
+        return t("mindmap.aiChat.message.toolStatus.deleteCases")
+      case "delete_module":
+        return t("mindmap.aiChat.message.toolStatus.deleteModule")
+      case "web_search":
+        return t("mindmap.aiChat.message.toolStatus.webSearch")
+      case "web_fetch":
+        return t("mindmap.aiChat.message.toolStatus.webFetch")
+      case "get_figma_metadata":
+        return t("mindmap.aiChat.message.toolStatus.getFigmaMetadata")
+      case "get_figma_data":
+        return t("mindmap.aiChat.message.toolStatus.getFigmaData")
+      case "get_figma_image":
+        return t("mindmap.aiChat.message.toolStatus.getFigmaImage")
+      case "read_feishu_document":
+        return t("mindmap.aiChat.message.toolStatus.readFeishuDocument")
+      case "search_feishu_documents":
+        return t("mindmap.aiChat.message.toolStatus.searchFeishuDocuments")
+      case "query_knowledge_bases":
+        return t("mindmap.aiChat.message.toolStatus.queryKnowledgeBases")
+      case "question":
+        return t("mindmap.aiChat.message.toolStatus.question")
       default:
-        return t('mindmap.aiChat.message.toolStatus.defaultPending', {
-          name: getToolLabel(toolName) || toolName
+        return t("mindmap.aiChat.message.toolStatus.defaultPending", {
+          name: getToolLabel(toolName) || toolName,
         })
     }
   }
@@ -92,10 +88,10 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
 
   // 判断是否有正在执行的工具（排除 question 等待用户反馈的场景）
   const hasActiveTool = toolParts.some(p => {
-    const isActive = p.state === 'input-streaming' || p.state === 'input-available'
+    const isActive = p.state === "input-streaming" || p.state === "input-available"
     if (!isActive) return false
-    const name = p.type.replace('tool-', '')
-    return name !== 'question'
+    const name = p.type.replace("tool-", "")
+    return name !== "question"
   })
   const isWorking = isProcessing || hasActiveTool
 
@@ -117,10 +113,13 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
     }
   }, [isWorking])
 
-  // 计算耗时：有 startTime 才能算
-  const displayElapsed =
-    startTime !== null ? Math.floor(((finalTimeRef.current ?? now) - startTime) / 1000) : null
-
+  const persistedDurationMs = toolParts.reduce<number | null>((total, part) => {
+    const duration = part.output?.duration
+    if (typeof duration !== "number" || !Number.isFinite(duration) || duration < 0) return total
+    return (total ?? 0) + duration
+  }, null)
+  const liveDurationMs = startTime !== null ? (finalTimeRef.current ?? now) - startTime : null
+  const durationDisplay = formatElapsedMs(isWorking ? liveDurationMs : persistedDurationMs)
   // ---- 状态文字（参考 opencode：working 显示实时状态，完成后显示"显示/隐藏步骤"） ----
 
   // 计算实时状态（仅 working 时有效）
@@ -128,13 +127,13 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
     // 从末尾找最后一个正在执行的工具
     for (let i = toolParts.length - 1; i >= 0; i--) {
       const part = toolParts[i]
-      const isPending = part.state === 'input-streaming' || part.state === 'input-available'
+      const isPending = part.state === "input-streaming" || part.state === "input-available"
       if (isPending) {
-        const toolName = part.type.replace('tool-', '')
+        const toolName = part.type.replace("tool-", "")
         return getToolStatusText(toolName)
       }
     }
-    return t('mindmap.aiChat.message.thinking')
+    return t("mindmap.aiChat.message.thinking")
   }, [toolParts, t])
 
   // 防抖 working 状态文字（1.5s，避免工具快速切换时闪烁）
@@ -178,7 +177,7 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
 
   // 完成/总数
   const completedCount = toolParts.filter(
-    p => p.state === 'output-available' || p.state === 'output-error'
+    p => p.state === "output-available" || p.state === "output-error"
   ).length
   const totalCount = toolParts.length
 
@@ -186,23 +185,23 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
   const displayText = isWorking
     ? debouncedWorkingStatus
     : isExpanded
-      ? t('mindmap.aiChat.message.hideSteps')
-      : t('mindmap.aiChat.message.stepCount', { value: completedCount })
+      ? t("mindmap.aiChat.message.hideSteps")
+      : t("mindmap.aiChat.message.stepCount", { value: completedCount })
 
   return (
     <button
       type="button"
       onClick={onToggle}
       className={cn(
-        'flex w-full items-center gap-1.5 px-2 py-1.5 text-xs transition-colors rounded-xl',
-        'hover:bg-muted/60 cursor-pointer select-none',
-        isWorking ? 'text-foreground' : 'text-muted-foreground'
+        "flex w-full items-center gap-1.5 px-2 py-1.5 text-xs transition-colors rounded-xl",
+        "hover:bg-muted/60 cursor-pointer select-none",
+        isWorking ? "text-foreground" : "text-muted-foreground"
       )}
     >
       <ChevronDown
         className={cn(
-          'size-3 text-muted-foreground/50 transition-transform flex-shrink-0',
-          isExpanded ? 'rotate-180' : ''
+          "size-3 text-muted-foreground/50 transition-transform flex-shrink-0",
+          isExpanded ? "rotate-180" : ""
         )}
       />
 
@@ -217,9 +216,9 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
 
       <div className="flex-1" />
 
-      {displayElapsed !== null && displayElapsed > 0 && (
+      {durationDisplay && (
         <span className="text-[10px] text-muted-foreground/50 tabular-nums flex-shrink-0">
-          {formatDuration(displayElapsed)}
+          {durationDisplay}
         </span>
       )}
     </button>

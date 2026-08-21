@@ -198,6 +198,7 @@ export async function runLocalStream(
   },
   signal?: AbortSignal
 ): Promise<Response> {
+  const responseStartedAt = Date.now()
   try {
     const config = await loadModelsConfig()
     const resolved = input.requestedModelId
@@ -230,10 +231,17 @@ export async function runLocalStream(
     return result.toUIMessageStreamResponse({
       originalMessages: input.transcript,
       messageMetadata: ({ part }) => {
-        if (part.type === "start") return { modelId: resolved.entry.id }
+        if (part.type === "start") {
+          return { modelId: resolved.entry.id, responseStartedAt }
+        }
         if (part.type === "finish") {
           clearPreparedTurn(input.attemptKey)
-          return { modelId: resolved.entry.id, totalUsage: part.totalUsage }
+          return {
+            modelId: resolved.entry.id,
+            totalUsage: part.totalUsage,
+            responseStartedAt,
+            responseDurationMs: Date.now() - responseStartedAt,
+          }
         }
       },
       onError: normalizeChatError,

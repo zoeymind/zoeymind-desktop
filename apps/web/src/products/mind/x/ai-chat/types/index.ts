@@ -5,7 +5,7 @@
  * 完全使用 Vercel AI SDK 的标准类型
  */
 
-import type { UIMessage } from '@ai-sdk/react'
+import type { UIMessage } from "@ai-sdk/react"
 
 // ============================================
 // 基础类型
@@ -16,7 +16,7 @@ import type { UIMessage } from '@ai-sdk/react'
  */
 export interface Attachment {
   id?: string
-  type: 'image'
+  type: "image"
   name: string
   dataUrl: string
 }
@@ -28,8 +28,8 @@ export interface CaseConfirmItem {
   caseId: string
   caseText: string
   steps?: string[]
-  operation: 'add' | 'update' | 'delete'
-  action?: 'accept' | 'reject'
+  operation: "add" | "update" | "delete"
+  action?: "accept" | "reject"
   feedback?: string
   /** AI 预分配的短 ID（仅 add_cases 时可能存在） */
   preAssignedShortId?: string
@@ -113,7 +113,7 @@ export interface ListModulesInput {
 export interface SendMessageParams {
   text: string
   files?: Array<{
-    type: 'file'
+    type: "file"
     filename: string
     mediaType: string
     url: string
@@ -132,7 +132,7 @@ export type AddToolOutputParams =
       output: unknown
     }
   | {
-      state: 'output-error'
+      state: "output-error"
       tool: string
       toolCallId: string
       errorText: string
@@ -168,7 +168,7 @@ export interface RetrieverResource {
   position?: string
   document_name: string
   data_source_name?: string
-  data_source_type: 'feishu_document' | 'knowledge_base'
+  data_source_type: "feishu_document" | "knowledge_base"
   block_id?: string
   score?: number
   content?: string
@@ -182,6 +182,8 @@ export interface UIMessageWithMetadata extends UIMessage {
     retriever_resources?: RetrieverResource[]
     totalUsage?: SDKTokenUsage
     modelId?: string
+    responseStartedAt?: number
+    responseDurationMs?: number
     [key: string]: unknown
   }
 }
@@ -190,7 +192,7 @@ export interface UIMessageWithMetadata extends UIMessage {
  * 支持错误类型的 MessagePart
  */
 export interface ErrorMessagePart {
-  type: 'error'
+  type: "error"
   errorText?: string
   error?: string
 }

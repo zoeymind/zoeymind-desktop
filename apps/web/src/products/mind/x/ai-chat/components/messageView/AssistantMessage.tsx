@@ -43,6 +43,7 @@ import type {
 } from "../../../ai-chat/types"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 import { resolveModelDisplayName } from "../../../ai-chat/utils/modelDisplayName"
+import { formatElapsedMs } from "../../../ai-chat/utils/duration"
 
 interface ReasoningPart {
   type: "reasoning"
@@ -399,10 +400,11 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   const messageMeta = useMemo(() => {
     const metadata = (message as UIMessageWithMetadata).metadata
     if (!metadata) return null
-    const { modelId, totalUsage } = metadata
-    if (!modelId && !totalUsage) return null
+    const { modelId, totalUsage, responseDurationMs } = metadata
     const tokens = totalUsage ? (totalUsage.inputTokens ?? 0) + (totalUsage.outputTokens ?? 0) : 0
-    return { modelId, tokens: tokens > 0 ? tokens : undefined }
+    const duration = formatElapsedMs(responseDurationMs)
+    if (!modelId && tokens <= 0 && !duration) return null
+    return { modelId, tokens: tokens > 0 ? tokens : undefined, duration }
   }, [message])
   const modelName = resolveModelDisplayName(messageMeta?.modelId, models)
 
@@ -567,7 +569,7 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
         )}
 
         {!isProcessing && (isAborted || messageMeta) && (
-          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted-foreground/40 select-none">
+          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground/40 select-none">
             {isAborted && (
               <>
                 <Ban className="size-2.5" />
@@ -578,6 +580,9 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
             {modelName && <span>{modelName}</span>}
             {modelName && messageMeta?.tokens && <span>·</span>}
             {messageMeta?.tokens && <span>{messageMeta.tokens.toLocaleString()} tokens</span>}
+            {messageMeta?.duration && (
+              <span className="ml-auto tabular-nums">{messageMeta.duration}</span>
+            )}
           </div>
         )}
 

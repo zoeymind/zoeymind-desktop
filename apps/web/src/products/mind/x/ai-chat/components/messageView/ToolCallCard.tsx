@@ -50,6 +50,7 @@ import type {
   DeleteModuleInput,
 } from "../../../ai-chat/types"
 import { countTokensInValue } from "../../../ai-chat/utils/tokenCounter"
+import { formatElapsedMs } from "../../../ai-chat/utils/duration"
 
 /**
  * 工具自定义渲染器接口
@@ -177,35 +178,26 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
     isFailed && part.errorText === t("mindmap.aiChat.message.executionInterrupted")
   const isComplete = part.state === "output-available"
 
-  // ---- 单步耗时计算 ----
+  // 执行中用组件本地时钟实时刷新；完成后只显示执行器持久化的真实耗时。
+  // 历史卡片没有 duration 时不伪造挂载耗时。
   const startTimeRef = useRef<number>(Date.now())
-  const [elapsed, setElapsed] = useState(0)
-  const [finalDuration, setFinalDuration] = useState<number | null>(null)
+  const [elapsedMs, setElapsedMs] = useState(0)
 
-  // 计时器：pending 期间每秒更新（question 等待用户时停止计时）
   useEffect(() => {
-    if (!isPending || isWaitingUser) {
-      if (finalDuration === null) {
-        setFinalDuration(Math.max(0, (Date.now() - startTimeRef.current) / 1000))
-      }
-      return
-    }
-
-    const timer = setInterval(() => {
-      setElapsed((Date.now() - startTimeRef.current) / 1000)
-    }, 1000)
-
+    if (!isPending || isWaitingUser) return
+    const updateElapsed = () => setElapsedMs(Date.now() - startTimeRef.current)
+    updateElapsed()
+    const timer = setInterval(updateElapsed, 1000)
     return () => clearInterval(timer)
-  }, [isPending, isWaitingUser, finalDuration])
+  }, [isPending, isWaitingUser])
 
-  // 格式化耗时
-  const durationDisplay = (() => {
-    const secs = finalDuration ?? elapsed
-    if (secs < 0.5) return null // 太短不显示
-    if (secs < 1) return "< 1s"
-    if (secs < 60) return `${secs.toFixed(1)}s`
-    return `${Math.floor(secs / 60)}m${Math.floor(secs % 60)}s`
-  })()
+  const persistedDurationMs =
+    typeof fullOutput?.duration === "number"
+      ? fullOutput.duration
+      : typeof part.output?.duration === "number"
+        ? part.output.duration
+        : null
+  const durationDisplay = formatElapsedMs(isPending ? elapsedMs : persistedDurationMs)
 
   // 判断执行结果（成功/失败）— 用精简的 part.output 判断状态即可
   const isSuccess = isComplete && part.output?.success === true

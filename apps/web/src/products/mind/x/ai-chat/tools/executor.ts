@@ -99,8 +99,10 @@ class ToolExecutor {
   ): Promise<ExecutionResult> {
     if (READ_ONLY_TOOLS.has(toolName)) {
       this.parallelCount++
+      const startedAt = performance.now()
       try {
-        return await executeToolCall(toolName, args, mindMap, idMapper)
+        const result = await executeToolCall(toolName, args, mindMap, idMapper)
+        return { ...result, duration: performance.now() - startedAt }
       } finally {
         this.parallelCount--
       }
@@ -158,8 +160,9 @@ class ToolExecutor {
         try {
           // ✅ 同轮引用：执行前 resolve 占位符为真实 UUID
           const resolvedArgs = resolvePlaceholders(args, idMapper)
+          const startedAt = performance.now()
           const result = await executeToolCall(toolName, resolvedArgs, mindMap, idMapper)
-          resolve(result)
+          resolve({ ...result, duration: performance.now() - startedAt })
         } catch (innerError) {
           logger.error(`[ToolExecutor] 工具 ${toolName} 执行异常`, { error: innerError })
           reject(innerError instanceof Error ? innerError : new Error(String(innerError)))
