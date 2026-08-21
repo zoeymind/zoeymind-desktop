@@ -98,7 +98,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       onClick={showStop ? onStop : onSend}
       disabled={!showSend && !showStop}
       className={cn(
-        "size-6 rounded-full shadow-sm",
+        "size-[23px] rounded-full shadow-sm",
         showStop
           ? "bg-muted-foreground text-background hover:bg-muted-foreground/80"
           : isInterruptSend

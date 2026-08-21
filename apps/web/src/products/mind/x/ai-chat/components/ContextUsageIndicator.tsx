@@ -35,8 +35,8 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       ? "stroke-amber-500"
       : "stroke-foreground"
 
-  // 与 24px 发送按钮对齐；圆环本身保留少量内边距，避免描边贴边。
-  const size = 20
+  // 保留 Header 原始圆环尺寸；外层命中区与发送按钮对齐。
+  const size = 14
   const strokeWidth = 2
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
@@ -55,13 +55,13 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
         delay={200}
         render={
           <div
-            className="flex size-6 cursor-pointer items-center justify-center rounded-full"
+            className="flex size-[23px] cursor-pointer items-center justify-center rounded-full"
             aria-label={t("mindmap.aiChat.core.contextUsed", {
               value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
             })}
           >
             {compactionPhase === "pending" ? (
-              <Loader2 className="size-5 animate-spin text-warning" />
+              <Loader2 className="size-3.5 animate-spin text-warning" />
             ) : (
               <svg className="-rotate-90" width={size} height={size} aria-hidden="true">
                 <circle
