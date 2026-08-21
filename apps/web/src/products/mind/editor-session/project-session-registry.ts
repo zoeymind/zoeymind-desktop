@@ -37,7 +37,6 @@ export function createProjectSessionRegistry(): ProjectSessionRegistry {
       sessionUnsubscribers.get(projectId)?.()
       sessionUnsubscribers.delete(projectId)
       sessions.delete(projectId)
-      if (activeProjectId === projectId) activeProjectId = null
       notify()
     },
     get(projectId) {

@@ -31,6 +31,8 @@ export interface DocumentReadResult {
   lineCount: number
   truncated: boolean
   anchorTag: string
+  completeness: "structure-only" | "complete"
+  canReplaceCompleteSubtree: boolean
 }
 
 export const DOCUMENT_SEARCH_FIELD = {
@@ -70,10 +72,14 @@ export interface DocumentSearchResult {
 
 export interface DocumentEditRequest {
   documentId: string
-  anchorTag: string
-  patch: string
+  anchorTag?: string
+  patch?: string
   preview?: boolean
   confirmationToken?: string
+  returnView?: {
+    view?: DocumentReadView
+    maxLines?: number
+  }
 }
 
 export type DocumentNodeType = "module" | "case" | "step"
@@ -93,11 +99,25 @@ export interface DocumentEditPreview {
   confirmationToken?: string
 }
 
+export type DocumentEditDiagnosticCode = "CASE_HAS_NO_STEPS" | "STEP_HAS_NO_EXPECTED_RESULT"
+
+export interface DocumentEditDiagnostic {
+  severity: "warning"
+  code: DocumentEditDiagnosticCode
+  path: string[]
+  message: string
+  line?: number
+  repairPatchHint?: string
+}
 export interface DocumentEditResult {
   documentId: string
   revision: number
   dirty: boolean
-  preview?: DocumentEditPreview
+  phase: "preview" | "committed"
+  changeSummary: DocumentEditPreview
+  confirmationToken?: string
+  view?: DocumentReadResult
+  diagnostics: DocumentEditDiagnostic[]
 }
 
 export interface DocumentPortal {

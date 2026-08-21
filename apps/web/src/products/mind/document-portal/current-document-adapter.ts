@@ -6,61 +6,71 @@ import {
 } from "../editor-session"
 import { DocumentPortalError, type DocumentPortal } from "./document-portal"
 import { mindMapDocumentPortal } from "./mindmap-document-portal"
+import { useTabs, type TabId } from "@/shared/tabs/store"
 
 export const CURRENT_DOCUMENT_PORTAL_TOOL_NAME = {
-  SEARCH: "search",
-  READ: "read",
-  EDIT: "edit",
+  QUERY: "query_current_mindmap",
+  EDIT: "edit_current_mindmap",
 } as const
 
 export type CurrentDocumentPortalToolName =
   (typeof CURRENT_DOCUMENT_PORTAL_TOOL_NAME)[keyof typeof CURRENT_DOCUMENT_PORTAL_TOOL_NAME]
 
-export const CurrentDocumentSearchToolInputSchema = z
-  .object({
-    query: z.string().min(1),
-    scope: z.array(z.string().min(1)).optional(),
-    fields: z
-      .array(z.enum(["module", "caseTitle", "precondition", "operation", "expected"]))
-      .optional(),
-    limit: z.number().int().min(1).max(100).optional(),
-    cursor: z.string().min(1).optional(),
-  })
-  .strict()
-
-export const CurrentDocumentReadToolInputSchema = z
-  .object({
-    view: z.enum(["outline", "subtree"]),
-    path: z.array(z.string().min(1)).optional(),
-    maxLines: z.number().int().min(1).max(1_000).optional(),
-  })
-  .strict()
+export const CurrentDocumentQueryToolInputSchema = z.discriminatedUnion("mode", [
+  z
+    .object({
+      mode: z.enum(["outline", "subtree"]),
+      path: z.array(z.string().min(1)).optional(),
+      maxLines: z.number().int().min(1).max(1_000).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal("search"),
+      query: z.string().min(1),
+      scope: z.array(z.string().min(1)).optional(),
+      fields: z
+        .array(z.enum(["module", "caseTitle", "precondition", "operation", "expected"]))
+        .optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      cursor: z.string().min(1).optional(),
+    })
+    .strict(),
+])
 
 export const CurrentDocumentEditToolInputSchema = z
   .object({
     anchorTag: z.string().min(1),
     patch: z.string().min(1),
     preview: z.boolean().optional(),
-    confirmationToken: z.string().min(1).optional(),
+    returnView: z
+      .object({
+        view: z.enum(["outline", "subtree"]).optional(),
+        maxLines: z.number().int().min(1).max(1_000).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 
 export interface CurrentDocumentResolver {
   resolve: () => string
 }
-
 interface CurrentDocumentPortalDependencies {
   portal?: DocumentPortal
   registry?: ProjectSessionRegistry
   resolver?: CurrentDocumentResolver
+  getActiveId?: () => TabId
 }
 
 export function createCurrentDocumentResolver(
-  registry: ProjectSessionRegistry = projectSessionRegistry
+  registry: ProjectSessionRegistry = projectSessionRegistry,
+  getActiveId: () => TabId = () => useTabs.getState().activeId
 ): CurrentDocumentResolver {
   return {
     resolve() {
-      const session = registry.getActive()
+      const activeId = getActiveId()
+      const session = activeId === "home" ? undefined : registry.get(activeId)
       if (!session) {
         throw new DocumentPortalError("DOCUMENT_NOT_OPEN", "No active document is open")
       }
@@ -81,7 +91,9 @@ export function readCurrentDocumentOutline(
   dependencies: CurrentDocumentPortalDependencies = {}
 ): ReturnType<DocumentPortal["read"]> {
   const portal = dependencies.portal ?? mindMapDocumentPortal
-  const resolver = dependencies.resolver ?? createCurrentDocumentResolver(dependencies.registry)
+  const resolver =
+    dependencies.resolver ??
+    createCurrentDocumentResolver(dependencies.registry, dependencies.getActiveId)
   return portal.read({
     documentId: resolver.resolve(),
     view: "outline",
@@ -103,15 +115,29 @@ export function executeCurrentDocumentPortalTool(
   dependencies: CurrentDocumentPortalDependencies = {}
 ): Record<string, unknown> | Promise<Record<string, unknown>> {
   const portal = dependencies.portal ?? mindMapDocumentPortal
-  const resolver = dependencies.resolver ?? createCurrentDocumentResolver(dependencies.registry)
+  const resolver =
+    dependencies.resolver ??
+    createCurrentDocumentResolver(dependencies.registry, dependencies.getActiveId)
 
   try {
     const documentId = resolver.resolve()
-    if (toolName === CURRENT_DOCUMENT_PORTAL_TOOL_NAME.SEARCH) {
-      return {
-        success: true,
-        ...portal.search({ ...CurrentDocumentSearchToolInputSchema.parse(input), documentId }),
+    if (toolName === CURRENT_DOCUMENT_PORTAL_TOOL_NAME.QUERY) {
+      const query = CurrentDocumentQueryToolInputSchema.parse(input)
+      if (query.mode === "search") {
+        return {
+          success: true,
+          ...portal.search({
+            query: query.query,
+            scope: query.scope,
+            fields: query.fields,
+            limit: query.limit,
+            cursor: query.cursor,
+            documentId,
+          }),
+        }
       }
+      const { mode, ...request } = query
+      return { success: true, ...portal.read({ ...request, view: mode, documentId }) }
     }
     if (toolName === CURRENT_DOCUMENT_PORTAL_TOOL_NAME.EDIT) {
       return portal.edit({ ...CurrentDocumentEditToolInputSchema.parse(input), documentId }).then(
@@ -123,14 +149,27 @@ export function executeCurrentDocumentPortalTool(
         }
       )
     }
-    return {
-      success: true,
-      ...portal.read({ ...CurrentDocumentReadToolInputSchema.parse(input), documentId }),
-    }
+    throw new DocumentPortalError("INVALID_REQUEST", `Unknown current mind map tool: ${toolName}`)
   } catch (error) {
     if (error instanceof DocumentPortalError) {
       return { success: false, error: error.message, errorCode: error.code }
     }
     throw error
   }
+}
+
+export function approveCurrentDocumentEdit(
+  confirmationToken: string,
+  returnView: { view?: "outline" | "subtree"; maxLines?: number } | undefined,
+  dependencies: CurrentDocumentPortalDependencies = {}
+): ReturnType<DocumentPortal["edit"]> {
+  const portal = dependencies.portal ?? mindMapDocumentPortal
+  const resolver =
+    dependencies.resolver ??
+    createCurrentDocumentResolver(dependencies.registry, dependencies.getActiveId)
+  return portal.edit({
+    documentId: resolver.resolve(),
+    confirmationToken,
+    returnView,
+  })
 }

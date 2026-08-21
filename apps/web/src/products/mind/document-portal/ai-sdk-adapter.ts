@@ -29,13 +29,18 @@ export const ReadDocumentToolInputSchema = z.object({
   path: z.array(z.string().min(1)).optional(),
   maxLines: z.number().int().min(1).max(1_000).optional(),
 })
-export const EditDocumentToolInputSchema = z.object({
-  documentId: z.string().min(1),
-  anchorTag: z.string().min(1),
-  patch: z.string().min(1),
-  preview: z.boolean().optional(),
-  confirmationToken: z.string().min(1).optional(),
-})
+export const EditDocumentToolInputSchema = z.union([
+  z.object({
+    documentId: z.string().min(1),
+    anchorTag: z.string().min(1),
+    patch: z.string().min(1),
+    preview: z.boolean().optional(),
+  }),
+  z.object({
+    documentId: z.string().min(1),
+    confirmationToken: z.string().min(1),
+  }),
+])
 
 export function isDocumentPortalTool(toolName: string): toolName is DocumentPortalToolName {
   return Object.values(DOCUMENT_PORTAL_TOOL_NAME).includes(toolName as DocumentPortalToolName)

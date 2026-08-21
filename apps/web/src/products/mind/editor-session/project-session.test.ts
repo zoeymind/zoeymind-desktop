@@ -52,6 +52,19 @@ describe("Project Editor Session", () => {
     expect(registry.getActive()).toBe(projectB)
   })
 
+  it("preserves the active identity while its session remounts", () => {
+    const registry = createProjectSessionRegistry()
+    const first = createProjectSessionStore("project-a")
+    const remounted = createProjectSessionStore("project-a")
+    registry.register(first)
+    registry.setActive("project-a")
+
+    registry.unregister("project-a")
+    registry.register(remounted)
+
+    expect(registry.getActive()).toBe(remounted)
+  })
+
   it("publishes state changes from every registered project", () => {
     const registry = createProjectSessionRegistry()
     const projectA = createProjectSessionStore("project-a")

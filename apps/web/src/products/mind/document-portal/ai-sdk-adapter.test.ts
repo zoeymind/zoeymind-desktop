@@ -1,3 +1,4 @@
+import { buildSystemPrompt } from "@/products/mind/x/ai-chat/prompts/system-prompt"
 import { describe, expect, it, vi } from "vitest"
 import { DocumentPortalError, type DocumentPortal } from "./document-portal"
 import { executeDocumentPortalTool } from "./ai-sdk-adapter"
@@ -8,8 +9,7 @@ import {
 } from "../editor-session"
 import {
   CurrentDocumentEditToolInputSchema,
-  CurrentDocumentReadToolInputSchema,
-  CurrentDocumentSearchToolInputSchema,
+  CurrentDocumentQueryToolInputSchema,
   executeCurrentDocumentPortalTool,
 } from "./current-document-adapter"
 import { getAgentTools } from "../x/ai-chat/agent-tools"
@@ -35,6 +35,8 @@ function createPortal(): DocumentPortal {
       lineCount: 1,
       truncated: false,
       anchorTag: "test-anchor",
+      completeness: "structure-only" as const,
+      canReplaceCompleteSubtree: false,
     })),
     search: vi.fn(),
     edit: vi.fn(),
@@ -100,12 +102,13 @@ describe("DocumentPortal AI adapter", () => {
     })
   })
 
-  it("round-trips a destructive preview confirmation token through the public adapter", async () => {
+  it("commits a destructive preview without retransmitting the patch", async () => {
     const preview = {
       documentId: "payments",
       revision: 1,
       dirty: false,
-      preview: {
+      phase: "preview" as const,
+      changeSummary: {
         destructive: true,
         removedNodes: 2,
         affectedNodes: [
@@ -117,10 +120,18 @@ describe("DocumentPortal AI adapter", () => {
             count: 2,
           },
         ],
-        confirmationToken: "confirm-delete-refund",
       },
+      confirmationToken: "confirm-delete-refund",
+      diagnostics: [],
     }
-    const confirmed = { documentId: "payments", revision: 2, dirty: true }
+    const confirmed = {
+      documentId: "payments",
+      revision: 2,
+      dirty: true,
+      phase: "committed" as const,
+      changeSummary: { destructive: true, removedNodes: 2, affectedNodes: [] },
+      diagnostics: [],
+    }
     const portal = createPortal()
     vi.mocked(portal.edit).mockResolvedValueOnce(preview).mockResolvedValueOnce(confirmed)
 
@@ -129,52 +140,39 @@ describe("DocumentPortal AI adapter", () => {
       { documentId: "payments", anchorTag: "anchor", patch: "CUT 3:", preview: true },
       portal
     )
-    if (
-      !previewResult.preview ||
-      typeof previewResult.preview !== "object" ||
-      !("confirmationToken" in previewResult.preview) ||
-      typeof previewResult.preview.confirmationToken !== "string"
-    ) {
+    if (previewResult.confirmationToken !== "confirm-delete-refund")
       throw new Error("Destructive preview must include a confirmation token")
-    }
-    const confirmationToken = previewResult.preview.confirmationToken
-
-    expect(confirmationToken).toBe("confirm-delete-refund")
+    const confirmationToken = previewResult.confirmationToken
     await expect(
-      executeDocumentPortalTool(
-        "edit",
-        { documentId: "payments", anchorTag: "anchor", patch: "CUT 3:", confirmationToken },
-        portal
-      )
+      executeDocumentPortalTool("edit", { documentId: "payments", confirmationToken }, portal)
     ).resolves.toEqual({ success: true, ...confirmed })
     expect(portal.edit).toHaveBeenLastCalledWith({
       documentId: "payments",
-      anchorTag: "anchor",
-      patch: "CUT 3:",
       confirmationToken: "confirm-delete-refund",
     })
   })
 })
 
 describe("built-in current-document adapter", () => {
-  it("omits documentId from the model input and injects the ready active document", () => {
+  it("omits documentId and resolves the ready active tab directly", () => {
     const registry = createProjectSessionRegistry()
     const session = createProjectSessionStore("payments")
     session.getState().setLifecycle(PROJECT_SESSION_LIFECYCLE.READY)
     registry.register(session)
-    registry.setActive("payments")
     const portal = createPortal()
+    const getActiveId = () => "payments" as const
 
-    expect(CurrentDocumentSearchToolInputSchema.safeParse({ query: "checkout" }).success).toBe(true)
     expect(
-      CurrentDocumentSearchToolInputSchema.safeParse({ documentId: "payments", query: "checkout" })
-        .success
-    ).toBe(false)
-    expect(CurrentDocumentReadToolInputSchema.safeParse({ view: "outline" }).success).toBe(true)
+      CurrentDocumentQueryToolInputSchema.safeParse({ mode: "search", query: "checkout" }).success
+    ).toBe(true)
     expect(
-      CurrentDocumentReadToolInputSchema.safeParse({ documentId: "payments", view: "outline" })
-        .success
+      CurrentDocumentQueryToolInputSchema.safeParse({
+        documentId: "payments",
+        mode: "search",
+        query: "checkout",
+      }).success
     ).toBe(false)
+    expect(CurrentDocumentQueryToolInputSchema.safeParse({ mode: "outline" }).success).toBe(true)
     expect(
       CurrentDocumentEditToolInputSchema.safeParse({ anchorTag: "a1", patch: "PUT 1.=1:\n+next" })
         .success
@@ -182,10 +180,10 @@ describe("built-in current-document adapter", () => {
     expect(
       CurrentDocumentEditToolInputSchema.safeParse({
         anchorTag: "a1",
-        patch: "PUT 1.=1:\n+next",
-        confirmationToken: "confirm",
+        patch: "CUT 1:",
+        confirmationToken: "model-must-not-see-this",
       }).success
-    ).toBe(true)
+    ).toBe(false)
     expect(
       CurrentDocumentEditToolInputSchema.safeParse({
         documentId: "payments",
@@ -194,39 +192,56 @@ describe("built-in current-document adapter", () => {
       }).success
     ).toBe(false)
     expect(
-      executeCurrentDocumentPortalTool("read", { view: "outline" }, { portal, registry })
-    ).toMatchObject({
-      success: true,
-    })
+      executeCurrentDocumentPortalTool(
+        "query_current_mindmap",
+        { mode: "outline" },
+        { portal, registry, getActiveId }
+      )
+    ).toMatchObject({ success: true })
     expect(portal.read).toHaveBeenCalledWith({ documentId: "payments", view: "outline" })
   })
 
   it("returns a not-open error when there is no active document", () => {
     expect(
       executeCurrentDocumentPortalTool(
-        "read",
-        { view: "outline" },
-        { portal: createPortal(), registry: createProjectSessionRegistry() }
+        "query_current_mindmap",
+        { mode: "outline" },
+        {
+          portal: createPortal(),
+          registry: createProjectSessionRegistry(),
+          getActiveId: () => "home",
+        }
       )
     ).toMatchObject({ success: false, errorCode: "DOCUMENT_NOT_OPEN" })
   })
 
-  it("returns a not-ready error when the active document cannot be read", () => {
+  it("requires subtree evidence before assessing case completeness", () => {
+    const prompt = buildSystemPrompt()
+    expect(prompt).toContain("`outline` 查看整体模块和用例标题；不包含步骤")
+    expect(prompt).toContain("`subtree` 查看完整子树")
+    expect(prompt).toContain("不要推断完整数量或内容")
+  })
+
+  it("teaches the canonical Tree Hashline grammar and rejects competing edit formats", () => {
+    const prompt = buildSystemPrompt()
+    expect(prompt).toContain("PUT >13:")
+    expect(prompt).toContain("CUT 3:")
+    expect(prompt).toContain("MOVE 3 -> 8:")
+    expect(prompt).toContain("不要使用 Git Patch、自然语言 patch 或重叠操作")
+  })
+
+  it("returns not-ready instead of falling back while the active tab is mounting", () => {
     const registry = createProjectSessionRegistry()
     const session = createProjectSessionStore("loading")
     registry.register(session)
-    registry.setActive("loading")
 
     expect(
       executeCurrentDocumentPortalTool(
-        "read",
-        { view: "outline" },
-        { portal: createPortal(), registry }
+        "query_current_mindmap",
+        { mode: "outline" },
+        { portal: createPortal(), registry, getActiveId: () => "loading" }
       )
-    ).toMatchObject({
-      success: false,
-      errorCode: "DOCUMENT_NOT_READY",
-    })
+    ).toMatchObject({ success: false, errorCode: "DOCUMENT_NOT_READY" })
   })
 
   it("maps an asynchronous current-document edit error to its stable response", async () => {
@@ -234,7 +249,6 @@ describe("built-in current-document adapter", () => {
     const session = createProjectSessionStore("payments")
     session.getState().setLifecycle(PROJECT_SESSION_LIFECYCLE.READY)
     registry.register(session)
-    registry.setActive("payments")
     const portal = createPortal()
     vi.mocked(portal.edit).mockRejectedValueOnce(
       new DocumentPortalError("DOCUMENT_EDIT_CONFLICT", "Document changed since this line was read")
@@ -242,9 +256,9 @@ describe("built-in current-document adapter", () => {
 
     await expect(
       executeCurrentDocumentPortalTool(
-        "edit",
+        "edit_current_mindmap",
         { anchorTag: "anchor", patch: "PUT 1.=1:\n+next" },
-        { portal, registry }
+        { portal, registry, getActiveId: () => "payments" }
       )
     ).resolves.toEqual({
       success: false,
@@ -253,9 +267,52 @@ describe("built-in current-document adapter", () => {
     })
   })
 
-  it("exposes only the current-document read tool to the built-in model", () => {
-    const tools = getAgentTools()
+  it("resolves the active tab directly and never falls back to the previous session", () => {
+    const registry = createProjectSessionRegistry()
+    const previous = createProjectSessionStore("previous")
+    previous.getState().setLifecycle(PROJECT_SESSION_LIFECYCLE.READY)
+    registry.register(previous)
+    registry.setActive("previous")
+    const portal = createPortal()
 
-    expect(tools).not.toHaveProperty("documents")
+    expect(
+      executeCurrentDocumentPortalTool(
+        "query_current_mindmap",
+        { mode: "outline" },
+        { portal, registry, getActiveId: () => "opening" }
+      )
+    ).toMatchObject({ success: false, errorCode: "DOCUMENT_NOT_OPEN" })
+    expect(portal.read).not.toHaveBeenCalled()
+  })
+
+  it("exposes only current-mind-map query and edit plus question", () => {
+    expect(Object.keys(getAgentTools())).toEqual([
+      "query_current_mindmap",
+      "edit_current_mindmap",
+      "question",
+    ])
+  })
+
+  it("describes a single current-mind-map workspace without implementation details", () => {
+    const prompt = buildSystemPrompt()
+    expect(prompt).toContain("`outline` 查看整体模块和用例标题；不包含步骤")
+    expect(prompt).toContain("只使用已读取视图中的行号")
+    expect(prompt).not.toContain("documentId")
+    expect(prompt).not.toContain("Portal")
+    expect(prompt).not.toContain("UID")
+    expect(prompt).not.toContain("Store")
+  })
+
+  it("continues from edit-returned views instead of requiring another query", () => {
+    const prompt = buildSystemPrompt()
+    expect(prompt).toContain("编辑成功后可直接使用返回的最新视图继续")
+    expect(prompt).not.toContain("每次编辑后重新读取")
+  })
+
+  it("repairs successful semantic warnings from the returned local view", () => {
+    const prompt = buildSystemPrompt()
+    expect(prompt).toContain("警告表示修改已保存")
+    expect(prompt).toContain("`repairPatchHint`")
+    expect(prompt).toContain("不要重复提交成功的 patch")
   })
 })
