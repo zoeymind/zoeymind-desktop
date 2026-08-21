@@ -38,9 +38,8 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
 
   const getToolStatusText = useCallback(
     (toolName: string): string => {
-      if (toolName === "search") return "正在搜索当前文档"
-      if (toolName === "read") return "正在读取当前文档"
-      if (toolName === "edit") return "正在编辑当前文档"
+      if (toolName === "query_current_mindmap") return "正在查询当前思维导图"
+      if (toolName === "edit_current_mindmap") return "正在编辑当前思维导图"
       if (toolName === "question") return "正在等待你的回答"
       return t("mindmap.aiChat.message.toolStatus.executing")
     },
