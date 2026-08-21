@@ -61,6 +61,8 @@ const buildSendMessageParams = ({
 interface AIchatV2State {
   // 核心状态 (messages 已移到 runtime context, 不在 store)
   currentConversationId: string | undefined
+  /** 仅用于创建新 useChat session 的初始 transcript；实时消息仍由 AI SDK 持有。 */
+  loadedConversationTranscript: UIMessage[]
   totalTokenUsage: TokenUsage
 
   // 输入框状态
@@ -119,6 +121,7 @@ interface AIchatV2State {
 
 export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   currentConversationId: undefined,
+  loadedConversationTranscript: [],
   totalTokenUsage: { input: 0, output: 0, total: 0 },
   inputMessage: "",
   attachments: [],
@@ -434,13 +437,16 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       useCompactionStore.getState().reset()
       set({
         currentConversationId: newConv.id,
+        loadedConversationTranscript: [],
         inputMessage: "",
         attachments: [],
         selectedKnowledgeBaseIds: [], // 新会话清空知识库选择
       })
 
-      // 同步到 SDK
-      getModuleAIChatRuntime()?.setMessages([])
+      // 新会话必须先终止上一轮 SDK 状态，否则旧 submitted/streaming 会锁住新会话 Header。
+      const runtime = getModuleAIChatRuntime()
+      runtime?.stop()
+      runtime?.setMessages([])
 
       logger.info("[AIchatV2Store] 创建新对话", { conversationId: newConv.id })
     } catch (error) {
@@ -457,13 +463,18 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       const knowledgeBaseIds =
         conversation?.selectedKnowledgeBaseIds || conversation?.selectedRAGDataSources || []
 
+      const previousConversationId = get().currentConversationId
       set({
         currentConversationId: conversationId,
+        loadedConversationTranscript: transcript,
         selectedKnowledgeBaseIds: knowledgeBaseIds,
       })
 
-      // 同步到 SDK (useChat 内部 messages 改为新对话的, 这是单对话模型, 切了就是切了)
-      getModuleAIChatRuntime()?.setMessages(transcript)
+      // 每个 conversationId 对应独立 useChat 实例。先终止旧会话；ID 变化后新实例
+      // 从 loadedConversationTranscript 初始化。重复加载同一会话时才原位覆盖消息。
+      const runtime = getModuleAIChatRuntime()
+      runtime?.stop()
+      if (previousConversationId === conversationId) runtime?.setMessages(transcript)
       useCompactionStore.getState().setCompaction(compaction)
 
       // 加载完后扫一次 pending tool UI calls (恢复刷新前未答的弹框)

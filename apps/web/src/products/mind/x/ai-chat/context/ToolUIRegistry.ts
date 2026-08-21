@@ -24,6 +24,7 @@
  * shouldRender 用于动态开关 (e.g. case review 设置关时, 直接 fall back 到默认执行).
  */
 import { useEffect, useRef, type ReactNode } from "react"
+import { logger } from "@zoeymind/logger"
 
 /** 一次工具调用 + 对应的 UI handler 的运行时上下文 */
 export interface ToolUIRenderContext<TArgs = unknown, TOutput = unknown> {
@@ -115,10 +116,26 @@ class ToolUIRegistry {
    */
   tryEnqueue(call: { toolCallId: string; toolName: string; input: unknown }): boolean {
     const handler = this.handlers.get(call.toolName)
-    if (!handler) return false
-    if (handler.shouldRender && !handler.shouldRender(call.input, call.toolName)) return false
-    if (this.pending.some(c => c.toolCallId === call.toolCallId)) return true // 已入队
+    if (!handler) {
+      logger.debug("[ToolUIRegistry] pending 工具没有已注册 UI", {
+        toolName: call.toolName,
+        toolCallId: call.toolCallId,
+      })
+      return false
+    }
+    if (handler.shouldRender && !handler.shouldRender(call.input, call.toolName)) {
+      logger.debug("[ToolUIRegistry] pending 工具 UI 被设置关闭", {
+        toolName: call.toolName,
+        toolCallId: call.toolCallId,
+      })
+      return false
+    }
+    if (this.pending.some(c => c.toolCallId === call.toolCallId)) return true
     this.pending = [...this.pending, { ...call, enqueuedAt: Date.now() }]
+    logger.info("[ToolUIRegistry] pending 工具 UI 已恢复", {
+      toolName: call.toolName,
+      toolCallId: call.toolCallId,
+    })
     this.emit()
     return true
   }
@@ -232,32 +249,29 @@ export function resetToolUI(): void {
 export function restorePendingFromMessages(messages: readonly unknown[]): void {
   if (!Array.isArray(messages) || messages.length === 0) return
 
-  // 只扫最后一条 assistant 消息 — pending tool 一定在最新一轮回复里, 老消息的 tool 早就答过了
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i] as { role?: string; parts?: Array<unknown> }
+  // 错误恢复、HMR 或后续 assistant error message 可能出现在 pending call 后面；
+  // 因此不能只看最后一条 assistant。遍历整个当前 transcript，registry 内部按
+  // toolCallId 去重，且只恢复仍处于 input-* 的真实未决工具。
+  for (const message of messages) {
+    const msg = message as { role?: string; parts?: Array<unknown> }
     if (msg?.role !== "assistant") continue
 
     for (const part of msg.parts ?? []) {
-      const p = part as {
+      const candidate = part as {
         type?: string
         state?: string
         toolCallId?: string
         input?: unknown
       }
-      if (typeof p.type !== "string") continue
-      if (!p.type.startsWith("tool-")) continue
-      if (!p.toolCallId) continue
-      // 仅 input-* 状态 (没拿到结果), 已经 output-* 的不再恢复
-      if (p.state !== "input-available" && p.state !== "input-streaming") continue
+      if (typeof candidate.type !== "string" || !candidate.type.startsWith("tool-")) continue
+      if (!candidate.toolCallId) continue
+      if (candidate.state !== "input-available" && candidate.state !== "input-streaming") continue
 
-      const toolName = p.type.slice("tool-".length)
-      // 内部去重 + handler 检查; 没注册 handler 时直接返 false 不影响
       registry.tryEnqueue({
-        toolCallId: p.toolCallId,
-        toolName,
-        input: p.input,
+        toolCallId: candidate.toolCallId,
+        toolName: candidate.type.slice("tool-".length),
+        input: candidate.input,
       })
     }
-    return // 找到最后一条 assistant 就停
   }
 }
