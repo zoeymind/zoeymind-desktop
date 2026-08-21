@@ -22,11 +22,10 @@ interface StepsSummaryBarProps {
   onToggle: () => void
   /** 当前消息是否正在处理中 */
   isProcessing: boolean
-  /**
-   * 第一个工具出现的时间戳（由父组件提供）
-   * 为 null 表示历史消息，无法计算耗时
-   */
-  startTime: number | null
+  /** 用户发送时间；处理中据此刷新整轮 wall-clock。 */
+  turnStartedAt?: number
+  /** 最终整轮 wall-clock；历史消息从 metadata 恢复。 */
+  turnDurationMs?: number
 }
 
 export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
@@ -34,7 +33,8 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
   isExpanded,
   onToggle,
   isProcessing,
-  startTime,
+  turnStartedAt,
+  turnDurationMs,
 }) => {
   const { t } = useTranslation()
 
@@ -103,23 +103,8 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
     return () => clearInterval(timer)
   }, [isWorking])
 
-  // 完成的那一刻冻结 finalTime
-  const finalTimeRef = useRef<number | null>(null)
-  useEffect(() => {
-    if (isWorking) {
-      finalTimeRef.current = null
-    } else if (finalTimeRef.current === null) {
-      finalTimeRef.current = Date.now()
-    }
-  }, [isWorking])
-
-  const persistedDurationMs = toolParts.reduce<number | null>((total, part) => {
-    const duration = part.output?.duration
-    if (typeof duration !== "number" || !Number.isFinite(duration) || duration < 0) return total
-    return (total ?? 0) + duration
-  }, null)
-  const liveDurationMs = startTime !== null ? (finalTimeRef.current ?? now) - startTime : null
-  const durationDisplay = formatElapsedMs(isWorking ? liveDurationMs : persistedDurationMs)
+  const liveDurationMs = isWorking && typeof turnStartedAt === "number" ? now - turnStartedAt : null
+  const durationDisplay = formatElapsedMs(isWorking ? liveDurationMs : turnDurationMs)
   // ---- 状态文字（参考 opencode：working 显示实时状态，完成后显示"显示/隐藏步骤"） ----
 
   // 计算实时状态（仅 working 时有效）

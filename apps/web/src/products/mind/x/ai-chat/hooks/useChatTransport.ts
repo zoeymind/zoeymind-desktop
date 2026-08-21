@@ -56,6 +56,15 @@ function buildAttemptKey(conversationId: string, messages: UIMessage[]): string 
   return user ? `${conversationId}:${user.id}` : null
 }
 
+export function readTurnStartedAt(messages: UIMessage[]): number | undefined {
+  const user = latestUser(messages)
+  if (!user?.metadata || typeof user.metadata !== "object") return undefined
+  const startedAt = (user.metadata as { turnStartedAt?: unknown }).turnStartedAt
+  return typeof startedAt === "number" && Number.isFinite(startedAt) && startedAt >= 0
+    ? startedAt
+    : undefined
+}
+
 function cloneMessages(messages: UIMessage[]): UIMessage[] {
   return messages.map(message => ({
     ...message,
@@ -199,6 +208,7 @@ export async function runLocalStream(
   signal?: AbortSignal
 ): Promise<Response> {
   const responseStartedAt = Date.now()
+  const turnStartedAt = readTurnStartedAt(input.transcript) ?? responseStartedAt
   try {
     const config = await loadModelsConfig()
     const resolved = input.requestedModelId
@@ -232,7 +242,7 @@ export async function runLocalStream(
       originalMessages: input.transcript,
       messageMetadata: ({ part }) => {
         if (part.type === "start") {
-          return { modelId: resolved.entry.id, responseStartedAt }
+          return { modelId: resolved.entry.id, responseStartedAt, turnStartedAt }
         }
         if (part.type === "finish") {
           clearPreparedTurn(input.attemptKey)
@@ -241,6 +251,8 @@ export async function runLocalStream(
             totalUsage: part.totalUsage,
             responseStartedAt,
             responseDurationMs: Date.now() - responseStartedAt,
+            turnStartedAt,
+            turnDurationMs: Date.now() - turnStartedAt,
           }
         }
       },

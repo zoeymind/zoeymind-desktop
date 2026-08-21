@@ -6,7 +6,7 @@
  * 如果没有自定义渲染器，则通用地显示 input 和 output
  */
 
-import React, { useState, useEffect, useRef, useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import {
   ChevronDown,
   Loader2,
@@ -50,7 +50,6 @@ import type {
   DeleteModuleInput,
 } from "../../../ai-chat/types"
 import { countTokensInValue } from "../../../ai-chat/utils/tokenCounter"
-import { formatElapsedMs } from "../../../ai-chat/utils/duration"
 
 /**
  * 工具自定义渲染器接口
@@ -178,26 +177,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
     isFailed && part.errorText === t("mindmap.aiChat.message.executionInterrupted")
   const isComplete = part.state === "output-available"
 
-  // 执行中用组件本地时钟实时刷新；完成后只显示执行器持久化的真实耗时。
-  // 历史卡片没有 duration 时不伪造挂载耗时。
-  const startTimeRef = useRef<number>(Date.now())
-  const [elapsedMs, setElapsedMs] = useState(0)
-
-  useEffect(() => {
-    if (!isPending || isWaitingUser) return
-    const updateElapsed = () => setElapsedMs(Date.now() - startTimeRef.current)
-    updateElapsed()
-    const timer = setInterval(updateElapsed, 1000)
-    return () => clearInterval(timer)
-  }, [isPending, isWaitingUser])
-
-  const persistedDurationMs =
-    typeof fullOutput?.duration === "number"
-      ? fullOutput.duration
-      : typeof part.output?.duration === "number"
-        ? part.output.duration
-        : null
-  const durationDisplay = formatElapsedMs(isPending ? elapsedMs : persistedDurationMs)
+  // 单个工具可能与同一模型响应中的其它工具并行产生，无法把网络和流式生成耗时
+  // 诚实归属到某一个工具。整轮 wall-clock 由聚合卡和消息 footer 展示。
 
   // 判断执行结果（成功/失败）— 用精简的 part.output 判断状态即可
   const isSuccess = isComplete && part.output?.success === true
@@ -300,13 +281,6 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
         )}
 
         <div className="flex-1" />
-
-        {/* 执行中实时刷新；完成后冻结最终耗时。 */}
-        {durationDisplay && (
-          <span className="text-[10px] text-muted-foreground/50 tabular-nums flex-shrink-0">
-            {durationDisplay}
-          </span>
-        )}
 
         {/* 展开箭头 */}
         {hasExpandableContent && (

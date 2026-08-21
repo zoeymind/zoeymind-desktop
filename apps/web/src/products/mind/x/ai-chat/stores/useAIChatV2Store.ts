@@ -53,6 +53,7 @@ const buildSendMessageParams = ({
     files: filesParts.length > 0 ? filesParts : undefined,
     metadata: {
       model: selectedModel,
+      turnStartedAt: Date.now(),
       ...(provider && { provider }),
     },
   }

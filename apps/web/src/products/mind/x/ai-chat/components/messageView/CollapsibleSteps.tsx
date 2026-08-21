@@ -6,11 +6,11 @@
  * 当工具调用 >= 2 时由 AssistantMessage 使用。
  */
 
-import React, { useState, useCallback, useRef } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import { GlowCard } from './GlowCard'
-import { StepsSummaryBar } from './StepsSummaryBar'
-import type { ToolCallPart } from './ToolCallCard'
+import React, { useState, useCallback, useRef } from "react"
+import { AnimatePresence, motion } from "motion/react"
+import { GlowCard } from "./GlowCard"
+import { StepsSummaryBar } from "./StepsSummaryBar"
+import type { ToolCallPart } from "./ToolCallCard"
 
 interface IndexedToolPart {
   part: ToolCallPart
@@ -22,6 +22,9 @@ interface CollapsibleStepsProps {
   toolParts: IndexedToolPart[]
   /** 当前消息是否正在处理 */
   isProcessing: boolean
+  /** 用户发送到当前/最终响应的整轮 wall-clock。 */
+  turnStartedAt?: number
+  turnDurationMs?: number
   /** 所有 parts（用于折叠区域内的渲染） */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   allParts: any[]
@@ -35,16 +38,13 @@ interface CollapsibleStepsProps {
 export const CollapsibleSteps: React.FC<CollapsibleStepsProps> = ({
   toolParts,
   isProcessing,
+  turnStartedAt,
+  turnDurationMs,
   allParts,
   lastActivePartIndex,
-  renderPart
+  renderPart,
 }) => {
   const [stepsExpanded, setStepsExpanded] = useState(false)
-  const toolsStartTimeRef = useRef<number | null>(null)
-
-  if (toolParts.length > 0 && isProcessing && toolsStartTimeRef.current === null) {
-    toolsStartTimeRef.current = Date.now()
-  }
 
   const handleToggleSteps = useCallback(() => {
     setStepsExpanded(prev => !prev)
@@ -56,17 +56,17 @@ export const CollapsibleSteps: React.FC<CollapsibleStepsProps> = ({
         <StepsSummaryBar
           toolParts={toolParts.map(t => t.part)}
           isExpanded={stepsExpanded}
-          onToggle={handleToggleSteps}
           isProcessing={isProcessing}
-          startTime={toolsStartTimeRef.current}
+          turnStartedAt={turnStartedAt}
+          turnDurationMs={turnDurationMs}
         />
         <AnimatePresence initial={false}>
           {stepsExpanded && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
+              animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
               className="overflow-hidden"
             >
               <div className="border-t border-border/40 px-2 py-1.5 space-y-0">

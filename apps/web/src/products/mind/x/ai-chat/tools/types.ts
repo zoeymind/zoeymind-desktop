@@ -19,8 +19,6 @@ export interface ExecutionResult {
   success: boolean
   data?: unknown
   error?: string
-  /** 工具实际执行耗时，单位毫秒。 */
-  duration?: number
   /**
    * ZTDL 格式文本（面向 AI 的紧凑表示）
    * 如果存在，addToolResult 时会用此字段替代 data 传给 AI，
@@ -54,20 +52,18 @@ export function getCachedToolResult(toolCallId: string): ExecutionResult | undef
  * ⚠️ ztdl 必须是纯文本，不能包含 HTML 标签
  */
 export function toModelOutput(result: ExecutionResult): unknown {
-  const duration = typeof result.duration === "number" ? result.duration : undefined
   if (result.ztdl) {
     // 确保 ztdl 是纯文本，去除可能的 HTML 标签
     const cleanZtdl = result.ztdl.replace(/<[^>]*>/g, "")
-    const out: { success: boolean; ztdl: string; error?: string; duration?: number } = {
+    const out: { success: boolean; ztdl: string; error?: string } = {
       success: result.success,
       ztdl: cleanZtdl,
-      duration,
     }
     if (!result.success && result.error) out.error = result.error
     return out
   }
   if (!result.success) {
-    return { success: false, error: result.error, duration }
+    return { success: false, error: result.error }
   }
   // 成功但无 ztdl：返回精简版
   if (result.data && typeof result.data === "object") {
@@ -75,10 +71,9 @@ export function toModelOutput(result: ExecutionResult): unknown {
     return {
       success: true,
       message: data.message || "操作成功",
-      duration,
     }
   }
-  return { success: true, duration }
+  return { success: true }
 }
 
 /**

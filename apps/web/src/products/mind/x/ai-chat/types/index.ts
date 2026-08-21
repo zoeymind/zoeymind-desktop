@@ -184,6 +184,8 @@ export interface UIMessageWithMetadata extends UIMessage {
     modelId?: string
     responseStartedAt?: number
     responseDurationMs?: number
+    turnStartedAt?: number
+    turnDurationMs?: number
     [key: string]: unknown
   }
 }

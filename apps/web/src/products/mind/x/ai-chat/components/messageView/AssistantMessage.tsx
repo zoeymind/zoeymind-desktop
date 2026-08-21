@@ -392,20 +392,21 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   const hasReasoningContent = reasoningParts.length > 0
   const hasErrorContent = errorParts.length > 0
 
-  const retrieverResources = useMemo((): RetrieverResource[] => {
-    const metadata = (message as UIMessageWithMetadata).metadata
-    return metadata?.retriever_resources || []
-  }, [message])
+  const messageMetadata = useMemo(() => (message as UIMessageWithMetadata).metadata, [message])
+
+  const retrieverResources = useMemo(
+    (): RetrieverResource[] => messageMetadata?.retriever_resources || [],
+    [messageMetadata]
+  )
 
   const messageMeta = useMemo(() => {
-    const metadata = (message as UIMessageWithMetadata).metadata
-    if (!metadata) return null
-    const { modelId, totalUsage, responseDurationMs } = metadata
+    if (!messageMetadata) return null
+    const { modelId, totalUsage, turnDurationMs } = messageMetadata
     const tokens = totalUsage ? (totalUsage.inputTokens ?? 0) + (totalUsage.outputTokens ?? 0) : 0
-    const duration = formatElapsedMs(responseDurationMs)
+    const duration = formatElapsedMs(turnDurationMs)
     if (!modelId && tokens <= 0 && !duration) return null
     return { modelId, tokens: tokens > 0 ? tokens : undefined, duration }
-  }, [message])
+  }, [messageMetadata])
   const modelName = resolveModelDisplayName(messageMeta?.modelId, models)
 
   const renderTextPart = useCallback(
@@ -553,6 +554,8 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
               isProcessing={isProcessing && isLast}
               allParts={message.parts || []}
               lastActivePartIndex={lastActivePartIndex}
+              turnStartedAt={messageMetadata?.turnStartedAt}
+              turnDurationMs={messageMetadata?.turnDurationMs}
               renderPart={renderPart}
             />
           ) : (
