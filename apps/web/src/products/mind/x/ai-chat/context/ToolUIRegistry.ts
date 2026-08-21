@@ -232,9 +232,9 @@ export function resetToolUI(): void {
 export function restorePendingFromMessages(messages: readonly unknown[]): void {
   if (!Array.isArray(messages) || messages.length === 0) return
 
-  // 错误恢复、HMR 或后续 assistant error message 可能出现在 pending call 后面；
-  // 因此不能只看最后一条 assistant。遍历整个当前 transcript，registry 内部按
-  // toolCallId 去重，且只恢复仍处于 input-* 的真实未决工具。
+  // 只恢复 input-available：input-streaming 的参数可能尚未生成，不能渲染 HITL UI。
+  // 错误恢复、HMR 或后续 assistant error message 可能出现在 pending call 后面，
+  // 因此遍历整个 transcript；registry 内部按 toolCallId 去重。
   for (const message of messages) {
     const msg = message as { role?: string; parts?: Array<unknown> }
     if (msg?.role !== "assistant") continue
@@ -248,7 +248,7 @@ export function restorePendingFromMessages(messages: readonly unknown[]): void {
       }
       if (typeof candidate.type !== "string" || !candidate.type.startsWith("tool-")) continue
       if (!candidate.toolCallId) continue
-      if (candidate.state !== "input-available" && candidate.state !== "input-streaming") continue
+      if (candidate.state !== "input-available") continue
 
       registry.tryEnqueue({
         toolCallId: candidate.toolCallId,

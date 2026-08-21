@@ -11,6 +11,7 @@
 import { useCallback } from "react"
 import { useToolUI } from "../../../ai-chat/context/ToolUIRegistry"
 import { SimpleAskUserPanel } from "../../../ai-chat/components/inputView/SimpleAskUserPanel"
+import { readQuestions } from "./questionInput"
 
 export interface QuestionItem {
   header?: string
@@ -60,17 +61,9 @@ export function useQuestionToolUI(): void {
 
   useToolUI<QuestionArgs, QuestionOutput>({
     name: "question",
-    parseArgs: input => {
-      const raw = input as { questions?: QuestionItem[] }
-      return {
-        questions: Array.isArray(raw.questions) ? raw.questions : [],
-      }
-    },
-    shouldRender: input => {
-      // 缺 questions 直接走 dispatcher 默认错误路径
-      const raw = input as { questions?: QuestionItem[] }
-      return Array.isArray(raw.questions) && raw.questions.length > 0
-    },
+    parseArgs: input => ({ questions: readQuestions(input) }),
+    // 缺 questions 直接走 dispatcher 默认错误路径；历史坏数据不能拖垮 Chat 树。
+    shouldRender: input => readQuestions(input).length > 0,
     skipResponse: () => ({ success: true, skipped: true }),
     render,
   })
