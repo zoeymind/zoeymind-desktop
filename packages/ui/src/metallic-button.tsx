@@ -7,6 +7,7 @@ import { cn } from "./cn";
 type MetallicButtonProps = ComponentProps<typeof Button> & {
   metalTheme?: "dark" | "light" | "auto";
   metalScale?: number;
+  metalPaused?: boolean;
 };
 function supportsWebGL(): boolean {
   return typeof WebGLRenderingContext !== "undefined";
@@ -17,6 +18,7 @@ function MetallicButton({
   children,
   metalTheme = "auto",
   metalScale = 1,
+  metalPaused = false,
   ...props
 }: MetallicButtonProps) {
   const button = (
@@ -41,6 +43,7 @@ function MetallicButton({
       preset="chromatic"
       theme={metalTheme}
       strength={0.7}
+      paused={metalPaused}
       scale={metalScale}
       className="inline-flex rounded-full"
     >
