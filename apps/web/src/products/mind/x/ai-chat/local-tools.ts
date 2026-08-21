@@ -15,6 +15,16 @@ export interface LocalAIToolInfo {
 
 export const LOCAL_AI_TOOLS: LocalAIToolInfo[] = [
   {
+    name: 'documents',
+    label: '列出文档',
+    description: '列出当前已打开的 Test Document 及其 ready、未保存状态和 revision。'
+  },
+  {
+    name: 'read',
+    label: '读取文档',
+    description: '按 outline 或局部 subtree 读取明确指定的 Test Document。'
+  },
+  {
     name: 'list_modules',
     label: '列出模块',
     description: '列出所有测试模块的基本信息（名称和ID）'

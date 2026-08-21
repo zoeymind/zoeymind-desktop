@@ -19,9 +19,25 @@ import {
   EnsureCasesSchema,
   QuestionSchema
 } from '@zoeymind/shared'
+import {
+  DocumentsToolInputSchema,
+  ReadDocumentToolInputSchema
+} from '@/products/mind/document-portal/ai-sdk-adapter'
 
 export function getAgentTools() {
   return {
+    documents: tool({
+      description:
+        '列出当前已打开的 Test Document。返回稳定 documentId、标题、活动状态、ready 状态、未保存状态和 revision。读取文档前先用此工具确认目标，不要猜测当前活动文档。',
+      inputSchema: DocumentsToolInputSchema
+    }),
+
+    read: tool({
+      description:
+        '显式读取一个已打开且 ready 的 Test Document。outline 返回有界模块目录；subtree 按模块名称路径返回局部树。不会返回内部节点 ID，也不会默认读取完整大型文档。',
+      inputSchema: ReadDocumentToolInputSchema
+    }),
+
     list_modules: tool({
       description: '列出所有测试模块的基本信息（名称和ID）',
       inputSchema: ListModulesSchema

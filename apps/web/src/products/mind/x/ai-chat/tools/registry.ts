@@ -18,6 +18,7 @@ import { addModuleTool } from './mindmap/add_module'
 import { updateModuleTool } from './mindmap/update_module'
 import { deleteModuleTool } from './mindmap/delete_module'
 import { ensureCasesTool } from './mindmap/ensure-cases'
+import { DOCUMENT_PORTAL_TOOL_NAME } from '@/products/mind/document-portal/ai-sdk-adapter'
 
 const questionTool: Tool = {
   name: 'question',
@@ -32,9 +33,27 @@ const questionTool: Tool = {
     error: 'question 由 UI 渲染处理，不通过 handler 执行'
   })
 }
+const documentsTool: Tool = {
+  name: DOCUMENT_PORTAL_TOOL_NAME.DOCUMENTS,
+  label: '列出文档',
+  description: '列出当前已打开的 Test Document 及其 ready、未保存状态和 revision。',
+  parameters: {},
+  handler: async () => ({ success: false, error: 'documents 由 DocumentPortal 执行' })
+}
+
+const readDocumentTool: Tool = {
+  name: DOCUMENT_PORTAL_TOOL_NAME.READ,
+  label: '读取文档',
+  description: '按 outline 或局部 subtree 读取明确指定的 Test Document。',
+  parameters: {},
+  handler: async () => ({ success: false, error: 'read 由 DocumentPortal 执行' })
+}
+
 
 // 工具定义（包含 handler 和 config）
 const toolDefinitions: Record<string, Tool> = {
+  documents: documentsTool,
+  read: readDocumentTool,
   list_modules: listModulesTool,
   search_cases: searchCasesTool,
   get_module_cases: getModuleCasesTool,

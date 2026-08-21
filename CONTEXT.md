@@ -32,3 +32,4 @@ ZoeyMind Desktop 是独立桌面应用，当前以 Tauri 2 承载 Web 前端和�
 ## Context References
 
 - [文档标签故障隔离架构](./docs/architecture/tab-fault-isolation.md) — 当前结论、平台能力、证据、优先级和后续更新入口。
+- [文档自动化 Portal](./docs/architecture/document-automation-portal.md) — Test Document、搜索、局部快照、Tree Hashline Patch 与 AI SDK/CLI/MCP 统一接入方案。

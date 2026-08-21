@@ -33,6 +33,10 @@ import {
 } from "./internal/toolUsageRecorder"
 import { useAnalytics, ANALYTICS_EVENTS } from "@/shared/app-shared"
 import type { ChatRuntime } from "./internal/chatRuntime"
+import {
+  executeDocumentPortalTool,
+  isDocumentPortalTool,
+} from "@/products/mind/document-portal/ai-sdk-adapter"
 
 /** AI SDK 6 的 ToolCall 形态: 我们只用 toolName / toolCallId / input / dynamic */
 interface ToolCallLike {
@@ -128,6 +132,29 @@ export function useToolDispatcher({
         logger.warn("[useToolDispatcher] 不支持动态工具")
         return
       }
+      if (isDocumentPortalTool(toolCall.toolName)) {
+        try {
+          const output = executeDocumentPortalTool(toolCall.toolName, toolCall.input)
+          await addToolOutput({
+            tool: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            output,
+          })
+        } catch (error) {
+          logger.error("[useToolDispatcher] 文档 Portal 工具执行失败", {
+            toolName: toolCall.toolName,
+            error,
+          })
+          await addToolOutput({
+            tool: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            state: "output-error",
+            errorText: error instanceof Error ? error.message : String(error),
+          })
+        }
+        return
+      }
+
 
       // 2. MCP 工具 (后端 streamText.tools 注入, AI SDK 自动 execute)
       if (toolCall.toolName.startsWith("mcp_")) return
