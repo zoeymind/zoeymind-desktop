@@ -4,7 +4,7 @@
  */
 
 import React from "react"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@zoeymind/ui"
+import { Button, HoverCard, HoverCardContent, HoverCardTrigger } from "@zoeymind/ui"
 import { useTranslation } from "@zoeymind/i18n"
 import { Loader2 } from "lucide-react"
 import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
@@ -35,7 +35,7 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       ? "stroke-amber-500"
       : "stroke-foreground"
 
-  // 保留 Header 原始圆环尺寸；外层命中区与发送按钮对齐。
+  // 保留 Header 原始圆环尺寸；承载层与附件按钮同为 28px Ghost 圆形按钮。
   const size = 14
   const strokeWidth = 2
   const radius = (size - strokeWidth) / 2
@@ -54,8 +54,11 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
       <HoverCardTrigger
         delay={200}
         render={
-          <div
-            className="flex size-[23px] cursor-pointer items-center justify-center rounded-full"
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-7 rounded-full"
             aria-label={t("mindmap.aiChat.core.contextUsed", {
               value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
             })}
@@ -86,7 +89,7 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
                 />
               </svg>
             )}
-          </div>
+          </Button>
         }
       />
       <HoverCardContent className="w-auto p-2 text-xs" side="bottom" align="center">
