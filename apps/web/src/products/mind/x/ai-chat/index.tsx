@@ -42,6 +42,7 @@ import { trpc } from "../lib/trpc"
 import { useTranslation } from "@zoeymind/i18n"
 import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useUserPrompt"
 import { useQuestionToolUI } from "./tools/ui-handlers/QuestionToolUI"
+import { useDocumentEditApprovalToolUI } from "./tools/ui-handlers/useDocumentEditApprovalToolUI"
 import { useUIStore } from "@/products/mind/stores"
 import zoeyLogoLightUrl from "@/assets/logo.svg"
 import zoeyLogoDarkUrl from "@/assets/logo-dark.svg"
@@ -114,6 +115,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const mcpServerStatus = useMCPStore(state => state.serverStatus)
 
   useQuestionToolUI()
+  useDocumentEditApprovalToolUI()
 
   const [mindmapContextEnabled, setMindmapContextEnabledState] = useState(() => {
     if (typeof window === "undefined") return true

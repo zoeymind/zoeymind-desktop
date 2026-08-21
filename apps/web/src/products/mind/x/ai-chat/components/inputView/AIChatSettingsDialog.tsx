@@ -31,6 +31,7 @@ import { TOGGLEABLE_TOOL_NAMES, type ToggleableToolName } from "@zoeymind/shared
 import { MemorySettingsTab } from "./MemorySettingsTab"
 import { MCPTab } from "../../settings/MCPTab"
 import { useToolSettings } from "../../hooks/useToolSettings"
+import { useDocumentEditApprovalSetting } from "../../hooks/useDocumentEditApprovalSetting"
 
 export interface AIChatSettingsDialogProps {
   open: boolean
@@ -133,6 +134,8 @@ function GeneralSection({
   onMindmapContextEnabledChange,
 }: GeneralSectionProps) {
   const { t } = useTranslation()
+  const { enabled: editApprovalEnabled, setEnabled: setEditApprovalEnabled } =
+    useDocumentEditApprovalSetting()
 
   return (
     <SectionCard title={t("mindmap.aiChat.input.tabGeneral")}>
@@ -144,6 +147,13 @@ function GeneralSection({
           hint={t("mindmap.aiChat.input.mindmapContextHint")}
           checked={mindmapContextEnabled}
           onCheckedChange={onMindmapContextEnabledChange}
+        />
+        <ToggleRow
+          id="edit-review"
+          label={t("mindmap.aiChat.input.reviewToggleLabel")}
+          hint={t("mindmap.aiChat.input.reviewToggleHint")}
+          checked={editApprovalEnabled}
+          onCheckedChange={setEditApprovalEnabled}
         />
       </FieldGroup>
     </SectionCard>

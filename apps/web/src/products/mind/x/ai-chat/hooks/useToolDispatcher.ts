@@ -6,9 +6,12 @@ import type { AddToolOutputParams } from "../../ai-chat/types"
 import { enqueueToolUICall } from "../../ai-chat/context/ToolUIRegistry"
 import type { ChatRuntime } from "./internal/chatRuntime"
 import {
+  approveCurrentDocumentEdit,
   executeCurrentDocumentPortalTool,
   isCurrentDocumentPortalTool,
 } from "@/products/mind/document-portal/current-document-adapter"
+import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
+import { getDocumentEditApprovalEnabled } from "./useDocumentEditApprovalSetting"
 /** AI SDK 6 的 ToolCall 形态: 我们只用 toolName / toolCallId / input / dynamic */
 interface ToolCallLike {
   toolName: string
@@ -37,6 +40,15 @@ export function useToolDispatcher({
   const lastReportedRef = useRef<Record<string, never>>({})
   const toolUsageProjectRef = useRef<Record<string, string | undefined>>({})
 
+  const consumeInterruptedToolCall = (toolCallId: string): boolean => {
+    const interrupted = useAIChatV2Store.getState().interruptedToolCallIds
+    if (!interrupted.includes(toolCallId)) return false
+    useAIChatV2Store.setState({
+      interruptedToolCallIds: interrupted.filter(id => id !== toolCallId),
+    })
+    return true
+  }
+
   const onToolCall = useCallback<UseToolDispatcherResult["onToolCall"]>(
     async ({ toolCall }) => {
       if ("dynamic" in toolCall && toolCall.dynamic) {
@@ -45,11 +57,59 @@ export function useToolDispatcher({
       }
       if (isCurrentDocumentPortalTool(toolCall.toolName)) {
         try {
-          const output = await Promise.resolve(
-            executeCurrentDocumentPortalTool(toolCall.toolName, toolCall.input)
+          const initialInput =
+            toolCall.toolName === "edit_current_mindmap"
+              ? { ...(toolCall.input as Record<string, unknown>), preview: true }
+              : toolCall.input
+          const initialOutput = await Promise.resolve(
+            executeCurrentDocumentPortalTool(toolCall.toolName, initialInput)
           )
+          if (consumeInterruptedToolCall(toolCall.toolCallId)) return
+          if (
+            toolCall.toolName === "edit_current_mindmap" &&
+            initialOutput.success === true &&
+            initialOutput.phase === "preview" &&
+            (initialOutput.changeSummary as { destructive?: boolean } | undefined)?.destructive
+          ) {
+            const confirmationToken = initialOutput.confirmationToken
+            if (typeof confirmationToken !== "string")
+              throw new Error("Destructive edit preview omitted its approval token")
+            if (!getDocumentEditApprovalEnabled()) {
+              const committed = await approveCurrentDocumentEdit(
+                confirmationToken,
+                (
+                  toolCall.input as {
+                    returnView?: { view?: "outline" | "subtree"; maxLines?: number }
+                  }
+                ).returnView
+              )
+              await addToolOutput({
+                tool: toolCall.toolName,
+                toolCallId: toolCall.toolCallId,
+                output: committed,
+              })
+              return
+            }
+            enqueueToolUICall({
+              toolCallId: toolCall.toolCallId,
+              toolName: toolCall.toolName,
+              input: {
+                confirmationToken,
+                changeSummary: initialOutput.changeSummary,
+                returnView: (toolCall.input as { returnView?: unknown }).returnView,
+              },
+            })
+            return
+          }
+          const output =
+            toolCall.toolName === "edit_current_mindmap"
+              ? await Promise.resolve(
+                  executeCurrentDocumentPortalTool(toolCall.toolName, toolCall.input)
+                )
+              : initialOutput
           await addToolOutput({ tool: toolCall.toolName, toolCallId: toolCall.toolCallId, output })
         } catch (error) {
+          if (consumeInterruptedToolCall(toolCall.toolCallId)) return
           logger.error("[useToolDispatcher] 当前文档工具执行失败", {
             toolName: toolCall.toolName,
             error,
