@@ -103,8 +103,7 @@ export const InputView: React.FC<InputViewProps> = ({
       isSending={isProcessing}
       isCompressing={isCompressing}
       supportsVision={supportsVision}
-      usedTokens={usedTokens}
-      maxTokens={maxTokens}
+      tokenUsage={{ usedTokens, maxTokens }}
       className="mx-3 mb-4"
       dataTour="ai-panel-input"
     />

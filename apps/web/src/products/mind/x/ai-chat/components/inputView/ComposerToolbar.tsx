@@ -12,6 +12,7 @@ import { ModelSelector } from "./ModelSelector"
 import { ActionButtons, AttachmentButton } from "./ActionButtons"
 import { ContextUsageIndicator } from "../ContextUsageIndicator"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
+import type { MessageTokenUsage } from "../../../ai-chat/utils/messageTokenUsage"
 
 interface ComposerToolbarProps {
   models: AIModel[]
@@ -25,8 +26,7 @@ interface ComposerToolbarProps {
   isCompressing?: boolean
   hasContent?: boolean
   supportsVision?: boolean
-  usedTokens: number
-  maxTokens: number
+  tokenUsage?: MessageTokenUsage
 }
 
 export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
@@ -41,8 +41,7 @@ export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
   isCompressing = false,
   hasContent = false,
   supportsVision = false,
-  usedTokens,
-  maxTokens,
+  tokenUsage,
 }) => {
   return (
     <div className="flex items-center justify-between pt-1">
@@ -61,7 +60,12 @@ export const ComposerToolbar: React.FC<ComposerToolbarProps> = ({
         />
       </div>
       <div className="flex items-center gap-1">
-        <ContextUsageIndicator usedTokens={usedTokens} maxTokens={maxTokens} />
+        {tokenUsage && (
+          <ContextUsageIndicator
+            usedTokens={tokenUsage.usedTokens}
+            maxTokens={tokenUsage.maxTokens}
+          />
+        )}
         <ActionButtons
           onSend={onSend}
           onStop={onStop}

@@ -351,7 +351,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
-                usedTokens={totalTokenUsage.total}
                 maxTokens={contextBudget?.contextWindow ?? 128000}
               />
             </MindMapInstanceProvider>

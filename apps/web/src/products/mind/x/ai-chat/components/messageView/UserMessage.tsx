@@ -19,14 +19,14 @@ import { useImageAttachmentManager } from "../../../ai-chat/components/inputView
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 import type { Attachment, GenericMessagePart } from "../../../ai-chat/types"
+import type { MessageTokenUsage } from "../../../ai-chat/utils/messageTokenUsage"
 
 interface UserMessageProps {
   message: UIMessage
   models: AIModel[]
   selectedModel: string
   setSelectedModel: (modelId: string) => void
-  usedTokens: number
-  maxTokens: number
+  tokenUsage?: MessageTokenUsage
 }
 
 const UserMessageImpl: React.FC<UserMessageProps> = ({
@@ -34,8 +34,7 @@ const UserMessageImpl: React.FC<UserMessageProps> = ({
   models,
   selectedModel,
   setSelectedModel,
-  usedTokens,
-  maxTokens,
+  tokenUsage,
 }) => {
   const { t } = useTranslation()
   const { mindMap: storeMindMap } = useMindMapStore()
@@ -276,8 +275,7 @@ const UserMessageImpl: React.FC<UserMessageProps> = ({
           isSending={false}
           isCompressing={isCompressing}
           supportsVision={supportsVision}
-          usedTokens={usedTokens}
-          maxTokens={maxTokens}
+          tokenUsage={tokenUsage}
           className={composerCardClassName(isEditing)}
         />
       </div>

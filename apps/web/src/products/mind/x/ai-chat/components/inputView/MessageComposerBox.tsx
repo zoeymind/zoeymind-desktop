@@ -18,6 +18,7 @@ import { MediaPreview } from "./MediaPreview"
 import { ComposerToolbar } from "./ComposerToolbar"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 import type { Attachment } from "../../../ai-chat/types"
+import type { MessageTokenUsage } from "../../../ai-chat/utils/messageTokenUsage"
 
 interface MessageComposerBoxProps {
   value: string
@@ -37,8 +38,7 @@ interface MessageComposerBoxProps {
   isSending?: boolean
   isCompressing?: boolean
   supportsVision?: boolean
-  usedTokens: number
-  maxTokens: number
+  tokenUsage?: MessageTokenUsage
   placeholder?: string
   className?: string
   dataTour?: string
@@ -61,8 +61,7 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
   isSending = false,
   isCompressing = false,
   supportsVision = false,
-  usedTokens,
-  maxTokens,
+  tokenUsage,
   placeholder,
   className,
   dataTour,
@@ -123,8 +122,7 @@ export const MessageComposerBox: React.FC<MessageComposerBoxProps> = ({
                 isCompressing={isCompressing}
                 hasContent={hasContent}
                 supportsVision={supportsVision}
-                usedTokens={usedTokens}
-                maxTokens={maxTokens}
+                tokenUsage={tokenUsage}
               />
             </motion.div>
           )}

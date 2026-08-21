@@ -13,6 +13,7 @@ import { ChevronUp } from "lucide-react"
 import { useTranslation } from "@zoeymind/i18n"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 import { resolveModelDisplayName } from "../../../ai-chat/utils/modelDisplayName"
+import { mapUserMessageTokenUsage } from "../../../ai-chat/utils/messageTokenUsage"
 
 const MESSAGES_PER_PAGE = 10
 
@@ -21,7 +22,6 @@ interface MessageViewProps {
   models: AIModel[]
   selectedModel: string
   setSelectedModel: (modelId: string) => void
-  usedTokens: number
   maxTokens: number
 }
 
@@ -30,7 +30,6 @@ export const MessageView: React.FC<MessageViewProps> = ({
   models,
   selectedModel,
   setSelectedModel,
-  usedTokens,
   maxTokens,
 }) => {
   const { t } = useTranslation()
@@ -75,6 +74,10 @@ export const MessageView: React.FC<MessageViewProps> = ({
   }, [compaction, dedupedMessages])
 
   const visibleMessages = dedupedMessages.slice(-displayCount)
+  const tokenUsageByUserMessageId = React.useMemo(
+    () => mapUserMessageTokenUsage(dedupedMessages, models, maxTokens),
+    [dedupedMessages, models, maxTokens]
+  )
   const hasMoreMessages = dedupedMessages.length > displayCount
 
   // 加载更多消息
@@ -129,6 +132,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
 
         {visibleMessages.map((message, index) => {
           const isLast = index === visibleMessages.length - 1
+          const messageTokenUsage = tokenUsageByUserMessageId.get(message.id)
           const rendered =
             message.role === "user" ? (
               <UserMessage
@@ -136,8 +140,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 models={models}
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
-                usedTokens={usedTokens}
-                maxTokens={maxTokens}
+                tokenUsage={messageTokenUsage}
               />
             ) : message.role === "assistant" ? (
               <AssistantMessage
