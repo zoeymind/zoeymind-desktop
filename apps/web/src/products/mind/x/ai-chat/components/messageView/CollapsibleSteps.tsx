@@ -56,6 +56,7 @@ export const CollapsibleSteps: React.FC<CollapsibleStepsProps> = ({
         <StepsSummaryBar
           toolParts={toolParts.map(t => t.part)}
           isExpanded={stepsExpanded}
+          onToggle={handleToggleSteps}
           isProcessing={isProcessing}
           turnStartedAt={turnStartedAt}
           turnDurationMs={turnDurationMs}

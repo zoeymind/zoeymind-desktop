@@ -176,6 +176,7 @@ export const StepsSummaryBar: React.FC<StepsSummaryBarProps> = ({
   return (
     <button
       type="button"
+      aria-expanded={isExpanded}
       onClick={onToggle}
       className={cn(
         "flex w-full items-center gap-1.5 px-2 py-1.5 text-xs transition-colors rounded-xl",
