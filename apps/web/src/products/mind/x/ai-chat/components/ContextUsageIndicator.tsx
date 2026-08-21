@@ -64,10 +64,10 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
             })}
           >
             {compactionPhase === "pending" ? (
-              <Loader2 className="size-[15px] animate-spin text-warning" />
+              <Loader2 className="relative -top-px size-[15px] animate-spin text-warning" />
             ) : (
               <svg
-                className="block size-[15px] -rotate-90"
+                className="relative -top-px block size-[15px] -rotate-90"
                 width={size}
                 height={size}
                 viewBox={`0 0 ${size} ${size}`}
