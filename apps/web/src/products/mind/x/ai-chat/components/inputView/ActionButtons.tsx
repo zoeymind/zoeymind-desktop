@@ -86,39 +86,57 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   const showStop = isSending && !hasContent
   const isInterruptSend = showSend && isSending
   const isIdle = !showSend && !showStop
-  const SendButton = isIdle ? MetallicButton : Button
   const label = showStop
     ? t("mindmap.aiChat.input.stopGeneration")
     : isInterruptSend
       ? t("mindmap.aiChat.input.interruptAndSend")
       : t("mindmap.aiChat.input.sendMessage")
 
+  const buttonContent = showStop ? (
+    <Square className="size-[11px] fill-current" />
+  ) : (
+    <ArrowUp className="size-[15px]" />
+  )
+  const className = cn(
+    "size-[23px] rounded-full shadow-sm",
+    showStop
+      ? "bg-muted-foreground text-background hover:bg-muted-foreground/80"
+      : isInterruptSend
+        ? "bg-warning text-white hover:bg-warning/90"
+        : showSend
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : "text-foreground"
+  )
+
+  if (isIdle) {
+    return (
+      <MetallicButton
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        metalScale={0.5}
+        onClick={onSend}
+        disabled
+        className={className}
+        aria-label={label}
+        title={label}
+      >
+        {buttonContent}
+      </MetallicButton>
+    )
+  }
+
   return (
-    <SendButton
+    <Button
       type="button"
       variant="ghost"
       size="icon-xs"
-      metalScale={0.5}
       onClick={showStop ? onStop : onSend}
-      disabled={!showSend && !showStop}
-      className={cn(
-        "size-[23px] rounded-full shadow-sm",
-        showStop
-          ? "bg-muted-foreground text-background hover:bg-muted-foreground/80"
-          : isInterruptSend
-            ? "bg-warning text-white hover:bg-warning/90"
-            : showSend
-              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : "text-foreground"
-      )}
+      className={className}
       aria-label={label}
       title={label}
     >
-      {showStop ? (
-        <Square className="size-[11px] fill-current" />
-      ) : (
-        <ArrowUp className="size-[15px]" />
-      )}
-    </SendButton>
+      {buttonContent}
+    </Button>
   )
 }

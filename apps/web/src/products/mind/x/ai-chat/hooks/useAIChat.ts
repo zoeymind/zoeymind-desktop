@@ -136,9 +136,10 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
         },
       })
     },
-    onToolCall: async event => {
-      // 由 dispatcher.onToolCall 处理; 这里只透传, dispatcher 用同一个 addToolOutput 闭包.
-      await dispatcher.onToolCall(event)
+    onToolCall: event => {
+      // AI SDK 要求 client tool 在 onToolCall 中 fire-and-forget；await 会与
+      // addToolOutput 的同步 message update 形成重入，尤其并行工具会触发更新深度错误。
+      void dispatcher.onToolCall(event)
     },
   })
 

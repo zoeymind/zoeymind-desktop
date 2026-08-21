@@ -6,7 +6,7 @@
  * 如果没有自定义渲染器，则通用地显示 input 和 output
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import {
   ChevronDown,
   Loader2,
@@ -20,39 +20,36 @@ import {
   Globe,
   Code,
   Figma,
-  Image
-} from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
-import { cn } from '@/shared/app-shared'
-import { ToolErrorBoundary } from '../../../ai-chat/components/ErrorBoundary'
-import { getToolLabel } from '../../../ai-chat/tools/registry'
-import { useTranslation } from '@zoeymind/i18n'
+  Image,
+} from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
+import { cn } from "@/shared/app-shared"
+import { ToolErrorBoundary } from "../../../ai-chat/components/ErrorBoundary"
+import { getToolLabel } from "../../../ai-chat/tools/registry"
+import { useTranslation } from "@zoeymind/i18n"
 
 // 导入工具 UI 渲染器
-import { renderGetModuleCasesOutput } from '../../../ai-chat/tools/ui/GetModuleCasesUI'
-import { renderListModulesOutput } from '../../../ai-chat/tools/ui/ListModulesUI'
-import { renderSearchCasesOutput } from '../../../ai-chat/tools/ui/SearchCasesUI'
-import {
-  renderAddCasesInput,
-  renderAddCasesOutput
-} from '../../../ai-chat/tools/ui/AddCasesUI'
-import { renderDeleteCasesInput } from '../../../ai-chat/tools/ui/DeleteCasesUI'
-import { renderUpdateCasesOutput } from '../../../ai-chat/tools/ui/UpdateCasesUI'
-import { renderAddModuleInput } from '../../../ai-chat/tools/ui/AddModuleUI'
-import { renderDeleteModuleInput } from '../../../ai-chat/tools/ui/DeleteModuleUI'
-import { renderUpdateModuleOutput } from '../../../ai-chat/tools/ui/UpdateModuleUI'
+import { renderGetModuleCasesOutput } from "../../../ai-chat/tools/ui/GetModuleCasesUI"
+import { renderListModulesOutput } from "../../../ai-chat/tools/ui/ListModulesUI"
+import { renderSearchCasesOutput } from "../../../ai-chat/tools/ui/SearchCasesUI"
+import { renderAddCasesInput, renderAddCasesOutput } from "../../../ai-chat/tools/ui/AddCasesUI"
+import { renderDeleteCasesInput } from "../../../ai-chat/tools/ui/DeleteCasesUI"
+import { renderUpdateCasesOutput } from "../../../ai-chat/tools/ui/UpdateCasesUI"
+import { renderAddModuleInput } from "../../../ai-chat/tools/ui/AddModuleUI"
+import { renderDeleteModuleInput } from "../../../ai-chat/tools/ui/DeleteModuleUI"
+import { renderUpdateModuleOutput } from "../../../ai-chat/tools/ui/UpdateModuleUI"
 import {
   getCachedToolResult,
   type ToolArgs,
-  type ExecutionResult
-} from '../../../ai-chat/tools/types'
+  type ExecutionResult,
+} from "../../../ai-chat/tools/types"
 import type {
   AddCasesInput,
   AddModuleInput,
   DeleteCasesInput,
-  DeleteModuleInput
-} from '../../../ai-chat/types'
-import { countTokensInValue } from '../../../ai-chat/utils/tokenCounter'
+  DeleteModuleInput,
+} from "../../../ai-chat/types"
+import { countTokensInValue } from "../../../ai-chat/utils/tokenCounter"
 
 /**
  * 工具自定义渲染器接口
@@ -100,7 +97,7 @@ const toolCustomRenderers: Record<string, ToolCustomRenderer> = {
 
   update_cases: (_input, output) => renderUpdateCasesOutput(output),
 
-  update_module: (_input, output) => renderUpdateModuleOutput(output)
+  update_module: (_input, output) => renderUpdateModuleOutput(output),
 }
 
 /**
@@ -125,7 +122,7 @@ const toolIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   query_knowledge_bases: Code, // 知识库查询：代码图标
   get_figma_metadata: Figma, // Figma 骨架：Figma 图标
   get_figma_data: Figma, // 获取 Figma 设计：Figma 图标
-  get_figma_image: Image // Figma 截图：图片图标
+  get_figma_image: Image, // Figma 截图：图片图标
 }
 
 /**
@@ -151,7 +148,7 @@ export interface ToolCallPart {
   toolCallId?: string
   input?: ToolArgs
   output?: ExecutionResult
-  state?: 'input-streaming' | 'input-available' | 'output-available' | 'output-error'
+  state?: "input-streaming" | "input-available" | "output-available" | "output-error"
   errorText?: string
 }
 
@@ -163,7 +160,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const toolName = part.type.replace('tool-', '')
+  const toolName = part.type.replace("tool-", "")
   const customRenderer = toolCustomRenderers[toolName]
 
   // UI 渲染用完整结果（含 data），优先从缓存取（model output 已精简）
@@ -172,13 +169,13 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
     [part.toolCallId, part.output]
   )
 
-  const isAskUser = toolName === 'question'
-  const isPending = part.state === 'input-streaming' || part.state === 'input-available'
+  const isAskUser = toolName === "question"
+  const isPending = part.state === "input-streaming" || part.state === "input-available"
   const isWaitingUser = isAskUser && isPending
-  const isFailed = part.state === 'output-error'
+  const isFailed = part.state === "output-error"
   const isInterrupted =
-    isFailed && part.errorText === t('mindmap.aiChat.message.executionInterrupted')
-  const isComplete = part.state === 'output-available'
+    isFailed && part.errorText === t("mindmap.aiChat.message.executionInterrupted")
+  const isComplete = part.state === "output-available"
 
   // ---- 单步耗时计算 ----
   const startTimeRef = useRef<number>(Date.now())
@@ -205,7 +202,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
   const durationDisplay = (() => {
     const secs = finalDuration ?? elapsed
     if (secs < 0.5) return null // 太短不显示
-    if (secs < 1) return '< 1s'
+    if (secs < 1) return "< 1s"
     if (secs < 60) return `${secs.toFixed(1)}s`
     return `${Math.floor(secs / 60)}m${Math.floor(secs % 60)}s`
   })()
@@ -216,16 +213,16 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
   const displayName = getToolLabel(toolName) || toolName
 
   const statusColor = isWaitingUser
-    ? 'bg-warning'
+    ? "bg-warning"
     : isPending
-      ? 'bg-primary/60'
+      ? "bg-primary/60"
       : isSuccess
-        ? 'bg-primary'
+        ? "bg-primary"
         : isInterrupted
-          ? 'bg-muted-foreground/40'
-          : isOutputFailed || part.state === 'output-error'
-            ? 'bg-destructive'
-            : 'bg-muted-foreground/30'
+          ? "bg-muted-foreground/40"
+          : isOutputFailed || part.state === "output-error"
+            ? "bg-destructive"
+            : "bg-muted-foreground/30"
 
   const Icon = toolIcons[toolName]
 
@@ -233,7 +230,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
   // 真实 token 走 streamText.finish.totalUsage, 那个在 metadata 里精确.
   const tokenCount = useMemo(() => {
     let n = 0
-    if (part.input && typeof part.input === 'object' && Object.keys(part.input).length > 0) {
+    if (part.input && typeof part.input === "object" && Object.keys(part.input).length > 0) {
       n += countTokensInValue(part.input)
     }
     if (part.output) n += countTokensInValue(part.output)
@@ -247,9 +244,9 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
       {/* 头部行：状态点 + 工具名 + 耗时（参考 opencode 的单行 tool step 风格） */}
       <div
         className={cn(
-          'flex items-center gap-1.5 py-0.5 rounded-sm transition-colors',
-          hasExpandableContent && 'cursor-pointer hover:bg-muted/40',
-          isExpanded && 'bg-muted/30'
+          "flex items-center gap-1.5 py-0.5 rounded-sm transition-colors",
+          hasExpandableContent && "cursor-pointer hover:bg-muted/40",
+          isExpanded && "bg-muted/30"
         )}
         onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
       >
@@ -259,7 +256,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
         ) : isWaitingUser ? (
           <MessageSquare className="size-3 text-warning flex-shrink-0" />
         ) : (
-          <div className={cn('size-1.5 rounded-full flex-shrink-0', statusColor)} />
+          <div className={cn("size-1.5 rounded-full flex-shrink-0", statusColor)} />
         )}
 
         {/* 工具图标 */}
@@ -270,12 +267,12 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
         {/* 工具名 */}
         <span
           className={cn(
-            'text-xs truncate',
+            "text-xs truncate",
             isWaitingUser
-              ? 'text-warning dark:text-warning font-medium'
+              ? "text-warning dark:text-warning font-medium"
               : isPending
-                ? 'text-foreground font-medium'
-                : 'text-muted-foreground'
+                ? "text-foreground font-medium"
+                : "text-muted-foreground"
           )}
         >
           {displayName}
@@ -284,17 +281,17 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
         {/* 状态文字 */}
         {isWaitingUser && (
           <span className="text-[10px] text-warning">
-            {t('mindmap.aiChat.message.waitingFeedback')}
+            {t("mindmap.aiChat.message.waitingFeedback")}
           </span>
         )}
         {isPending && !isWaitingUser && (
           <span className="text-[10px] text-primary/70">
-            {t('mindmap.aiChat.message.executing')}
+            {t("mindmap.aiChat.message.executing")}
           </span>
         )}
         {isInterrupted && (
           <span className="text-[10px] text-muted-foreground/50">
-            {t('mindmap.aiChat.message.aborted')}
+            {t("mindmap.aiChat.message.aborted")}
           </span>
         )}
 
@@ -302,8 +299,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
         {tokenCount > 0 && (
           <span
             className={cn(
-              'text-[10px] tabular-nums flex-shrink-0',
-              isPending ? 'text-primary/60' : 'text-muted-foreground/40'
+              "text-[10px] tabular-nums flex-shrink-0",
+              isPending ? "text-primary/60" : "text-muted-foreground/40"
             )}
           >
             ~{tokenCount.toLocaleString()} tokens
@@ -312,8 +309,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
 
         <div className="flex-1" />
 
-        {/* 耗时 */}
-        {durationDisplay && !isPending && (
+        {/* 执行中实时刷新；完成后冻结最终耗时。 */}
+        {durationDisplay && (
           <span className="text-[10px] text-muted-foreground/50 tabular-nums flex-shrink-0">
             {durationDisplay}
           </span>
@@ -323,8 +320,8 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
         {hasExpandableContent && (
           <ChevronDown
             className={cn(
-              'size-3 text-muted-foreground/40 transition-transform flex-shrink-0',
-              isExpanded && 'rotate-180'
+              "size-3 text-muted-foreground/40 transition-transform flex-shrink-0",
+              isExpanded && "rotate-180"
             )}
           />
         )}
@@ -335,7 +332,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
         {isExpanded && !isPending && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
@@ -344,7 +341,7 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
               {isFailed && part.errorText && (
                 <div className="rounded-sm bg-destructive/10 p-2">
                   <div className="mb-1 text-[10px] font-medium text-destructive">
-                    {t('mindmap.aiChat.message.errorLabel')}
+                    {t("mindmap.aiChat.message.errorLabel")}
                   </div>
                   <div className="whitespace-pre-wrap text-xs text-destructive">
                     {part.errorText}
@@ -368,10 +365,10 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
                       {part.input && (
                         <div className="rounded-sm bg-muted p-2">
                           <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                            {t('mindmap.aiChat.message.inputLabel')}
+                            {t("mindmap.aiChat.message.inputLabel")}
                           </div>
                           <div className="text-xs text-foreground break-all">
-                            {typeof part.input === 'string' ? (
+                            {typeof part.input === "string" ? (
                               <div className="whitespace-pre-wrap">{part.input}</div>
                             ) : (
                               <div className="whitespace-pre-wrap font-mono text-xs">
@@ -384,20 +381,20 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
                       {fullOutput && (
                         <div className="rounded-sm bg-muted p-2">
                           <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                            {t('mindmap.aiChat.message.outputLabel')}
+                            {t("mindmap.aiChat.message.outputLabel")}
                           </div>
                           {fullOutput.success === false ? (
                             <div className="text-xs text-destructive break-all">
-                              {fullOutput.error || t('mindmap.aiChat.message.executionFailed')}
+                              {fullOutput.error || t("mindmap.aiChat.message.executionFailed")}
                             </div>
-                          ) : fullOutput.data && typeof fullOutput.data === 'object' ? (
+                          ) : fullOutput.data && typeof fullOutput.data === "object" ? (
                             <div className="text-xs text-foreground break-all">
                               {(() => {
                                 const data = fullOutput.data as Record<string, unknown>
-                                if (typeof data.content === 'string') {
+                                if (typeof data.content === "string") {
                                   return <div className="whitespace-pre-wrap">{data.content}</div>
                                 }
-                                if (typeof data.results === 'string') {
+                                if (typeof data.results === "string") {
                                   return <div className="whitespace-pre-wrap">{data.results}</div>
                                 }
                                 return (

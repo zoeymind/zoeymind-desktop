@@ -13,6 +13,7 @@ import { useAIChatRuntime } from "../../context/AIChatRuntimeContext"
 import { useAIChatV2Store } from "../../stores/useAIChatV2Store"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
+import { hasPendingToolCalls } from "../../../ai-chat/utils/pendingToolCalls"
 
 interface InputViewProps {
   models: AIModel[]
@@ -42,8 +43,9 @@ export const InputView: React.FC<InputViewProps> = ({
     stopGeneration,
   } = useAIChatV2Store()
 
-  const { status } = useAIChatRuntime()
-  const isProcessing = status === "submitted" || status === "streaming"
+  const { status, messages } = useAIChatRuntime()
+  const isProcessing =
+    status === "submitted" || status === "streaming" || hasPendingToolCalls(messages)
 
   const { mindMap } = useMindMapStore()
 

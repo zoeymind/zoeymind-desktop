@@ -19,10 +19,12 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
   usedTokens,
   maxTokens,
 }) => {
+  const safeUsedTokens = Number.isFinite(usedTokens) ? Math.max(0, usedTokens) : 0
+  const safeMaxTokens = Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 0
   const { t } = useTranslation()
   const compactionPhase = useCompactionStore(s => s.phase)
   const compaction = useCompactionStore(s => s.compaction)
-  const percentage = maxTokens > 0 ? (usedTokens / maxTokens) * 100 : 0
+  const percentage = safeMaxTokens > 0 ? (safeUsedTokens / safeMaxTokens) * 100 : 0
   const displayPercentage = Math.min(percentage, 100).toFixed(1)
 
   // 阈值色: 接近 / 超过 70% 时圈变 amber 提示, 95% 以上变 red.
@@ -44,9 +46,10 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
 
   // 格式化数字（K 或 M）
   const formatNumber = (num: number): string => {
+    if (!Number.isFinite(num)) return "0"
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
-    return num.toString()
+    return String(num)
   }
 
   return (
@@ -60,7 +63,7 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
             size="icon-sm"
             className="size-[27px] rounded-full"
             aria-label={t("mindmap.aiChat.core.contextUsed", {
-              value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
+              value: `${displayPercentage}% · ${formatNumber(safeUsedTokens)}/${formatNumber(safeMaxTokens)}`,
             })}
           >
             {compactionPhase === "pending" ? (
@@ -102,7 +105,7 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
         <div className="flex flex-col gap-1">
           <div className="font-medium text-foreground">
             {t("mindmap.aiChat.core.contextUsed", {
-              value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
+              value: `${displayPercentage}% · ${formatNumber(safeUsedTokens)}/${formatNumber(safeMaxTokens)}`,
             })}
           </div>
 
