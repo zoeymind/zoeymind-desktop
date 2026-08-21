@@ -12,16 +12,16 @@
  * 但 SDK 一轮里多次 tool-call 串行也支持). 我们渲染所有 pending, 多个面板纵向堆叠.
  */
 
-import { useSyncExternalStore, useCallback, type ReactNode } from 'react'
+import { useSyncExternalStore, useCallback, type ReactNode } from "react"
 import {
   completeToolUICall,
   getToolUIHandler,
   getToolUIPending,
   subscribeToolUIPending,
-  type PendingToolUICall
-} from './ToolUIRegistry'
-import { getModuleAIChatRuntime } from './AIChatRuntimeContext'
-import { logger } from '@zoeymind/logger'
+  type PendingToolUICall,
+} from "./ToolUIRegistry"
+import { getModuleAIChatRuntime } from "./AIChatRuntimeContext"
+import { logger } from "@zoeymind/logger"
 
 interface ToolUIItemProps {
   call: PendingToolUICall
@@ -31,22 +31,22 @@ function ToolUIItem({ call }: ToolUIItemProps): ReactNode {
   const handler = getToolUIHandler(call.toolName)
 
   const respond = useCallback(
-    (output: unknown) => {
+    async (output: unknown) => {
       const runtime = getModuleAIChatRuntime()
       if (!runtime) {
-        logger.warn('[ToolUIRenderer] runtime 未初始化, 无法回传 respond', {
+        logger.warn("[ToolUIRenderer] runtime 未初始化, 无法回传 respond", {
           toolName: call.toolName,
-          toolCallId: call.toolCallId
+          toolCallId: call.toolCallId,
         })
         return
       }
       const serialized = handler?.serializeOutput
         ? handler.serializeOutput(output)
         : JSON.stringify(output)
-      runtime.addToolOutput({
+      await runtime.addToolOutput({
         tool: call.toolName,
         toolCallId: call.toolCallId,
-        output: serialized
+        output: serialized,
       })
       completeToolUICall(call.toolCallId)
     },
@@ -59,11 +59,11 @@ function ToolUIItem({ call }: ToolUIItemProps): ReactNode {
 
   const skip = useCallback(() => {
     if (!handler?.skipResponse) return
-    respond(handler.skipResponse())
+    void respond(handler.skipResponse())
   }, [handler, respond])
 
   if (!handler) {
-    logger.warn('[ToolUIRenderer] 找不到 handler', { toolName: call.toolName })
+    logger.warn("[ToolUIRenderer] 找不到 handler", { toolName: call.toolName })
     return null
   }
 
@@ -77,7 +77,7 @@ function ToolUIItem({ call }: ToolUIItemProps): ReactNode {
         args,
         respond,
         dismiss,
-        skip: handler.skipResponse ? skip : undefined
+        skip: handler.skipResponse ? skip : undefined,
       })}
     </div>
   )

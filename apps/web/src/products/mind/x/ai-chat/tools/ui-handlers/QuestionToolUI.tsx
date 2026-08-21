@@ -8,9 +8,9 @@
  * 现在: 在 Panel 顶层一句 `useQuestionToolUI()` 就声明完了, 整条链路收成一个文件.
  */
 
-import { useCallback } from 'react'
-import { useToolUI } from '../../../ai-chat/context/ToolUIRegistry'
-import { SimpleAskUserPanel } from '../../../ai-chat/components/inputView/SimpleAskUserPanel'
+import { useCallback } from "react"
+import { useToolUI } from "../../../ai-chat/context/ToolUIRegistry"
+import { SimpleAskUserPanel } from "../../../ai-chat/components/inputView/SimpleAskUserPanel"
 
 export interface QuestionItem {
   header?: string
@@ -43,10 +43,10 @@ export function useQuestionToolUI(): void {
     ({
       args,
       respond,
-      skip
+      skip,
     }: {
       args: QuestionArgs
-      respond: (output: QuestionOutput) => void
+      respond: (output: QuestionOutput) => Promise<void>
       skip?: () => void
     }) => (
       <SimpleAskUserPanel
@@ -59,11 +59,11 @@ export function useQuestionToolUI(): void {
   )
 
   useToolUI<QuestionArgs, QuestionOutput>({
-    name: 'question',
+    name: "question",
     parseArgs: input => {
       const raw = input as { questions?: QuestionItem[] }
       return {
-        questions: Array.isArray(raw.questions) ? raw.questions : []
+        questions: Array.isArray(raw.questions) ? raw.questions : [],
       }
     },
     shouldRender: input => {
@@ -72,6 +72,6 @@ export function useQuestionToolUI(): void {
       return Array.isArray(raw.questions) && raw.questions.length > 0
     },
     skipResponse: () => ({ success: true, skipped: true }),
-    render
+    render,
   })
 }

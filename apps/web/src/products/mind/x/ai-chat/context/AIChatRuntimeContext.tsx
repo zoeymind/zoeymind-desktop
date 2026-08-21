@@ -40,7 +40,7 @@ export interface AIChatRuntime {
   /** useChat 的 setMessages, 覆盖整条消息列表 */
   setMessages: (messages: UIMessage[]) => void
   /** useChat 的 addToolOutput, 让前端工具结果回传给 SDK */
-  addToolOutput: (params: AddToolOutputParams) => void
+  addToolOutput: (params: AddToolOutputParams) => Promise<void>
   /** 拿当前 MindmapContextManager 的 idMapper 实例 (没初始化时返回 null) */
   getIdMapper: () => SessionIdMapper | null
   /** UUID → 短 ID. 没 mapper 时透传原值. type 暂未使用, 保留兼容旧签名. */
@@ -115,9 +115,7 @@ export function AIChatRuntimeProvider({
       setMessages: msgs => {
         actionRefs.current.setMessages?.(msgs)
       },
-      addToolOutput: params => {
-        actionRefs.current.addToolOutput?.(params)
-      },
+      addToolOutput: params => actionRefs.current.addToolOutput?.(params) ?? Promise.resolve(),
       getIdMapper: () => actionRefs.current.getIdMapper?.() ?? null,
       shortenId: (uuid, type) => actionRefs.current.shortenId?.(uuid, type) ?? uuid,
       messages,

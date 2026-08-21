@@ -23,7 +23,7 @@
  *
  * shouldRender 用于动态开关 (e.g. case review 设置关时, 直接 fall back 到默认执行).
  */
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from "react"
 
 /** 一次工具调用 + 对应的 UI handler 的运行时上下文 */
 export interface ToolUIRenderContext<TArgs = unknown, TOutput = unknown> {
@@ -37,7 +37,7 @@ export interface ToolUIRenderContext<TArgs = unknown, TOutput = unknown> {
    * 用户提交结果: 自动调 runtime.addToolOutput(serialized(output)) + 出队.
    * 适用于"用户直接给答案, 不需要再跑工具"的简单 HITL (如 question).
    */
-  respond: (output: TOutput) => void
+  respond: (output: TOutput) => Promise<void>
   /**
    * 用户跳过 (仅 handler 提供 skipResponse 时存在). 等价于 respond(skipResponse()).
    */
@@ -179,11 +179,11 @@ export function useToolUI<TArgs = unknown, TOutput = unknown>(
         ? out => handlerRef.current.serializeOutput!(out)
         : undefined,
       skipResponse: handler.skipResponse ? () => handlerRef.current.skipResponse!() : undefined,
-      render: ctx => handlerRef.current.render(ctx)
+      render: ctx => handlerRef.current.render(ctx),
     }
     return registry.register(proxy as ToolUIHandler)
     // 仅在 name (注册键) 变化时 re-register
-  }, [Array.isArray(handler.name) ? handler.name.join('|') : handler.name])
+  }, [Array.isArray(handler.name) ? handler.name.join("|") : handler.name])
 }
 
 /** dispatcher 调: 命中 UI handler 则入队并返回 true, 否则 false */
@@ -235,7 +235,7 @@ export function restorePendingFromMessages(messages: readonly unknown[]): void {
   // 只扫最后一条 assistant 消息 — pending tool 一定在最新一轮回复里, 老消息的 tool 早就答过了
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i] as { role?: string; parts?: Array<unknown> }
-    if (msg?.role !== 'assistant') continue
+    if (msg?.role !== "assistant") continue
 
     for (const part of msg.parts ?? []) {
       const p = part as {
@@ -244,18 +244,18 @@ export function restorePendingFromMessages(messages: readonly unknown[]): void {
         toolCallId?: string
         input?: unknown
       }
-      if (typeof p.type !== 'string') continue
-      if (!p.type.startsWith('tool-')) continue
+      if (typeof p.type !== "string") continue
+      if (!p.type.startsWith("tool-")) continue
       if (!p.toolCallId) continue
       // 仅 input-* 状态 (没拿到结果), 已经 output-* 的不再恢复
-      if (p.state !== 'input-available' && p.state !== 'input-streaming') continue
+      if (p.state !== "input-available" && p.state !== "input-streaming") continue
 
-      const toolName = p.type.slice('tool-'.length)
+      const toolName = p.type.slice("tool-".length)
       // 内部去重 + handler 检查; 没注册 handler 时直接返 false 不影响
       registry.tryEnqueue({
         toolCallId: p.toolCallId,
         toolName,
-        input: p.input
+        input: p.input,
       })
     }
     return // 找到最后一条 assistant 就停

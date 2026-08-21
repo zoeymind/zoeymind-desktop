@@ -39,6 +39,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const compaction = useCompactionStore(state => state.compaction)
   const isProcessing =
     status === "submitted" || status === "streaming" || hasPendingToolCalls(messages)
+  const [displayCount, setDisplayCount] = useState(MESSAGES_PER_PAGE)
 
   const { containerRef, contentRef, messagesEndRef } = useAutoScroll({
     messages,

@@ -9,25 +9,25 @@
  * 4. 同轮引用：支持在前置工具执行完毕后 resolve 预分配 ID
  */
 
-import type MindMap from 'simple-mind-map'
-import type { ExecutionResult } from './types'
-import { logger } from '@zoeymind/logger'
-import { executeToolCall } from './registry'
-import type { SessionIdMapper } from './session-id-mapper'
-import { SessionIdMapper as SessionIdMapperClass } from './session-id-mapper'
+import type MindMap from "simple-mind-map"
+import type { ExecutionResult } from "./types"
+import { logger } from "@zoeymind/logger"
+import { executeToolCall } from "./registry"
+import type { SessionIdMapper } from "./session-id-mapper"
+import { SessionIdMapper as SessionIdMapperClass } from "./session-id-mapper"
 
 // 只读工具（可以并行执行）
-const READ_ONLY_TOOLS = new Set(['list_modules', 'get_module_cases', 'search_cases'])
+const READ_ONLY_TOOLS = new Set(["list_modules", "get_module_cases", "search_cases"])
 
 // 修改工具（需要串行执行）
 const WRITE_TOOLS = new Set([
-  'add_cases',
-  'update_cases',
-  'delete_cases',
-  'add_module',
-  'update_module',
-  'delete_module',
-  'ensure_cases'
+  "add_cases",
+  "update_cases",
+  "delete_cases",
+  "add_module",
+  "update_module",
+  "delete_module",
+  "ensure_cases",
 ])
 
 interface QueuedTool {
@@ -47,7 +47,7 @@ function resolvePlaceholders(
   mapper: SessionIdMapper
 ): Record<string, unknown> {
   const resolveValue = (value: unknown): unknown => {
-    if (typeof value === 'string' && SessionIdMapperClass.isPlaceholder(value)) {
+    if (typeof value === "string" && SessionIdMapperClass.isPlaceholder(value)) {
       const shortId = SessionIdMapperClass.extractFromPlaceholder(value)
       if (!shortId) return value
 
@@ -65,7 +65,7 @@ function resolvePlaceholders(
       return value.map(resolveValue)
     }
 
-    if (value && typeof value === 'object') {
+    if (value && typeof value === "object") {
       const result: Record<string, unknown> = {}
       for (const [k, v] of Object.entries(value)) {
         result[k] = resolveValue(v)
@@ -152,7 +152,7 @@ class ToolExecutor {
           mindMap.command.pause()
           batchStarted = true
           this.lastMindMap = mindMap
-          logger.info('[ToolExecutor] 批量操作开始，已暂停历史记录')
+          logger.info("[ToolExecutor] 批量操作开始，已暂停历史记录")
         }
 
         try {
@@ -164,11 +164,6 @@ class ToolExecutor {
           logger.error(`[ToolExecutor] 工具 ${toolName} 执行异常`, { error: innerError })
           reject(innerError instanceof Error ? innerError : new Error(String(innerError)))
         }
-
-        // ✅ 在下一个工具执行前延迟 500ms，避免卡顿
-        if (this.writeQueue.length > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500))
-        }
       } catch (error) {
         logger.error(`[ToolExecutor] 修改工具 ${toolName} 执行失败`, { error })
         reject(error instanceof Error ? error : new Error(String(error)))
@@ -179,7 +174,7 @@ class ToolExecutor {
     if (batchStarted && this.lastMindMap) {
       this.lastMindMap.command.recovery()
       this.lastMindMap.command.addHistory()
-      logger.info('[ToolExecutor] 批量操作完成，已添加历史记录')
+      logger.info("[ToolExecutor] 批量操作完成，已添加历史记录")
     }
 
     this.isProcessingWrite = false
@@ -192,7 +187,7 @@ class ToolExecutor {
     return {
       writeQueueLength: this.writeQueue.length,
       isProcessingWrite: this.isProcessingWrite,
-      parallelCount: this.parallelCount
+      parallelCount: this.parallelCount,
     }
   }
 }

@@ -207,7 +207,7 @@ async function executeCaseConfirm(
   const idMapper = runtime.getIdMapper()
   if (!mindMap || !idMapper) {
     logger.error("[CaseConfirmToolUI] mindMap 或 idMapper 不存在")
-    runtime.addToolOutput({
+    await runtime.addToolOutput({
       tool: toolName,
       toolCallId,
       state: "output-error",
@@ -253,7 +253,7 @@ async function executeCaseConfirm(
     for (const { shortId } of correctedPreAssignedIds) {
       idMapper.unreserve(shortId)
     }
-    runtime.addToolOutput({
+    await runtime.addToolOutput({
       tool: toolName,
       toolCallId,
       state: "output-error",
@@ -278,7 +278,7 @@ async function executeCaseConfirm(
     }
   }
 
-  runtime.addToolOutput({
+  await runtime.addToolOutput({
     tool: toolName,
     toolCallId,
     output: toModelOutput(modelResult),

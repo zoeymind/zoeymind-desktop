@@ -45,7 +45,7 @@ interface ToolCallLike {
 interface UseToolDispatcherOptions {
   runtime: ChatRuntime
   /** useChat 返回的 addToolOutput, 透传给所有分支用 */
-  addToolOutput: (params: AddToolOutputParams) => void
+  addToolOutput: (params: AddToolOutputParams) => Promise<void>
 }
 
 export interface UseToolDispatcherResult {
@@ -160,7 +160,7 @@ export function useToolDispatcher({
 
       // 5. question 工具没注册 UI 但没数据 → 默认报错 (兜底, 一般不会触发)
       if (toolCall.toolName === "question") {
-        addToolOutput({
+        await addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           output: JSON.stringify({ success: false, error: "question 缺少 questions 参数" }),
@@ -172,7 +172,7 @@ export function useToolDispatcher({
       const currentMindMap = await waitForMindMapInstance(sessionStore)
       if (!currentMindMap) {
         logger.error("[useToolDispatcher] MindMap 实例不存在")
-        addToolOutput({
+        await addToolOutput({
           tool: toolCall.toolName,
           toolCallId: toolCall.toolCallId,
           state: "output-error",
@@ -187,7 +187,7 @@ export function useToolDispatcher({
 
       if (!idMapper) {
         logger.error("[useToolDispatcher] idMapper 不存在")
-        addToolOutput({
+        await addToolOutput({
           tool: toolName,
           toolCallId: toolCall.toolCallId,
           state: "output-error",
@@ -216,10 +216,14 @@ export function useToolDispatcher({
 
         cacheToolResult(toolCall.toolCallId, result)
 
-        addToolOutput({
+        await addToolOutput({
           tool: toolName,
           toolCallId: toolCall.toolCallId,
           output: toModelOutput(result),
+        })
+        logger.info("[useToolDispatcher] 工具结果已提交", {
+          toolName,
+          toolCallId: toolCall.toolCallId,
         })
       } catch (error) {
         logger.error("[useToolDispatcher] 工具执行失败", {
@@ -227,7 +231,7 @@ export function useToolDispatcher({
           error,
         })
 
-        addToolOutput({
+        await addToolOutput({
           tool: toolName,
           toolCallId: toolCall.toolCallId,
           state: "output-error",

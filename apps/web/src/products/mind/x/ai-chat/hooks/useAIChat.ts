@@ -144,7 +144,10 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   })
 
   // 把 addToolOutput 给到 dispatcher 用 (用 ref 防止重建)
-  const dispatcher = useToolDispatcher({ runtime, addToolOutput })
+  const dispatcher = useToolDispatcher({
+    runtime,
+    addToolOutput: params => Promise.resolve(addToolOutput(params)),
+  })
 
   // 构造 AIChatRuntime: 把 useChat 的句柄 + idMapper 访问通过模块单例暴露给
   // 1) 组件 (UserMessage / AssistantMessage / MindMapCanvas via useAIChatRuntime)
@@ -155,7 +158,7 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
       regenerate: options => regenerate(options),
       stop: () => stop(),
       setMessages: msgs => setMessages(msgs),
-      addToolOutput: params => addToolOutput(params),
+      addToolOutput: params => Promise.resolve(addToolOutput(params)),
       getIdMapper: () => mindmapContextManagerRef.current?.idMapper ?? null,
       shortenId: uuid => {
         const mapper = mindmapContextManagerRef.current?.idMapper
