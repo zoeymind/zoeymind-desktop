@@ -67,7 +67,7 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
               <Loader2 className="size-[15px] animate-spin text-warning" />
             ) : (
               <svg
-                className="block -rotate-90"
+                className="block size-[15px] -rotate-90"
                 width={size}
                 height={size}
                 viewBox={`0 0 ${size} ${size}`}
