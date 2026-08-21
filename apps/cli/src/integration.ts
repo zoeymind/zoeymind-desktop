@@ -292,8 +292,6 @@ assert(
   "Destructive preview returned no token",
 );
 const fakeConfirmation = (await requestDocumentPortal("edit_current_mindmap", {
-  anchorTag: destructiveAnchor,
-  patch: destructivePatch,
   confirmationToken: "fake-token",
 })) as PortalResponse;
 assert(
@@ -305,8 +303,6 @@ assert(
   "Fake token returned wrong error",
 );
 const confirmed = await call("edit_current_mindmap", {
-  anchorTag: destructiveAnchor,
-  patch: destructivePatch,
   confirmationToken,
   returnView: { view: "subtree", maxLines: 100 },
 });
