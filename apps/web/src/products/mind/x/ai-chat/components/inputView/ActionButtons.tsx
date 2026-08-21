@@ -56,7 +56,11 @@ export const AttachmentButton: React.FC<AttachmentButtonProps> = ({
         aria-label={label}
         title={label}
       >
-        {isCompressing ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-4" />}
+        {isCompressing ? (
+          <Loader2 className="size-[15px] animate-spin" />
+        ) : (
+          <Plus className="size-[15px]" />
+        )}
       </Button>
     </>
   )
@@ -110,7 +114,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       aria-label={label}
       title={label}
     >
-      {showStop ? <Square className="size-3 fill-current" /> : <ArrowUp className="size-4" />}
+      {showStop ? (
+        <Square className="size-[11px] fill-current" />
+      ) : (
+        <ArrowUp className="size-[15px]" />
+      )}
     </SendButton>
   )
 }
