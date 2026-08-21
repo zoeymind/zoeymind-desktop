@@ -70,8 +70,6 @@ function hasToolPart(message: unknown): boolean {
 export function useAIChat(workspaceId?: string): AIChatRuntime {
   const { currentOrg } = useOrganization()
   const currentOrgId = currentOrg?.id
-  const currentConversationId = useAIChatV2Store(state => state.currentConversationId)
-  const loadedConversationTranscript = useAIChatV2Store(state => state.loadedConversationTranscript)
 
   // 子 hook 共享的运行时句柄 — 由本 hook 拥有, 传给 transport / dispatcher / contextSync.
   // 必须用 useMemo 稳定对象引用, 不然每次 render 都是新对象, useMindmapContextSync 的
@@ -116,8 +114,6 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
     stop,
     error: chatError,
   } = useChat({
-    id: currentConversationId ?? "uninitialized",
-    messages: loadedConversationTranscript,
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onError: error => {

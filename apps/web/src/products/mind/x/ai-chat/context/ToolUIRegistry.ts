@@ -24,7 +24,6 @@
  * shouldRender 用于动态开关 (e.g. case review 设置关时, 直接 fall back 到默认执行).
  */
 import { useEffect, useRef, type ReactNode } from "react"
-import { logger } from "@zoeymind/logger"
 
 /** 一次工具调用 + 对应的 UI handler 的运行时上下文 */
 export interface ToolUIRenderContext<TArgs = unknown, TOutput = unknown> {
@@ -116,26 +115,10 @@ class ToolUIRegistry {
    */
   tryEnqueue(call: { toolCallId: string; toolName: string; input: unknown }): boolean {
     const handler = this.handlers.get(call.toolName)
-    if (!handler) {
-      logger.debug("[ToolUIRegistry] pending 工具没有已注册 UI", {
-        toolName: call.toolName,
-        toolCallId: call.toolCallId,
-      })
-      return false
-    }
-    if (handler.shouldRender && !handler.shouldRender(call.input, call.toolName)) {
-      logger.debug("[ToolUIRegistry] pending 工具 UI 被设置关闭", {
-        toolName: call.toolName,
-        toolCallId: call.toolCallId,
-      })
-      return false
-    }
-    if (this.pending.some(c => c.toolCallId === call.toolCallId)) return true
+    if (!handler) return false
+    if (handler.shouldRender && !handler.shouldRender(call.input, call.toolName)) return false
+    if (this.pending.some(c => c.toolCallId === call.toolCallId)) return true // 已入队
     this.pending = [...this.pending, { ...call, enqueuedAt: Date.now() }]
-    logger.info("[ToolUIRegistry] pending 工具 UI 已恢复", {
-      toolName: call.toolName,
-      toolCallId: call.toolCallId,
-    })
     this.emit()
     return true
   }

@@ -139,10 +139,11 @@ export function AIChatToggle(): React.JSX.Element | null {
   return (
     <div
       aria-hidden={activeTab === "ai"}
+      inert={activeTab === "ai" ? true : undefined}
       className={
         activeTab === "ai"
-          ? "w-0 shrink-0 overflow-hidden opacity-0 pointer-events-none"
-          : "w-auto shrink-0 overflow-visible opacity-100"
+          ? "invisible absolute right-3 shrink-0 opacity-0 pointer-events-none"
+          : "visible relative shrink-0 opacity-100"
       }
     >
       <MetallicButton
@@ -150,6 +151,7 @@ export function AIChatToggle(): React.JSX.Element | null {
         size="default"
         onClick={() => toggleFormatTab("ai")}
         metalTheme={resolvedTheme}
+        metalPaused={activeTab === "ai"}
         disabled={activeTab === "ai"}
         tabIndex={activeTab === "ai" ? -1 : 0}
         aria-expanded={activeTab === "ai"}
