@@ -58,37 +58,45 @@ export const ContextUsageIndicator: React.FC<ContextUsageIndicatorProps> = ({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="size-[27px] rounded-full"
+            className="relative size-[27px] rounded-full"
             aria-label={t("mindmap.aiChat.core.contextUsed", {
               value: `${displayPercentage}% · ${formatNumber(usedTokens)}/${formatNumber(maxTokens)}`,
             })}
           >
-            {compactionPhase === "pending" ? (
-              <Loader2 className="size-3.5 shrink-0 animate-spin text-warning" />
-            ) : (
-              <svg className="size-3.5 shrink-0 -rotate-90" aria-hidden="true">
-                <circle
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius}
-                  fill="none"
-                  className="stroke-muted"
-                  strokeWidth={strokeWidth}
-                />
-                <circle
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius}
-                  fill="none"
-                  className={ringClass}
-                  strokeWidth={strokeWidth}
-                  strokeDasharray={circumference}
-                  strokeDashoffset={offset}
-                  strokeLinecap="round"
-                  style={{ transition: "stroke-dashoffset 0.3s ease" }}
-                />
-              </svg>
-            )}
+            <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              {compactionPhase === "pending" ? (
+                <Loader2 className="size-3.5 shrink-0 animate-spin text-warning" />
+              ) : (
+                <svg
+                  className="block shrink-0 -rotate-90"
+                  width={size}
+                  height={size}
+                  viewBox={`0 0 ${size} ${size}`}
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="none"
+                    className="stroke-muted"
+                    strokeWidth={strokeWidth}
+                  />
+                  <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="none"
+                    className={ringClass}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                    style={{ transition: "stroke-dashoffset 0.3s ease" }}
+                  />
+                </svg>
+              )}
+            </span>
           </Button>
         }
       />
