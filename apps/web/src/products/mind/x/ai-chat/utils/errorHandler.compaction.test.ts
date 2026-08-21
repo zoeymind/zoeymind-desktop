@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { classifyChatError, normalizeChatError } from "./errorHandler"
+import { classifyChatError, isClientRuntimeError, normalizeChatError } from "./errorHandler"
 
 describe("context overflow errors", () => {
   it("prefers structured provider codes", () => {
@@ -17,5 +17,16 @@ describe("context overflow errors", () => {
   it("round-trips only the normalized UI code", () => {
     expect(classifyChatError("CONTEXT_OVERFLOW")).toBe("CONTEXT_OVERFLOW")
     expect(normalizeChatError(new Error("connection reset"))).toBe("REQUEST_FAILED")
+  })
+
+  it("does not classify React runtime invariants as provider failures", () => {
+    const error = new Error(
+      "Maximum update depth exceeded. This can happen when a component repeatedly calls setState"
+    )
+    expect(normalizeChatError(error)).toBe("CLIENT_RUNTIME_ERROR")
+    expect(classifyChatError("CLIENT_RUNTIME_ERROR")).toBe("CLIENT_RUNTIME_ERROR")
+    expect(isClientRuntimeError(error)).toBe(true)
+    expect(isClientRuntimeError("CLIENT_RUNTIME_ERROR")).toBe(true)
+    expect(isClientRuntimeError(new Error("connection reset"))).toBe(false)
   })
 })

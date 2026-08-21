@@ -16,14 +16,23 @@
 import type { UIMessage } from "@ai-sdk/react"
 import { logger } from "@zoeymind/logger"
 
-export type ChatErrorCode = "INSUFFICIENT_QUOTA" | "CONTEXT_OVERFLOW" | "REQUEST_FAILED"
+export type ChatErrorCode =
+  | "INSUFFICIENT_QUOTA"
+  | "CONTEXT_OVERFLOW"
+  | "REQUEST_FAILED"
+  | "CLIENT_RUNTIME_ERROR"
 
 interface GenericPart {
   type: string
   errorText?: string
 }
 
-const KNOWN_CODES: readonly string[] = ["INSUFFICIENT_QUOTA", "CONTEXT_OVERFLOW", "REQUEST_FAILED"]
+const KNOWN_CODES: readonly string[] = [
+  "INSUFFICIENT_QUOTA",
+  "CONTEXT_OVERFLOW",
+  "REQUEST_FAILED",
+  "CLIENT_RUNTIME_ERROR",
+]
 
 /**
  * 解析后端返回的错误码. 后端要么直接给字符串 (流模式), 要么 wrap 成 JSON
@@ -63,8 +72,25 @@ const OVERFLOW_PHRASES = [
   "too many tokens",
   "context window",
 ]
+const REACT_RUNTIME_PHRASES = [
+  "maximum update depth exceeded",
+  "too many re-renders",
+  "minified react error",
+]
+
+/** React 自身的不变量错误不是 AI provider / 网络错误，不能伪装成 REQUEST_FAILED。 */
+export function isClientRuntimeError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : ""
+  const normalized = message.toLowerCase()
+  return (
+    normalized === "client_runtime_error" ||
+    REACT_RUNTIME_PHRASES.some(phrase => normalized.includes(phrase))
+  )
+}
+
 
 export function normalizeChatError(error: unknown): ChatErrorCode {
+  if (isClientRuntimeError(error)) return "CLIENT_RUNTIME_ERROR"
   const candidate = error as {
     statusCode?: number
     status?: number

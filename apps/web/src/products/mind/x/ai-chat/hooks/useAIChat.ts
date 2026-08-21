@@ -22,7 +22,12 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } fro
 import { useOrganization } from "@/shared/app-shared"
 import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
 import { logger } from "@zoeymind/logger"
-import { addErrorToMessages, classifyChatError, type ChatErrorCode } from "../utils/errorHandler"
+import {
+  addErrorToMessages,
+  classifyChatError,
+  isClientRuntimeError,
+  type ChatErrorCode,
+} from "../utils/errorHandler"
 import type { MindmapContextManager } from "../../ai-chat/MindmapContextManager"
 import type { PersistedSnapshot } from "../../ai-chat/storage/chatDB"
 import type { ChatRuntime } from "./internal/chatRuntime"
@@ -114,10 +119,21 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
     stop,
     error: chatError,
   } = useChat({
+    // AI SDK 默认每个流 chunk / tool output 都同步通知 React。多工具轮次会在
+    // WKWebView 中形成高密度外部 store 更新；官方建议节流 UI 通知以避免更新深度溢出。
+    experimental_throttle: 50,
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onError: error => {
       const errorMessage = error instanceof Error ? error.message : String(error)
+      if (isClientRuntimeError(error)) {
+        lastErrorCodeRef.current = null
+        logger.error("[useAIChat] 客户端运行时错误", {
+          code: "CLIENT_RUNTIME_ERROR",
+          raw: errorMessage.slice(0, 200),
+        })
+        return
+      }
       const code = classifyChatError(errorMessage)
       lastErrorCodeRef.current = code
       markOverflowError(code, getAttemptKey())
@@ -137,8 +153,8 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
       })
     },
     onToolCall: event => {
-      // AI SDK 要求 client tool 在 onToolCall 中 fire-and-forget；await 会与
-      // addToolOutput 的同步 message update 形成重入，尤其并行工具会触发更新深度错误。
+      // SDK 回调保持非阻塞；dispatcher 内部仍须等待执行结果和 addToolOutput 持久化。
+      // addToolOutput 自身由 AI SDK SerialJobExecutor 串行提交，不在这里建立第二条队列。
       void dispatcher.onToolCall(event)
     },
   })
@@ -183,6 +199,7 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
   // 每次流式更新都重排定时器.
   useEffect(() => {
     if (!chatError) return
+    if (isClientRuntimeError(chatError)) return
     const timer = setTimeout(() => {
       const store = useAIChatV2Store.getState()
       const latest = getModuleAIChatRuntime()
