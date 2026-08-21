@@ -67,6 +67,11 @@ export function read(id: string): PendingProject | undefined {
   return store.get(id)
 }
 
+/** 恢复 tab 继续覆盖原备份；普通 draft/file 使用自己的项目 ID。 */
+export function recoveryStorageId(id: string): string {
+  return store.get(id)?.recovery?.recoveryId ?? id
+}
+
 export function clear(id: string): void {
   store.delete(id)
 }

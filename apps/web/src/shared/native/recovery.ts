@@ -9,8 +9,8 @@
  *
  *   - 干净保存或干净退出 = `clearRecovery(projectId)`；不要留残余。
  *
- *   - 启动检测 = `listRecoveries()`：读 recovery 目录返回 { projectId, sourcePath, savedAt }[]。
- *     App boot 时若非空，弹 <RecoveryDialog>，用户 Reopen（打开+删recovery）或 Discard（只删）。
+ *   - 启动检测 = `scanRecoveries()`：读取 recovery 目录并弹出 `<RecoveryDialog>`。
+ *     Restore 打开为脏文档并保留备份，直到用户保存或丢弃恢复文档；Discard 立即删除备份。
  *
  * 存储格式：本身就是 .zmind bundle，多打一个 recovery.json 描述 sourcePath / savedAt / projectId。
  */
@@ -79,6 +79,14 @@ export async function clearRecovery(projectId: string): Promise<void> {
   if (await exists(path)) {
     await remove(path)
   }
+}
+
+export async function clearCorruptRecovery(filename: string): Promise<void> {
+  if (!filename.endsWith(".zmind") || filename.includes("/") || filename.includes("\\")) {
+    throw new Error("无效的容灾文件名")
+  }
+  const path = await join(await recoveryDir(), filename)
+  if (await exists(path)) await remove(path)
 }
 
 export async function scanRecoveries(): Promise<RecoveryScan> {

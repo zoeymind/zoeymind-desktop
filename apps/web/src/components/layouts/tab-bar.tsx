@@ -131,7 +131,8 @@ export function TabBar({ isMac = true }: { isMac?: boolean } = {}) {
         <CloseConfirmDialog
           tab={pendingTab}
           onCancel={() => setPendingCloseId(null)}
-          onDiscard={() => {
+          onDiscard={async () => {
+            await projectSessionRegistry.get(pendingTab.id)?.getState().commands.discard?.()
             if (pendingTab.kind !== "file") pendingProjects.clear(pendingTab.id)
             projectSessionRegistry.get(pendingTab.id)?.getState().setDirty(false)
             closeTab(pendingTab.id)

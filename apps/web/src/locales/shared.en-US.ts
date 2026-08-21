@@ -109,13 +109,16 @@ export default {
   recovery: {
     title: "{{count}} files contain unsaved changes",
     description:
-      "The app did not close normally. Cancel to preserve every record, or restore all files now.",
+      "The app did not close normally. Select files to restore; unselected recovery records will be permanently discarded.",
     untitled: "Untitled mind map",
     sourceMissing: "Original file unavailable; it will be restored as an unsaved document",
-    restoreAll: "Restore all",
-    restoring: "Restoring…",
+    restoreSelectedDiscardOthers: "Restore selected and discard others ({{count}})",
+    discardAll: "Discard all",
+    resolving: "Resolving…",
+    selectFile: "Select {{name}} for recovery",
     recoveredTabTitle: "{{name}} — Recovered",
-    corruptCount: "{{count}} additional recovery records are corrupt and will be preserved.",
+    corruptCount:
+      "{{count}} additional recovery records are corrupt and cannot be restored; they will be discarded when confirmed.",
   },
   notifications: {
     bell: {

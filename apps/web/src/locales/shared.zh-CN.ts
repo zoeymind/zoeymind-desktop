@@ -105,13 +105,15 @@ export default {
   },
   recovery: {
     title: "检测到 {{count}} 个包含未保存修改的文件",
-    description: "应用上次未正常关闭。可以取消并保留全部记录，或一次恢复所有文件。",
+    description: "应用上次未正常关闭。选择需要恢复的文件，未选择的容灾记录将永久丢弃。",
     untitled: "未命名思维导图",
     sourceMissing: "原文件不可用，将作为未保存文档恢复",
-    restoreAll: "恢复全部",
-    restoring: "正在恢复…",
+    restoreSelectedDiscardOthers: "恢复所选并丢弃其余（{{count}}）",
+    discardAll: "丢弃全部",
+    resolving: "正在处理…",
+    selectFile: "选择恢复 {{name}}",
     recoveredTabTitle: "{{name}} — 已恢复",
-    corruptCount: "另有 {{count}} 个恢复记录已损坏，将继续保留。",
+    corruptCount: "另有 {{count}} 个容灾记录已损坏，无法恢复，确认后将一并丢弃。",
   },
   notifications: {
     bell: {

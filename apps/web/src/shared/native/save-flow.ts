@@ -112,6 +112,8 @@ export function useSaveFlow(projectId: string | null) {
     renderer: null,
   })
 
+  const recoveryStorageId = projectId ? pendingProjects.recoveryStorageId(projectId) : null
+
   // 首次挂载：解析 path
   useEffect(() => {
     let mounted = true
@@ -149,18 +151,20 @@ export function useSaveFlow(projectId: string | null) {
   }, [])
 
   const scheduleRecovery = useCallback(() => {
-    if (!projectId) return
+    if (!recoveryStorageId) return
     const state = stateRef.current
     clearTimeout(state.timer ?? undefined)
     state.timer = setTimeout(() => {
       if (!state.source) return
       const bundle = nowBundle(state.source, state.createdAt)
-      enqueueRecoveryWrite(projectId, () => writeRecovery(projectId, bundle, state.path))
+      enqueueRecoveryWrite(recoveryStorageId, () =>
+        writeRecovery(recoveryStorageId, bundle, state.path)
+      )
     }, RECOVERY_DEBOUNCE_MS)
-  }, [projectId])
+  }, [recoveryStorageId])
 
   const flushRecovery = useCallback(async () => {
-    if (!projectId || !isDirty) return
+    if (!recoveryStorageId || !isDirty) return
     const state = stateRef.current
     if (state.timer) {
       clearTimeout(state.timer)
@@ -168,10 +172,12 @@ export function useSaveFlow(projectId: string | null) {
     }
     if (state.source) {
       const bundle = nowBundle(state.source, state.createdAt)
-      enqueueRecoveryWrite(projectId, () => writeRecovery(projectId, bundle, state.path))
+      enqueueRecoveryWrite(recoveryStorageId, () =>
+        writeRecovery(recoveryStorageId, bundle, state.path)
+      )
     }
-    await flushRecoveryWrites(projectId)
-  }, [projectId, isDirty])
+    await flushRecoveryWrites(recoveryStorageId)
+  }, [recoveryStorageId, isDirty])
 
   const markDirty = useCallback(() => {
     setDirty(true)
@@ -238,7 +244,14 @@ export function useSaveFlow(projectId: string | null) {
       state.revision = await readFileRevision(picked)
       state.realProjectId = realId
       state.source.name = fileName
-      await Promise.all([rememberSaveDir(picked), clearRecovery(projectId), clearRecovery(realId)])
+      await Promise.all([
+        rememberSaveDir(picked),
+        clearRecovery(projectId),
+        clearRecovery(realId),
+        ...(recoveryStorageId && recoveryStorageId !== projectId
+          ? [clearRecovery(recoveryStorageId)]
+          : []),
+      ])
       setDirty(false)
       bumpProjects()
       useTabs.getState().promoteDraftInPlace(projectId, realId, fileName)
@@ -272,7 +285,13 @@ export function useSaveFlow(projectId: string | null) {
       name: fileName,
       nodeCount: state.source.nodeCount ?? 0,
     })
-    await Promise.all([clearRecovery(effectiveId), clearRecovery(projectId)])
+    await Promise.all([
+      clearRecovery(effectiveId),
+      clearRecovery(projectId),
+      ...(recoveryStorageId && recoveryStorageId !== projectId
+        ? [clearRecovery(recoveryStorageId)]
+        : []),
+    ])
     if (state.timer) {
       clearTimeout(state.timer)
       state.timer = null
@@ -280,7 +299,7 @@ export function useSaveFlow(projectId: string | null) {
     setDirty(false)
     bumpProjects()
     setConflict(null)
-  }, [projectId, setDirty])
+  }, [projectId, recoveryStorageId, setDirty])
 
   const saveAs = useCallback(
     async (newPath: string) => {
@@ -339,9 +358,14 @@ export function useSaveFlow(projectId: string | null) {
 
   const discardAndClose = useCallback(async () => {
     if (!projectId) return
-    await clearRecovery(projectId)
+    await Promise.all([
+      clearRecovery(projectId),
+      ...(recoveryStorageId && recoveryStorageId !== projectId
+        ? [clearRecovery(recoveryStorageId)]
+        : []),
+    ])
     setDirty(false)
-  }, [projectId, setDirty])
+  }, [projectId, recoveryStorageId, setDirty])
 
   // window 生命周期 hook：blur / beforeunload 立刻 flush recovery
   useEffect(() => {

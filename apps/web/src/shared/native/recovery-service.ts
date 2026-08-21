@@ -1,5 +1,11 @@
 import { useTabs } from "@/shared/tabs/store"
-import { readRecoveryBundle, type RecoveryDescriptor } from "./recovery"
+import {
+  clearCorruptRecovery,
+  clearRecovery,
+  readRecoveryBundle,
+  type RecoveryDescriptor,
+  type RecoveryScan,
+} from "./recovery"
 import * as pendingProjects from "./pending-projects"
 
 export interface RecoverySuccess {
@@ -57,4 +63,24 @@ export async function restoreAllRecoveries(
   const newest = succeeded.at(-1)
   if (newest) useTabs.getState().setActive(newest.tabId)
   return { succeeded, failed }
+}
+
+/** 用户明确放弃本批容灾数据；所有记录成功删除后，启动弹窗才可关闭。 */
+export async function discardRecoveryScan(scan: RecoveryScan): Promise<void> {
+  await Promise.all([
+    ...scan.valid.map(descriptor => clearRecovery(descriptor.projectId)),
+    ...scan.corrupt.map(descriptor => clearCorruptRecovery(descriptor.filename)),
+  ])
+}
+
+/** 恢复所选记录，并永久丢弃其余记录；恢复失败的所选记录继续保留。 */
+export async function resolveRecoverySelection(
+  scan: RecoveryScan,
+  selectedProjectIds: ReadonlySet<string>
+): Promise<RecoveryBatchResult> {
+  const selected = scan.valid.filter(descriptor => selectedProjectIds.has(descriptor.projectId))
+  const discarded = scan.valid.filter(descriptor => !selectedProjectIds.has(descriptor.projectId))
+  await discardRecoveryScan({ valid: discarded, corrupt: scan.corrupt })
+  const result = await restoreAllRecoveries(selected)
+  return result
 }

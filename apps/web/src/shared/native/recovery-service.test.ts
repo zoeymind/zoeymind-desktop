@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const recovery = vi.hoisted(() => ({
+  clearCorruptRecovery: vi.fn(),
   clearRecovery: vi.fn(),
   readRecoveryBundle: vi.fn(),
 }))
@@ -11,7 +12,11 @@ vi.mock("./recovery", () => recovery)
 vi.mock("./pending-projects", () => ({ stashRecovered: pending.stashRecovered }))
 vi.mock("@/shared/tabs/store", () => ({ useTabs: { getState: () => tabs } }))
 
-import { restoreAllRecoveries } from "./recovery-service"
+import {
+  discardRecoveryScan,
+  resolveRecoverySelection,
+  restoreAllRecoveries,
+} from "./recovery-service"
 
 const bundle = {
   tree: { data: { text: "Recovered" }, children: [] },
@@ -82,5 +87,59 @@ describe("restoreAllRecoveries", () => {
     expect(result.failed).toEqual([{ recoveryId: "missing", message: "恢复文件不存在" }])
     expect(tabs.openTab).toHaveBeenCalledOnce()
     expect(recovery.clearRecovery).not.toHaveBeenCalled()
+  })
+})
+
+describe("discardRecoveryScan", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("permanently consumes valid and corrupt recovery records", async () => {
+    await discardRecoveryScan({
+      valid: [descriptor("first", 1), descriptor("second", 2)],
+      corrupt: [{ filename: "broken.zmind", message: "invalid zip" }],
+    })
+
+    expect(recovery.clearRecovery).toHaveBeenCalledTimes(2)
+    expect(recovery.clearRecovery).toHaveBeenNthCalledWith(1, "first")
+    expect(recovery.clearRecovery).toHaveBeenNthCalledWith(2, "second")
+    expect(recovery.clearCorruptRecovery).toHaveBeenCalledWith("broken.zmind")
+  })
+})
+
+describe("resolveRecoverySelection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    recovery.readRecoveryBundle.mockResolvedValue(bundle)
+    pending.stashRecovered.mockImplementation(
+      ({ recoveryId }: { recoveryId: string }) => `unsaved-recovery-${recoveryId}`
+    )
+  })
+
+  it("restores selected records and permanently discards the rest", async () => {
+    const result = await resolveRecoverySelection(
+      {
+        valid: [descriptor("restore", 1), descriptor("discard", 2)],
+        corrupt: [{ filename: "broken.zmind", message: "invalid zip" }],
+      },
+      new Set(["restore"])
+    )
+
+    expect(result.succeeded.map(item => item.recoveryId)).toEqual(["restore"])
+    expect(pending.stashRecovered).toHaveBeenCalledOnce()
+    expect(recovery.clearRecovery).toHaveBeenCalledWith("discard")
+    expect(recovery.clearRecovery).not.toHaveBeenCalledWith("restore")
+    expect(recovery.clearCorruptRecovery).toHaveBeenCalledWith("broken.zmind")
+  })
+
+  it("keeps a selected record when restoring it fails", async () => {
+    recovery.readRecoveryBundle.mockResolvedValue(null)
+
+    const result = await resolveRecoverySelection(
+      { valid: [descriptor("failed", 1)], corrupt: [] },
+      new Set(["failed"])
+    )
+
+    expect(result.failed).toEqual([{ recoveryId: "failed", message: "恢复文件不存在" }])
+    expect(recovery.clearRecovery).not.toHaveBeenCalledWith("failed")
   })
 })
