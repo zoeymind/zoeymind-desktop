@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy cloud/collab file remains intentionally unchecked */
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { logger } from "@zoeymind/logger"
 import { useEffect, useRef } from "react"
@@ -44,7 +45,7 @@ interface AppPresetMindmapStyles {
   }
 }
 
-function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
+export function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
   const styles = getComputedStyle(document.documentElement)
   const background = readThemeToken(styles, "--background", "#ffffff")
   const foreground = readThemeToken(styles, "--foreground", "#111111")
@@ -132,10 +133,6 @@ function createAppPresetMindmapStyles(): AppPresetMindmapStyles {
       },
     },
   }
-}
-
-function createAppPresetMindmapThemeConfig(): Record<string, unknown> {
-  return createAppPresetMindmapStyles().themeConfig
 }
 
 function applyAppPresetMindmapStyles(instance: MindMap): void {

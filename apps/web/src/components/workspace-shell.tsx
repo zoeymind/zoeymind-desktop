@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { Loader2, PanelLeft } from "lucide-react"
 import { MindMapCanvas } from "@/products/mind/features/mindmap/components/MindMapCanvas"
 import { ProjectListPage } from "@/products/mind/features/mindmap/pages/ProjectsPage"
+import { TestCaseRulesPage } from "@/products/mind/features/mindmap/pages/TestCaseRulesPage"
 import {
   ProjectsSidebar,
   type ProjectView,
@@ -86,13 +87,16 @@ function HomePane({ visible }: { visible: boolean }) {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [searchText, setSearchText] = useState("")
+  const [rulesOpen, setRulesOpen] = useState(false)
 
   const handleViewChange = useCallback((next: ProjectView) => {
+    setRulesOpen(false)
     setActiveView(next)
     setActiveFolderId(null)
   }, [])
 
   const handleSelectFolder = useCallback((id: string) => {
+    setRulesOpen(false)
     setActiveView("folder")
     setActiveFolderId(id)
   }, [])
@@ -108,6 +112,8 @@ function HomePane({ visible }: { visible: boolean }) {
         activeFolderId={activeFolderId}
         onViewChange={handleViewChange}
         onSelectFolder={handleSelectFolder}
+        rulesOpen={rulesOpen}
+        onOpenRules={() => setRulesOpen(true)}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(v => !v)}
         activeWorkspaceId={null}
@@ -126,15 +132,19 @@ function HomePane({ visible }: { visible: boolean }) {
           <PanelLeft className="size-4" />
         </button>
       )}
-      <div className="flex flex-1 min-w-0 min-h-0">
-        <ProjectListPage
-          view={activeView}
-          folderId={activeFolderId}
-          searchText={searchText}
-          onClearSearch={() => setSearchText("")}
-          workspaceId={null}
-          workspaceName={null}
-        />
+      <div className="flex min-h-0 min-w-0 flex-1">
+        {rulesOpen ? (
+          <TestCaseRulesPage onClose={() => setRulesOpen(false)} />
+        ) : (
+          <ProjectListPage
+            view={activeView}
+            folderId={activeFolderId}
+            searchText={searchText}
+            onClearSearch={() => setSearchText("")}
+            workspaceId={null}
+            workspaceName={null}
+          />
+        )}
       </div>
     </div>
   )

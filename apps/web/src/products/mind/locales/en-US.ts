@@ -1115,6 +1115,45 @@ export default {
       welcomeStart: "Create project",
       welcomeTitle: "Welcome to Zoey Mind",
     },
+    rules: {
+      entry: "Test case format",
+      title: "Test case format",
+      description:
+        "ZoeyMind identifies modules, test cases, and steps from node icons, hierarchy, and the & separator.",
+      nodeTypesTitle: "Node types",
+      moduleName: "Module",
+      moduleDescription: "A node with the flag icon is identified as a module.",
+      caseName: "Test case",
+      caseDescription: "A node with a P1, P2, or P3 priority icon is identified as a test case.",
+      stepName: "Step",
+      stepDescription:
+        "A plain child node under a test case, without a module or priority icon, is identified as a step.",
+      textRulesTitle: "Text separator rules",
+      caseTextLabel: "Test case node",
+      caseTextFormat: "Case title & Precondition",
+      stepTextLabel: "Step node",
+      stepTextFormat: "Operation & Expected result",
+      separatorNote:
+        "Text on each side of & is parsed separately. Without &, only the left field is kept and the right field is empty.",
+      structureTitle: "Node hierarchy",
+      rootExample: "Project topic",
+      moduleExample: "Module name",
+      caseExample: "Case title & Precondition",
+      stepExample: "Operation & Expected result",
+      structureDescription:
+        "Place modules under the project topic; place submodules or test cases under a module; place only steps under a test case. Direct children of one module cannot mix submodules and test cases.",
+      priorityTitle: "Priority markers",
+      priorityName: "P1 / P2 / P3",
+      canvasCaption: "Rendered from the same mind map engine and node data as the editor.",
+      priorityDescription:
+        "These markers distinguish test case priority and are also how the system identifies test case nodes.",
+      shortcutsTitle: "Node shortcuts",
+      moduleShortcut: "Mark the selected node as a module",
+      priorityShortcut: "Mark the selected node as a P1, P2, or P3 test case",
+      nodeShortcut: "Enter creates a sibling; Tab creates a child",
+      footer:
+        "These rules apply to .zmind editing, search, and XMind / MeterSphere format conversion.",
+    },
     usage: {
       fraction: "{{used}} / {{limit}}",
       unlimited: "{{used}}",

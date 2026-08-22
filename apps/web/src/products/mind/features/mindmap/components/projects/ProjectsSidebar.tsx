@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy cloud/collab file remains intentionally unchecked */
 // @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 /**
  * Mind projects 侧栏.
@@ -16,7 +17,14 @@
  *
  * 通知铃在页面 PageHeader 右上, 不在 sidebar 内.
  */
-import { LayoutGrid, Star, Search as SearchIcon, PanelLeftClose, Plus } from "lucide-react"
+import {
+  BookOpen,
+  LayoutGrid,
+  Star,
+  Search as SearchIcon,
+  PanelLeftClose,
+  Plus,
+} from "lucide-react"
 import { cn, Button } from "@zoeymind/ui"
 import { useState } from "react"
 import { useTranslation } from "@zoeymind/i18n"
@@ -40,6 +48,8 @@ interface ProjectsSidebarProps {
   onViewChange: (view: ProjectView) => void
   onSelectFolder: (id: string) => void
   onCreated?: () => void
+  rulesOpen: boolean
+  onOpenRules: () => void
   collapsed: boolean
   onToggleCollapse: () => void
   /** 当前选中的 workspace id; null 表示"全部导图" filter. */
@@ -70,6 +80,8 @@ export function ProjectsSidebar({
   onViewChange,
   onSelectFolder,
   onCreated,
+  rulesOpen,
+  onOpenRules,
   collapsed,
   onToggleCollapse,
   activeWorkspaceId,
@@ -208,6 +220,22 @@ export function ProjectsSidebar({
               onSelectFolder={onSelectFolder}
             />
           </nav>
+          <div className="shrink-0 border-t border-border/50 px-2 py-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onOpenRules}
+              className={cn(
+                "h-9 w-full justify-start gap-2.5 rounded-md px-2.5 text-sm",
+                rulesOpen
+                  ? "bg-accent font-medium text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent/50"
+              )}
+            >
+              <BookOpen className="size-4 shrink-0" aria-hidden="true" />
+              {t("projects.rules.entry")}
+            </Button>
+          </div>
           <div className="flex shrink-0 items-center border-t border-border/50 px-2 py-1">
             <AppVersionStatus className="justify-start" />
           </div>
