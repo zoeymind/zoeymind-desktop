@@ -130,4 +130,4 @@ Full acceptance commands for CLI/MCP, Portal, Broker, and native code are in [`R
 
 Apache License 2.0. You may freely use, modify, distribute, and use commercially, provided that you retain [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE) and preserve the attribution notices in the source.
 
-Copyright © 2026 ZoeyMind. Maintained by [@caishilong](https://github.com/caishilong).
+Copyright © 2026 ZoeyMind. Maintained by [@chacelow](https://github.com/chacelow).

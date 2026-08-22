@@ -130,4 +130,4 @@ CLI/MCP、Portal、Broker、native 完整验收命令见 [`RELEASE.md`](./RELEAS
 
 Apache License 2.0。允许自由使用、修改、商用与再分发；只需保留 [`LICENSE`](./LICENSE) 与 [`NOTICE`](./NOTICE)，并在源码中保留归属声明。
 
-Copyright © 2026 ZoeyMind. Maintained by [@caishilong](https://github.com/caishilong).
+Copyright © 2026 ZoeyMind. Maintained by [@chacelow](https://github.com/chacelow).
