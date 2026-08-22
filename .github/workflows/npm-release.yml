@@ -1,21 +1,12 @@
 name: npm Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: Exact CLI and MCP version to publish, for example 0.2.0
-        required: true
-        type: string
-      tag:
-        description: npm dist-tag
-        required: true
-        default: latest
-        type: choice
-        options: [latest, next]
+  push:
+    tags:
+      - "v*.*.*"
 
 concurrency:
-  group: npm-release
+  group: npm-release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -52,17 +43,21 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Apply and verify release version
+      - name: Verify tag matches package versions
         env:
-          VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          node -e 'if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(process.env.VERSION)) process.exit(1)'
-          pnpm --filter @zoeymind/cli exec npm version "$VERSION" --no-git-tag-version --allow-same-version
-          pnpm --filter @zoeymind/mcp exec npm version "$VERSION" --no-git-tag-version --allow-same-version
+          expected="${REF_NAME#v}"
+          cli_version="$(node -p "require('./apps/cli/package.json').version")"
+          mcp_version="$(node -p "require('./apps/mcp/package.json').version")"
+          if [[ "$cli_version" != "$expected" || "$mcp_version" != "$expected" ]]; then
+            echo "tag $REF_NAME does not match CLI ($cli_version) / MCP ($mcp_version) versions" >&2
+            exit 1
+          fi
       - run: pnpm build:packages
       - name: Publish with npm trusted publishing
         env:
-          TAG: ${{ inputs.tag }}
+          TAG: latest
         run: |
           (cd apps/cli && npm publish --provenance --access public --tag "$TAG")
           (cd apps/mcp && npm publish --provenance --access public --tag "$TAG")
