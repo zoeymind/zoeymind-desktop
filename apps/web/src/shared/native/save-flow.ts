@@ -111,6 +111,18 @@ export function useSaveFlow(projectId: string | null) {
     createdAt: 0,
     renderer: null,
   })
+  // preSave hooks: 保存写盘前的额外准备工作 (例如 diff-view 的 tombstone flush).
+  // hook 抛错会中断 save 并向上抛; 顺序按注册顺序.
+  const preSaveHooksRef = useRef<Set<() => Promise<void> | void>>(new Set())
+  const registerPreSave = useCallback((fn: () => Promise<void> | void) => {
+    preSaveHooksRef.current.add(fn)
+    return () => {
+      preSaveHooksRef.current.delete(fn)
+    }
+  }, [])
+  const runPreSaveHooks = useCallback(async () => {
+    for (const fn of preSaveHooksRef.current) await fn()
+  }, [])
 
   const recoveryStorageId = projectId ? pendingProjects.recoveryStorageId(projectId) : null
 
@@ -192,6 +204,7 @@ export function useSaveFlow(projectId: string | null) {
     if (!projectId) return
     const state = stateRef.current
     if (!state.source) return
+    await runPreSaveHooks()
 
     if (pendingProjects.isPending(projectId) && !state.path) {
       const dir = await preferredSaveDir()
@@ -299,13 +312,14 @@ export function useSaveFlow(projectId: string | null) {
     setDirty(false)
     bumpProjects()
     setConflict(null)
-  }, [projectId, recoveryStorageId, setDirty])
+  }, [projectId, recoveryStorageId, setDirty, runPreSaveHooks])
 
   const saveAs = useCallback(
     async (newPath: string) => {
       if (!projectId) return
       const state = stateRef.current
       if (!state.source) return
+      await runPreSaveHooks()
       if ((await findByPath(newPath)) || (await exists(newPath))) {
         throw new Error(`目标文件已存在：${newPath}`)
       }
@@ -323,13 +337,14 @@ export function useSaveFlow(projectId: string | null) {
       bumpProjects()
       useTabs.getState().openTab({ id: copyId, kind: "file", title: fileName, projectId: copyId })
     },
-    [projectId]
+    [projectId, runPreSaveHooks]
   )
 
   const overwrite = useCallback(async () => {
     if (!projectId) return
     const state = stateRef.current
     if (!state.path || !state.source) return
+    await runPreSaveHooks()
     const fileName = fileBasenameNoExt(state.path)
     await writeBundle(state.path, nowBundle({ ...state.source, name: fileName }, state.createdAt))
     state.revision = await readFileRevision(state.path)
@@ -340,7 +355,7 @@ export function useSaveFlow(projectId: string | null) {
     setConflict(null)
     setDirty(false)
     bumpProjects()
-  }, [projectId, setDirty])
+  }, [projectId, setDirty, runPreSaveHooks])
 
   const reloadFromDisk = useCallback(async () => {
     const state = stateRef.current
@@ -408,6 +423,7 @@ export function useSaveFlow(projectId: string | null) {
       conflict,
       registerBundleSource,
       registerPreviewRenderer,
+      registerPreSave,
       save,
       saveAs,
       flushRecovery,
@@ -422,6 +438,7 @@ export function useSaveFlow(projectId: string | null) {
       conflict,
       registerBundleSource,
       registerPreviewRenderer,
+      registerPreSave,
       save,
       saveAs,
       flushRecovery,

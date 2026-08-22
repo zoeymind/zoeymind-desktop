@@ -1,4 +1,4 @@
-import { exists, stat } from "@tauri-apps/plugin-fs"
+import { stat } from "@tauri-apps/plugin-fs"
 
 export interface FileRevision {
   size: number
@@ -39,8 +39,11 @@ function mtimeMilliseconds(value: Date | string | null): number {
 }
 
 export async function readFileRevision(path: string): Promise<FileRevision | null> {
-  if (!(await exists(path))) return null
-  const info = await stat(path)
+  // 单次 stat + catch: 如果文件不存在或读取失败, 返回 null.
+  // 之前的 exists→stat 有 TOCTOU: 中间被其他进程/流程删掉会抛
+  // "failed to get metadata of path ... No such file or directory".
+  const info = await stat(path).catch(() => null)
+  if (!info) return null
   return { size: info.size, mtime: mtimeMilliseconds(info.mtime) }
 }
 
@@ -52,11 +55,14 @@ export async function assertFileRevision(
   path: string,
   expected: FileRevision | null
 ): Promise<void> {
+  // 没有 baseline (mount 挂载 revision 未加载完 / 文件是新建) — 跳过冲突检查.
+  // 调用方可以在 writeBundle 后再 readFileRevision 补 baseline.
+  if (!expected) return
   const actual = await readFileRevision(path)
   if (!actual) {
     throw new FileConflictError(path, FILE_CONFLICT_KIND.MISSING, expected, null)
   }
-  if (!expected || !revisionsEqual(expected, actual)) {
+  if (!revisionsEqual(expected, actual)) {
     throw new FileConflictError(path, FILE_CONFLICT_KIND.MODIFIED, expected, actual)
   }
 }

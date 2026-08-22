@@ -1,0 +1,58 @@
+/*
+ * diff-view.css — 三种 diff 状态的画布样式.
+ *
+ * 引擎给每个节点 SVG group 打了 .smm-node; 我们在此基础上叠加:
+ *   .smm-diff-add     新增节点     绿色 dashed 边框
+ *   .smm-diff-modify  文本/图标改  黄色 solid 边框
+ *   .smm-diff-move    父节点变化   蓝色 solid 边框
+ *
+ * 三种可能叠加 (modify+move 常见), 用 outline 而非 border/stroke 避免和
+ * 引擎自己在 shapeNode 上画的边框冲突; outline 只影响 group 边界盒.
+ *
+ * 引擎的 .active / .smm-node-highlight 优先级更高 — 用户选中节点时
+ * 依旧看激活样式, 松开选中回落到 diff 样式.
+ */
+
+.smm-node.smm-diff-add > .smm-node-shape {
+  stroke: var(--diff-add-color, #10b981);
+  stroke-width: 2.5px;
+  stroke-dasharray: 6 3;
+}
+
+.smm-node.smm-diff-modify > .smm-node-shape {
+  stroke: var(--diff-modify-color, #f59e0b);
+  stroke-width: 2.5px;
+}
+
+.smm-node.smm-diff-move > .smm-node-shape {
+  stroke: var(--diff-move-color, #3b82f6);
+  stroke-width: 2.5px;
+}
+
+/* modify + move 同时命中: move 蓝色优先, 因为结构变化更值得注意 */
+.smm-node.smm-diff-modify.smm-diff-move > .smm-node-shape {
+  stroke: var(--diff-move-color, #3b82f6);
+}
+
+/* add + modify: 视觉冗余, add 优先 (新节点里的所有 text 都是新的) */
+.smm-node.smm-diff-add.smm-diff-modify > .smm-node-shape {
+  stroke: var(--diff-add-color, #10b981);
+  stroke-dasharray: 6 3;
+}
+
+/*
+ * .smm-diff-tombstone —— 软删除节点: 保留在树里但半透明 + 不可交互 + 红边框.
+ * simple-mind-map 里每个节点 group 是 nodeDraw 的直接子, 不嵌套, 所以子孙
+ * 节点需要各自打 tombstone class (由 tombstone.ts 递归 pendingDelete=true 实现).
+ * pointer-events:none 关掉 click/drag/hover, 保存后 flushTombstones 才真删.
+ */
+.smm-node.smm-diff-tombstone {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.smm-node.smm-diff-tombstone > .smm-node-shape {
+  stroke: var(--diff-remove-color, #ef4444);
+  stroke-width: 2.5px;
+  stroke-dasharray: 4 4;
+}

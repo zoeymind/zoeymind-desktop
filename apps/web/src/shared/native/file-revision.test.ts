@@ -32,7 +32,7 @@ describe("file revision guard", () => {
   })
 
   it("blocks a save after the disk file disappeared", async () => {
-    fs.exists.mockResolvedValue(false)
+    fs.stat.mockRejectedValue(new Error("No such file or directory"))
 
     await expect(
       assertFileRevision("/vault/a.zmind", { size: 42, mtime: 1234 })

@@ -38,4 +38,5 @@ EOF
 fi
 
 # 通过确认后跑常规质量门
+node "$(git rev-parse --show-toplevel)/scripts/check-scaffolding.mjs"
 pnpm exec lint-staged

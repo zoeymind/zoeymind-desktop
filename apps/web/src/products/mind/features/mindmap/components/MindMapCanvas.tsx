@@ -55,6 +55,8 @@ import {
 import { open as openNativeDialog } from "@tauri-apps/plugin-dialog"
 import { useSaveFlowContext } from "@/shared/native"
 import { useTabs } from "@/shared/tabs/store"
+import { DiffPopover, DiffSummary, useDiffTracking } from "@/products/mind/diff-view"
+import "@/products/mind/diff-view/diff-view.css"
 
 // 初始化插件
 initPlugins()
@@ -80,6 +82,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
   visibleRef.current = visible
   const [reloadToken, setReloadToken] = useState(0)
   const saveFlow = useSaveFlowContext()
+  useDiffTracking()
   const formatPanelRef = useRef<FormatPanelRef>(null)
 
   // 🎯 从 Context 获取 workspaceId 和 cloudMode (页面级作用域)
@@ -654,6 +657,8 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
                     onPrimary={() => void handleLocateMissingFile()}
                   />
                 )}
+                <DiffSummary />
+                <DiffPopover containerRef={containerRef} />
                 <MindMapScrollbar />
                 <PreviewIndicator />
                 <CollaborationCursorLayer

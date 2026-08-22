@@ -1,0 +1,5 @@
+export { useDiffTracking, useDiffState } from "./useDiffTracking"
+export { DiffSummary } from "./DiffSummary"
+export { DiffPopover } from "./DiffPopover"
+export type { DiffState, NodeSnapshot } from "./diff-engine"
+export { computeDiff, snapshotTree, isDiffEmpty, diffCount } from "./diff-engine"

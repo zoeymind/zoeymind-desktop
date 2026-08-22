@@ -76,9 +76,10 @@ export async function writeRecovery(
 
 export async function clearRecovery(projectId: string): Promise<void> {
   const path = await recoveryPath(projectId)
-  if (await exists(path)) {
-    await remove(path)
-  }
+  // exists→remove 会 TOCTOU: 并发流程 (blur flushRecovery / 另一次 save)
+  // 可能在两步之间删掉文件, 让 remove 报 "get metadata / No such file".
+  // 直接 remove + 吞掉 not-found: 目标已消失就是我们想要的.
+  await remove(path).catch(() => undefined)
 }
 
 export async function clearCorruptRecovery(filename: string): Promise<void> {
@@ -86,7 +87,7 @@ export async function clearCorruptRecovery(filename: string): Promise<void> {
     throw new Error("无效的容灾文件名")
   }
   const path = await join(await recoveryDir(), filename)
-  if (await exists(path)) await remove(path)
+  await remove(path).catch(() => undefined)
 }
 
 export async function scanRecoveries(): Promise<RecoveryScan> {
@@ -119,7 +120,8 @@ export async function listRecoveries(): Promise<RecoveryDescriptor[]> {
 /** 弹框里 Reopen 时用：读回 bundle，交给 editor 载入（未 flush 落盘）。 */
 export async function readRecoveryBundle(projectId: string): Promise<ZMindBundle | null> {
   const path = await recoveryPath(projectId)
-  if (!(await exists(path))) return null
-  const bytes = await readFile(path)
+  // 同样避免 exists→readFile 的 TOCTOU
+  const bytes = await readFile(path).catch(() => null)
+  if (!bytes) return null
   return unpackBundle(bytes)
 }
