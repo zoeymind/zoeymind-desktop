@@ -472,7 +472,12 @@ export default class TextEdit {
     } else {
       focusInput(this.textEditNode)
     }
-    // 首字符 glyph 对齐；空文本或缺少 SVG 文本时保留自然位置。
+    // 首字符 glyph 对齐；把编辑框首字符顶对齐到 SVG 文本块顶。
+    // 注意：此时 SVG 原文本已被 g.hide()（display:none），Chromium/WebView2
+    // 对隐藏元素的 getBoundingClientRect() 返回全 0，绝不能在这里再查询
+    // tspan——那会算出 delta = 首字符完整屏幕 Y，把编辑框推到窗口顶部
+    // （Windows 上编辑文字飘到最顶部的根因）。改用 show() 在隐藏前测好的
+    // rect.top，两个平台行为一致。
     const domFirstCharTop = (() => {
       const walker = document.createTreeWalker(
         this.textEditNode,
@@ -485,33 +490,10 @@ export default class TextEdit {
       r.setEnd(tn, Math.min(1, tn.textContent.length))
       return r.getBoundingClientRect().top
     })()
-    const textData = node._textData
-    let svgNodeEl: SVGElement | null = null
-    if (textData && typeof textData === 'object' && 'node' in textData) {
-      const wrapper = textData.node
-      if (wrapper && typeof wrapper === 'object' && 'node' in wrapper) {
-        const candidate = wrapper.node
-        if (candidate instanceof SVGElement) {
-          svgNodeEl = candidate
-        }
-      }
-    }
-    const firstTspan =
-      svgNodeEl?.querySelector('tspan') ??
-      svgNodeEl?.querySelector('text') ??
-      null
-    const svgFirstTspanTop =
-      firstTspan?.getBoundingClientRect().top ??
-      svgNodeEl?.getBoundingClientRect().top ??
-      null
-    if (
-      typeof domFirstCharTop === 'number' &&
-      typeof svgFirstTspanTop === 'number'
-    ) {
-      const delta = domFirstCharTop - svgFirstTspanTop
+    if (typeof domFirstCharTop === 'number') {
+      const delta = domFirstCharTop - rect.top
       if (Math.abs(delta) > 0.25) {
-        this.textEditNode.style.transform =
-          'translateY(' + -delta + 'px)'
+        this.textEditNode.style.transform = 'translateY(' + -delta + 'px)'
       }
     }
     this.cacheEditingText = ''
