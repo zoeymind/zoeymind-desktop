@@ -293,6 +293,24 @@ mod tests {
   }
 
   #[test]
+  fn external_automation_is_default_deny() {
+    assert!(!ExternalAutomationConfig::default().enabled);
+    assert!(!ExternalAutomationConfig::default().allow_destructive_edits);
+  }
+
+  #[test]
+  fn external_automation_config_round_trips() {
+    let config = ExternalAutomationConfig { enabled: true, allow_destructive_edits: false };
+    let json = serde_json::to_string(&config).expect("serialize config");
+    assert_eq!(json, r#"{"enabled":true,"allowDestructiveEdits":false}"#);
+    assert!(
+      !serde_json::from_str::<ExternalAutomationConfig>(&json)
+        .expect("deserialize config")
+        .allow_destructive_edits
+    );
+  }
+
+  #[test]
   fn errors_are_stable() { assert_eq!(invalid_envelope()["errorCode"], "INVALID_REQUEST"); assert_eq!(unavailable()["errorCode"], "BROKER_UNAVAILABLE"); }
 
   #[test]

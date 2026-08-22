@@ -22,6 +22,12 @@ function parseInput(tool: DocumentPortalTool, args: string[]): unknown {
 
 export async function main(args = process.argv.slice(2)): Promise<void> {
   const [tool, ...toolArgs] = args;
+  if (tool === "--help" || tool === "-h") {
+    process.stdout.write(
+      "Usage: zoeymind <projects|activate_project|query_current_mindmap|edit_current_mindmap> [json]\n",
+    );
+    return;
+  }
   if (
     tool !== "projects" &&
     tool !== "activate_project" &&

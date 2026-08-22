@@ -1,121 +1,21 @@
 # Changelog
 
-## 0.1.0 (2026-08-19)
+This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. Both packages are released together from this repository.
 
+## Unreleased
 
-### Features
+### Added
 
-* desktop scaffold (monorepo + tauri shell) ([d3ac19d](https://github.com/zoeymind/zoeymind-desktop/commit/d3ac19d039e67c3f8dcdc1936962d5dff16dd38e))
-* **desktop:** .zmind 文件关联指定 app icon (Finder/Explorer 显示 logo) ([c7a16fc](https://github.com/zoeymind/zoeymind-desktop/commit/c7a16fc96d3024c67fff1ef78339082e54037f15))
-* **desktop/ai-chat:** 图片附件始终开放, 不再按模型 vision 能力 gate ([7d65fe5](https://github.com/zoeymind/zoeymind-desktop/commit/7d65fe573cafddfba6de30d7865e07bf4e3cc91b))
-* **desktop/ai-chat:** 提示词管理弹框, 数据落 sqlite ([9784b92](https://github.com/zoeymind/zoeymind-desktop/commit/9784b9207c3f556ec9f50de9b3d0940d76e99dc6))
-* **desktop/ai-chat:** 用 use-stick-to-bottom 替换自撸自动滚动 ([155319b](https://github.com/zoeymind/zoeymind-desktop/commit/155319b61c98d982b522abe5ec3ecd6b783cedd1))
-* **desktop:** draft 保存 no-remount + Xmind 式路径碰撞拒绝 ([c5f4331](https://github.com/zoeymind/zoeymind-desktop/commit/c5f4331dd076f62cd2af0def8b4685b67990934e))
-* **desktop:** editor toolbar — title edit + undo/redo/zoom + dirty indicator ([e71bf7f](https://github.com/zoeymind/zoeymind-desktop/commit/e71bf7fb06a92fa22b3f7447d36871a5087d613b))
-* **desktop:** Header 左侧加保存快捷按钮 ([9e0ab3a](https://github.com/zoeymind/zoeymind-desktop/commit/9e0ab3a99c7fa359c69993f4267f9fcdb0c3bc78))
-* **desktop:** hooks phase — swap 4 list hooks to native repos ([d5a9814](https://github.com/zoeymind/zoeymind-desktop/commit/d5a9814e8223fd03e7e7f0aa3ba68fa49a436872))
-* **desktop:** local brand + strip cloud UI leftovers ([14ebe21](https://github.com/zoeymind/zoeymind-desktop/commit/14ebe2191a41dae738fde23bb8bea822292494ff))
-* **desktop:** local editor + purge cloud files ([afcd985](https://github.com/zoeymind/zoeymind-desktop/commit/afcd985ff5218038b802fb10b08c638ff51d22ce))
-* **desktop:** macOS 原生顶部菜单栏 (File / Edit / 语言 / 窗口) ([265cb6a](https://github.com/zoeymind/zoeymind-desktop/commit/265cb6a4ec3977db102387901b955795d243bf7a))
-* **desktop:** MCP stdio spawn helper + capabilities ([0e563af](https://github.com/zoeymind/zoeymind-desktop/commit/0e563af637f881962034e9eccca6dd41ac4ce15b))
-* **desktop:** MoveDialog 重做 - 只支持移动到某个文件夹, 走真 fs.rename ([b4e863f](https://github.com/zoeymind/zoeymind-desktop/commit/b4e863fea88cd5263467ab126dcdb463afecd3dd))
-* **desktop:** pending projects — no card until user saves ([70e4cb9](https://github.com/zoeymind/zoeymind-desktop/commit/70e4cb905059e3cd8cfb705212c746128e292467))
-* **desktop:** preview.png compose end-to-end ([ea8c8a1](https://github.com/zoeymind/zoeymind-desktop/commit/ea8c8a1b4e8394acbb531c70324fcce60c232e41))
-* **desktop:** recovery dialog on boot + settings page (models.json) ([e36cfbd](https://github.com/zoeymind/zoeymind-desktop/commit/e36cfbd755ed71958ba788f70872e347931b8ccb))
-* **desktop:** save-flow + dirty state + recovery wiring ([e07d92b](https://github.com/zoeymind/zoeymind-desktop/commit/e07d92b48caf0b361518b7c9df0133e1daacc4bc))
-* **desktop:** saveAs overwrite + index reconciliation ([317b52e](https://github.com/zoeymind/zoeymind-desktop/commit/317b52e9ad82b8d91aa01dbdd13f8201429b2752))
-* **desktop:** saveDialog 默认目录 = preferredSaveDir 三段兜底 + rememberSaveDir ([a21ccf7](https://github.com/zoeymind/zoeymind-desktop/commit/a21ccf77bb8fd0292d59296ae03c2716adc1cf37))
-* **desktop:** SettingsDialog (SettingsShell + shadcn), 侧栏按钮弹 Dialog ([d4db3a0](https://github.com/zoeymind/zoeymind-desktop/commit/d4db3a00fcf5c3595156ba17b8875ffcb844e5aa))
-* **desktop:** SettingsPage back + settings icon in sidebar footer ([7af747f](https://github.com/zoeymind/zoeymind-desktop/commit/7af747f69791cad6c316581e82a288480b9b46ee))
-* **desktop:** tab keep-alive V2 — 切 tab 不重载 canvas / 不弹 Loading ([d7511ac](https://github.com/zoeymind/zoeymind-desktop/commit/d7511ac97911f70ea3b59f68e7358a298ff2d497))
-* **desktop:** TabBar 关闭确认 + EditorPane 单实例挂载 ([2a395c8](https://github.com/zoeymind/zoeymind-desktop/commit/2a395c879e13745b2b24466bf6de7430bc814232))
-* **desktop:** tanstack-router shim -&gt; react-router-dom ([56c11aa](https://github.com/zoeymind/zoeymind-desktop/commit/56c11aa3664e77008ba3b68a866b9a7dfb033f68))
-* **desktop:** titlebar 高度收紧 + MorphingTabs 深度定制 ([2c772a5](https://github.com/zoeymind/zoeymind-desktop/commit/2c772a5b5c16fa72ba44bd691e98382f31aadae3))
-* **desktop:** URL &lt;-&gt; activeId 双向同步 + UnsavedGuard 去 route blocker ([76c8167](https://github.com/zoeymind/zoeymind-desktop/commit/76c81671a93d16b36ffd1a291be85f078d62f644))
-* **desktop:** use zoeymind LanguageSwitcher + ThemeMenu in sidebar footer ([b5762ce](https://github.com/zoeymind/zoeymind-desktop/commit/b5762ce2f628ecd2d28671e7ec16df9841a3020a))
-* **desktop:** useModelSelector reads models.json ([822debd](https://github.com/zoeymind/zoeymind-desktop/commit/822debd09e633c56c73172c1c5541f1beffc6f0f))
-* **desktop:** WorkspaceShell keep-alive + 卡片/+ 按钮走 openTab ([b20ae21](https://github.com/zoeymind/zoeymind-desktop/commit/b20ae21e69a9a16737f87915dfd193b727ff15e1))
-* **desktop:** 保存后自动刷新项目列表 (bump 事件) ([26e7b27](https://github.com/zoeymind/zoeymind-desktop/commit/26e7b2704799e1eca000d4cccef14cbc3299e628))
-* **desktop:** 加载失败改用全屏 LoadErrorScreen (Loading 同风格) ([b81bcb4](https://github.com/zoeymind/zoeymind-desktop/commit/b81bcb4ff34b6b3d3e2e33a84a65a0ae3d8640fb))
-* **desktop:** 卡片 - 预览图/时间/大小/去分享/加打开所在文件夹 ([05a5971](https://github.com/zoeymind/zoeymind-desktop/commit/05a59711418db06c38d61180bf40803ef1082831))
-* **desktop:** 复用原版 AIchatV2 UI, 只换本地请求 (不重写界面) ([dc0a3d7](https://github.com/zoeymind/zoeymind-desktop/commit/dc0a3d71619f1510b62517792bbfcd3c1afd9971))
-* **desktop:** 完善多标签编辑与应用设置 ([a198965](https://github.com/zoeymind/zoeymind-desktop/commit/a19896548c6b82dfedaf6b24cc93784b1e77b5f7))
-* **desktop:** 完整 Agent 接入 (system prompt + tools + streamText 多步 loop) ([232e423](https://github.com/zoeymind/zoeymind-desktop/commit/232e423289159e19648b25fcc4d082ebb8e04c0a))
-* **desktop:** 挂 HeaderTitle 到画布 Header 中间 ([3e79750](https://github.com/zoeymind/zoeymind-desktop/commit/3e79750d9e567dd55fc1efea32d01a1d4332b284))
-* **desktop:** 挂全局 Loading 遮罩 + 卡片点击直接跳 /editor/:id ([57d0f9c](https://github.com/zoeymind/zoeymind-desktop/commit/57d0f9c2b989a9c6e9a147dae057f31adfd3e32f))
-* **desktop:** 接入 beUI MorphingTabs — titlebar 40-&gt;80px, 液态过渡 + spring 拖拽 ([b9a751b](https://github.com/zoeymind/zoeymind-desktop/commit/b9a751bd59caecb091691d45d55fbea05fdfaedd))
-* **desktop:** 文件名成为项目名唯一权威源 — 卡片/tab/DB 全部同步 ([093d743](https://github.com/zoeymind/zoeymind-desktop/commit/093d7433bf003c665decf2063acf86e5e340b1e1))
-* **desktop:** 桥接层接入真实 AIchatV2 (可拖拽/展开面板) ([4e1230c](https://github.com/zoeymind/zoeymind-desktop/commit/4e1230c2fbd825eec9d4a98ca7a9ba69dcf5a179))
-* **desktop:** 模型设置改成 '拉取' 交互 (取代手写 model id) ([da2b364](https://github.com/zoeymind/zoeymind-desktop/commit/da2b364a1b326e59bb7880a41ba8741da20d3c6e))
-* **desktop:** 浏览器风格 TabBar + 40px TitleBar + macOS 红绿灯居中 ([ef948ef](https://github.com/zoeymind/zoeymind-desktop/commit/ef948ef44860c04895ba3061f8f94e60bf75f202))
-* **desktop:** 编辑器 File 菜单 + 最近项目 + OS 双击关联 + Tab 去重 ([ada6ef9](https://github.com/zoeymind/zoeymind-desktop/commit/ada6ef969f33fbdab9e3f6b24f3e452bffd4a246))
-* **desktop:** 补齐 ZTDL mention 全量处理, 消息可点击可跳节点 ([e60234f](https://github.com/zoeymind/zoeymind-desktop/commit/e60234fb1ca405259a48038edc1c4b8cb44205be))
-* **desktop:** 预览图落盘 (useStorageManager 挂 registerPreviewRenderer) ([238c394](https://github.com/zoeymind/zoeymind-desktop/commit/238c394ebcdcd066888801cc4dfd77396412ef8b))
-* **release:** 建立桌面端版本发布与更新检测 ([54040c7](https://github.com/zoeymind/zoeymind-desktop/commit/54040c74d43b6bdf9b6b18afd85704a193765df9))
-* 初始化 Tauri 2.0 + React 19 桌面应用模板 ([23ee4da](https://github.com/zoeymind/zoeymind-desktop/commit/23ee4da0d1920725897154648081c33fc5714545))
+- Public package contracts: `@zoeymind/cli` with `zoeymind`, and `@zoeymind/mcp` with `zoeymind-mcp`.
+- Compiled Node.js 22 executables with bundled Broker Client code.
+- Native external-automation and destructive-edit permissions, both disabled by default.
+- Packed-artifact, real stdio, protocol compatibility, and tool-schema validation.
 
+## Versioning policy
 
-### Bug Fixes
-
-* **ci:** 对齐 Tauri 官方跨平台构建流程 ([bc9d968](https://github.com/zoeymind/zoeymind-desktop/commit/bc9d968d59dbcee9d3ebab4db05ddc08eabae160))
-* **desktop:** '打开' 走 openTab + 修 tab 切换死循环 ([9b2b2b5](https://github.com/zoeymind/zoeymind-desktop/commit/9b2b2b5e41f6156cb16a2a610185eee7b1565a47))
-* **desktop:** @ 提及识别不到模块 - 放宽规则 (不仅 sign_2 icon) ([1b08afb](https://github.com/zoeymind/zoeymind-desktop/commit/1b08afb4cd54a8d9aa8610fb7d335c13106ca1b7))
-* **desktop:** @ 触发的 Maximum update depth - moduleList 内容不变时保引用 ([31153e5](https://github.com/zoeymind/zoeymind-desktop/commit/31153e588b3af7e5a5f658350d1732fb986776fa))
-* **desktop/ai-chat:** 欢迎页显示本地内置工具清单 ([559de2e](https://github.com/zoeymind/zoeymind-desktop/commit/559de2e9dea98be2153fe7fae4550b5a0d5ee3d4))
-* **desktop/mention-editor:** 修中文输入法删字光标塌前 + 残字问题 ([bb48fd7](https://github.com/zoeymind/zoeymind-desktop/commit/bb48fd7e00c254bedf89bf40a3d87d8518874ebf))
-* **desktop/mention-editor:** 提高菜单 z-index 到 100 ([d407ad3](https://github.com/zoeymind/zoeymind-desktop/commit/d407ad3caaa22283b5a98b906ecef08796194047))
-* **desktop:** AbortMap/HttpAbortMap 用 newtype 避免 Tauri state 类型冲突 ([da6c9ff](https://github.com/zoeymind/zoeymind-desktop/commit/da6c9ff896a4baa4905df22bb2418f83bb91ef05))
-* **desktop:** AI 聊天卡 loading + 中止无效 + 工具名缺失 ([549ba1d](https://github.com/zoeymind/zoeymind-desktop/commit/549ba1decc329e0b9dca6bf62506caac71e2f3d8))
-* **desktop:** AI 面板 Maximum update depth - trpc-stub 返回单例 QueryResult ([c23cd53](https://github.com/zoeymind/zoeymind-desktop/commit/c23cd5333640ffe277de23253e09c555e031debc))
-* **desktop:** AI 面板暂退回静态空状态, 拆掉真实 AIchatV2 hooks 循环 ([4876049](https://github.com/zoeymind/zoeymind-desktop/commit/4876049581db98304636b3b7c721193f195c744e))
-* **desktop:** analytics stub trackEvent 返 Promise + 补 errorLabel locale ([4e327b1](https://github.com/zoeymind/zoeymind-desktop/commit/4e327b11231b490472fcb59eded9cc617b3b825a))
-* **desktop:** App.tsx 走 barrel 导入 ThemePresetProvider ([61559b9](https://github.com/zoeymind/zoeymind-desktop/commit/61559b986f0e1d14dbfa6a30cd777a3ad55596fa))
-* **desktop:** createUUID export — direct binding ([196ced8](https://github.com/zoeymind/zoeymind-desktop/commit/196ced8376d007abd0c93959c3088ce64f0f287c))
-* **desktop:** dirty 检测按 tree hash 判定, 避免初始 data_change 误 dirty ([8e25380](https://github.com/zoeymind/zoeymind-desktop/commit/8e2538049ec640e9793c30bbec3e4b9b82fa1728))
-* **desktop:** drop snapshot tab; toast accepts shadcn {title,description,variant} ([348a5f1](https://github.com/zoeymind/zoeymind-desktop/commit/348a5f1b9a137960dff9715aefdf2f2668883b3f))
-* **desktop:** editor 挂 TitleBar; 浮动工具栏统一让开 32px; AI 面板空状态 ([4225baf](https://github.com/zoeymind/zoeymind-desktop/commit/4225baf159d19f96ddda3b8165f60365d173424f))
-* **desktop:** expose createUUID via native barrel + install save-flow re-export ([ff624c5](https://github.com/zoeymind/zoeymind-desktop/commit/ff624c59f0bd8614fc8b737e85965b2f2fd02cd9))
-* **desktop:** HeaderSaveButton 保存后不再 stuck 显示未保存 ([ebf8ea4](https://github.com/zoeymind/zoeymind-desktop/commit/ebf8ea4d2ed1134a23456035fca7bb28709dc9d7))
-* **desktop:** import RecoveryDialog into App.tsx ([1142b98](https://github.com/zoeymind/zoeymind-desktop/commit/1142b983fad895c059002996c83b62725454f2e0))
-* **desktop:** layout — kill outer container, reserve titlebar height, add sidebar expand button ([c80f4b5](https://github.com/zoeymind/zoeymind-desktop/commit/c80f4b505d2b12f2cf39f343538003593805a74f))
-* **desktop:** macOS 红绿灯居中 - 补 hiddenTitle:true (关键 config) ([0d01053](https://github.com/zoeymind/zoeymind-desktop/commit/0d010539acc062549ee2529468b98f89d9fc08bd))
-* **desktop:** mention 光标停在提及后 + 菜单还原 shadcn popover token ([d35824a](https://github.com/zoeymind/zoeymind-desktop/commit/d35824ac4f0fabdeee51b08bb7d73ba4069c5b19))
-* **desktop:** NewProjectMenu dropdown onSelect -&gt; onClick ([2982b2c](https://github.com/zoeymind/zoeymind-desktop/commit/2982b2caf981693951b5e292cf1ec7b7eae872ec))
-* **desktop:** openai provider 显式 .chat() 走 chat/completions 不走 responses ([c16b708](https://github.com/zoeymind/zoeymind-desktop/commit/c16b708775c4d43d9d70db5f3e0e76f0caf4bd82))
-* **desktop:** RecoveryDialog createUUID import path ([71dcd61](https://github.com/zoeymind/zoeymind-desktop/commit/71dcd615615e6caf83e6c95521dc2001288403e0))
-* **desktop:** RecoveryDialog outside Router — use router.navigate directly ([1ebbea2](https://github.com/zoeymind/zoeymind-desktop/commit/1ebbea2294f0de3a4d04228112159481afd17654))
-* **desktop:** SaveFlow 单例化 + Header icon 统一 16px ([dde3faa](https://github.com/zoeymind/zoeymind-desktop/commit/dde3faaa371a43f5f611ca116ec60b469ce259ab))
-* **desktop:** tailwind scans vendored ui/mind sources + LanguageSwitcher icon variant ([ce9cb38](https://github.com/zoeymind/zoeymind-desktop/commit/ce9cb38061d4c875290702cacca6148908f1389e))
-* **desktop:** tauri.conf.json 去掉 fileAssociations.icon (v2 schema 不接受) ([a7639ea](https://github.com/zoeymind/zoeymind-desktop/commit/a7639ea18a9aeb8bb2f295b9de24babb373a7367))
-* **desktop:** ThemePresetProvider — call applyThemeOrClear with mode+root ([5fecd5a](https://github.com/zoeymind/zoeymind-desktop/commit/5fecd5a464fac13b0b72b6f63e38d814ea155ed6))
-* **desktop:** TitleBar 保持在最顶层, Loading + 模态弹框都盖不住 ([3df1c16](https://github.com/zoeymind/zoeymind-desktop/commit/3df1c16d4f63f404d5985f3e6517ebb52243cd39))
-* **desktop:** useLoading provides updateProgress + progress state ([f831337](https://github.com/zoeymind/zoeymind-desktop/commit/f83133775b0fceddb146fb46c63de6608c6db14c))
-* **desktop:** useMCPTools + index.tsx destructure default [] 引起 Maximum update depth ([b9e6149](https://github.com/zoeymind/zoeymind-desktop/commit/b9e61493401594d77715045c6bcf90787f06cc89))
-* **desktop:** 保存 draft 时不再闪 —— 路由塌到单个 catch-all ([48bd29b](https://github.com/zoeymind/zoeymind-desktop/commit/48bd29bcf97fae368f890e3fb7d19d275d09b81c))
-* **desktop:** 保存不再闪 Loading —— useProjects 后台 refetch 静默化 ([12a82f9](https://github.com/zoeymind/zoeymind-desktop/commit/12a82f90a7815c4e71d990d5c8af2978a02690c7))
-* **desktop:** 保存按钮位置 = 菜单右侧 (File 菜单式) ([8153457](https://github.com/zoeymind/zoeymind-desktop/commit/8153457e4c67635e6e3b72559753d6bb8f059982))
-* **desktop:** 修 [@mention](https://github.com/mention) 与全量上下文短 ID 错位 ([92934c9](https://github.com/zoeymind/zoeymind-desktop/commit/92934c9a09e4b106ca761b1ae6f4b2ec8303e73a))
-* **desktop:** 修 fs 权限 + /v1/v1 拼接 + CORS 走 native reqwest ([60c9990](https://github.com/zoeymind/zoeymind-desktop/commit/60c99904880da0c9dffb630ff03d1f22c3b8e662))
-* **desktop:** 关闭 tab 的 '保存' 真触发 + save 后不再重复弹 saveDialog ([d5179b1](https://github.com/zoeymind/zoeymind-desktop/commit/d5179b1d9b71e514a9503a291c8d89b50f964146))
-* **desktop:** 升级 AI SDK providers 到 v3.x (对齐 ai@6.x LanguageModel v5 spec) ([382f13e](https://github.com/zoeymind/zoeymind-desktop/commit/382f13ee6d9f9d78f3e434eda40c1a2d244d1479))
-* **desktop:** 回首页无限 Loading — 不再把 mindMap 置 null 触发 hidden EditorPane 显 loading ([79ac68a](https://github.com/zoeymind/zoeymind-desktop/commit/79ac68ae9b3dd703ca7d04d865cfae77d6b10820))
-* **desktop:** 对齐源仓 lexical 版本 (0.28 -&gt; 0.45), 修 @ mention 死循环 ([030a85d](https://github.com/zoeymind/zoeymind-desktop/commit/030a85d6012176e9546fba61c52aa403973842fc))
-* **desktop:** 工具列表 + provider logos + Maximum update depth 环三处一起 ([4dede3f](https://github.com/zoeymind/zoeymind-desktop/commit/4dede3ff2c99f67fd1d6d8bdfe52dace3fdba8d8))
-* **desktop:** 恢复 3 条路由 + URL 段用 activeId (不再随 kind 变) ([1406857](https://github.com/zoeymind/zoeymind-desktop/commit/1406857a667dee6f25e44efa2852eec7bf3d65ef))
-* **desktop:** 恢复 CollaborationCursorLayer import + 红绿灯 y=12 ([d0cfc3f](https://github.com/zoeymind/zoeymind-desktop/commit/d0cfc3f2e15e064486756e70cdc4f511e5642ccb))
-* **desktop:** 恢复被 HeaderTitle import 覆盖掉的 CanvasTool import ([92255e1](https://github.com/zoeymind/zoeymind-desktop/commit/92255e1b1e6c948f2b8ae4d83c7a0026074107ec))
-* **desktop:** 首页卡片走 useCloudProjects, 也得从文件名派生 name ([2bdef97](https://github.com/zoeymind/zoeymind-desktop/commit/2bdef9744d82b8bda6374200c57c1e67c3a61345))
-* **release:** 生成首个 0.1.0 正式版本 ([ce57eab](https://github.com/zoeymind/zoeymind-desktop/commit/ce57eabc12ef6e641a6c95f76ed4fa25e9812b8c))
-* 修复默认主题导图线条样式 ([4f5aaab](https://github.com/zoeymind/zoeymind-desktop/commit/4f5aaabfa9d2b8e918dadc951f2369ed4cbc418e))
-* 全局 loading 首帧覆盖, 消除打开/新建项目时的闪一下 ([19f92ea](https://github.com/zoeymind/zoeymind-desktop/commit/19f92ea23fbb465dac6e6d43e92e6bf1981ce4d1))
-* 加固桌面文件生命周期与恢复流程 ([6887115](https://github.com/zoeymind/zoeymind-desktop/commit/68871152692168ab3b82535074ee0f8d33eef741))
-
-
-### Performance Improvements
-
-* **desktop/ai-chat:** AI 聊天流式期间只重渲染最后一条消息 ([bcb75b3](https://github.com/zoeymind/zoeymind-desktop/commit/bcb75b37524039fa33722a86799336ea3dd1fd5d))
-
-
-### Reverts
-
-* **desktop/mention-editor:** 撤回所有定制, MentionEditor 源版 verbatim ([3af2089](https://github.com/zoeymind/zoeymind-desktop/commit/3af2089d4e7c0a1aaa6f2f10c394c97f2d25b846))
+- Package versions follow SemVer and are kept identical for coordinated releases.
+- A breaking CLI argument, MCP tool/schema, structured error, or Broker protocol change requires a major package version.
+- Additive optional fields and new non-breaking behavior require a minor version.
+- Fixes that preserve public contracts require a patch version.
+- Deprecated behavior remains documented for at least one minor release before removal. Removal is a major change.
+- Desktop releases may use a different version. Compatibility is determined by the Broker protocol version, currently `1`, not by comparing npm and Desktop package versions.

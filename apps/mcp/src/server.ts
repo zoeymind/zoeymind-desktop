@@ -1,6 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 
+const PACKAGE_VERSION = "0.1.0";
+
 export type DocumentPortalTool =
   | "projects"
   | "activate_project"
@@ -101,7 +103,7 @@ export function createDocumentPortalServer(
 ): McpServer {
   const server = new McpServer({
     name: "zoeymind",
-    version: "0.0.0",
+    version: PACKAGE_VERSION,
   });
   server.registerTool(
     "projects",

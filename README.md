@@ -3,7 +3,7 @@
 ZoeyMind Desktop 是基于 Tauri 的本地思维导图编辑器。它将 `.zmind` 文档保存在用户选择的位置，并通过统一的 Document Automation Portal 向内置 AI、命令行工具和本地 MCP Client 提供结构化查询与原子编辑能力。
 
 > [!IMPORTANT]
-> 当前仓库中的 Desktop、Portal、CLI 和 MCP Adapter 已完成开发环境集成与真实应用链路测试，但 **CLI/MCP 尚未作为 npm 包发布**。文档中的 workspace 命令可用于开发和验收，不应被描述为正式用户安装方式。
+> Desktop、Portal、CLI 和 MCP Adapter 已完成开发环境集成、真实应用链路测试和 npm 发行加固。CLI/MCP 采用 `@zoeymind/cli`（bin `zoeymind`）与 `@zoeymind/mcp`（bin `zoeymind-mcp`）双 package 发行。首次 npm 发布由受保护的 `npm Release` workflow 驱动，需要 npm scope 与 trusted publisher 授权后才能自动完成。
 
 ## 功能
 
@@ -21,15 +21,15 @@ ZoeyMind Desktop 是基于 Tauri 的本地思维导图编辑器。它将 `.zmind
 
 ## 当前状态
 
-| 模块            | 状态           | 说明                                                        |
-| --------------- | -------------- | ----------------------------------------------------------- |
-| Desktop 应用    | 可开发、可构建 | Tauri 2 + React 19；正式发布流程已有桌面安装包构建          |
-| Portal 内核     | 已实现         | 直接读写当前打开且 ready 的实时 `ProjectSession` / MindMap  |
-| 内置 AI Adapter | 已实现         | 模型只看到当前导图 query/edit，不看到内部文档身份和节点 UID |
-| Local Broker    | 已实现         | 动态 loopback 端口、启动时随机 token、本地 descriptor 发现  |
-| CLI Adapter     | 开发环境可用   | 尚未编译和发布为正式 npm executable                         |
-| MCP Adapter     | 开发环境可用   | stdio MCP 已实现；尚未编译和发布为正式 npm package          |
-| npm 发布        | 未完成         | 见[发布前待办](#发布前待办)                                 |
+| 模块            | 状态     | 说明                                                                      |
+| --------------- | -------- | ------------------------------------------------------------------------- |
+| Desktop 应用    | 可发布   | Tauri 2 + React 19，Release workflow 输出 macOS/Windows/Linux 安装包      |
+| Portal 内核     | 已实现   | 直接读写当前打开且 ready 的实时 `ProjectSession` / MindMap                |
+| 内置 AI         | 已实现   | 模型只看到当前导图 query/edit，不看到内部文档身份和节点 UID               |
+| Local Broker    | 默认关闭 | 动态 loopback 端口、随机 token、descriptor 由 Preferences 中的开关控制    |
+| `@zoeymind/cli` | 发行就绪 | 编译到 `dist/`，bin `zoeymind`；等待 npm scope 授权后由 workflow 发布     |
+| `@zoeymind/mcp` | 发行就绪 | 编译到 `dist/`，bin `zoeymind-mcp`；等待 npm scope 授权后由 workflow 发布 |
+| npm 发布        | 等待鉴权 | 见 [首次发布准备](#首次发布准备)                                          |
 
 ## 系统要求
 
@@ -246,7 +246,7 @@ OMP 也会读取项目根目录的 `.mcp.json` / `mcp.json`。不要把开发机
 }
 ```
 
-`@zoeymind/mcp` 与 `@zoeymind/cli` 的 release artifacts 由受保护的 `npm Release` workflow 构建、pack 验证并通过 trusted publishing 发布。
+`@zoeymind/mcp` 与 `@zoeymind/cli` 的 release artifacts 由受保护的 `npm Release` workflow 构建、pack 验证并通过 npm trusted publishing 发布。首次发布需要在 npmjs 完成 `@zoeymind` scope 认领与 trusted publisher 关联。
 
 ## 通信与安全
 
@@ -315,46 +315,44 @@ pnpm test:portal-integration
 cargo check --manifest-path src-tauri/Cargo.toml --locked
 ```
 
-## 发布前待办
+## 首次发布准备
 
-当前实现不是一个规范、可公开安装的 npm 工具。正式发布前至少要完成：
+CLI、MCP 和 Desktop 已经完成代码、构建、测试、文档、CI/CD、安全策略工作，剩下只有需要账号级授权的动作：
 
-### Package contract
+### 由仓库/仓库外的人工授权
 
-- [ ] 将现有 workspace 实现整理成两个独立发行包：`@zoeymind/cli`（bin: `zoeymind`）和 `@zoeymind/mcp`（bin: `zoeymind-mcp`）；
-- [ ] CLI 与 MCP 在同一仓库维护和联动发布，共享 Broker Client 源码，但不额外暴露第三个用户可见 package；
-- [ ] 将 CLI、MCP 和共享 Broker Client 构建为 `dist/` JavaScript，bin 不再指向 workspace TypeScript；
-- [ ] 两个 package 分别增加 `files` allowlist、`engines.node`、`license`、`repository`、`homepage`、`bugs` 和 `publishConfig`；
-- [ ] 决定 Broker protocol version 与 npm/Desktop 兼容策略；版本不兼容时返回明确错误；
-- [ ] 明确全局安装和固定版本 `npx` 的正式推荐方式；
-- [ ] 分别执行 `npm pack` / `pnpm pack`，在空目录安装 tarball 并验证 `zoeymind` 与 `zoeymind-mcp`。
+- **npm scope 认领**：在 <https://www.npmjs.com/> 用具备发布权的账号创建/申领 `@zoeymind` scope；
+- **npm trusted publisher**：在 npmjs 该 scope 下把 `zoeymind/zoeymind-desktop` 仓库的 `npm Release` workflow 添加为 trusted publisher，绑定：
+  - repository: `zoeymind/zoeymind-desktop`
+  - workflow: `npm Release`
+  - environment: `npm`
+- **GitHub `npm` environment**：在 GitHub `Settings → Environments` 创建名为 `npm` 的 environment；如果 npm 侧不使用 trusted publishing，则在同一 environment 里添加 `NODE_AUTH_TOKEN` secret；勾选 `Required reviewers` 让首发默认需人工放行；
+- **Desktop 更新签名密钥**：在 GitHub Secrets 中确认 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`；缺失会阻止 macOS 更新器打包。
 
-### Runtime quality
+### 由 workflow 自动完成
 
-- [ ] 为 MCP executable 增加 SIGINT/SIGTERM graceful shutdown；
-- [ ] 审计 MCP 全路径，保证 stdout 只包含 JSON-RPC；
-- [ ] 增加真实 stdio child-process 测试，而不只使用 `InMemoryTransport`；
-- [ ] 增加 Desktop 未运行、descriptor stale、Desktop 重启和版本不兼容的 packaged E2E；
-- [ ] 定义并验证 Node、OS、Desktop、MCP SDK/spec、OMP/Claude Code/Codex 的兼容矩阵；
-- [ ] 对每个公开 tool schema 建立稳定契约测试和 breaking-change migration policy。
+- `pnpm build:packages` 生成 CLI/MCP `dist`；
+- `pnpm test:packages` 通过则 pack 并做全新 tarball 安装验证；
+- npm 侧使用 `--provenance` 生成 attestation；
+- Desktop `Release` workflow 生成 macOS/Windows/Linux 安装包、SHA256 checksums 与 `latest.json` updater manifest；
+- 打 `vX.Y.Z` git tag、创建 draft release，用完成的 asset 集合发布正式版本。
 
-### Security and operations
+### 触发命令
 
-- [ ] 提供外部自动化的显式启用/禁用入口和当前状态；
-- [ ] 决定外部 destructive edit 的产品级授权策略；
-- [ ] 提供安全漏洞报告渠道和 `SECURITY.md`；
-- [ ] 定义日志位置、脱敏规则、诊断命令和 token/descriptor 异常恢复流程；
-- [ ] 在 Windows 和 Linux 验证 descriptor 路径与本机权限模型；
-- [ ] 记录 threat model，明确同用户恶意进程不在当前防御范围内。
+```bash
+# CLI / MCP 首次发布 —— 需要 npm 环境已在 GitHub 上创建并被 reviewer 批准
+gh workflow run "npm Release" \
+  --repo zoeymind/zoeymind-desktop \
+  --field version=0.1.0 \
+  --field tag=latest
 
-### Release and repository hygiene
+# Desktop 桌面安装包与自动更新 manifest
+gh workflow run "Release" \
+  --repo zoeymind/zoeymind-desktop \
+  --field version=0.1.0
+```
 
-- [ ] 给 npm package 增加独立 release workflow、provenance、最小权限 token 和 dry-run/pack gate；
-- [ ] 将 CLI/MCP build、typecheck、test、smoke 和 package-content 检查加入 CI；
-- [ ] 建立 package changelog 与 SemVer/deprecation policy；
-- [ ] 修复当前根 metadata 占位：Tauri/Cargo version、description、authors、license、repository；
-- [ ] 决定许可证并添加真实 `LICENSE`；不要继续宣称当前不存在的 MIT 许可；
-- [ ] 只为实际测试过的 MCP Host 提供正式配置样例。
+更细规则见 [`CHANGELOG.md`](./CHANGELOG.md#versioning-policy)。
 
 ## 设计与文档参考
 

@@ -10,6 +10,9 @@ ZoeyMind Desktop 的本地命令行客户端。
 ```bash
 npm install --global @zoeymind/cli
 zoeymind --help
+
+# Reproducible one-off invocation without a global install
+npx --yes --package @zoeymind/cli@0.1.0 zoeymind projects
 ```
 
 公共命令固定为 `zoeymind`。`Document Portal`、Broker 和 document identity 是内部架构术语，不进入用户命令名。
@@ -56,6 +59,13 @@ zoeymind CLI
 
 CLI 每次请求读取 Desktop 创建的本地 descriptor；用户不配置端口和 token。Desktop 未运行、没有打开文档或文档未 ready 时，CLI 返回结构化错误。
 
+## 诊断与恢复
+
+- `APP_UNAVAILABLE`：启动 Desktop，在 Preferences 中启用外部自动化，然后重试；
+- Desktop 重启后旧 descriptor/token 失效：直接重试，CLI 会在下一次调用重新读取 descriptor；
+- descriptor 损坏或协议版本不兼容：关闭外部自动化再重新开启，让 Desktop 重新生成 descriptor；
+- CLI 不记录 token、descriptor 内容、文档内容或工具输入。Desktop 日志位置可在 Preferences → Logs 查看和打开。
+
 ## 开发与验证
 
 ```bash
@@ -67,6 +77,8 @@ pnpm --filter @zoeymind/cli integration
 pnpm test:packages
 ```
 
-The package requires Node.js 22 or newer. macOS, Windows, and Linux are supported wherever the matching ZoeyMind Desktop app stores its authenticated Broker descriptor. Broker protocol version 1 is rejected as unavailable when a mismatched descriptor is found.
+The package requires Node.js 22 or newer. Descriptor path derivation and protocol validation are covered for macOS, Windows, and Linux; installer-level acceptance remains part of each Desktop release matrix. Broker protocol version 1 rejects unknown descriptors as unavailable.
+
+Breaking CLI, MCP schema, structured error, or Broker protocol changes follow the repository [SemVer and deprecation policy](../../CHANGELOG.md#versioning-policy).
 
 架构、协议、安全边界和完整发布清单见[根 README](../../README.md)。

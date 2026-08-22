@@ -1,6 +1,6 @@
 # @zoeymind/mcp
 
-ZoeyMind Desktop 的本地 stdio MCP Adapter，让 OMP、Claude Code、Codex、OpenCode 等 MCP Host 查询和编辑当前思维导图。
+ZoeyMind Desktop 的本地 stdio MCP Adapter，让支持标准本地 stdio server 配置的 MCP Host 查询和编辑当前思维导图。
 
 > [!NOTE]
 > Release artifacts are built and packed from this workspace. Availability on npm depends on the latest approved `npm Release` workflow run.
@@ -17,7 +17,7 @@ npm install --global @zoeymind/mcp
 zoeymind-mcp
 ```
 
-OMP/Claude 风格配置：
+标准 stdio Host 配置：
 
 ```json
 {
@@ -39,6 +39,8 @@ OMP/Claude 风格配置：
 - 如果目标不是当前项目，Agent 先调用 `projects` 和 `activate_project`。
 
 用户不需要配置端口、token 或 descriptor 路径。
+
+已自动验证 MCP SDK child process 握手和工具调用。OMP 已验证配置发现；Claude Code 与 Codex 的真实账户验收被外部账户限制阻断，因此这里只提供标准协议配置，不宣称特定 Host 已完成端到端验收。
 
 ## Tools
 
@@ -109,6 +111,7 @@ OMP 用户配置通常位于：
 | anchor expired/conflict         | 文档在 query 后发生变化              | 使用最新返回 view/anchor，必要时重新 query     |
 | MCP initialize/JSON parse error | command 不可执行或 stdout 被日志污染 | 在 shell 验证 command；确保诊断只写 stderr     |
 | Broker unauthorized/timeout     | Desktop 重启或 Web bridge 未响应     | 重试并检查 Desktop 日志                        |
+| `EXTERNAL_EDITS_DISABLED`       | 未授权外部破坏性编辑                 | 在 Preferences 单独启用破坏性编辑              |
 
 ## 开发与验证
 
@@ -125,11 +128,14 @@ The test suite spawns compiled `dist/index.js` over real stdio and clean-install
 
 ## Compatibility and policy
 
-- Node.js 22 or newer on macOS, Windows, or Linux;
+- Node.js 22 or newer;
 - Broker protocol version 1; unknown descriptor versions fail closed as unavailable;
+- descriptor path derivation is contract-tested for macOS, Windows, and Linux; installer-level OS acceptance follows the Desktop release matrix;
+- MCP SDK stdio child-process interoperability and OMP configuration discovery are verified;
 - Desktop external automation is disabled by default and must be enabled in Preferences;
 - destructive external edits are independently disabled by default;
 - `ai-case-review-enabled` applies only to built-in AI and is not an external authorization setting;
-- package SemVer may advance independently from Desktop releases while Broker protocol compatibility remains explicit.
+- package SemVer may advance independently from Desktop releases while Broker protocol compatibility remains explicit;
+- breaking-change and deprecation rules are defined in the repository [changelog](../../CHANGELOG.md#versioning-policy).
 
 完整架构和待办见[根 README](../../README.md)。

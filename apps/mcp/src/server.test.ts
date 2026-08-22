@@ -75,6 +75,31 @@ describe("ZoeyMind MCP external project interface", () => {
     await connection.server.close();
   });
 
+  it("keeps all public tool schemas strict at the adapter boundary", async () => {
+    const broker = fakeClient();
+    const connection = await connect(broker);
+    const invalidRequests = [
+      { name: "projects", arguments: { action: "delete" } },
+      { name: "activate_project", arguments: { projectId: "" } },
+      {
+        name: "query_current_mindmap",
+        arguments: { mode: "search", query: "" },
+      },
+      { name: "edit_current_mindmap", arguments: { anchorTag: "", patch: "" } },
+    ];
+
+    for (const request of invalidRequests) {
+      const rejected = await connection.session.callTool(request);
+      expect(rejected.isError).toBe(true);
+      expect(JSON.stringify(rejected.content)).toMatch(
+        /Input validation error/,
+      );
+    }
+    expect(broker.calls).toEqual([]);
+    await connection.session.close();
+    await connection.server.close();
+  });
+
   it("maps broker failures to MCP errors", async () => {
     const connection = await connect({
       async request() {
