@@ -216,6 +216,16 @@ jobs:
       GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag-name }}
     steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Regenerate categorized release notes
+        run: node scripts/generate-release-notes.mjs "$RELEASE_TAG"
       - name: Download all installers
         uses: actions/download-artifact@v5
         with:
@@ -285,6 +295,16 @@ jobs:
           path: dist
 
       - name: Prepare release assets, manifest, and checksums
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.release-tag }}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Regenerate categorized release notes
+        run: node scripts/generate-release-notes.mjs "$RELEASE_TAG"
         run: |
           mkdir release-assets
           while IFS= read -r -d '' asset; do
