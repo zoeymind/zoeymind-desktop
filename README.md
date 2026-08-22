@@ -18,7 +18,8 @@
 <p align="center">
   <a href="https://zoeymind.com">Website</a> ·
   <a href="https://github.com/zoeymind/zoeymind-desktop/releases/latest">Download</a> ·
-  <a href="https://zoeymind.com/changelog">Changelog</a>
+  <a href="https://zoeymind.com/changelog">Changelog</a> ·
+  <a href="./README.en.md">English</a>
 </p>
 
 <hr />
