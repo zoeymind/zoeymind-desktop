@@ -121,21 +121,24 @@ async function updateRelease(release, body) {
   console.log(`✓ ${release.tag_name} updated`)
 }
 
-function pickPrevTag(releases, index) {
-  for (let i = index + 1; i < releases.length; i++) {
-    if (!releases[i].draft) return releases[i].tag_name
-  }
-  return null
+function publishedAt(release) {
+  return new Date(release.published_at ?? release.created_at ?? 0)
+}
+
+function findPreviousPublishedTag(releases, current) {
+  return (
+    releases
+      .filter((release) => !release.draft && release.tag_name !== current.tag_name)
+      .filter((release) => publishedAt(release) < publishedAt(current))
+      .sort((a, b) => publishedAt(b) - publishedAt(a))[0]?.tag_name ?? null
+  )
 }
 
 async function processOne(tag) {
-  const releases = (await listReleases())
-    .filter((r) => !r.draft)
-    .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
-  const index = releases.findIndex((r) => r.tag_name === tag)
-  if (index < 0) throw new Error(`Release ${tag} not found`)
-  const release = releases[index]
-  const prev = pickPrevTag(releases, index)
+  const releases = await listReleases()
+  const release = releases.find((candidate) => candidate.tag_name === tag)
+  if (!release) throw new Error(`Release ${tag} not found`)
+  const prev = findPreviousPublishedTag(releases, release)
   if (!prev) {
     console.log(`- ${tag} skipped (no previous tag to compare)`)
     return
@@ -150,11 +153,10 @@ async function processOne(tag) {
 
 async function processAll() {
   const releases = (await listReleases())
-    .filter((r) => !r.draft)
-    .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
-  for (let i = 0; i < releases.length; i++) {
-    const prev = pickPrevTag(releases, i)
-    const current = releases[i]
+    .filter((release) => !release.draft)
+    .sort((a, b) => publishedAt(b) - publishedAt(a))
+  for (const current of releases) {
+    const prev = findPreviousPublishedTag(releases, current)
     if (!prev) {
       console.log(`- ${current.tag_name} skipped (initial release)`)
       continue

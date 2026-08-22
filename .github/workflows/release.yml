@@ -287,14 +287,21 @@ jobs:
       RELEASE_TAG: ${{ inputs.release-tag }}
     steps:
       - name: Download successful installers
-        uses: actions/download-artifact@v5
-        with:
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ inputs.artifact-run-id }}
-          pattern: zoeymind-*
-          path: dist
-
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact-run-id }}
+        run: |
+          mkdir -p dist
+          gh run download "$ARTIFACT_RUN_ID" \
+            --repo "${{ github.repository }}" \
+            --pattern 'zoeymind-*' \
+            --dir dist
+          file_count="$(find dist -type f | wc -l | tr -d ' ')"
+          if [[ "$file_count" -eq 0 ]]; then
+            echo "no release artifacts downloaded from run $ARTIFACT_RUN_ID" >&2
+            exit 1
+          fi
+          echo "downloaded $file_count release artifact files"
       - name: Checkout release commit
         uses: actions/checkout@v4
         with:
