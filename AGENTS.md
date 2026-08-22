@@ -104,8 +104,8 @@ MCP host 配置 key 统一为 `zoeymind`。外部工具（Claude Code / OMP / Co
 
 ## Release tooling
 
-- `pnpm release <version>`（`scripts/release.mjs`）：一次 bump `apps/cli/package.json` + `apps/mcp/package.json` + `src-tauri/Cargo.toml` + `apps/mcp/src/server.ts` PACKAGE_VERSION + 重写 CHANGELOG `## Unreleased` 段，本地跑校验，commit + tag
-- `scripts/build-updater-manifest.mjs`：从 `release-assets/` 扫 4 平台 `.app.tar.gz` / `.AppImage.tar.gz` / `.nsis.zip` + 对应 `.sig`，生成 `latest.json`
+- `.github/workflows/release.yml`：显式发布时从最新已发布 tag 自动累计 PATCH，构建 Desktop 四平台安装包并原子发布；源码版本保持 `0.0.0`
+- `scripts/build-updater-manifest.mjs`：从 `release-assets/` 扫 4 平台 `.app.tar.gz` / `.AppImage` / `.exe` + 对应 `.sig`，生成 `latest.json`
 - `scripts/validate-updater-manifest.mjs`：pre-flight 校验 manifest 完整性
 - `scripts/generate-release-notes.mjs`：从 GitHub compare API 拉两版本间 commit，按 conventional commits 前缀分类写回 Release body
 
@@ -135,8 +135,8 @@ The agent MUST:
 1. Review all current changes in this repository and run the commit checklist.
 2. Finish required validation, commit all approved changes, and push `main`.
 3. Treat the pushed `origin/main` HEAD as the release commit unless the user names another commit.
-4. Normalize shorthand versions (`0.2` means `0.2.0`). If no version is given, choose the next sensible SemVer version from the changes and existing releases.
-5. Trigger `.github/workflows/release.yml` with the normalized version and the chosen commit SHA. The workflow creates the tag and Draft Release, injects the version only into the Tauri build, builds all platforms, and publishes atomically.
+4. If the user does not specify MAJOR/MINOR, let the workflow add the number of commits since the latest published release to its PATCH version. A user-specified MAJOR/MINOR overrides that default.
+5. Trigger `.github/workflows/release.yml` with the chosen commit SHA only. The workflow calculates the version, creates the tag and Draft Release, injects the version only into the Tauri build, builds all platforms, and publishes atomically.
 6. Verify Windows x64, macOS ARM64, macOS Intel, Linux AppImage, Linux DEB, and `SHA256SUMS.txt` on the published GitHub Release.
 7. If builds succeeded but checksum/upload/publication failed, use the workflow's artifact recovery input instead of rebuilding.
 8. Report the published tag, URL, assets, and any signing or update-distribution limitations.
@@ -145,9 +145,9 @@ The agent MUST NOT ask the user to create tags, modify source-controlled version
 
 ### Release lifecycle
 
-- Source-controlled development versions remain `0.0.0`; release versions are workflow inputs injected at build time.
+- Source-controlled development versions remain `0.0.0`; the workflow calculates release versions and injects them at build time.
 - A Draft GitHub Release should exist only while an explicitly requested release is being assembled or recovered.
-- Normal release inputs are `version` and `release-ref`; the latter may name a stable commit, branch, or tag and defaults to `main`.
+- Normal release input is only `release-ref`, which may name a stable commit, branch, or tag and defaults to `main`.
 - `artifact-run-id` and `release-tag` are recovery-only inputs for reusing successful installers after a final-stage failure.
 
 ## Domain glossary

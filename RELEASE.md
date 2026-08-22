@@ -12,36 +12,16 @@
 - prerelease 用 `-rc.N` / `-alpha.N` / `-beta.N`。
 - 弃用行为在被移除前至少经历一个 minor 的过渡期。
 
-## Release-per-tag 契约
+## Desktop 一键发布契约
 
-1. **改动累积在 `CHANGELOG.md` 顶部的 `Unreleased`**。任何用户可见改动必须落此段。
-2. **发版前一次性提交版本更新**：
-   ```bash
-   # 用真实版本号替换 <VER>
-   pnpm --filter @zoeymind/cli exec npm version <VER> --no-git-tag-version
-   pnpm --filter @zoeymind/mcp exec npm version <VER> --no-git-tag-version
-   # Cargo 版本
-   sed -i '' "s/^version = .*/version = \"<VER>\"/" src-tauri/Cargo.toml
-   # Package embedded string
-   sed -i '' "s/^const PACKAGE_VERSION = .*/const PACKAGE_VERSION = \"<VER>\";/" apps/mcp/src/server.ts
-   # CHANGELOG: 把 Unreleased 段改标题为 <VER> - YYYY-MM-DD, 并在其上补一个空的 Unreleased
-   ```
-3. **提交并打 tag**：
-   ```bash
-   git add -A
-   USER_CONFIRMED=1 git commit -m "release: v<VER>"
-   git tag -a v<VER> -m "v<VER>"
-   git push origin main
-   git push origin v<VER>
-   ```
-4. **CI 触发**：`push` tag `v*` 会驱动 `npm Release` 与 `Release` workflow。二者独立跑，都需要各自的 secret / trusted publisher 已就绪。
-5. **失败时**：
-   - 未 publish 到 npm：删 tag、修问题、重打相同 tag（tag 可以移动）。
-   - 已 publish 到 npm：npm 版本永久占用，必须把下一版号加一，走完整流程重新发。**永远不要 `--force`**。
+1. 普通 push 只运行 CI，不创建 Release。
+2. 用户明确要求发布时，先确保 `main` 已包含并通过当前改动。
+3. 触发 `Release` workflow，只传 `release-ref`；默认是 `main`。
+4. Workflow 读取 GitHub 最新已发布版本，并统计该 tag 到 release commit 的 commit 数，将这个数量累加到 PATCH：例如 `v0.3.39` 之后有 7 个 commit，则发布 `v0.3.46`。
+5. Workflow 创建 tag 和 Draft Release，为 Windows x64、macOS ARM64、macOS Intel、Linux 构建安装包及 Tauri 2 updater 签名，生成 `latest.json` 和 `SHA256SUMS.txt`，全部成功后再发布并设为 Latest。
+6. 构建已成功但最终汇总或上传失败时，使用 recovery 输入复用该 run 的 artifacts，不重新构建。
 
-## 首发例外
-
-首次发布（v0.3.0）在此机器上以 `npm login` + 本地 `npm publish` 手工完成，用于占位 `@zoeymind` scope 并沉淀首个稳定 tag；之后所有版本走上述 Release-per-tag 流程，禁止再走手工路径。
+源码中的开发版本保持 `0.0.0`；正式版本只在 workflow 构建时注入。若需要改变 MAJOR 或 MINOR，先调整发布策略，不手动修改源码版本或创建 tag。
 
 ## 谁能发版
 

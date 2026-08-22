@@ -3,10 +3,6 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Version to publish, for example 0.2.0
-        required: false
-        type: string
       release-ref:
         description: Commit, branch, or tag to release (defaults to main)
         required: false
@@ -45,18 +41,14 @@ jobs:
           fi
       - name: Validate input mode
         env:
-          INPUT_VERSION: ${{ inputs.version }}
           INPUT_ARTIFACT_RUN_ID: ${{ inputs.artifact-run-id }}
           INPUT_RELEASE_TAG: ${{ inputs.release-tag }}
         run: |
           if [[ -n "$INPUT_ARTIFACT_RUN_ID" || -n "$INPUT_RELEASE_TAG" ]]; then
-            if [[ -z "$INPUT_ARTIFACT_RUN_ID" || -z "$INPUT_RELEASE_TAG" || -n "$INPUT_VERSION" ]]; then
-              echo "recovery requires artifact-run-id and release-tag, without version" >&2
+            if [[ -z "$INPUT_ARTIFACT_RUN_ID" || -z "$INPUT_RELEASE_TAG" ]]; then
+              echo "recovery requires artifact-run-id and release-tag" >&2
               exit 1
             fi
-          elif [[ -z "$INPUT_VERSION" ]]; then
-            echo "normal release requires version" >&2
-            exit 1
           fi
 
   prepare:
@@ -69,20 +61,30 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       sha: ${{ steps.release.outputs.sha }}
     steps:
-      - name: Resolve commit and create draft release
+      - name: Resolve version, commit, and create draft release
         id: release
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          INPUT_VERSION: ${{ inputs.version }}
           INPUT_REF: ${{ inputs.release-ref }}
         run: |
-          if [[ ! "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version must use MAJOR.MINOR.PATCH, got: $INPUT_VERSION" >&2
+          sha="$(gh api "repos/${{ github.repository }}/commits/$INPUT_REF" --jq .sha)"
+          previous_tag="$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)"
+          if [[ ! "$previous_tag" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "latest published tag is not SemVer: $previous_tag" >&2
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+
+          commit_count="$(gh api "repos/${{ github.repository }}/compare/$previous_tag...$sha" --jq .total_commits)"
+          if [[ ! "$commit_count" =~ ^[1-9][0-9]*$ ]]; then
+            echo "release ref must contain commits after $previous_tag, got: $commit_count" >&2
             exit 1
           fi
 
-          tag="v$INPUT_VERSION"
-          sha="$(gh api "repos/${{ github.repository }}/commits/$INPUT_REF" --jq .sha)"
+          version="$major.$minor.$((patch + commit_count))"
+          tag="v$version"
 
           if gh api "repos/${{ github.repository }}/git/ref/tags/$tag" >/dev/null 2>&1; then
             echo "tag already exists: $tag" >&2
@@ -94,19 +96,20 @@ jobs:
             -f ref="refs/tags/$tag" \
             -f sha="$sha" >/dev/null
 
-          if ! gh release create "$tag" \
-            --repo "${{ github.repository }}" \
-            --target "$sha" \
-            --title "$tag" \
-            --generate-notes \
-            --draft; then
+          if ! gh api "repos/${{ github.repository }}/releases" \
+            --method POST \
+            -f tag_name="$tag" \
+            -f target_commitish="$sha" \
+            -f name="$tag" \
+            -F draft=true \
+            -F generate_release_notes=true >/dev/null; then
             gh api "repos/${{ github.repository }}/git/refs/tags/$tag" --method DELETE
             exit 1
           fi
 
           {
             echo "tag-name=$tag"
-            echo "version=$INPUT_VERSION"
+            echo "version=$version"
             echo "sha=$sha"
           } >> "$GITHUB_OUTPUT"
 
