@@ -6,9 +6,9 @@ Security fixes are provided for the latest released ZoeyMind Desktop version and
 
 ## Reporting a vulnerability
 
-Do not open a public issue for a vulnerability. Use GitHub private vulnerability reporting in the **Security** tab of `zoeymind/zoeymind-desktop`. Include affected versions, operating system, reproduction steps, impact, and any proof-of-concept material.
+Do not open a public issue for a vulnerability. Use GitHub private vulnerability reporting in the **Security** tab of `zoeymind/zoeymind-desktop`, or email <1103837067@qq.com>. Include affected versions, operating system, reproduction steps, impact, and any proof-of-concept material.
 
-If private vulnerability reporting is unavailable, contact the repository owner through the private organization channel and request a secure reporting path. Do not send Broker descriptors, Bearer tokens, customer documents, model prompts, or `.zmind` files through a public channel.
+Do not send Broker descriptors, Bearer tokens, customer documents, model prompts, or `.zmind` files through a public channel.
 
 ## External automation boundary
 

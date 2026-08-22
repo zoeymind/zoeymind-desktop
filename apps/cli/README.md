@@ -85,4 +85,4 @@ Breaking CLI, MCP schema, structured error, or Broker protocol changes follow th
 
 ## License
 
-PolyForm Noncommercial 1.0.0。商业用途请先联系 <https://github.com/zoeymind> 获取书面许可，详见 [`LICENSING.md`](../../LICENSING.md)。
+PolyForm Noncommercial 1.0.0。商业用途请先联系 <1103837067@qq.com> 或 <https://github.com/zoeymind> 获取书面许可，详见 [`LICENSING.md`](../../LICENSING.md)。

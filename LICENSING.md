@@ -25,8 +25,9 @@ ZoeyMind Desktop 及其 npm 包 `@zoeymind/cli`、`@zoeymind/mcp` 采用双轨�
 
 联系方式：
 
+- Email：<1103837067@qq.com>
 - GitHub：<https://github.com/zoeymind>
-- 请通过仓库 issue、Discussions、私信或组织私有联系渠道说明使用场景、组织信息与规模。
+- 请说明使用场景、组织信息与规模，我会评估授权条款、报价与商业支持范围。
 
 未取得书面授权前进行的商业使用均属违约，将依据 PolyForm Noncommercial 1.0.0 条款和适用法律追究责任。
 
