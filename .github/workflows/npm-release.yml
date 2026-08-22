@@ -42,6 +42,7 @@ jobs:
           fi
 
   publish:
+    runs-on: ubuntu-24.04
     needs: [authorize, validate]
     environment: npm
     permissions:
