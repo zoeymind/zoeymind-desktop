@@ -17,12 +17,14 @@ import { Loading, ThemeProvider, Toaster, useTheme } from "@zoeymind/ui"
 import { I18nProvider, useTranslation } from "@zoeymind/i18n"
 import { router } from "@/routes"
 import { appLocales } from "@/locales"
+import { dismissToast } from "@zoeymind/ui"
 import {
   LoadingProvider,
   ThemePresetProvider,
   toast,
   useAppVersion,
   useLoading,
+  useSettingsDialog,
 } from "@/shared/app-shared"
 import { RecoveryDialog } from "@/pages/RecoveryDialog"
 import { WindowCloseDialog } from "@/pages/WindowCloseDialog"
@@ -78,17 +80,21 @@ function InnerApp() {
       .initialize()
       .then(() => {
         if (cancelled) return
-        const { currentVersion, update, installUpdate } = useAppVersion.getState()
+        const update = useAppVersion.getState().update
         if (!update) return
+        const toastId = `app-update-${update.version}`
         toast({
-          id: `app-update-${update.version}`,
+          id: toastId,
           variant: "info",
           title: t("appVersion.latestAvailable", { version: update.version }),
-          description: t("appVersion.updateToastDescription", { version: currentVersion }),
+          description: t("appVersion.updateToastDescription"),
           duration: 0,
           action: {
-            label: t("appVersion.installUpdate", { version: update.version }),
-            onClick: () => void installUpdate(),
+            label: t("appVersion.viewDetails"),
+            onClick: () => {
+              useSettingsDialog.getState().openSettings("about")
+              dismissToast(toastId)
+            },
           },
         })
       })

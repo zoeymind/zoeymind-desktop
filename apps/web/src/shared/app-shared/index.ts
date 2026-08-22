@@ -90,6 +90,7 @@ export { LanguageSwitcher } from "./LanguageSwitcher"
 export { LoadingProvider, useLoading, useLoadingStore } from "./loading"
 export { AppVersionStatus } from "./AppVersionStatus"
 export { useAppVersion } from "./app-version-store"
+export { useSettingsDialog, type SettingsSectionId } from "./settings-dialog-store"
 
 // ── 4. 云端概念 stub —— 未接入真实实现，只为编译通过 ─
 export { trpc, trpcClient } from "./trpc-stub"

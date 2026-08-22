@@ -47,7 +47,7 @@ import {
   SettingsShell,
   cn,
 } from "@zoeymind/ui"
-import { AppVersionStatus, toast, createUUID } from "@/shared/app-shared"
+import { AppVersionStatus, toast, createUUID, useSettingsDialog } from "@/shared/app-shared"
 import {
   loadModelsConfig,
   saveModelsConfig,
@@ -85,7 +85,8 @@ const providerFetchCache = new Map<string, FetchedModel[]>()
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { t } = useTranslation()
   const [cfg, setCfg] = useState<ModelsConfig | null>(null)
-  const [active, setActive] = useState<SectionId>("preferences")
+  const active = useSettingsDialog(state => state.section)
+  const setActive = useSettingsDialog(state => state.setSection)
   // 触发 models section 刷新用 (fetch cache 更新后)
   const [cacheVersion, setCacheVersion] = useState(0)
   const bumpCache = useCallback(() => setCacheVersion(v => v + 1), [])

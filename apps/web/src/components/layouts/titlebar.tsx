@@ -13,6 +13,7 @@ import { Copy, Minus, Settings, Square, X } from "lucide-react"
 import { useTranslation } from "@zoeymind/i18n"
 import { Button } from "@zoeymind/ui"
 import { SettingsDialog } from "@/pages/SettingsDialog"
+import { useSettingsDialog } from "@/shared/app-shared"
 import { TabBar } from "./tab-bar"
 import { isPhysicalTitlebarTarget } from "./titlebar-drag"
 
@@ -30,7 +31,9 @@ async function detectPlatform(): Promise<"macos" | "windows" | "linux"> {
 export function TitleBar() {
   const [platform, setPlatform] = useState<"macos" | "windows" | "linux">("macos")
   const { t } = useTranslation()
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsOpen = useSettingsDialog(state => state.open)
+  const openSettings = useSettingsDialog(state => state.openSettings)
+  const closeSettings = useSettingsDialog(state => state.closeSettings)
   const [maximized, setMaximized] = useState(false)
   useEffect(() => {
     void detectPlatform().then(setPlatform)
@@ -73,7 +76,7 @@ export function TitleBar() {
           variant="ghost"
           size="icon-sm"
           className="shrink-0 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground active:scale-[0.96]"
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => openSettings()}
           aria-label={t("settings.title")}
           title={t("settings.title")}
         >
@@ -122,7 +125,10 @@ export function TitleBar() {
           </div>
         )}
       </div>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={next => (next ? openSettings() : closeSettings())}
+      />
     </div>
   )
 }

@@ -1,5 +1,6 @@
-import { Download, Loader2, RefreshCw, RotateCcw, X } from "lucide-react"
+import { Download, ExternalLink, Loader2, RefreshCw, RotateCcw, X } from "lucide-react"
 import Markdown from "react-markdown"
+import { openUrl } from "@tauri-apps/plugin-opener"
 import { useTranslation } from "@zoeymind/i18n"
 import { Button, cn } from "@zoeymind/ui"
 import { useAppVersion, type AppUpdateStatus } from "./app-version-store"
@@ -57,6 +58,14 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
             <div className="prose prose-sm dark:prose-invert max-h-80 max-w-none overflow-y-auto prose-headings:mt-3 prose-headings:mb-1 prose-headings:text-sm prose-p:my-1 prose-li:my-0.5 prose-strong:font-semibold prose-code:text-xs">
               <Markdown>{update.body}</Markdown>
             </div>
+            <button
+              type="button"
+              onClick={() => void openUrl("https://zoeymind.com/changelog")}
+              className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {t("appVersion.viewFullChangelog")}
+              <ExternalLink className="size-3" />
+            </button>
           </div>
         ) : null}
       </div>
