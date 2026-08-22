@@ -252,7 +252,8 @@ jobs:
             cp "$asset" "release-assets/$name"
           done < <(find dist -type f -print0)
 
-          notes="$(gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" --json body --jq '.body // ""')"
+          notes="$(gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq 'map(select(.tag_name == env.RELEASE_TAG))[0].body // ""')"
           printf '%s' "$notes" > release-assets/.notes
           node scripts/build-updater-manifest.mjs \
             --dir release-assets \
@@ -286,6 +287,10 @@ jobs:
       GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       RELEASE_TAG: ${{ inputs.release-tag }}
     steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.release-tag }}
       - name: Download successful installers
         env:
           GH_TOKEN: ${{ github.token }}
@@ -302,10 +307,6 @@ jobs:
             exit 1
           fi
           echo "downloaded $file_count release artifact files"
-      - name: Checkout release commit
-        uses: actions/checkout@v4
-        with:
-          ref: refs/tags/${{ inputs.release-tag }}
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -325,7 +326,8 @@ jobs:
             cp "$asset" "release-assets/$name"
           done < <(find dist -type f -print0)
 
-          notes="$(gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" --json body --jq '.body // ""')"
+          notes="$(gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq 'map(select(.tag_name == env.RELEASE_TAG))[0].body // ""')"
           printf '%s' "$notes" > release-assets/.notes
           node scripts/build-updater-manifest.mjs \
             --dir release-assets \
