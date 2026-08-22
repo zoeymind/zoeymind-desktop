@@ -77,37 +77,6 @@ export default {
     cancel: "Cancel",
     operationFailed: "The update service is unavailable. Try again later.",
   },
-  osGuidance: {
-    firstRun: {
-      title: "First-run note",
-      summary:
-        "ZoeyMind is a free local app and has not purchased Apple / Microsoft code-signing certificates. Your OS will ask you once to allow it; after that, the same machine won't ask again.",
-      macos: {
-        step1: "Right-click ZoeyMind in Dock or Launchpad → Open.",
-        step2: "When macOS says the developer can't be verified, click Open.",
-        step3: "Or: System Settings → Privacy & Security → find ZoeyMind → Open Anyway.",
-      },
-      windows: {
-        step1:
-          'The first time you install or launch, Windows SmartScreen shows "Windows protected your PC".',
-        step2: 'Click the small "More info" link at the top.',
-        step3: 'Click "Run anyway" — ZoeyMind will start.',
-      },
-      note: "These prompts are the macOS Gatekeeper / Windows SmartScreen defaults, not errors. ZoeyMind still verifies updater payload integrity via Tauri's own minisign signature, independent of OS code signing.",
-      dismiss: "Got it",
-    },
-    updatePreview: {
-      title: "About to update to v{{version}}",
-      summary:
-        "Windows SmartScreen may show its protection prompt again for the new version. Steps to allow it:",
-      step1: 'After download and verification, Windows shows "Windows protected your PC".',
-      step2: 'Click "More info".',
-      step3: 'Click "Run anyway" — ZoeyMind installs silently and relaunches.',
-      doNotShow: "Don't show this preview again (SmartScreen prompts will still appear)",
-      cancel: "Cancel",
-      confirm: "Start update",
-    },
-  },
   routeError: {
     title: "This page ran into a problem",
     description:

@@ -18,10 +18,8 @@ import { I18nProvider, useTranslation } from "@zoeymind/i18n"
 import { router } from "@/routes"
 import { appLocales } from "@/locales"
 import {
-  FirstRunGuidance,
   LoadingProvider,
   ThemePresetProvider,
-  WindowsUpdatePreviewDialog,
   toast,
   useAppVersion,
   useLoading,
@@ -103,8 +101,6 @@ function InnerApp() {
       <RouterProvider router={router} />
       <RecoveryDialog />
       <WindowCloseDialog />
-      <FirstRunGuidance />
-      <WindowsUpdatePreviewDialog />
       <FileAssociationsListener onInitialFilesOpened={handleInitialFilesOpened} />
       <Loading
         show={loading}

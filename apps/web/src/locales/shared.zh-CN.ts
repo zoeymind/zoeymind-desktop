@@ -77,35 +77,6 @@ export default {
     cancel: "取消",
     operationFailed: "更新服务暂时不可用，请稍后重试",
   },
-  osGuidance: {
-    firstRun: {
-      title: "首次运行说明",
-      summary:
-        "ZoeyMind 是免费的本地应用，尚未购买 Apple / Microsoft 代码签名证书。首次运行时系统会问一次「是否允许」，之后同一台机器不再询问。",
-      macos: {
-        step1: "在 Dock 或 Launchpad 上右键 ZoeyMind → 打开。",
-        step2: "macOS 提示「无法确认开发者」，点击「打开」。",
-        step3: "或前往 系统设置 → 隐私与安全性 → 找到 ZoeyMind → 仍要打开。",
-      },
-      windows: {
-        step1: "首次安装或运行时，Windows SmartScreen 会显示「Windows 已保护你的电脑」。",
-        step2: "点击顶部小字「更多信息」。",
-        step3: "点击「仍要运行」，之后 ZoeyMind 会启动。",
-      },
-      note: "以上是 macOS Gatekeeper / Windows SmartScreen 的默认行为，不是错误。ZoeyMind 内部使用 Tauri Updater 的加密签名校验完整性，与平台签名互不影响。",
-      dismiss: "知道了",
-    },
-    updatePreview: {
-      title: "即将更新到 v{{version}}",
-      summary: "Windows SmartScreen 首次运行新版本时会再显示一次保护提示。请按步骤放行：",
-      step1: "下载并校验完成后，Windows 会弹出「Windows 已保护你的电脑」。",
-      step2: "点击「更多信息」。",
-      step3: "点击「仍要运行」，ZoeyMind 会静默安装并自动重启。",
-      doNotShow: "以后更新不再显示此说明（SmartScreen 提示仍会照常出现）",
-      cancel: "取消",
-      confirm: "开始更新",
-    },
-  },
   routeError: {
     title: "页面遇到问题",
     description: "ZoeyMind 无法继续显示当前页面。你可以重试，或返回首页继续工作。",

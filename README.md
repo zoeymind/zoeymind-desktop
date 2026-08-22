@@ -102,6 +102,14 @@ MCP Host 配置：
 }
 ```
 
+**首次运行**：ZoeyMind 未购买 Apple / Microsoft 代码签名证书，OS 会问一次是否放行。
+
+- **macOS**：`.dmg` 拖入 Applications 后，在 Launchpad 右键 ZoeyMind → 打开 → 弹出「无法确认开发者」时点「打开」；或 系统设置 → 隐私与安全性 → 找到 ZoeyMind → 仍要打开。之后不再询问。
+- **Windows**：SmartScreen 弹出「Windows 已保护你的电脑」时，点顶部小字「更多信息」→「仍要运行」。之后不再询问。
+- **Linux**：AppImage 加执行权限 `chmod +x` 即可运行；`.deb` 用 `sudo apt install ./ZoeyMind_*.deb`。
+
+> 应用内部使用 Tauri Updater 的加密签名校验更新完整性，独立于 OS 代码签名。
+
 ## 本地开发
 
 ```bash

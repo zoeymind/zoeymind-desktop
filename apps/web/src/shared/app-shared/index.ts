@@ -89,8 +89,6 @@ export { LanguageSwitcher } from "./LanguageSwitcher"
 // ── 3. Loading Provider ──────────────────────────
 export { LoadingProvider, useLoading, useLoadingStore } from "./loading"
 export { AppVersionStatus } from "./AppVersionStatus"
-export { FirstRunGuidance, WindowsUpdatePreviewDialog } from "./OSGuidance"
-export { useUpdateInstallGate } from "./os-guidance-store"
 export { useAppVersion } from "./app-version-store"
 
 // ── 4. 云端概念 stub —— 未接入真实实现，只为编译通过 ─
