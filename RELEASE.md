@@ -43,6 +43,18 @@
 
 首次发布（v0.3.0）在此机器上以 `npm login` + 本地 `npm publish` 手工完成，用于占位 `@zoeymind` scope 并沉淀首个稳定 tag；之后所有版本走上述 Release-per-tag 流程，禁止再走手工路径。
 
+## 谁能发版
+
+多层防护，任一层失守都不影响其他层：
+
+1. **`gh` 触发权限**：只有仓库 write 权限成员可以 `git push` tag 或 `workflow_dispatch`。Clone / fork 不带 write。
+2. **workflow 步骤内 actor 断言**：`npm Release` 与 `Release` workflow 首步硬编码 `github.actor == "caishilong"`；非本人触发直接失败。
+3. **`npm` environment secret 隔离**：`NODE_AUTH_TOKEN` 只挂在 `npm` environment，并配置 `deployment-branch-policies` 只接受 `main` 分支 push 与 `v*.*.*` tag。其他分支/tag 拿不到 token。
+4. **npm granular token 权限最小**：只对 `@zoeymind` scope 读写，1 年过期。泄漏后 revoke 一次即可。
+5. **Desktop 更新签名**：`TAURI_SIGNING_PRIVATE_KEY` 只被 `Release` workflow 使用，用于对 macOS updater 打包签名，非签名产物不会被安装端接受。
+
+以后要接手第二个 maintainer：改 `ALLOWED` 变量或将其挪到 secret，同时在 npm environment 加 reviewer。切勿把发布权直接接给 CI bot。
+
 ## 校验清单
 
 发版 tag push 之前跑：

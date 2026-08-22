@@ -34,6 +34,15 @@ jobs:
     name: Validate release request
     runs-on: ubuntu-24.04
     steps:
+      - name: Only repo owner may release
+        env:
+          ACTOR: ${{ github.actor }}
+          ALLOWED: caishilong
+        run: |
+          if [[ "$ACTOR" != "$ALLOWED" ]]; then
+            echo "actor $ACTOR is not authorized to run Release; only $ALLOWED can dispatch" >&2
+            exit 1
+          fi
       - name: Validate input mode
         env:
           INPUT_VERSION: ${{ inputs.version }}

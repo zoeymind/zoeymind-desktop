@@ -27,9 +27,21 @@ jobs:
       - run: pnpm --filter @zoeymind/cli typecheck
       - run: pnpm --filter @zoeymind/mcp typecheck
 
-  publish:
-    needs: validate
+  authorize:
     runs-on: ubuntu-24.04
+    steps:
+      - name: Only repo owner may publish
+        env:
+          ACTOR: ${{ github.actor }}
+          ALLOWED: caishilong
+        run: |
+          if [[ "$ACTOR" != "$ALLOWED" ]]; then
+            echo "actor $ACTOR is not authorized to publish; only $ALLOWED can trigger npm Release" >&2
+            exit 1
+          fi
+
+  publish:
+    needs: [authorize, validate]
     environment: npm
     permissions:
       contents: read
