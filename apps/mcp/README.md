@@ -142,4 +142,4 @@ The test suite spawns compiled `dist/index.js` over real stdio and clean-install
 
 ## License
 
-PolyForm Noncommercial 1.0.0。商业用途请先联系 <1103837067@qq.com> 或 <https://github.com/zoeymind> 获取书面许可，详见 [`LICENSING.md`](../../LICENSING.md)。
+Apache License 2.0。允许自由使用、修改、商用与再分发；只需保留 [`LICENSE`](./LICENSE) 与 [`NOTICE`](./NOTICE)。

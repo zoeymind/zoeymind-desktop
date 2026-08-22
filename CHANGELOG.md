@@ -10,7 +10,7 @@ This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. B
 - Compiled Node.js 22 executables with bundled Broker Client code.
 - Native external-automation and destructive-edit permissions, both disabled by default.
 - Packed-artifact, real stdio, protocol compatibility, and tool-schema validation.
-- License: PolyForm Noncommercial 1.0.0；商业使用需先联系 <https://github.com/zoeymind> 获取书面授权。
+- License: Apache License 2.0。
 
 ## Versioning policy
 

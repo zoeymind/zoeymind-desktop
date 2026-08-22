@@ -12,7 +12,7 @@
   <a href="https://github.com/zoeymind/zoeymind-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/zoeymind/zoeymind-desktop?display_name=tag&sort=semver" alt="Latest release"></a>
   <a href="https://www.npmjs.com/package/@zoeymind/cli"><img src="https://img.shields.io/npm/v/@zoeymind/cli?label=%40zoeymind%2Fcli" alt="npm @zoeymind/cli"></a>
   <a href="https://www.npmjs.com/package/@zoeymind/mcp"><img src="https://img.shields.io/npm/v/@zoeymind/mcp?label=%40zoeymind%2Fmcp" alt="npm @zoeymind/mcp"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue.svg" alt="License"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 
 <p align="center">
@@ -128,6 +128,6 @@ Full acceptance commands for CLI/MCP, Portal, Broker, and native code are in [`R
 
 ## License
 
-Default: [**PolyForm Noncommercial 1.0.0**](./LICENSE). Read, modify, redistribute, and use non-commercially; **commercial use is not permitted** without a separate license. See [`LICENSING.md`](./LICENSING.md).
+Apache License 2.0. You may freely use, modify, distribute, and use commercially, provided that you retain [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE) and preserve the attribution notices in the source.
 
 Copyright © 2026 ZoeyMind. Maintained by [@caishilong](https://github.com/caishilong).

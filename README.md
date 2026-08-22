@@ -12,7 +12,7 @@
   <a href="https://github.com/zoeymind/zoeymind-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/zoeymind/zoeymind-desktop?display_name=tag&sort=semver" alt="Latest release"></a>
   <a href="https://www.npmjs.com/package/@zoeymind/cli"><img src="https://img.shields.io/npm/v/@zoeymind/cli?label=%40zoeymind%2Fcli" alt="npm @zoeymind/cli"></a>
   <a href="https://www.npmjs.com/package/@zoeymind/mcp"><img src="https://img.shields.io/npm/v/@zoeymind/mcp?label=%40zoeymind%2Fmcp" alt="npm @zoeymind/mcp"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue.svg" alt="License"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 
 <p align="center">
@@ -128,6 +128,6 @@ CLI/MCP、Portal、Broker、native 完整验收命令见 [`RELEASE.md`](./RELEAS
 
 ## License
 
-默认 [**PolyForm Noncommercial 1.0.0**](./LICENSE)。允许阅读、修改、再分发、非商业使用；**禁止**任何形式的商业化。商业授权见 [`LICENSING.md`](./LICENSING.md)。
+Apache License 2.0。允许自由使用、修改、商用与再分发；只需保留 [`LICENSE`](./LICENSE) 与 [`NOTICE`](./NOTICE)，并在源码中保留归属声明。
 
 Copyright © 2026 ZoeyMind. Maintained by [@caishilong](https://github.com/caishilong).

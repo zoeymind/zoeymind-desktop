@@ -6,11 +6,11 @@
   "bin": {
     "zoeymind": "dist/index.js"
   },
-  "files": ["dist", "README.md", "LICENSE", "LICENSING.md"],
+  "files": ["dist", "README.md", "LICENSE", "NOTICE"],
   "engines": {
     "node": ">=22"
   },
-  "license": "SEE LICENSE IN ./LICENSE",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zoeymind/zoeymind-desktop.git",
