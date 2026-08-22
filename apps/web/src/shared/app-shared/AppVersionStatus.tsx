@@ -69,7 +69,7 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
         type="button"
         variant="ghost"
         size="sm"
-        className={cn("h-7 gap-1.5 px-2 text-xs text-primary", className)}
+        className={cn("h-7 gap-1.5 px-2 text-xs text-muted-foreground", className)}
         onClick={() => void restart()}
       >
         <RotateCcw data-icon="inline-start" />
@@ -84,7 +84,7 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
         type="button"
         variant="ghost"
         size="sm"
-        className={cn("h-7 gap-1.5 px-2 text-xs text-primary", className)}
+        className={cn("h-7 gap-1.5 px-2 text-xs text-muted-foreground", className)}
         onClick={() => void installUpdate()}
         title={t("appVersion.latestAvailable", { version: update.version })}
       >
