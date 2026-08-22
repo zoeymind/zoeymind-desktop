@@ -238,15 +238,19 @@ jobs:
         with:
           pattern: zoeymind-*
           path: dist
-          merge-multiple: true
 
       - name: Prepare release assets, manifest, and checksums
         run: |
           mkdir release-assets
           while IFS= read -r -d '' asset; do
+            artifact_name="$(basename "$(dirname "$asset")")"
             name="$(basename "$asset")"
+            case "$artifact_name:$name" in
+              zoeymind-macos-arm64:*) name="${name/ZoeyMind/ZoeyMind-aarch64}" ;;
+              zoeymind-macos-x64:*) name="${name/ZoeyMind/ZoeyMind-x64}" ;;
+            esac
             if [[ -e "release-assets/$name" ]]; then
-              echo "duplicate release asset: $name" >&2
+              echo "duplicate release asset after architecture naming: $name" >&2
               exit 1
             fi
             cp "$asset" "release-assets/$name"
@@ -318,9 +322,14 @@ jobs:
         run: |
           mkdir release-assets
           while IFS= read -r -d '' asset; do
+            artifact_name="$(basename "$(dirname "$asset")")"
             name="$(basename "$asset")"
+            case "$artifact_name:$name" in
+              zoeymind-macos-arm64:*) name="${name/ZoeyMind/ZoeyMind-aarch64}" ;;
+              zoeymind-macos-x64:*) name="${name/ZoeyMind/ZoeyMind-x64}" ;;
+            esac
             if [[ -e "release-assets/$name" ]]; then
-              echo "duplicate release asset: $name" >&2
+              echo "duplicate release asset after architecture naming: $name" >&2
               exit 1
             fi
             cp "$asset" "release-assets/$name"
