@@ -69,7 +69,7 @@ export function TitleBar() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-10 w-10 rounded-full active:scale-[0.96]"
+          className="h-10 w-11 rounded-none active:scale-[0.96]"
           onClick={() => setSettingsOpen(true)}
           aria-label={t("settings.title")}
           title={t("settings.title")}
