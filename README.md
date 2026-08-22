@@ -1,59 +1,292 @@
-# ZoeyMind Desktop
+<p align="center">
+  <img src=".github/assets/logo.svg" alt="ZoeyMind" width="180" />
+</p>
 
-ZoeyMind Desktop 是基于 Tauri 的本地思维导图编辑器。它将 `.zmind` 文档保存在用户选择的位置，并通过统一的 Document Automation Portal 向内置 AI、命令行工具和本地 MCP Client 提供结构化查询与原子编辑能力。
+<h1 align="center">ZoeyMind Desktop</h1>
 
-> [!IMPORTANT]
-> Desktop、Portal、CLI 和 MCP Adapter 已完成开发环境集成、真实应用链路测试和 npm 发行加固。CLI/MCP 采用 `@zoeymind/cli`（bin `zoeymind`）与 `@zoeymind/mcp`（bin `zoeymind-mcp`）双 package 发行。首次 npm 发布由受保护的 `npm Release` workflow 驱动，需要 npm scope 与 trusted publisher 授权后才能自动完成。
+<p align="center">
+  本地优先的思维导图工作站 · 内置 AI Agent · 支持外部自动化
+</p>
 
-## License
+<p align="center">
+  <a href="https://github.com/zoeymind/zoeymind-desktop/releases/latest"><img src="https://img.shields.io/github/v/release/zoeymind/zoeymind-desktop?display_name=tag&sort=semver" alt="Latest release"></a>
+  <a href="https://www.npmjs.com/package/@zoeymind/cli"><img src="https://img.shields.io/npm/v/@zoeymind/cli?label=%40zoeymind%2Fcli" alt="npm @zoeymind/cli"></a>
+  <a href="https://www.npmjs.com/package/@zoeymind/mcp"><img src="https://img.shields.io/npm/v/@zoeymind/mcp?label=%40zoeymind%2Fmcp" alt="npm @zoeymind/mcp"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/zoeymind/zoeymind-desktop/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/zoeymind/zoeymind-desktop/ci.yml?label=CI" alt="CI"></a>
+  <a href="https://github.com/zoeymind/zoeymind-desktop/stargazers"><img src="https://img.shields.io/github/stars/zoeymind/zoeymind-desktop?style=flat" alt="GitHub stars"></a>
+</p>
 
-双轨授权：默认 [PolyForm Noncommercial 1.0.0](./LICENSE)，禁止任何商业化用途。商业授权见 [`LICENSING.md`](./LICENSING.md)。
+<hr />
 
-## 功能
+ZoeyMind 是一款基于 Tauri 2 + React 19 的本地优先思维导图应用，运行在 macOS / Windows / Linux。它把「文档编辑器」、「AI 工作台」和「Agent 自动化」合并成同一个应用：
 
-- 本地 `.zmind` 文档、新建草稿、最近项目和恢复快照；
-- 多标签思维导图编辑、撤销/重做、dirty 与保存生命周期；
-- 内置 Mind AI Agent；
-- Document Automation Portal：
-  - 大文档 outline、完整 subtree 和结构化 search；
-  - Tree Hashline Patch；
-  - 短期 read anchor 与冲突检测；
-  - 单文档串行、单 patch 原子提交和单 undo 边界；
-  - 提交后实时画布收敛、节点选择和视口居中；
-- 本地 Broker、CLI 和 stdio MCP Adapter；
-- macOS、Windows 和 Linux 安装包构建。
+- 📄 **本地 `.zmind` 文档**，用户完全掌控存储位置，配套崩溃恢复与外部修改检测；
+- 🧠 **内置 Mind AI Agent**，模型直接读写当前打开的思维导图；
+- 🔌 **外部 Agent 自动化**（`@zoeymind/cli` / `@zoeymind/mcp`），共享同一个 Document Portal 内核；
+- 🎨 **完整的编辑体验**：多标签、多层级、样式、图片、公式、Markdown、导入导出；
+- 🛡 **默认关闭外部访问**，全部通信走本地 loopback + 每次启动新 token。
 
-## 当前状态
+## 目录
 
-| 模块            | 状态     | 说明                                                                      |
-| --------------- | -------- | ------------------------------------------------------------------------- |
-| Desktop 应用    | 可发布   | Tauri 2 + React 19，Release workflow 输出 macOS/Windows/Linux 安装包      |
-| Portal 内核     | 已实现   | 直接读写当前打开且 ready 的实时 `ProjectSession` / MindMap                |
-| 内置 AI         | 已实现   | 模型只看到当前导图 query/edit，不看到内部文档身份和节点 UID               |
-| Local Broker    | 默认关闭 | 动态 loopback 端口、随机 token、descriptor 由 Preferences 中的开关控制    |
-| `@zoeymind/cli` | 发行就绪 | 编译到 `dist/`，bin `zoeymind`；等待 npm scope 授权后由 workflow 发布     |
-| `@zoeymind/mcp` | 发行就绪 | 编译到 `dist/`，bin `zoeymind-mcp`；等待 npm scope 授权后由 workflow 发布 |
-| npm 发布        | 等待鉴权 | 见 [首次发布准备](#首次发布准备)                                          |
+- [产品能力](#产品能力)
+- [快速开始](#快速开始)
+- [核心概念](#核心概念)
+- [AI 工作台](#ai-工作台)
+- [外部自动化](#外部自动化)
+- [架构概览](#架构概览)
+- [开发指南](#开发指南)
+- [版本与发布](#版本与发布)
+- [反馈与安全](#反馈与安全)
+- [技术栈](#技术栈)
+- [License](#license)
 
-## 系统要求
+## 产品能力
 
-开发与 CI 当前使用：
+### 编辑器
 
-- Node.js 22；
-- pnpm 10.11；
-- Rust stable；
-- Tauri 2 所需的平台构建依赖。
+- 完整思维导图编辑：节点增删改、多层级、结构切换、快捷键；
+- 富文本节点、图标、图片、附件、超链接、备注；
+- 数学公式（KaTeX）、Markdown、代码块；
+- 撤销/重做、拖拽、批量选择、按级别对齐；
+- 大文档高性能模式（自动降级渲染）；
+- 主题预设 + 深浅色模式，可自定义配色；
+- 中英文双语界面。
 
-仓库尚未发布 CLI/MCP 的正式 Node、Desktop、MCP Client 兼容矩阵；发布前必须补齐并由 CI 验证。
+### 文件与项目
+
+- 原生 `.zmind` 文件格式，可打开任意路径的文档；
+- 多标签并行编辑，每个 tab 一个独立 `ProjectSession`；
+- Dirty / 已保存 / 冲突 三态生命周期；
+- 磁盘冲突提示：外部工具修改时提供 reload / 保存副本 / 覆盖；
+- 崩溃恢复：意外关闭时保留未提交内容，下次启动可选择性恢复；
+- 文件关联：双击 `.zmind` 直接打开对应文档；
+- 单实例：重复启动会激活已有窗口而不是开新进程；
+- 最近项目、文件夹分组。
+
+### 系统集成
+
+- 全平台安装包：macOS `.dmg`（Intel + Apple Silicon）、Windows `.exe`（NSIS）、Linux `.AppImage` / `.deb`；
+- 自动更新：走 Tauri Updater，macOS Apple Silicon 走签名 `.app.tar.gz`；
+- 系统菜单本地化，支持 macOS 原生 traffic light 与 Windows overlay title bar；
+- 日志系统：级别可动态调整，目录可自定义，自动按周清理。
+
+### AI 工作台
+
+- 内置 **Mind AI Agent**，通过 tool call 直接读写当前思维导图；
+- 支持流式响应、可中断、可续跑、消息滚动惯性；
+- Agent 侧渲染上限保护，大响应不卡 UI；
+- 多模型 Provider：OpenAI / OpenAI 兼容 / Anthropic / Gemini / Ollama；
+- 可选 **编辑审查（Case Review）**：Agent 提交编辑前进入人机双确认；
+- 外挂 **MCP Client**：Desktop 内自己作为 MCP Host 引入其他 MCP server；
+- 会话历史、跨窗口一致的运行状态。
+
+### 外部自动化
+
+- **`@zoeymind/cli`**：命令 `zoeymind`，脚本或本地工具调用 Desktop；
+- **`@zoeymind/mcp`**：命令 `zoeymind-mcp`，把 Desktop 暴露给 Claude Code / OMP / Codex / OpenCode 等 MCP Host；
+- 唯一 wire format：Tree Hashline Patch + read anchor；
+- 默认关闭；在偏好设置中显式启用；**破坏性编辑**权限独立开关，默认也是关闭；
+- 通信走认证过的本地 loopback HTTP，Bearer token 每次 Desktop 启动重新生成。
 
 ## 快速开始
+
+### 桌面应用
+
+前往 [GitHub Releases](https://github.com/zoeymind/zoeymind-desktop/releases/latest) 下载对应平台安装包：
+
+| 平台                  | 安装包                               |
+| --------------------- | ------------------------------------ |
+| macOS (Apple Silicon) | `ZoeyMind_<version>_aarch64.dmg`     |
+| macOS (Intel)         | `ZoeyMind_<version>_x64.dmg`         |
+| Windows x64           | `ZoeyMind_<version>_x64-setup.exe`   |
+| Linux (Debian/Ubuntu) | `zoey-mind_<version>_amd64.deb`      |
+| Linux (AppImage)      | `zoey-mind_<version>_amd64.AppImage` |
+
+- macOS 首次打开 `.dmg` 需要在 **系统设置 → 隐私与安全性** 允许运行；
+- Windows 首次运行可能弹 SmartScreen 需要"仍要运行"。
+
+### 命令行 / MCP
+
+```bash
+npm install --global @zoeymind/cli   # 提供 zoeymind
+npm install --global @zoeymind/mcp   # 提供 zoeymind-mcp
+```
+
+按需 `npx`：
+
+```bash
+npx --yes --package @zoeymind/cli@0.3.0 zoeymind projects
+```
+
+### 打开首个思维导图
+
+1. 启动 ZoeyMind Desktop；
+2. 从起始页选择「新建导图」或双击一个 `.zmind` 文件；
+3. 在中央画布用 <kbd>Tab</kbd> / <kbd>Enter</kbd> 添加子节点 / 同级节点；
+4. <kbd>Cmd/Ctrl</kbd> + <kbd>S</kbd> 保存到磁盘。
+
+### 唤起内置 AI
+
+1. 右侧 AI 面板选择你已配置的 Provider 与 Model；
+2. 输入自然语言诉求；
+3. Agent 会先读当前导图（`query_current_mindmap`）再产出补丁（`edit_current_mindmap`）；
+4. 如果开启了「编辑审查」，编辑提交前会先弹出差异确认。
+
+### 让外部 Agent 操作导图
+
+1. 在 **偏好设置 → 外部自动化** 打开「允许外部自动化」；
+2. 需要 Agent 能改文档时，同时打开「允许破坏性编辑」；
+3. 从 CLI 直接调用：
+
+   ```bash
+   zoeymind projects
+   zoeymind query_current_mindmap '{"mode":"outline","maxLines":200}'
+   ```
+
+4. 或在 MCP Host（Claude Code / OMP / Codex / OpenCode）里配置：
+
+   ```json
+   {
+     "mcpServers": {
+       "zoeymind": {
+         "command": "zoeymind-mcp",
+         "args": []
+       }
+     }
+   }
+   ```
+
+## 核心概念
+
+- **`.zmind` 文档**：单文件项目容器，保存节点树 + 布局 + 样式，用户可放到任何目录。
+- **`ProjectSession`**：每个打开的 tab 一个 session，是当前导图的唯一 in-memory 事实源。
+- **Document Portal**：域内核，统一负责结构投影、结构化搜索、read anchor、Tree Hashline patch 应用、事务与撤销边界、渲染收敛。内置 AI、CLI、MCP 全部走它。
+- **Local Broker**：Rust 侧的认证 loopback HTTP 服务，把外部请求转成 Portal 调用。默认关闭。
+- **Read Anchor**：Portal 返回 view 时同时返回锚点，编辑必须携带；文档变动后旧 anchor 过期，Portal 会明确拒绝。
+- **Tree Hashline Patch**：唯一编辑 wire format。基于行号 + 缩进层级的补丁描述，可原子化多操作提交。
+- **编辑审查**：内置 AI 编辑前的可选人机确认闸口，与「外部破坏性编辑」授权彼此独立。
+
+## AI 工作台
+
+内置 Mind AI Agent 只暴露三个模型可见工具：
+
+```text
+query_current_mindmap  只读，取 outline / subtree / 结构化 search
+edit_current_mindmap   destructive，携带 anchor + Tree Hashline patch
+question               让用户回答一个明确问题
+```
+
+模型看不到内部文档 ID、节点 UID、编辑审查 token 等内部标识。
+
+Provider 配置在 **设置 → AI Models**，支持：
+
+- **OpenAI** / OpenAI 兼容（Groq、Together、DeepSeek、Kimi 等）；
+- **Anthropic**；
+- **Google Gemini**；
+- **Ollama**（本地模型）。
+
+Chat 侧特性：
+
+- 流式渲染 + 可中断（<kbd>Esc</kbd> 或 UI 按钮）；
+- 中断后可续跑同一会话；
+- Message scroller 支持鼠标滚轮惯性、跨嵌套滚动区透穿；
+- Token/状态指示、工具卡片折叠；
+- 全部对话历史落 SQLite；
+- 编辑审查开关：`ai-case-review-enabled`。
+
+MCP Client 面板允许 Desktop 自己作为 MCP Host，接入外部 MCP server（文件系统、代码搜索等）；与本仓 `@zoeymind/mcp` 不冲突。
+
+## 外部自动化
+
+外部 CLI / MCP 都通过同一个 Local Broker 与 Portal 对话。工具面：
+
+| 工具                    | 幂等        | 用途                               |
+| ----------------------- | ----------- | ---------------------------------- |
+| `projects`              | non-idem    | 列出项目，或创建临时草稿           |
+| `activate_project`      | idempotent  | 打开或激活指定项目                 |
+| `query_current_mindmap` | 只读        | outline / subtree / 结构化 search  |
+| `edit_current_mindmap`  | destructive | 基于 anchor 的 Tree Hashline patch |
+
+安全边界：
+
+- Broker 只绑定 `127.0.0.1`，端口由操作系统分配；
+- 每次 Desktop 启动生成新的 32-byte Bearer token；
+- Descriptor 文件权限 `0600`（Unix）；
+- HTTP body 上限 1 MiB，请求/响应带超时；
+- Desktop 关闭时删除 descriptor；
+- 外部自动化默认关闭，`edit_current_mindmap` 权限独立于读权限；
+- 未授权外部编辑请求返回 `EXTERNAL_EDITS_DISABLED`；
+- 外部 Agent 拿不到内部节点 UID / 编辑审查 token / 内部文档身份。
+
+详细协议、错误码、故障排查：
+
+- [`docs/architecture/document-automation-portal.md`](./docs/architecture/document-automation-portal.md)
+- [`apps/cli/README.md`](./apps/cli/README.md)
+- [`apps/mcp/README.md`](./apps/mcp/README.md)
+
+## 架构概览
+
+```text
+┌────────────────────────── ZoeyMind Desktop (Tauri 2) ────────────────────────┐
+│                                                                              │
+│  React 19 + Vite Web UI                                                      │
+│    ├─ Mind Map 编辑器 (simple-mind-map + custom plugins)                     │
+│    ├─ AI Chat / 编辑审查 / MCP Client                                        │
+│    ├─ Document Portal (projection · search · patch · anchor · tx)            │
+│    ├─ Recovery / File Save Flow / File Conflict                              │
+│    └─ Preferences · 主题 · 日志 · 更新器 UI                                  │
+│                                                                              │
+│  Rust Native (src-tauri)                                                     │
+│    ├─ Document Portal Broker (authenticated loopback HTTP, dynamic port)     │
+│    ├─ Chat / HTTP 流式代理 · Atomic file save · 恢复队列                     │
+│    ├─ SQLite · Log rotation · File association · Auto-updater                │
+│    └─ 外部自动化持久化开关 (native，独立于 Web LocalStorage)                 │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+外部通信面：
+built-in Agent ─┐
+external Agent ─┤        ┌ Local Broker (127.0.0.1:<dyn>, Bearer token) ┐
+CLI/MCP ────────┴─ HTTP →│                                              │→ Portal → live MindMap
+                         └ Preferences 开关 & 权限校验                  ┘
+```
+
+模块拓扑：
+
+```text
+apps/desktop/
+├── apps/
+│   ├── web/                     React UI · Portal 实现 · AI Chat · 恢复 · 保存流
+│   ├── cli/                     发布为 @zoeymind/cli，本机 CLI Adapter
+│   └── mcp/                     发布为 @zoeymind/mcp，stdio MCP Adapter
+├── packages/
+│   ├── document-portal-client/  Node Broker Client（bundle 进 CLI/MCP）
+│   ├── simple-mind-map/         思维导图引擎（内嵌 fork）
+│   ├── ui/                      共享 UI 组件库（Base UI + Tailwind + Motion）
+│   ├── i18n/                    多语言底座
+│   ├── logger/                  日志抽象
+│   └── shared/                  跨包工具
+├── src-tauri/                   Rust native · Broker · SQLite · 更新器
+├── docs/architecture/           架构与决策文档
+├── scripts/                     Release 工具、pack 校验
+└── .github/workflows/           CI · Desktop Release · npm Release
+```
+
+## 开发指南
+
+需求：
+
+- Node.js **22+**、pnpm **10.11+**、Rust stable、Tauri 2 平台构建依赖。
+
+第一次拉代码：
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm tauri:dev
 ```
 
-只启动 Web UI：
+只跑 Web UI（无 Tauri 壳）：
 
 ```bash
 pnpm dev
@@ -62,313 +295,62 @@ pnpm dev
 构建：
 
 ```bash
-pnpm build
-pnpm tauri:build
+pnpm build            # 产出 Web 构建
+pnpm tauri:build      # 产出桌面安装包（当前平台）
 ```
 
-## 仓库结构
-
-```text
-apps/desktop/
-├── apps/
-│   ├── web/                       # React UI、编辑器、AI Chat、Portal 实现
-│   ├── cli/                       # 人和脚本使用的 Broker CLI Adapter
-│   └── mcp/                       # 外部 Agent 使用的 stdio MCP Adapter
-├── packages/
-│   ├── document-portal-client/    # Node Broker Client 和共享 wire tool names
-│   ├── simple-mind-map/           # 思维导图引擎
-│   └── ui/                        # 共享 UI
-├── src-tauri/
-│   └── src/document_portal/       # 本地 HTTP Broker 生命周期与鉴权
-├── docs/architecture/             # 架构决策和实现说明
-└── .github/workflows/             # Desktop CI 与安装包发布
-```
-
-核心 seam：
-
-```text
-built-in Agent ── current-document Adapter ─┐
-                                             │
-external Agent ── stdio MCP ── Local Broker ├─ Document Portal ── live MindMap
-human/script ──── CLI ──────── Local Broker ┘
-```
-
-CLI 和 MCP 只做协议转换；projection、search、anchor、patch、transaction 和 renderer convergence 均由同一个 Portal 实现。
-
-详细设计见 [`docs/architecture/document-automation-portal.md`](./docs/architecture/document-automation-portal.md)。
-
-## Document Automation Portal
-
-### 外部工具
-
-外部 CLI/MCP 当前暴露四个操作：
-
-| 工具                    | 类型                | 用途                                                        |
-| ----------------------- | ------------------- | ----------------------------------------------------------- |
-| `projects`              | 读/写               | 列出项目或创建临时草稿                                      |
-| `activate_project`      | 写                  | 打开或激活一个项目                                          |
-| `query_current_mindmap` | 只读                | outline、subtree 或结构化 search                            |
-| `edit_current_mindmap`  | destructive、非幂等 | 使用 read 返回的 anchor 和 Tree Hashline patch 编辑当前导图 |
-
-内置 Mind AI Agent 不暴露项目控制，只拥有：
-
-```text
-query_current_mindmap
-edit_current_mindmap
-question
-```
-
-调用开始时，Adapter 使用 `useTabs.getState().activeId` 解析当前 ready 的文档会话，并在内部注入文档身份。
-
-### 查询
-
-读取结构：
-
-```json
-{
-  "mode": "outline",
-  "maxLines": 200
-}
-```
-
-读取完整局部子树：
-
-```json
-{
-  "mode": "subtree",
-  "path": ["用户中心", "登录"],
-  "maxLines": 200
-}
-```
-
-结构化搜索：
-
-```json
-{
-  "mode": "search",
-  "query": "登录失败",
-  "fields": ["caseTitle", "expected"],
-  "limit": 20
-}
-```
-
-Outline 只证明结构，不包含步骤；只有未截断的 complete subtree 才能支持完整替换或完整性结论。
-
-### 编辑
-
-编辑必须使用最近一次 query/edit 返回的 `anchorTag`。例如：
-
-```json
-{
-  "anchorTag": "<query 返回的 anchorTag>",
-  "patch": "PUT >8:\n+[P1] 登录失败 & 密码错误\n+  点击登录 & 显示密码错误提示",
-  "returnView": {
-    "view": "subtree",
-    "maxLines": 100
-  }
-}
-```
-
-Tree Hashline wire format：
-
-```text
-PUT N.=M:       替换连续节点
-PUT >N:         在 N 后插入同级节点
-PUT <N:         在 N 前插入同级节点
-CUT N.=M:       删除连续节点
-MOVE N -> M:    移动子树
-```
-
-Body 每行以 `+` 开始；两个空格表示一层树深度。成功提交返回新的 bounded view 和 anchor，后续编辑应使用新 anchor；旧 anchor 会过期。
-
-## 开发环境 CLI
-
-Desktop 必须正在运行，目标标签必须处于 ready 状态。
+包内验收：
 
 ```bash
-pnpm --filter @zoeymind/cli exec tsx src/index.ts projects
-
-pnpm --filter @zoeymind/cli exec tsx src/index.ts \
-  query_current_mindmap \
-  '{"mode":"outline","maxLines":200}'
-```
-
-完整真实应用验收：
-
-```bash
-pnpm test:portal-integration
-```
-
-该命令通过运行中的 Desktop/Broker 创建临时草稿，验证 query、search、连续 edit、破坏性 edit、过期 anchor、嵌套 MOVE、原子多操作 patch 和 renderer convergence，最后清理临时草稿。
-
-## 开发环境 MCP 配置
-
-MCP Adapter 使用官方 TypeScript SDK 的 `StdioServerTransport`。MCP Host 启动 Adapter 子进程，JSON-RPC request 进入 stdin，response 从 stdout 返回；Adapter 本身不监听 MCP 网络端口。
-
-> [!WARNING]
-> MCP 子进程的 stdout 只能输出 MCP JSON-RPC。任何 banner、进度或 `console.log` 都会破坏协议；诊断必须写入 stderr。
-
-以下配置只适用于当前源码工作区。将路径替换为本机 `apps/desktop` 的绝对路径：
-
-```json
-{
-  "mcpServers": {
-    "zoeymind": {
-      "command": "pnpm",
-      "args": [
-        "--dir",
-        "/absolute/path/to/apps/desktop",
-        "--filter",
-        "@zoeymind/mcp",
-        "exec",
-        "tsx",
-        "src/index.ts"
-      ]
-    }
-  }
-}
-```
-
-OMP 用户配置路径：
-
-```text
-~/.omp/agent/mcp.json
-```
-
-OMP 也会读取项目根目录的 `.mcp.json` / `mcp.json`。不要把开发机绝对路径提交为公共项目配置。
-
-发布后的正式配置应使用稳定 executable，例如：
-
-```json
-{
-  "mcpServers": {
-    "zoeymind": {
-      "command": "zoeymind-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-`@zoeymind/mcp` 与 `@zoeymind/cli` 的 release artifacts 由受保护的 `npm Release` workflow 构建、pack 验证并通过 npm trusted publishing 发布。首次发布需要在 npmjs 完成 `@zoeymind` scope 认领与 trusted publisher 关联。
-
-## 通信与安全
-
-运行时链路：
-
-```text
-MCP Host
-  └─ stdio JSON-RPC
-     └─ MCP Adapter
-        └─ authenticated HTTP on 127.0.0.1:<dynamic-port>
-           └─ Tauri Broker
-              └─ Tauri event
-                 └─ Web Adapter → Portal → live MindMap
-```
-
-Desktop 使用 `TcpListener::bind("127.0.0.1:0")`，由操作系统原子分配并绑定可用端口，因此不需要固定端口配置，也没有常规固定端口冲突。启动后 Desktop 写入包含 PID、动态端口和随机 32-byte token 的 descriptor；Node Client 每次请求重新读取该 descriptor。
-
-安全属性：
-
-- Broker 只监听 `127.0.0.1`，不暴露到局域网；
-- 每次 Desktop 启动生成新的 Bearer token；
-- Unix descriptor 创建权限为 `0600`；
-- HTTP body 上限 1 MiB；
-- Broker 有请求读取与 Portal 响应超时；
-- Desktop 关闭时删除 descriptor；
-- 外部自动化默认关闭，关闭时不创建 listener 或 descriptor；
-- 破坏性外部编辑拥有独立、默认关闭的授权开关；
-- 内置 AI 的 `ai-case-review-enabled` 不作为外部自动化授权。
-- 外部 Agent 不获取内部节点 UID或编辑审查 token。
-
-当前信任模型是“同一操作系统用户启动的本地进程属于受信任自动化调用方”。它不防御已经取得当前用户文件访问权限的恶意进程。
-
-## 故障排查
-
-| 现象                                                 | 原因                                            | 处理                                                   |
-| ---------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
-| `APP_UNAVAILABLE`                                    | Desktop 未运行或 descriptor 不存在/无效         | 启动 ZoeyMind Desktop，等待主界面 ready 后重试         |
-| `DOCUMENT_NOT_OPEN`                                  | 当前没有打开的思维导图标签                      | 打开项目，或先调用 `projects` / `activate_project`     |
-| `DOCUMENT_NOT_READY`                                 | 编辑器仍在挂载 MindMap                          | 等待标签加载完成后重试                                 |
-| `DOCUMENT_ANCHOR_EXPIRED` / `DOCUMENT_EDIT_CONFLICT` | 读取后文档或目标节点已变化                      | 使用最新返回 view/anchor；必要时重新 query             |
-| `BROKER_UNAUTHORIZED`                                | Desktop 已重启，旧 token 失效                   | 重试；Client 会重新读取 descriptor                     |
-| `BROKER_TIMEOUT`                                     | Web bridge 未响应或主线程阻塞                   | 检查 Desktop 日志和 renderer 状态                      |
-| MCP Host 报 JSON parse/initialize 失败               | MCP stdout 被日志污染，或 Node/command 路径错误 | 确认所有日志走 stderr，并在 shell 中验证配置命令可执行 |
-
-## 验证
-
-```bash
-# Web build / typecheck
-pnpm --filter @zoeymind-desktop/web build
+pnpm --filter @zoeymind-desktop/web test
 pnpm --filter @zoeymind-desktop/web typecheck
 
-# Web tests
-pnpm --filter @zoeymind-desktop/web test
-
-# CLI / MCP
+pnpm --filter @zoeymind/cli build
 pnpm --filter @zoeymind/cli test
-pnpm --filter @zoeymind/cli smoke
+pnpm --filter @zoeymind/mcp build
 pnpm --filter @zoeymind/mcp test
-pnpm --filter @zoeymind/mcp smoke
-pnpm test:packages
+pnpm test:packages           # pack + 清洁环境安装 + bin 冒烟
+pnpm test:portal-integration # 真实 Desktop + Broker + Portal + engine
 
-# 真实 Portal + engine + Rust Broker
-pnpm test:portal-integration
-
-# Native
+cargo test --manifest-path src-tauri/Cargo.toml document_portal
 cargo check --manifest-path src-tauri/Cargo.toml --locked
+git diff --check
 ```
 
-## 首次发布准备
+## 版本与发布
 
-CLI、MCP 和 Desktop 已经完成代码、构建、测试、文档、CI/CD、安全策略工作，剩下只有需要账号级授权的动作：
+- **单一事实源**：git tag `vX.Y.Z`；
+- **CLI + MCP 同版本同批发布**；
+- **Desktop 版本**可与 npm 包版本独立，兼容性由 Broker 协议版本管理（当前 `1`）；
+- **禁止 `--force`** 覆盖已发布版本，永远 bump patch/minor 重发；
+- `push v*.*.*` tag 触发 `npm Release` workflow，由 `npm` environment 的 `NODE_AUTH_TOKEN` secret 完成 publish；
+- `workflow_dispatch` 触发 `Release` workflow 生成 Desktop 全平台安装包 + 更新器 manifest；
+- 详见 [`RELEASE.md`](./RELEASE.md) 与 [`CHANGELOG.md`](./CHANGELOG.md)。
 
-### 由仓库/仓库外的人工授权
+## 反馈与安全
 
-- **npm scope 认领**：在 <https://www.npmjs.com/> 用具备发布权的账号创建/申领 `@zoeymind` scope；
-- **npm trusted publisher**：在 npmjs 该 scope 下把 `zoeymind/zoeymind-desktop` 仓库的 `npm Release` workflow 添加为 trusted publisher，绑定：
-  - repository: `zoeymind/zoeymind-desktop`
-  - workflow: `npm Release`
-  - environment: `npm`
-- **GitHub `npm` environment**：在 GitHub `Settings → Environments` 创建名为 `npm` 的 environment；如果 npm 侧不使用 trusted publishing，则在同一 environment 里添加 `NODE_AUTH_TOKEN` secret；勾选 `Required reviewers` 让首发默认需人工放行；
-- **Desktop 更新签名密钥**：在 GitHub Secrets 中确认 `TAURI_SIGNING_PRIVATE_KEY` 与 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`；缺失会阻止 macOS 更新器打包。
+- **一般反馈**：<https://github.com/zoeymind/zoeymind-desktop/issues>
+- **商业授权**：见 [`LICENSING.md`](./LICENSING.md)，邮件 <1103837067@qq.com>
+- **安全漏洞**：请**不要**开公开 issue；用 GitHub 私有漏洞报告或邮件上述地址，详见 [`SECURITY.md`](./SECURITY.md)。
 
-### 由 workflow 自动完成
+## 技术栈
 
-- `pnpm build:packages` 生成 CLI/MCP `dist`；
-- `pnpm test:packages` 通过则 pack 并做全新 tarball 安装验证；
-- npm 侧使用 `--provenance` 生成 attestation；
-- Desktop `Release` workflow 生成 macOS/Windows/Linux 安装包、SHA256 checksums 与 `latest.json` updater manifest；
-- 打 `vX.Y.Z` git tag、创建 draft release，用完成的 asset 集合发布正式版本。
+- **应用壳**：[Tauri 2](https://tauri.app)、[Rust](https://www.rust-lang.org)、[Tokio](https://tokio.rs)
+- **前端**：[React 19](https://react.dev)、[Vite](https://vite.dev)、[TanStack Router](https://tanstack.com/router)
+- **UI 基础**：[Base UI](https://base-ui.com)、[Tailwind v4](https://tailwindcss.com)、[Motion](https://motion.dev)
+- **思维导图引擎**：[simple-mind-map](https://github.com/wanglin2/mind-map)（内嵌 fork，MIT）
+- **协议 SDK**：[Model Context Protocol](https://modelcontextprotocol.io) TypeScript SDK
+- **存储**：`.zmind` 文件（本地磁盘）+ SQLite（应用运行时状态）
+- **AI SDK**：Vercel AI SDK v5、原生 fetch 通过 Rust 流式代理
 
-### 触发命令
+以上依赖分别遵循各自开源协议，本项目授权模式不改变第三方依赖的授权条款。
 
-```bash
-# CLI / MCP 首次发布 —— 需要 npm 环境已在 GitHub 上创建并被 reviewer 批准
-gh workflow run "npm Release" \
-  --repo zoeymind/zoeymind-desktop \
-  --field version=0.1.0 \
-  --field tag=latest
+## License
 
-# Desktop 桌面安装包与自动更新 manifest
-gh workflow run "Release" \
-  --repo zoeymind/zoeymind-desktop \
-  --field version=0.1.0
-```
+本项目默认采用 [**PolyForm Noncommercial 1.0.0**](./LICENSE)：
 
-更细规则见 [`CHANGELOG.md`](./CHANGELOG.md#versioning-policy)。
+- ✅ 允许阅读、修改、再分发、非商业使用；
+- ❌ 不允许任何形式的商业化，包括销售、SaaS 转售、内部业务运营；
+- 💼 商业授权见 [`LICENSING.md`](./LICENSING.md)，联系 <1103837067@qq.com>。
 
-## 设计与文档参考
-
-README 的组织和发布待办参考了以下维护中的一手项目，而不是自行猜测：
-
-- [Model Context Protocol TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) — stdio transport、生命周期与故障排查；
-- [MCP Inspector](https://github.com/modelcontextprotocol/inspector) — 一个 package 中共享核心并提供多种运行模式；
-- [MCP Filesystem Server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem) — npm bin、`dist` 发布面、权限边界与 Host 配置；
-- [Microsoft Playwright MCP](https://github.com/microsoft/playwright-mcp) — requirements、client setup、configuration、security 和 troubleshooting；
-- [Sentry MCP](https://github.com/getsentry/sentry-mcp) — stdio/remote 区分、环境配置、Inspector 与开发流程；
-- [Notion MCP Server](https://github.com/makenotion/notion-mcp-server) — breaking-change migration 和 least-privilege 文档；
-- [Vercel CLI](https://github.com/vercel/vercel/tree/main/packages/cli) — 单 package 多 bin 与 packed-artifact 测试；
-- [Wrangler](https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler) — Quick Start、system requirements、configuration 和 command reference 分层。
-
-这些项目提供的是文档和 package 组织模式；ZoeyMind 的 Portal、安全边界和 Desktop 通信说明仍以本仓库代码与测试为准。
+Copyright © 2026 ZoeyMind. All rights reserved.
