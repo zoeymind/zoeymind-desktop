@@ -3,6 +3,7 @@ import Markdown from "react-markdown"
 import { useTranslation } from "@zoeymind/i18n"
 import { Button, cn } from "@zoeymind/ui"
 import { useAppVersion, type AppUpdateStatus } from "./app-version-store"
+import { useUpdateInstallGate } from "./OSGuidance"
 
 type AppVersionStatusVariant = "compact" | "detail"
 
@@ -18,7 +19,7 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
   const status = useAppVersion(state => state.status)
   const progress = useAppVersion(state => state.progress)
   const checkForUpdates = useAppVersion(state => state.checkForUpdates)
-  const installUpdate = useAppVersion(state => state.installUpdate)
+  const requestInstall = useUpdateInstallGate()
   const cancelUpdate = useAppVersion(state => state.cancelUpdate)
   const restart = useAppVersion(state => state.restart)
   const busy = status === "checking" || status === "downloading" || status === "installing"
@@ -46,7 +47,7 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
             version={update?.version}
             progress={progress}
             check={() => void checkForUpdates()}
-            install={() => void installUpdate()}
+            install={requestInstall}
             cancel={() => cancelUpdate()}
             restart={() => void restart()}
           />
@@ -85,7 +86,7 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
         variant="ghost"
         size="sm"
         className={cn("h-7 gap-1.5 px-2 text-xs text-muted-foreground", className)}
-        onClick={() => void installUpdate()}
+        onClick={requestInstall}
         title={t("appVersion.latestAvailable", { version: update.version })}
       >
         <Download data-icon="inline-start" />
