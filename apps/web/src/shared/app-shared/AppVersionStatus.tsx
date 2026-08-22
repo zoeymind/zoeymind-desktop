@@ -145,7 +145,7 @@ function UpdateAction({
   const { t } = useTranslation()
   if (status === "available" && version) {
     return (
-      <Button size="sm" onClick={install}>
+      <Button size="sm" variant="ghost" onClick={install}>
         <Download data-icon="inline-start" />
         {t("appVersion.installUpdate", { version })}
       </Button>
@@ -153,7 +153,7 @@ function UpdateAction({
   }
   if (status === "restart-required") {
     return (
-      <Button size="sm" onClick={restart}>
+      <Button size="sm" variant="ghost" onClick={restart}>
         <RotateCcw data-icon="inline-start" />
         {t("appVersion.restart")}
       </Button>
@@ -162,13 +162,13 @@ function UpdateAction({
   if (status === "downloading" || status === "installing") {
     return (
       <div className="flex items-center gap-2">
-        <Button size="sm" disabled className="tabular-nums">
+        <Button size="sm" variant="ghost" disabled className="tabular-nums">
           <Loader2 className="animate-spin" data-icon="inline-start" />
           {busyLabel(t, status, progress)}
         </Button>
         <Button
           size="sm"
-          variant="outline"
+          variant="ghost"
           onClick={cancel}
           title={t("appVersion.cancel")}
           aria-label={t("appVersion.cancel")}
@@ -181,14 +181,14 @@ function UpdateAction({
   }
   if (status === "checking") {
     return (
-      <Button size="sm" disabled>
+      <Button size="sm" variant="ghost" disabled>
         <Loader2 className="animate-spin" data-icon="inline-start" />
         {t("appVersion.checking")}
       </Button>
     )
   }
   return (
-    <Button variant="outline" size="sm" onClick={check}>
+    <Button size="sm" variant="ghost" onClick={check}>
       <RefreshCw data-icon="inline-start" />
       {t("appVersion.checkForUpdates")}
     </Button>
