@@ -47,6 +47,34 @@
 - ⚠️ **Ask first** — 改 `src-tauri/tauri.conf.json`；动 `packages/ui/src/` 的组件公共 API；新增 npm 依赖；改 `.github/workflows/`；**任何需要用户重启 tauri:dev 的改动**
 - 🚫 **Never** — 提交任何 secrets / token / API key；把 CI 改成 push 就 publish；把商业价格 / 客户信息内联进源码或注释；**自启动、自重启、自杀 `pnpm tauri:dev` / 应用进程**
 
+### Commit confirmation (per-commit, not per-session)
+
+`.husky/pre-commit` 每次 commit 都拦一次确认门. 非交互式 (agent / CI /
+脚本) 提交必须显式携带:
+
+```
+USER_CONFIRM_HASH=$(git write-tree) git commit -m "..."
+```
+
+这个 SHA 绑定到"当前这一次 commit"的具体 staged 内容. 换一次 commit,
+staged 变了, SHA 也变, agent 必须重新拿到用户新一次「我确认」并重新
+计算; 复用旧值到新 commit 会被 hook 拒绝.
+
+边界:
+
+1. 用户必须在**本次 commit 上下文**里显式说出「我确认」三个字, 才能设置.
+2. **每一次 commit 都需要独立的「我确认」**. Session 里更早的确认不能
+   滚动复用到后续 commit. Batch commit / amend / rebase 每次都算新
+   commit, 各自需要新确认.
+3. 「提交吧」/「commit 一下」/「加一下」/「push 吧」等隐含语气都不算.
+   必须是原文包含「我确认」这三个字.
+4. 违规示例:
+   - 用户在 commit A 说「我确认」, agent 顺手把 commit B 也 `USER_CONFIRM_HASH=...` — 违规
+   - 用户说「提交吧」但没说「我确认」, agent `USER_CONFIRM_HASH=...` — 违规
+5. 所有 non-interactive 通过都写审计日志 `.git/commit-audit.log`
+   (含时间、branch、staged tree SHA、staged 文件列表), 用户可以事后
+   grep 检查 agent 是否越权.
+
 ## Product positioning
 
 ZoeyMind Desktop 是**面向测试人员的功能测试用例编辑器**，不是通用思维导图工具。围绕三条差异化设计与描述：
