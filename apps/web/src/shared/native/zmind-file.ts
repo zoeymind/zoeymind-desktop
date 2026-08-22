@@ -12,10 +12,10 @@
  * 用 JSZip 序列化，磁盘 IO 走 tauri-plugin-fs 的二进制接口。
  * 用户可在 Finder 里随意移动 .zmind，索引里存的是绝对路径，运行时 exists() 判失效。
  */
-import JSZip from 'jszip'
-import { readFile, exists } from '@tauri-apps/plugin-fs'
-import type { MindMapNodeTree } from 'simple-mind-map'
-import { writeBytesAtomically } from './atomic-file'
+import JSZip from "jszip"
+import { readFile, exists } from "@tauri-apps/plugin-fs"
+import type { MindMapNodeTree } from "simple-mind-map"
+import { writeBytesAtomically } from "./atomic-file"
 
 export interface ZMindMeta {
   name: string
@@ -32,34 +32,46 @@ export interface ZMindBundle {
   meta: ZMindMeta
 }
 
-export async function packBundle(bundle: ZMindBundle): Promise<Uint8Array> {
+/**
+ * `extras` 允许在同一 zip 里追加额外条目, recovery 快照走这个入口一次性写完,
+ * 避免之前的 "packBundle -> loadAsync -> 加 recovery.json -> 再 generateAsync"
+ * 两次 DEFLATE, 大图上主线程时间对半砍.
+ */
+export async function packBundle(
+  bundle: ZMindBundle,
+  extras: Array<{ name: string; content: string | Uint8Array }> = []
+): Promise<Uint8Array> {
   const zip = new JSZip()
-  zip.file('tree.json', JSON.stringify(bundle.tree))
+  zip.file("tree.json", JSON.stringify(bundle.tree))
   if (bundle.view !== undefined) {
-    zip.file('view.json', JSON.stringify(bundle.view))
+    zip.file("view.json", JSON.stringify(bundle.view))
   }
   if (bundle.previewPng) {
-    zip.file('preview.png', bundle.previewPng)
+    // PNG 已经压过, DEFLATE 再压一遍只烧 CPU 不压缩. STORE 直存.
+    zip.file("preview.png", bundle.previewPng, { compression: "STORE" })
   }
-  zip.file('meta.json', JSON.stringify(bundle.meta))
-  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
+  zip.file("meta.json", JSON.stringify(bundle.meta))
+  for (const extra of extras) {
+    zip.file(extra.name, extra.content)
+  }
+  return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" })
 }
 
 export async function unpackBundle(bytes: Uint8Array): Promise<ZMindBundle> {
   const zip = await JSZip.loadAsync(bytes)
-  const treeFile = zip.file('tree.json')
-  const metaFile = zip.file('meta.json')
+  const treeFile = zip.file("tree.json")
+  const metaFile = zip.file("meta.json")
   if (!treeFile || !metaFile) {
-    throw new Error('invalid .zmind: missing tree.json or meta.json')
+    throw new Error("invalid .zmind: missing tree.json or meta.json")
   }
-  const tree = JSON.parse(await treeFile.async('string')) as MindMapNodeTree
-  const meta = JSON.parse(await metaFile.async('string')) as ZMindMeta
+  const tree = JSON.parse(await treeFile.async("string")) as MindMapNodeTree
+  const meta = JSON.parse(await metaFile.async("string")) as ZMindMeta
 
-  const viewFile = zip.file('view.json')
-  const view = viewFile ? JSON.parse(await viewFile.async('string')) : undefined
+  const viewFile = zip.file("view.json")
+  const view = viewFile ? JSON.parse(await viewFile.async("string")) : undefined
 
-  const pngFile = zip.file('preview.png')
-  const previewPng = pngFile ? await pngFile.async('uint8array') : null
+  const pngFile = zip.file("preview.png")
+  const previewPng = pngFile ? await pngFile.async("uint8array") : null
 
   return { tree, view, meta, previewPng }
 }
@@ -83,7 +95,7 @@ export async function readMeta(path: string): Promise<ZMindMeta | null> {
   if (!(await exists(path))) return null
   const bytes = await readFile(path)
   const zip = await JSZip.loadAsync(bytes)
-  const metaFile = zip.file('meta.json')
+  const metaFile = zip.file("meta.json")
   if (!metaFile) return null
-  return JSON.parse(await metaFile.async('string')) as ZMindMeta
+  return JSON.parse(await metaFile.async("string")) as ZMindMeta
 }

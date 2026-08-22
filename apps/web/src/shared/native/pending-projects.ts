@@ -33,8 +33,13 @@ const store = new Map<string, PendingProject>()
 
 const PREFIX = "unsaved-"
 
+/**
+ * 成员判断: 只要不在内存 stash 里就不算 pending, 与运行期 id 前缀无关.
+ * 之前是 `id.startsWith('unsaved-')`, 但保存成功后 tab 就地晋升仍保留 tempId,
+ * 前缀仍匹配 -> saveAllSessions 保存后二次检查判 "未保存", 关窗全部保存必失败.
+ */
 export function isPending(id: string): boolean {
-  return id.startsWith(PREFIX)
+  return store.has(id)
 }
 
 export function stash(input: Omit<PendingProject, "id" | "createdAt">): string {

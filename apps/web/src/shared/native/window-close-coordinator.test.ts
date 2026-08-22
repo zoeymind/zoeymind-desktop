@@ -57,8 +57,10 @@ describe("window close coordinator", () => {
 
     await prepareForAppRestart([session])
 
+    // save 成功后 dirty 已清; 再触发 flushRecovery 会把 clean 内容写回 recovery,
+    // 导致下次启动误弹恢复对话框. 协调器不再多此一举.
     expect(save).toHaveBeenCalledOnce()
-    expect(flushRecovery).toHaveBeenCalledOnce()
+    expect(flushRecovery).not.toHaveBeenCalled()
     expect(session.getState().dirty).toBe(false)
   })
 })

@@ -95,7 +95,11 @@ export function useStorageManager(): UseStorageManagerResult {
   useEffect(() => {
     if (!mindMap) return
 
-    const treeHash = (t: MindMapNodeTree): string => {
+    // Fingerprint 只跟树: view (画布缩放/平移) 是纯表现层, 用户右键拖动就在变,
+    // 塞进 fingerprint 会让 markDirty 被视口移动触发, 且会让 save 中期的
+    // isCurrent 判定恒不成立 -> SaveSupersededError. view 仍会随 bundle 持久化,
+    // 只是不参与脏态/supersede.
+    const treeFingerprint = (t: MindMapNodeTree): string => {
       try {
         return JSON.stringify(t)
       } catch {
@@ -105,30 +109,37 @@ export function useStorageManager(): UseStorageManagerResult {
 
     const sync = () => {
       const tree = mindMap.getData() as MindMapNodeTree
+      // simple-mind-map 的视口: SnapshotPanel/ViewManager 都直接读, 类型定义已含 view.
+      // 保存路径若不带 view, 首次保存会把用户视口清成 undefined.
+      const view = mindMap.view?.getTransformData?.() ?? undefined
       // tab 标题跟着文件名 (nameRef, 已由 loadSavedData 从 row.path basename 设置).
       if (workspaceId) {
         const s = useTabs.getState()
         const cur = s.tabs.find(t => t.id === workspaceId)
         if (cur && cur.title !== nameRef.current) s.renameTab(workspaceId, nameRef.current)
       }
-      flow.registerBundleSource({
-        tree,
-        name: nameRef.current,
-        nodeCount: countNodes(tree),
-      })
-      return tree
+      const fingerprint = treeFingerprint(tree)
+      flow.registerBundleSource(
+        {
+          tree,
+          view,
+          name: nameRef.current,
+          nodeCount: countNodes(tree),
+        },
+        fingerprint
+      )
+      return { tree, fingerprint }
     }
 
     // 初次挂载: 记 baseline (代表当前是干净态), 之后再判 dirty.
-    const initTree = sync()
-    lastCleanHashRef.current = treeHash(initTree)
+    const initSnapshot = sync()
+    lastCleanHashRef.current = initSnapshot.fingerprint
     // mindmap 首帧 setData 已完成 -> tab 从 loading 中撤下 (TabBar spinner 收起).
     if (workspaceId) useTabLoading.getState().setLoading(workspaceId, false)
 
     const onChange = () => {
-      const tree = sync()
-      const nextHash = treeHash(tree)
-      if (nextHash === lastCleanHashRef.current) return
+      const snapshot = sync()
+      if (snapshot.fingerprint === lastCleanHashRef.current) return
       flow.markDirty()
     }
     mindMap.on?.("data_change", onChange)
@@ -137,7 +148,8 @@ export function useStorageManager(): UseStorageManagerResult {
       prepare: source => ({
         source,
         commit: persistedSource => {
-          lastCleanHashRef.current = treeHash(persistedSource.tree)
+          // 提交后重新对齐 baseline; 用同一 fingerprint 逻辑防抖.
+          lastCleanHashRef.current = treeFingerprint(persistedSource.tree)
         },
       }),
     })

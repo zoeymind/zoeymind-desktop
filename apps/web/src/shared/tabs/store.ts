@@ -52,6 +52,24 @@ async function touchLastOpenedSafe(projectId: string): Promise<void> {
     /* ignore */
   }
 }
+/**
+ * 持久化前把运行期 tempId 归一化到 projectId. 未归一化的话重启后 tab.id
+ * 仍是 tempId, 但 pendingProjects 内存 store 已空, loadSavedData 走
+ * isPending 分支拿不到 bundle -> 用户看见空白画布.
+ */
+export function partializeTabsForPersist(
+  state: Pick<TabsState, "tabs" | "activeId">
+): Pick<TabsState, "tabs" | "activeId"> {
+  const persisted = state.tabs.flatMap(t => {
+    if (t.kind !== "file" || !t.projectId) return []
+    return [{ ...t, id: t.projectId }]
+  })
+  const normalizedActive: TabId =
+    state.activeId === "home"
+      ? "home"
+      : (state.tabs.find(t => t.id === state.activeId)?.projectId ?? state.activeId)
+  return { tabs: persisted, activeId: normalizedActive }
+}
 
 export const useTabs = create<TabsState>()(
   persist(
@@ -134,12 +152,7 @@ export const useTabs = create<TabsState>()(
     {
       name: "zoeymind:tabs",
       version: 2,
-      // draft 不能持久化: pendingProjects 只在内存, 重启后 tempId 失效.
-      // 已保存 tab 有 projectId, 重启后能恢复 (通过 projectId 读 SqlProjectRepo).
-      partialize: state => ({
-        tabs: state.tabs.filter(t => t.kind === "file" && !!t.projectId),
-        activeId: state.activeId === "home" ? "home" : state.activeId,
-      }),
+      partialize: state => partializeTabsForPersist(state),
     }
   )
 )

@@ -122,7 +122,12 @@ fn cleanup_stale_temporary_files(directory: &Path) -> io::Result<usize> {
       && !name.contains(&current_process_marker)
       && name.ends_with(".tmp")
     {
-      fs::remove_file(entry.path())?;
+      // 陈旧 tmp 被 antivirus / spotlight 锁住时 remove_file 会返 Access Denied.
+      // 之前直接 `?` 冒泡, 会让正常保存整体失败. 清理失败非致命, 日志记一下继续.
+      if let Err(error) = fs::remove_file(entry.path()) {
+        log::warn!("failed to remove stale tmp {:?}: {error}", entry.path());
+        continue;
+      }
       removed += 1;
     }
   }
@@ -130,7 +135,22 @@ fn cleanup_stale_temporary_files(directory: &Path) -> io::Result<usize> {
 }
 
 #[tauri::command]
-pub async fn write_file_atomically(path: String, bytes: Vec<u8>) -> Result<(), String> {
+pub async fn write_file_atomically(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+  // Tauri 2 raw body: JS 侧走 `invoke("write_file_atomically", bytes, { headers: { path } })`
+  // 直传 ArrayBuffer, 避免 Vec<u8> 走 JSON 序列化 (几 MB bundle 用 JSON 会阻塞主线程).
+  let path_encoded = request
+    .headers()
+    .get("path")
+    .and_then(|value| value.to_str().ok())
+    .ok_or_else(|| "missing `path` header".to_string())?
+    .to_string();
+  let path = urlencoding::decode(&path_encoded)
+    .map_err(|error| format!("invalid path header: {error}"))?
+    .into_owned();
+  let bytes = match request.body() {
+    tauri::ipc::InvokeBody::Raw(raw) => raw.clone(),
+    _ => return Err("expected raw body".into()),
+  };
   tauri::async_runtime::spawn_blocking(move || write_atomically(Path::new(&path), &bytes))
     .await
     .map_err(|error| error.to_string())?

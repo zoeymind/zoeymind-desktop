@@ -60,8 +60,6 @@ export async function writeRecovery(
   bundle: ZMindBundle,
   sourcePath: string | null
 ): Promise<void> {
-  const bytes = await packBundle(bundle)
-  const zip = await JSZip.loadAsync(bytes)
   const descriptor: RecoveryDescriptor = {
     projectId,
     sourcePath,
@@ -69,8 +67,10 @@ export async function writeRecovery(
     name: bundle.meta.name,
     sourceRevision: sourcePath ? await readFileRevision(sourcePath) : null,
   }
-  zip.file("recovery.json", JSON.stringify(descriptor))
-  const out = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" })
+  // 一次 pack 里塞 recovery.json, 避免 pack -> unpack -> repack 的双次 DEFLATE.
+  const out = await packBundle(bundle, [
+    { name: "recovery.json", content: JSON.stringify(descriptor) },
+  ])
   await writeBytesAtomically(await recoveryPath(projectId), out)
 }
 

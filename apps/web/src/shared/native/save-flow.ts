@@ -86,8 +86,14 @@ interface SaveFlowState {
   renderer: PreviewRenderer | null
 }
 
+/**
+ * Fingerprint 只跟树, 不跟 view: view (画布缩放/平移) 是纯表现层, 用户右键拖动
+ * 就在变, 塞进 fingerprint 会让 SaveTransaction 的 isCurrent 判断在 writeBundle
+ * 期间恒不成立 -> 抛 SaveSupersededError. dirty 判定同理只看树. view 仍会随
+ * bundle 一起持久化, 但不参与脏态/supersede.
+ */
 function bundleSourceFingerprint(source: BundleSource): string {
-  return JSON.stringify({ tree: source.tree, view: source.view ?? null })
+  return JSON.stringify({ tree: source.tree })
 }
 
 function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
@@ -200,9 +206,13 @@ export function useSaveFlow(projectId: string | null) {
     })
   }, [projectId])
 
-  const registerBundleSource = useCallback((source: BundleSource) => {
+  /**
+   * 允许调用方传入预计算 fingerprint. 编辑器上层已经 `JSON.stringify(tree)`
+   * 做 baseline hash, 这里直接复用避免同一 data_change 事件里对整树 stringify 两次.
+   */
+  const registerBundleSource = useCallback((source: BundleSource, fingerprint?: string) => {
     stateRef.current.source = source
-    stateRef.current.sourceFingerprint = bundleSourceFingerprint(source)
+    stateRef.current.sourceFingerprint = fingerprint ?? bundleSourceFingerprint(source)
   }, [])
 
   const scheduleRecovery = useCallback(() => {
@@ -210,16 +220,34 @@ export function useSaveFlow(projectId: string | null) {
     const state = stateRef.current
     clearTimeout(state.timer ?? undefined)
     state.timer = setTimeout(() => {
+      state.timer = null
       if (!state.source) return
+      // 5s 内保存成功已经 clearRecovery 了, 现在文档已 clean; 再落一次会造成
+      // 下次启动误弹 "有未保存快照" 的幽灵恢复对话框.
+      if (!sessionStore.getState().dirty) return
       const bundle = nowBundle(state.source, state.createdAt)
       enqueueRecoveryWrite(recoveryStorageId, () =>
         writeRecovery(recoveryStorageId, bundle, state.path)
       )
     }, RECOVERY_DEBOUNCE_MS)
+  }, [recoveryStorageId, sessionStore])
+
+  /** 取消挂起的 recovery timer 并等待队列中正在落盘的写完成. save 进入 persist 前必须调, 否则 clearRecovery 会被随后触发的 timer 覆盖. */
+  const drainPendingRecovery = useCallback(async (): Promise<void> => {
+    const state = stateRef.current
+    if (state.timer) {
+      clearTimeout(state.timer)
+      state.timer = null
+    }
+    if (recoveryStorageId) await flushRecoveryWrites(recoveryStorageId)
   }, [recoveryStorageId])
 
   const flushRecovery = useCallback(async () => {
-    if (!recoveryStorageId || !isDirty) return
+    if (!recoveryStorageId) return
+    // 实时读 dirty, 别依赖 useCallback 的 isDirty 闭包: saveAllSessions 会
+    // 在 await save() 后立刻调 commands.flushRecovery, 那时旧闭包的 isDirty
+    // 还是 true, 会把刚保存 clean 的内容重新写进 recovery -> 幽灵恢复弹窗.
+    if (!sessionStore.getState().dirty) return
     const state = stateRef.current
     if (state.timer) {
       clearTimeout(state.timer)
@@ -232,7 +260,7 @@ export function useSaveFlow(projectId: string | null) {
       )
     }
     await flushRecoveryWrites(recoveryStorageId)
-  }, [recoveryStorageId, isDirty])
+  }, [recoveryStorageId, sessionStore])
 
   const markDirty = useCallback(() => {
     setDirty(true)
@@ -248,6 +276,8 @@ export function useSaveFlow(projectId: string | null) {
     const state = stateRef.current
     if (!state.source) return
 
+    await drainPendingRecovery()
+
     if (pendingProjects.isPending(projectId) && !state.path) {
       const dir = await preferredSaveDir()
       if (!(await exists(dir))) await mkdir(dir, { recursive: true })
@@ -259,21 +289,25 @@ export function useSaveFlow(projectId: string | null) {
       })
       if (!picked) throw new Error("保存已取消")
 
+      // 只拒绝会真正撞车的情况: 目标文件是另一个 Tab 正在编辑的项目.
+      // 单纯"文件已存在"的场景由原生 Save Dialog 的 Replace 确认覆盖,
+      // 再抛一次错反而让用户困惑 "刚才不是选了替换?".
       const collided = await findByPath(picked)
-      if (await exists(picked)) {
-        const busy = collided
-          ? useTabs
-              .getState()
-              .tabs.find(
-                t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
-              )
-          : null
-        throw new Error(
-          busy
-            ? `“${collided?.name ?? fileBasenameNoExt(picked)}” 已在另一个 Tab 中打开`
-            : `目标文件已存在：${picked}`
-        )
+      const busyTab = collided
+        ? useTabs
+            .getState()
+            .tabs.find(
+              t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
+            )
+        : null
+      if (busyTab) {
+        throw new Error(`“${collided?.name ?? fileBasenameNoExt(picked)}” 已在另一个 Tab 中打开`)
       }
+
+      // 恢复文档 (从 recovery snapshot 打开) 首保存若选中原路径 -> 用 originRevision
+      // 做冲突门, 允许写回原文件. 之前一律 throw 让用户永远救不回原文件.
+      const recovery = pendingProjects.read(projectId)?.recovery ?? null
+      const isWritingBackToOrigin = recovery?.path != null && recovery.path === picked
 
       let previewPng: Uint8Array | null = state.source.previewPng ?? null
       if (state.renderer) {
@@ -285,19 +319,40 @@ export function useSaveFlow(projectId: string | null) {
         }
       }
       const fileName = fileBasenameNoExt(picked)
-      const realId = createUUID()
+      const realId = collided?.id ?? createUUID()
       const result = await runSaveTransaction(async prepared => {
+        if (isWritingBackToOrigin && recovery?.revision) {
+          try {
+            await assertFileRevision(picked, recovery.revision)
+          } catch (error) {
+            if (error instanceof FileConflictError) setConflict(error)
+            throw error
+          }
+        }
         const nextSource = { ...prepared, name: fileName, previewPng }
         await writeBundle(picked, nowBundle(nextSource, state.createdAt))
-        await registerProject({
-          id: realId,
-          path: picked,
-          name: fileName,
-          nodeCount: nextSource.nodeCount ?? 0,
-        })
+        if (collided) {
+          await refreshProjectIndex(collided.id, {
+            name: fileName,
+            nodeCount: nextSource.nodeCount ?? 0,
+          })
+        } else {
+          await registerProject({
+            id: realId,
+            path: picked,
+            name: fileName,
+            nodeCount: nextSource.nodeCount ?? 0,
+          })
+        }
         state.path = picked
         state.revision = await readFileRevision(picked)
         state.realProjectId = realId
+        // clearRecovery 前再取消一次 timer: writeBundle 期间可能已 schedule 新 timer.
+        if (state.timer) {
+          clearTimeout(state.timer)
+          state.timer = null
+        }
+        if (recoveryStorageId) await flushRecoveryWrites(recoveryStorageId)
         await Promise.all([
           rememberSaveDir(picked),
           clearRecovery(projectId),
@@ -312,6 +367,7 @@ export function useSaveFlow(projectId: string | null) {
       bumpProjects()
       useTabs.getState().promoteDraftInPlace(projectId, realId, fileName)
       pendingProjects.clear(projectId)
+      setConflict(null)
       return
     }
 
@@ -342,6 +398,11 @@ export function useSaveFlow(projectId: string | null) {
         name: fileName,
         nodeCount: nextSource.nodeCount ?? 0,
       })
+      if (state.timer) {
+        clearTimeout(state.timer)
+        state.timer = null
+      }
+      if (recoveryStorageId) await flushRecoveryWrites(recoveryStorageId)
       await Promise.all([
         clearRecovery(effectiveId),
         clearRecovery(projectId),
@@ -352,33 +413,45 @@ export function useSaveFlow(projectId: string | null) {
     }, true)
     if (!result) return
     if (result.liveStateMatchesPersisted) state.source.name = fileName
-    if (result.liveStateMatchesPersisted && state.timer) {
-      clearTimeout(state.timer)
-      state.timer = null
-    }
     bumpProjects()
     setConflict(null)
-  }, [projectId, recoveryStorageId, runSaveTransaction])
+  }, [projectId, recoveryStorageId, runSaveTransaction, drainPendingRecovery])
 
   const saveAs = useCallback(
     async (newPath: string) => {
       if (!projectId) return
       const state = stateRef.current
       if (!state.source) return
-      if ((await findByPath(newPath)) || (await exists(newPath))) {
-        throw new Error(`目标文件已存在：${newPath}`)
+      // 只拦另一个 Tab 正在编辑的目标; 单纯 "文件已存在" 交给原生对话框的 Replace.
+      const collided = await findByPath(newPath)
+      if (collided) {
+        const busy = useTabs
+          .getState()
+          .tabs.find(
+            t => t.id !== projectId && (t.projectId === collided.id || t.id === collided.id)
+          )
+        if (busy) {
+          throw new Error(`“${collided.name}” 已在另一个 Tab 中打开`)
+        }
       }
 
       const fileName = fileBasenameNoExt(newPath)
-      const copyId = createUUID()
+      const copyId = collided?.id ?? createUUID()
       await runSaveTransaction(async prepared => {
         await writeBundle(newPath, nowBundle({ ...prepared, name: fileName }, state.createdAt))
-        await registerProject({
-          id: copyId,
-          path: newPath,
-          name: fileName,
-          nodeCount: prepared.nodeCount ?? 0,
-        })
+        if (collided) {
+          await refreshProjectIndex(collided.id, {
+            name: fileName,
+            nodeCount: prepared.nodeCount ?? 0,
+          })
+        } else {
+          await registerProject({
+            id: copyId,
+            path: newPath,
+            name: fileName,
+            nodeCount: prepared.nodeCount ?? 0,
+          })
+        }
       }, false)
       bumpProjects()
       useTabs.getState().openTab({ id: copyId, kind: "file", title: fileName, projectId: copyId })
@@ -390,19 +463,34 @@ export function useSaveFlow(projectId: string | null) {
     if (!projectId) return
     const state = stateRef.current
     if (!state.path || !state.source) return
+    await drainPendingRecovery()
     const path = state.path
     const fileName = fileBasenameNoExt(path)
+    const effectiveId = state.realProjectId ?? projectId
     await runSaveTransaction(async prepared => {
       await writeBundle(path, nowBundle({ ...prepared, name: fileName }, state.createdAt))
       state.revision = await readFileRevision(path)
-      await refreshProjectIndex(state.realProjectId ?? projectId, {
+      await refreshProjectIndex(effectiveId, {
         name: fileName,
         nodeCount: prepared.nodeCount ?? 0,
       })
+      if (state.timer) {
+        clearTimeout(state.timer)
+        state.timer = null
+      }
+      if (recoveryStorageId) await flushRecoveryWrites(recoveryStorageId)
+      // overwrite 之前漏了清 recovery. 保存成功后残留快照会在下次启动误弹恢复对话框.
+      await Promise.all([
+        clearRecovery(effectiveId),
+        clearRecovery(projectId),
+        ...(recoveryStorageId && recoveryStorageId !== projectId
+          ? [clearRecovery(recoveryStorageId)]
+          : []),
+      ])
     }, true)
     setConflict(null)
     bumpProjects()
-  }, [projectId, runSaveTransaction])
+  }, [projectId, recoveryStorageId, runSaveTransaction, drainPendingRecovery])
 
   const reloadFromDisk = useCallback(async () => {
     const state = stateRef.current
