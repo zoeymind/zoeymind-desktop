@@ -2,7 +2,7 @@
 
 This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. Both packages are released together from this repository.
 
-## Unreleased
+## 0.3.0 - 2026-08-22
 
 ### Added
 

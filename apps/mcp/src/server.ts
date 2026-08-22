@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 
-const PACKAGE_VERSION = "0.1.0";
+const PACKAGE_VERSION = "0.3.0";
 
 export type DocumentPortalTool =
   | "projects"
