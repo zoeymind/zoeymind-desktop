@@ -729,6 +729,7 @@ function AboutSection() {
         <h2 className="text-base font-semibold text-balance">ZoeyMind Desktop</h2>
         <p className="text-sm text-muted-foreground">本地思维导图编辑器</p>
       </div>
+
       <div className="rounded-lg border bg-muted/30 p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -743,26 +744,21 @@ function AboutSection() {
           </Button>
         </div>
       </div>
-      <dl className="divide-y text-sm">
-        <div className="flex justify-between gap-6 py-3">
-          <dt className="text-muted-foreground">{t("appVersion.version")}</dt>
-          <dd>
-            <AppVersionStatus variant="detail" />
-          </dd>
+
+      <div className="rounded-lg border p-4">
+        <AppVersionStatus variant="detail" />
+      </div>
+
+      <div className="divide-y text-sm">
+        <div className="flex items-center justify-between gap-6 py-3">
+          <span className="text-muted-foreground">数据目录</span>
+          <code className="text-xs">~/Documents/ZoeyMind</code>
         </div>
-        <div className="flex justify-between gap-6 py-3">
-          <dt className="text-muted-foreground">数据目录</dt>
-          <dd>
-            <code className="text-xs">~/Documents/ZoeyMind</code>
-          </dd>
+        <div className="flex items-center justify-between gap-6 py-3">
+          <span className="text-muted-foreground">配置文件</span>
+          <code className="text-xs">&lt;appData&gt;/models.json</code>
         </div>
-        <div className="flex justify-between gap-6 py-3">
-          <dt className="text-muted-foreground">配置文件</dt>
-          <dd>
-            <code className="text-xs">&lt;appData&gt;/models.json</code>
-          </dd>
-        </div>
-      </dl>
+      </div>
     </section>
   )
 }
