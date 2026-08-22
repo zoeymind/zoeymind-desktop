@@ -34,7 +34,7 @@ jobs:
       - name: Only repo owner may publish
         env:
           ACTOR: ${{ github.actor }}
-          ALLOWED: caishilong
+          ALLOWED: chacelow
         run: |
           if [[ "$ACTOR" != "$ALLOWED" ]]; then
             echo "actor $ACTOR is not authorized to publish; only $ALLOWED can trigger npm Release" >&2

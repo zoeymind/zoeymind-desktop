@@ -37,7 +37,7 @@ jobs:
       - name: Only repo owner may release
         env:
           ACTOR: ${{ github.actor }}
-          ALLOWED: caishilong
+          ALLOWED: chacelow
         run: |
           if [[ "$ACTOR" != "$ALLOWED" ]]; then
             echo "actor $ACTOR is not authorized to run Release; only $ALLOWED can dispatch" >&2

@@ -11,6 +11,7 @@ function run(command, args, cwd = root) {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    shell: process.platform === "win32",
   }).trim();
 }
 
