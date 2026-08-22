@@ -37,6 +37,12 @@ import {
   type LogInfo,
   type LogLevel,
 } from "@/shared/native"
+import {
+  CLOSE_BEHAVIOR_KEY,
+  DEFAULT_CLOSE_BEHAVIOR,
+  getCloseBehavior,
+  type CloseBehavior,
+} from "@/shared/native/close-behavior"
 import { openPath } from "@tauri-apps/plugin-opener"
 import { open as openDialog } from "@tauri-apps/plugin-dialog"
 
@@ -61,10 +67,55 @@ export function PreferencesSettingsSection() {
       <Separator />
       <EditorSettingsSection />
       <Separator />
+      <WindowSettingsSection />
+      <Separator />
       <ExternalAutomationSettingsSection />
       <Separator />
       <LogSettingsSection />
     </div>
+  )
+}
+
+function WindowSettingsSection() {
+  const { t } = useTranslation()
+  const [behavior, setBehaviorState] = useState<CloseBehavior>(() => getCloseBehavior())
+
+  const updateBehavior = (value: CloseBehavior) => {
+    setBehaviorState(value)
+    if (value === DEFAULT_CLOSE_BEHAVIOR) {
+      window.localStorage.removeItem(CLOSE_BEHAVIOR_KEY)
+    } else {
+      window.localStorage.setItem(CLOSE_BEHAVIOR_KEY, value)
+    }
+  }
+
+  return (
+    <SettingsSection
+      title={t("settings.window.title")}
+      description={t("settings.window.description")}
+    >
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldLabel htmlFor="window-close-behavior">
+            {t("settings.window.closeBehavior")}
+          </FieldLabel>
+          <FieldDescription>{t("settings.window.closeBehaviorDesc")}</FieldDescription>
+        </FieldContent>
+        <Select
+          value={behavior}
+          onValueChange={value => value && updateBehavior(value as CloseBehavior)}
+        >
+          <SelectTrigger id="window-close-behavior" className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ask">{t("settings.window.closeAsk")}</SelectItem>
+            <SelectItem value="tray">{t("settings.window.closeTray")}</SelectItem>
+            <SelectItem value="quit">{t("settings.window.closeQuit")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+    </SettingsSection>
   )
 }
 

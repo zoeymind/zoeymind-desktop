@@ -20,6 +20,15 @@ export default {
     githubSupportDescription:
       "If ZoeyMind helps you, star the repo on GitHub so more QA folks can find it.",
     githubSupportAction: "Star on GitHub",
+    window: {
+      title: "Window",
+      description: "Configure close-button behavior and the system tray.",
+      closeBehavior: "Close button behavior",
+      closeBehaviorDesc: "Default action when clicking the close button. Change any time.",
+      closeAsk: "Ask every time",
+      closeTray: "Minimize to system tray",
+      closeQuit: "Quit application",
+    },
     externalAutomation: {
       title: "External automation",
       description: "Control local CLI and MCP access independently from built-in AI review.",
@@ -107,6 +116,12 @@ export default {
     saveAll: "Save all",
     discardAll: "Discard all",
     saveFailed: "Some files could not be saved. The window remains open.",
+    askTitle: "Close ZoeyMind?",
+    askDescription:
+      "Minimize to the system tray to keep running in the background, or quit the app entirely.",
+    rememberChoice: "Remember my choice",
+    minimizeToTray: "Minimize to tray",
+    quitApp: "Quit app",
   },
   fileConflict: {
     title: "The file changed on disk",

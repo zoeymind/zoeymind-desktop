@@ -20,6 +20,15 @@ export default {
     githubSupportDescription:
       "如果 ZoeyMind 对你有帮助，欢迎去 GitHub 点个 Star，让更多测试同行找到它。",
     githubSupportAction: "去 GitHub Star",
+    window: {
+      title: "窗口",
+      description: "配置关闭按钮和系统托盘的行为。",
+      closeBehavior: "关闭按钮行为",
+      closeBehaviorDesc: "点击关闭按钮时的默认动作。可随时在这里修改。",
+      closeAsk: "每次询问",
+      closeTray: "最小化到系统托盘",
+      closeQuit: "直接退出",
+    },
     externalAutomation: {
       title: "外部自动化",
       description: "独立控制本地 CLI 和 MCP 访问，不影响内置 AI 的编辑审查。",
@@ -106,6 +115,11 @@ export default {
     saveAll: "保存全部",
     discardAll: "全部不保存",
     saveFailed: "部分文件保存失败，窗口仍保持打开。",
+    askTitle: "关闭 ZoeyMind?",
+    askDescription: "可以最小化到系统托盘继续在后台运行，或直接退出应用。",
+    rememberChoice: "记住我的选择",
+    minimizeToTray: "最小化到托盘",
+    quitApp: "退出应用",
   },
   fileConflict: {
     title: "文件已在磁盘上发生变化",

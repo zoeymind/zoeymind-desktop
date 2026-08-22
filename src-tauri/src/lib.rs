@@ -4,7 +4,11 @@ use std::{
   sync::Mutex,
 };
 
-use tauri::{Emitter, Manager, State};
+use tauri::{
+  Emitter, Manager, State,
+  menu::{Menu, MenuItem},
+  tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod atomic_file;
@@ -411,6 +415,64 @@ pub fn run() {
         }
         log::info!("tauri window ready: {:?}", window.label());
       }
+
+      // 系统托盘: 左键点击切换窗口显隐, 菜单提供 显示/隐藏/退出.
+      // 用于 "关闭到托盘" 的最小化替代关闭, 前端通过 window.hide() 实现该行为;
+      // 用户可通过托盘图标恢复窗口, 或选择彻底退出.
+      let show_item = MenuItem::with_id(app, "tray_show", "显示 ZoeyMind", true, None::<&str>)?;
+      let hide_item = MenuItem::with_id(app, "tray_hide", "隐藏窗口", true, None::<&str>)?;
+      let quit_item = MenuItem::with_id(app, "tray_quit", "退出 ZoeyMind", true, None::<&str>)?;
+      let tray_menu = Menu::with_items(app, &[&show_item, &hide_item, &quit_item])?;
+      let mut tray_builder = TrayIconBuilder::with_id("main")
+        .tooltip("ZoeyMind")
+        .menu(&tray_menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+          "tray_show" => {
+            if let Some(window) = app.get_webview_window("main") {
+              let _ = window.show();
+              let _ = window.unminimize();
+              let _ = window.set_focus();
+            }
+          }
+          "tray_hide" => {
+            if let Some(window) = app.get_webview_window("main") {
+              let _ = window.hide();
+            }
+          }
+          "tray_quit" => {
+            // 统一走前端未保存守卫: 前端 WindowCloseDialog 监听后弹窗, 通过后执行 process.exit(0).
+            // frontend_ready 事件已隐式保证 emit 有 subscriber; 若前端异常, 用户可从 dock/任务管理器强杀.
+            let _ = app.emit("zm:request-exit", ());
+          }
+          _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+          // 左键单击 up: 切换窗口显隐 (macOS 菜单栏图标默认左键弹菜单, 此分支主要服务 Windows/Linux).
+          if let TrayIconEvent::Click {
+            button: MouseButton::Left,
+            button_state: MouseButtonState::Up,
+            ..
+          } = event
+          {
+            let app = tray.app_handle();
+            if let Some(window) = app.get_webview_window("main") {
+              let visible = window.is_visible().unwrap_or(false);
+              let minimized = window.is_minimized().unwrap_or(false);
+              if visible && !minimized {
+                let _ = window.hide();
+              } else {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+              }
+            }
+          }
+        });
+      if let Some(icon) = app.default_window_icon().cloned() {
+        tray_builder = tray_builder.icon(icon);
+      }
+      tray_builder.build(app)?;
 
       // Log 系统: LogDir (~/Library/Logs/{bundleId} 等) 或用户自定义目录 + Stdout (dev).
       // 级别用 log::set_max_level 控制, 前端切换免重启; 目录改动落盘到 config 但
