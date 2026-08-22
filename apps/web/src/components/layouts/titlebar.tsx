@@ -65,53 +65,59 @@ export function TitleBar() {
       <div className="absolute inset-0 min-w-0">
         <TabBar isMac={isMac} />
       </div>
-      <div data-tab-interactive className="relative z-40 ml-auto flex h-full items-center">
+      <div
+        data-tab-interactive
+        className="relative z-40 ml-auto flex h-full items-center gap-1 pr-2"
+      >
         <Button
           variant="ghost"
-          size="icon"
-          className="h-10 w-11 rounded-none active:scale-[0.96]"
+          size="icon-sm"
+          className="shrink-0 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground active:scale-[0.96]"
           onClick={() => setSettingsOpen(true)}
           aria-label={t("settings.title")}
           title={t("settings.title")}
         >
-          <Settings className="size-4" />
+          <Settings className="size-3.5" />
         </Button>
 
         {(PREVIEW_CUSTOM_WINDOW_CONTROLS || !isMac) && (
-          <div className="flex h-full items-center" aria-label={t("windowControls.groupLabel")}>
+          <div
+            className="flex h-full items-center gap-1"
+            aria-label={t("windowControls.groupLabel")}
+          >
             <Button
               variant="ghost"
-              size="icon"
-              className="h-10 w-11 rounded-none active:scale-[0.96]"
+              size="icon-sm"
+              className="shrink-0 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground active:scale-[0.96]"
               onClick={() => void appWindow.minimize()}
               aria-label={t("windowControls.minimize")}
               title={t("windowControls.minimize")}
             >
-              <Minus className="size-4 stroke-[1.5]" />
+              <Minus className="size-3.5 stroke-[1.5]" />
             </Button>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-10 w-11 rounded-none active:scale-[0.96]"
+              size="icon-sm"
+              className="shrink-0 rounded-full text-muted-foreground hover:bg-foreground/10 hover:text-foreground active:scale-[0.96]"
               onClick={() => void appWindow.toggleMaximize()}
               aria-label={t(maximized ? "windowControls.restore" : "windowControls.maximize")}
               title={t(maximized ? "windowControls.restore" : "windowControls.maximize")}
             >
               {maximized ? (
-                <Copy className="size-3.5 stroke-[1.5]" />
+                <Copy className="size-3 stroke-[1.5]" />
               ) : (
                 <Square className="size-3 stroke-[1.5]" />
               )}
             </Button>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-10 w-11 rounded-none hover:bg-destructive hover:text-destructive-foreground active:scale-[0.96]"
+              size="icon-sm"
+              className="shrink-0 rounded-full text-muted-foreground hover:bg-destructive hover:text-destructive-foreground active:scale-[0.96]"
               onClick={() => void appWindow.close()}
               aria-label={t("windowControls.close")}
               title={t("windowControls.close")}
             >
-              <X className="size-4 stroke-[1.5]" />
+              <X className="size-3.5 stroke-[1.5]" />
             </Button>
           </div>
         )}
