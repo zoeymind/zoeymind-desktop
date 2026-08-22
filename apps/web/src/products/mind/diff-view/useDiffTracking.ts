@@ -6,16 +6,15 @@
  *   mount:
  *     - 首次 initial tree → diffStore.setBaseline(initial)
  *     - 挂 mindMap.on("data_change") → diffStore.setCurrent(current)
+ *     - 注册 save participant：prepare 生成持久化快照，commit 统一更新 live tree
+ *       和 diff baseline
  *     - 挂 mindMap.on("node_tree_render_end") → 同步 class 到 SVG group
- *     - 订阅 sessionStore.dirty 边沿 true→false (save 成功) → 用当前 tree
- *       setBaseline (新 baseline, diff 归零)
  *   unmount:
  *     - 卸载 listener, 清 CSS class
  *
- * 删除节点 (removedUids) 目前不在画布上打 class, 因为节点 group 已经被
- * 引擎销毁; 计数在 DiffSummary 里显示. 未来做 tombstone overlay 再补.
+ * tombstone 节点保留在画布中并映射为 removedUids，保存事务成功后才移除。
  */
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { useStore } from "zustand"
 import type { MindMapNodeTree } from "simple-mind-map"
 import {
@@ -23,9 +22,11 @@ import {
   useProjectSessionStore,
 } from "@/products/mind/editor-session"
 import { useSaveFlowContext } from "@/shared/native"
+import type { BundleSource } from "@/shared/native/save-flow"
+import type { SaveParticipant } from "@/shared/native/save-transaction"
 import { getDiffStore } from "./diff-store"
 import type { DiffState } from "./diff-engine"
-import { flushTombstones, installSoftDelete } from "./tombstone"
+import { commitTombstones, installSoftDelete, pruneTombstonesFromSnapshot } from "./tombstone"
 
 const CLASS_ADD = "smm-diff-add"
 const CLASS_MODIFY = "smm-diff-modify"
@@ -58,6 +59,22 @@ export function useDiffTracking(): void {
   const sessionStore = useProjectSessionStore()
   const diffStore = getDiffStore(sessionStore)
   const saveFlow = useSaveFlowContext()
+  const saveParticipant = useMemo<SaveParticipant | null>(() => {
+    if (!mindMap) return null
+    return {
+      prepare: (source: BundleSource) => {
+        pruneTombstonesFromSnapshot(source.tree)
+        return {
+          source,
+          commit: () => {
+            commitTombstones(mindMap)
+            const tree = mindMap.getData() as MindMapNodeTree
+            diffStore.getState().setBaseline(tree)
+          },
+        }
+      },
+    }
+  }, [mindMap, diffStore])
 
   // baseline + data_change 挂钩
   useEffect(() => {
@@ -78,32 +95,18 @@ export function useDiffTracking(): void {
     }
   }, [mindMap, diffStore])
 
-  // save 成功 (dirty:true→false) → 新 baseline, diff 归零
+  // 保存事务参与者：prepare 只剪持久化快照；真正成功后才统一提交
+  // live tombstone 和 diff baseline。写盘失败时二者均保持不变。
   useEffect(() => {
-    if (!mindMap) return
-    let prev = sessionStore.getState().dirty
-    const unsub = sessionStore.subscribe(state => {
-      const next = state.dirty
-      if (prev === true && next === false) {
-        const tree = mindMap.getData() as MindMapNodeTree
-        diffStore.getState().setBaseline(tree)
-      }
-      prev = next
-    })
-    return unsub
-  }, [mindMap, sessionStore, diffStore])
+    if (!saveParticipant) return
+    return saveFlow.registerSaveParticipant(saveParticipant)
+  }, [saveFlow, saveParticipant])
 
-  // 软删除: 拦截 REMOVE_NODE, 只打 pendingDelete=true; 保存前才真删.
+  // 软删除: 拦截 REMOVE_NODE, 只打 pendingDelete=true; 保存 commit 才真删.
   useEffect(() => {
     if (!mindMap) return
     return installSoftDelete(mindMap)
   }, [mindMap])
-
-  // 保存前把 tombstoned 节点真删
-  useEffect(() => {
-    if (!mindMap) return
-    return saveFlow.registerPreSave(() => flushTombstones(mindMap))
-  }, [mindMap, saveFlow])
 
   // diff 状态 → SVG group CSS class 同步. 每次 diff 变或每次 render 完都跑.
   useEffect(() => {

@@ -26,6 +26,7 @@ export * from "./mcp-repo"
 export * from "./mcp-spawn"
 export * from "./window-close-coordinator"
 export * from "./save-flow"
+export { saveWithToast } from "./save-with-toast"
 export { UnsavedGuard } from "./unsaved-guard"
 export { SaveFlowProvider, useSaveFlowContext, useOptionalSaveFlow } from "./save-flow-context"
 export {

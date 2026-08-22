@@ -44,7 +44,7 @@
  * .smm-diff-tombstone —— 软删除节点: 保留在树里但半透明 + 不可交互 + 红边框.
  * simple-mind-map 里每个节点 group 是 nodeDraw 的直接子, 不嵌套, 所以子孙
  * 节点需要各自打 tombstone class (由 tombstone.ts 递归 pendingDelete=true 实现).
- * pointer-events:none 关掉 click/drag/hover, 保存后 flushTombstones 才真删.
+ * pointer-events:none 关掉 click/drag/hover, 保存事务 commit 后才真删.
  */
 .smm-node.smm-diff-tombstone {
   opacity: 0.4;

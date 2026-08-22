@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * TopMoreDropDown —— 编辑器顶部 File 菜单.
  *
@@ -42,7 +41,7 @@ import {
   isExportFormat,
 } from "@/products/mind/features/mindmap/utils/fileFormats"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
-import { openZmindProject, useSaveFlowContext } from "@/shared/native"
+import { openZmindProject, saveWithToast, useSaveFlowContext } from "@/shared/native"
 import { useTabs } from "@/shared/tabs/store"
 import { pendingProjects } from "@/shared/native"
 import { defaultMindmapData } from "@zoeymind/shared"
@@ -110,10 +109,7 @@ export const TopMoreDropDown: FC<TopMoreDropDownProps> = ({
 
   const handleSave = useCallback(async () => {
     try {
-      await flow.save()
-    } catch (error) {
-      logger.error("保存失败", error)
-      toast.error("保存失败")
+      await saveWithToast(flow.save)
     } finally {
       onClose()
     }

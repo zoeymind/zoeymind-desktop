@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { MindMapNodeTree } from "simple-mind-map"
 import { computeDiff, diffCount, isDiffEmpty, snapshotTree } from "./diff-engine"
+import { pruneTombstonesFromSnapshot } from "./tombstone"
 
 /** 造节点便利函数 */
 function node(uid: string, text: string, children: MindMapNodeTree[] = []): MindMapNodeTree {
@@ -82,5 +83,23 @@ describe("computeDiff", () => {
     const current: MindMapNodeTree = { data: { text: "root" }, children: [] }
     const state = computeDiff(current, snapshotTree(base))
     expect(isDiffEmpty(state)).toBe(true)
+  })
+})
+
+describe("transactional tombstone preparation", () => {
+  it("prunes deleted subtrees only from the prepared snapshot", () => {
+    const live = node("root", "R", [
+      node("keep", "Keep"),
+      {
+        data: { uid: "deleted", text: "Deleted", pendingDelete: true },
+        children: [node("descendant", "Descendant")],
+      },
+    ])
+    const prepared = structuredClone(live)
+
+    pruneTombstonesFromSnapshot(prepared)
+
+    expect(prepared.children?.map(child => child.data.uid)).toEqual(["keep"])
+    expect(live.children?.map(child => child.data.uid)).toEqual(["keep", "deleted"])
   })
 })

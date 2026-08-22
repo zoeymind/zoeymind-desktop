@@ -6,7 +6,7 @@
  *
  * 关键 invariants:
  *   1. baseline 只在两处被写: 首次 open (setBaseline from initial tree)
- *      和 dirty:true→false 迁移 (save 成功后 setBaseline from committed tree).
+ *      和 save transaction commit (file + index 均成功后的 committed tree).
  *   2. state 由 setCurrent 触发的纯计算得出, 消费方 subscribe 拿最新值.
  *   3. store 生命周期跟 ProjectSession 一致, WeakMap 让 GC 自动回收.
  */

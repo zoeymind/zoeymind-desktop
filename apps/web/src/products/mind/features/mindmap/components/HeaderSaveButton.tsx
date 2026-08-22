@@ -9,12 +9,9 @@
  * Saving:
  *   - 点击后 flow.save() 期间 icon 换成 Loader2 spin, 按钮禁用.
  */
-import { useState } from "react"
 import { Loader2, Save } from "lucide-react"
 import { Button } from "@zoeymind/ui"
-import { logger } from "@zoeymind/logger"
-import { toast } from "@/shared/app-shared"
-import { useSaveFlowContext, pendingProjects } from "@/shared/native"
+import { saveWithToast, useSaveFlowContext, pendingProjects } from "@/shared/native"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 import { useTabs } from "@/shared/tabs/store"
@@ -31,19 +28,11 @@ export function HeaderSaveButton(): React.JSX.Element {
   )
   const pending = isDraftTab && !!workspaceId && pendingProjects.isPending(workspaceId)
   const dirty = isDirty || pending
-  const [saving, setSaving] = useState(false)
+  const saving = flow.savePhase !== "idle" && flow.savePhase !== "failed"
 
   const handleClick = async () => {
     if (saving) return
-    setSaving(true)
-    try {
-      await flow.save()
-    } catch (error) {
-      logger.error("保存失败", error)
-      toast.error("保存失败")
-    } finally {
-      setSaving(false)
-    }
+    await saveWithToast(flow.save, workspaceId)
   }
 
   return (

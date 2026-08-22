@@ -12,10 +12,7 @@ import { useCallback, useEffect, useRef } from "react"
 import type { MindMapNodeTree } from "simple-mind-map"
 import { logger } from "@zoeymind/logger"
 import { defaultData } from "./useCanvasManager"
-import {
-  useProjectMindMapStore as useMindMapStore,
-  useProjectSessionStore,
-} from "@/products/mind/editor-session"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 import { getProject, readBundle, pendingProjects, useOptionalSaveFlow } from "@/shared/native"
 import { useTabs } from "@/shared/tabs/store"
@@ -48,7 +45,6 @@ function countNodes(tree: MindMapNodeTree | null | undefined): number {
 export function useStorageManager(): UseStorageManagerResult {
   const { workspaceId } = useProjectContext()
   const { mindMap } = useMindMapStore()
-  const sessionStore = useProjectSessionStore()
   const flow = useOptionalSaveFlow(workspaceId ?? null)
   const nameRef = useRef<string>("")
 
@@ -137,22 +133,20 @@ export function useStorageManager(): UseStorageManagerResult {
     }
     mindMap.on?.("data_change", onChange)
 
-    // 保存 (isDirty: true -> false) 完成后, 把当前 tree 记成新的 baseline.
-    let prevDirty = sessionStore.getState().dirty
-    const unsubDirty = sessionStore.subscribe(state => {
-      const nextDirty = state.dirty
-      if (prevDirty === true && nextDirty === false) {
-        const tree = mindMap.getData() as MindMapNodeTree
-        lastCleanHashRef.current = treeHash(tree)
-      }
-      prevDirty = nextDirty
+    const unregisterSaveParticipant = flow.registerSaveParticipant({
+      prepare: source => ({
+        source,
+        commit: persistedSource => {
+          lastCleanHashRef.current = treeHash(persistedSource.tree)
+        },
+      }),
     })
 
     return () => {
       mindMap.off?.("data_change", onChange)
-      unsubDirty()
+      unregisterSaveParticipant()
     }
-  }, [mindMap, flow, sessionStore])
+  }, [mindMap, flow, workspaceId])
 
   /**
    * 注册预览图渲染器 —— save-flow 在写盘时按需调用, 得到 canvas.toDataURL png,

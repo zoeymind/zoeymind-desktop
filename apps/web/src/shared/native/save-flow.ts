@@ -44,14 +44,18 @@ import {
   createUUID,
   type ZMindBundle,
 } from "./"
+import { toastLoading, dismissToast } from "@/shared/app-shared"
 import { useTabs } from "@/shared/tabs/store"
 import { bumpProjects, useProjectsEvents } from "./projects-events"
 import { exists, mkdir } from "@tauri-apps/plugin-fs"
 import { save as saveDialog } from "@tauri-apps/plugin-dialog"
 import { join } from "@tauri-apps/api/path"
 import { composePreviewWithLogo } from "./preview"
+import { saveWithToast } from "./save-with-toast"
+import { executeSaveTransaction, type SaveParticipant, type SavePhase } from "./save-transaction"
 
 const RECOVERY_DEBOUNCE_MS = 5_000
+const SAVE_TOAST_ID_PREFIX = "document-save"
 
 /** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
 function fileBasenameNoExt(path: string): string {
@@ -74,11 +78,16 @@ interface SaveFlowState {
   source: BundleSource | null
   path: string | null
   /** draft 保存成功后写入的真实 project id; 之后 refresh/clearRecovery 都用它 */
-  revision: FileRevision | null
   realProjectId: string | null
+  revision: FileRevision | null
+  sourceFingerprint: string
   timer: ReturnType<typeof setTimeout> | null
   createdAt: number
   renderer: PreviewRenderer | null
+}
+
+function bundleSourceFingerprint(source: BundleSource): string {
+  return JSON.stringify({ tree: source.tree, view: source.view ?? null })
 }
 
 function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
@@ -100,10 +109,12 @@ export function useSaveFlow(projectId: string | null) {
   const setDirty = useMindMapStore(s => s.setDirty)
   const isDirty = useMindMapStore(s => s.isDirty)
   const [conflict, setConflict] = useState<FileConflictError | null>(null)
+  const [savePhase, setSavePhase] = useState<SavePhase>("idle")
   const sessionStore = useProjectSessionStore()
 
   const stateRef = useRef<SaveFlowState>({
     source: null,
+    sourceFingerprint: "",
     path: null,
     realProjectId: null,
     revision: null,
@@ -111,18 +122,49 @@ export function useSaveFlow(projectId: string | null) {
     createdAt: 0,
     renderer: null,
   })
-  // preSave hooks: 保存写盘前的额外准备工作 (例如 diff-view 的 tombstone flush).
-  // hook 抛错会中断 save 并向上抛; 顺序按注册顺序.
-  const preSaveHooksRef = useRef<Set<() => Promise<void> | void>>(new Set())
-  const registerPreSave = useCallback((fn: () => Promise<void> | void) => {
-    preSaveHooksRef.current.add(fn)
+  const saveParticipantsRef = useRef<Set<SaveParticipant>>(new Set())
+  const registerSaveParticipant = useCallback((participant: SaveParticipant) => {
+    saveParticipantsRef.current.add(participant)
     return () => {
-      preSaveHooksRef.current.delete(fn)
+      saveParticipantsRef.current.delete(participant)
     }
   }, [])
-  const runPreSaveHooks = useCallback(async () => {
-    for (const fn of preSaveHooksRef.current) await fn()
+  const savePhaseRef = useRef<SavePhase>("idle")
+  const transitionSavePhase = useCallback((phase: SavePhase) => {
+    savePhaseRef.current = phase
+    setSavePhase(phase)
   }, [])
+
+  const runSaveTransaction = useCallback(
+    async <T>(persist: (source: BundleSource) => Promise<T>, commit: boolean) => {
+      if (savePhaseRef.current !== "idle" && savePhaseRef.current !== "failed") {
+        throw new Error("保存正在进行")
+      }
+      const state = stateRef.current
+      if (!state.source) return null
+      const sourceFingerprint = state.sourceFingerprint
+      return executeSaveTransaction({
+        source: state.source,
+        participants: [...saveParticipantsRef.current],
+        persist,
+        commit,
+        isCurrent: () => stateRef.current.sourceFingerprint === sourceFingerprint,
+        onCommit: () => setDirty(false),
+        onPhase: transitionSavePhase,
+      })
+    },
+    [setDirty, transitionSavePhase]
+  )
+
+  useEffect(() => {
+    if (!projectId) return
+    const toastId = `${SAVE_TOAST_ID_PREFIX}:${projectId}`
+    const saving =
+      savePhase === "preparing" || savePhase === "persisting" || savePhase === "committing"
+    if (saving) toastLoading("保存中…", toastId)
+    else dismissToast(toastId)
+    return () => dismissToast(toastId)
+  }, [projectId, savePhase])
 
   const recoveryStorageId = projectId ? pendingProjects.recoveryStorageId(projectId) : null
 
@@ -160,6 +202,7 @@ export function useSaveFlow(projectId: string | null) {
 
   const registerBundleSource = useCallback((source: BundleSource) => {
     stateRef.current.source = source
+    stateRef.current.sourceFingerprint = bundleSourceFingerprint(source)
   }, [])
 
   const scheduleRecovery = useCallback(() => {
@@ -204,7 +247,6 @@ export function useSaveFlow(projectId: string | null) {
     if (!projectId) return
     const state = stateRef.current
     if (!state.source) return
-    await runPreSaveHooks()
 
     if (pendingProjects.isPending(projectId) && !state.path) {
       const dir = await preferredSaveDir()
@@ -243,29 +285,30 @@ export function useSaveFlow(projectId: string | null) {
         }
       }
       const fileName = fileBasenameNoExt(picked)
-      const nextSource = { ...state.source, name: fileName, previewPng }
-      await writeBundle(picked, nowBundle(nextSource, state.createdAt))
-
       const realId = createUUID()
-      await registerProject({
-        id: realId,
-        path: picked,
-        name: fileName,
-        nodeCount: nextSource.nodeCount ?? 0,
-      })
-      state.path = picked
-      state.revision = await readFileRevision(picked)
-      state.realProjectId = realId
-      state.source.name = fileName
-      await Promise.all([
-        rememberSaveDir(picked),
-        clearRecovery(projectId),
-        clearRecovery(realId),
-        ...(recoveryStorageId && recoveryStorageId !== projectId
-          ? [clearRecovery(recoveryStorageId)]
-          : []),
-      ])
-      setDirty(false)
+      const result = await runSaveTransaction(async prepared => {
+        const nextSource = { ...prepared, name: fileName, previewPng }
+        await writeBundle(picked, nowBundle(nextSource, state.createdAt))
+        await registerProject({
+          id: realId,
+          path: picked,
+          name: fileName,
+          nodeCount: nextSource.nodeCount ?? 0,
+        })
+        state.path = picked
+        state.revision = await readFileRevision(picked)
+        state.realProjectId = realId
+        await Promise.all([
+          rememberSaveDir(picked),
+          clearRecovery(projectId),
+          clearRecovery(realId),
+          ...(recoveryStorageId && recoveryStorageId !== projectId
+            ? [clearRecovery(recoveryStorageId)]
+            : []),
+        ])
+      }, true)
+      if (!result) return
+      if (result.liveStateMatchesPersisted) state.source.name = fileName
       bumpProjects()
       useTabs.getState().promoteDraftInPlace(projectId, realId, fileName)
       pendingProjects.clear(projectId)
@@ -282,80 +325,84 @@ export function useSaveFlow(projectId: string | null) {
         previewPng = state.source.previewPng ?? null
       }
     }
-    const fileName = fileBasenameNoExt(state.path)
-    state.source.name = fileName
-    const bundle = nowBundle({ ...state.source, previewPng }, state.createdAt)
-    try {
-      await assertFileRevision(state.path, state.revision)
-    } catch (error) {
-      if (error instanceof FileConflictError) setConflict(error)
-      throw error
-    }
-    await writeBundle(state.path, bundle)
-    state.revision = await readFileRevision(state.path)
+    const path = state.path
+    const fileName = fileBasenameNoExt(path)
     const effectiveId = state.realProjectId ?? projectId
-    await refreshProjectIndex(effectiveId, {
-      name: fileName,
-      nodeCount: state.source.nodeCount ?? 0,
-    })
-    await Promise.all([
-      clearRecovery(effectiveId),
-      clearRecovery(projectId),
-      ...(recoveryStorageId && recoveryStorageId !== projectId
-        ? [clearRecovery(recoveryStorageId)]
-        : []),
-    ])
-    if (state.timer) {
+    const result = await runSaveTransaction(async prepared => {
+      try {
+        await assertFileRevision(path, state.revision)
+      } catch (error) {
+        if (error instanceof FileConflictError) setConflict(error)
+        throw error
+      }
+      const nextSource = { ...prepared, name: fileName, previewPng }
+      await writeBundle(path, nowBundle(nextSource, state.createdAt))
+      state.revision = await readFileRevision(path)
+      await refreshProjectIndex(effectiveId, {
+        name: fileName,
+        nodeCount: nextSource.nodeCount ?? 0,
+      })
+      await Promise.all([
+        clearRecovery(effectiveId),
+        clearRecovery(projectId),
+        ...(recoveryStorageId && recoveryStorageId !== projectId
+          ? [clearRecovery(recoveryStorageId)]
+          : []),
+      ])
+    }, true)
+    if (!result) return
+    if (result.liveStateMatchesPersisted) state.source.name = fileName
+    if (result.liveStateMatchesPersisted && state.timer) {
       clearTimeout(state.timer)
       state.timer = null
     }
-    setDirty(false)
     bumpProjects()
     setConflict(null)
-  }, [projectId, recoveryStorageId, setDirty, runPreSaveHooks])
+  }, [projectId, recoveryStorageId, runSaveTransaction])
 
   const saveAs = useCallback(
     async (newPath: string) => {
       if (!projectId) return
       const state = stateRef.current
       if (!state.source) return
-      await runPreSaveHooks()
       if ((await findByPath(newPath)) || (await exists(newPath))) {
         throw new Error(`目标文件已存在：${newPath}`)
       }
 
       const fileName = fileBasenameNoExt(newPath)
-      const bundle = nowBundle({ ...state.source, name: fileName }, state.createdAt)
-      await writeBundle(newPath, bundle)
       const copyId = createUUID()
-      await registerProject({
-        id: copyId,
-        path: newPath,
-        name: fileName,
-        nodeCount: state.source.nodeCount ?? 0,
-      })
+      await runSaveTransaction(async prepared => {
+        await writeBundle(newPath, nowBundle({ ...prepared, name: fileName }, state.createdAt))
+        await registerProject({
+          id: copyId,
+          path: newPath,
+          name: fileName,
+          nodeCount: prepared.nodeCount ?? 0,
+        })
+      }, false)
       bumpProjects()
       useTabs.getState().openTab({ id: copyId, kind: "file", title: fileName, projectId: copyId })
     },
-    [projectId, runPreSaveHooks]
+    [projectId, runSaveTransaction]
   )
 
   const overwrite = useCallback(async () => {
     if (!projectId) return
     const state = stateRef.current
     if (!state.path || !state.source) return
-    await runPreSaveHooks()
-    const fileName = fileBasenameNoExt(state.path)
-    await writeBundle(state.path, nowBundle({ ...state.source, name: fileName }, state.createdAt))
-    state.revision = await readFileRevision(state.path)
-    await refreshProjectIndex(state.realProjectId ?? projectId, {
-      name: fileName,
-      nodeCount: state.source.nodeCount ?? 0,
-    })
+    const path = state.path
+    const fileName = fileBasenameNoExt(path)
+    await runSaveTransaction(async prepared => {
+      await writeBundle(path, nowBundle({ ...prepared, name: fileName }, state.createdAt))
+      state.revision = await readFileRevision(path)
+      await refreshProjectIndex(state.realProjectId ?? projectId, {
+        name: fileName,
+        nodeCount: prepared.nodeCount ?? 0,
+      })
+    }, true)
     setConflict(null)
-    setDirty(false)
     bumpProjects()
-  }, [projectId, setDirty, runPreSaveHooks])
+  }, [projectId, runSaveTransaction])
 
   const reloadFromDisk = useCallback(async () => {
     const state = stateRef.current
@@ -403,27 +450,31 @@ export function useSaveFlow(projectId: string | null) {
     }
   }, [projectId, flushRecovery, sessionStore])
 
-  // Ctrl/Cmd+S 快捷键
+  // Ctrl/Cmd+S 快捷键. 走 saveWithToast 统一反馈.
+  // 每个 tab 的 SaveFlowProvider 都挂一次全局 keydown, 但只有 active tab 应答;
+  // 否则开 N 个 tab 会触发 N 次 save + N 个 toast.
   useEffect(() => {
+    if (!projectId) return
     const onKey = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey
-      if (meta && e.key.toLowerCase() === "s") {
-        e.preventDefault()
-        void save()
-      }
+      if (!meta || e.key.toLowerCase() !== "s") return
+      if (useTabs.getState().activeId !== projectId) return
+      e.preventDefault()
+      void saveWithToast(save, projectId)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [save])
+  }, [projectId, save])
 
   return useMemo(
     () => ({
       isDirty,
+      savePhase,
       markDirty,
       conflict,
       registerBundleSource,
       registerPreviewRenderer,
-      registerPreSave,
+      registerSaveParticipant,
       save,
       saveAs,
       flushRecovery,
@@ -434,11 +485,12 @@ export function useSaveFlow(projectId: string | null) {
     }),
     [
       isDirty,
+      savePhase,
       markDirty,
       conflict,
       registerBundleSource,
       registerPreviewRenderer,
-      registerPreSave,
+      registerSaveParticipant,
       save,
       saveAs,
       flushRecovery,
