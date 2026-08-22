@@ -96,16 +96,21 @@ jobs:
             -f ref="refs/tags/$tag" \
             -f sha="$sha" >/dev/null
 
-          if ! gh api "repos/${{ github.repository }}/releases" \
+          if ! release_id="$(gh api "repos/${{ github.repository }}/releases" \
             --method POST \
             -f tag_name="$tag" \
             -f target_commitish="$sha" \
             -f name="$tag" \
             -F draft=true \
-            -F generate_release_notes=true >/dev/null; then
+            -F generate_release_notes=true \
+            --jq .id)"; then
             gh api "repos/${{ github.repository }}/git/refs/tags/$tag" --method DELETE
             exit 1
           fi
+          gh api "repos/${{ github.repository }}/releases/$release_id" \
+            --method PATCH \
+            -f tag_name="$tag" \
+            -f target_commitish="$sha" >/dev/null
 
           {
             echo "tag-name=$tag"
