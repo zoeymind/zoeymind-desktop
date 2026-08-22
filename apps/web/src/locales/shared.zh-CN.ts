@@ -17,8 +17,9 @@ export default {
     models: "模型",
     about: "关于",
     githubSupport: "支持 ZoeyMind",
-    githubSupportDescription: "访问我们的 GitHub 主页，关注项目动态并支持我们。",
-    githubSupportAction: "访问 GitHub",
+    githubSupportDescription:
+      "如果 ZoeyMind 对你有帮助，欢迎去 GitHub 点个 Star，让更多测试同行找到它。",
+    githubSupportAction: "去 GitHub Star",
     externalAutomation: {
       title: "外部自动化",
       description: "独立控制本地 CLI 和 MCP 访问，不影响内置 AI 的编辑审查。",

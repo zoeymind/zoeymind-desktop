@@ -54,7 +54,7 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
         {update?.body ? (
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
             <p className="mb-2 font-medium">{t("appVersion.releaseNotes")}</p>
-            <div className="release-notes-prose max-h-80 overflow-y-auto text-muted-foreground">
+            <div className="prose prose-sm dark:prose-invert max-h-80 max-w-none overflow-y-auto prose-headings:mt-3 prose-headings:mb-1 prose-headings:text-sm prose-p:my-1 prose-li:my-0.5 prose-strong:font-semibold prose-code:text-xs">
               <Markdown>{update.body}</Markdown>
             </div>
           </div>

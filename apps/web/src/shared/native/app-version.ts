@@ -3,7 +3,7 @@ import { relaunch } from "@tauri-apps/plugin-process"
 import { check, type DownloadEvent, type Update } from "@tauri-apps/plugin-updater"
 import { openUrl } from "@tauri-apps/plugin-opener"
 
-const GITHUB_ORGANIZATION_URL = "https://github.com/zoeymind"
+const GITHUB_ORGANIZATION_URL = "https://github.com/zoeymind/zoeymind-desktop"
 
 export interface AvailableAppUpdate {
   version: string

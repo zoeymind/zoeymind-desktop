@@ -17,12 +17,12 @@ import {
   ChevronsUpDown,
   ChevronDown,
   Info,
-  Github,
   Loader2,
   Plus,
   RefreshCw,
   Save,
   Settings2,
+  Star,
   Trash2,
 } from "lucide-react"
 import {
@@ -738,7 +738,7 @@ function AboutSection() {
             </p>
           </div>
           <Button variant="outline" onClick={() => void openGitHubSupport()}>
-            <Github />
+            <Star fill="currentColor" />
             {t("settings.githubSupportAction")}
           </Button>
         </div>

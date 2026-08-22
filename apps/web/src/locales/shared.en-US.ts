@@ -17,8 +17,9 @@ export default {
     models: "Models",
     about: "About",
     githubSupport: "Support ZoeyMind",
-    githubSupportDescription: "Visit our GitHub profile, follow the project, and support our work.",
-    githubSupportAction: "Visit GitHub",
+    githubSupportDescription:
+      "If ZoeyMind helps you, star the repo on GitHub so more QA folks can find it.",
+    githubSupportAction: "Star on GitHub",
     externalAutomation: {
       title: "External automation",
       description: "Control local CLI and MCP access independently from built-in AI review.",
