@@ -7,7 +7,7 @@
  * 所有子元素 h-full items-center, 让 tab / 图标视觉上填满整个 titlebar 高度.
  * macOS 红绿灯位置由 tauri.conf.json trafficLightPosition {x:12, y:13} 精调.
  */
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { Copy, Minus, Settings, Square, X } from "lucide-react"
 import { useTranslation } from "@zoeymind/i18n"
@@ -15,7 +15,7 @@ import { Button } from "@zoeymind/ui"
 import { SettingsDialog } from "@/pages/SettingsDialog"
 import { useSettingsDialog } from "@/shared/app-shared"
 import { TabBar } from "./tab-bar"
-import { isPhysicalTitlebarTarget } from "./titlebar-drag"
+import { getTitlebarMouseAction, isPhysicalTitlebarTarget } from "./titlebar-drag"
 
 const appWindow = getCurrentWindow()
 
@@ -49,18 +49,18 @@ export function TitleBar() {
   }, [])
   const isMac = platform === "macos"
 
-  const handleTitlebarPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handleTitlebarMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (!isPhysicalTitlebarTarget(event.currentTarget, event.target as Node)) return
-    if (event.button !== 0) return
+    const action = getTitlebarMouseAction(event.buttons, event.detail)
     const target = event.target as HTMLElement
     if (target.closest("button, [role='tab'], [data-tab-interactive]")) return
-    if (event.detail === 2) void appWindow.toggleMaximize()
-    else void appWindow.startDragging()
+    if (action === "toggle-maximize") void appWindow.toggleMaximize()
+    else if (action === "start-dragging") void appWindow.startDragging()
   }
 
   return (
     <div
-      onPointerDown={handleTitlebarPointerDown}
+      onMouseDown={handleTitlebarMouseDown}
       data-app-titlebar
       className="fixed inset-x-0 top-0 z-[100] flex h-10 items-stretch bg-muted/60 backdrop-blur"
     >
