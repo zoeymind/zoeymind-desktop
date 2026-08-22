@@ -5,6 +5,10 @@ ZoeyMind Desktop 是基于 Tauri 的本地思维导图编辑器。它将 `.zmind
 > [!IMPORTANT]
 > Desktop、Portal、CLI 和 MCP Adapter 已完成开发环境集成、真实应用链路测试和 npm 发行加固。CLI/MCP 采用 `@zoeymind/cli`（bin `zoeymind`）与 `@zoeymind/mcp`（bin `zoeymind-mcp`）双 package 发行。首次 npm 发布由受保护的 `npm Release` workflow 驱动，需要 npm scope 与 trusted publisher 授权后才能自动完成。
 
+## License
+
+双轨授权：默认 [PolyForm Noncommercial 1.0.0](./LICENSE)，禁止任何商业化用途。商业授权见 [`LICENSING.md`](./LICENSING.md)。
+
 ## 功能
 
 - 本地 `.zmind` 文档、新建草稿、最近项目和恢复快照；

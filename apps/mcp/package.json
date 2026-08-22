@@ -8,12 +8,14 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "LICENSING.md"
   ],
   "engines": {
     "node": ">=22"
   },
-  "license": "UNLICENSED",
+  "license": "SEE LICENSE IN ./LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zoeymind/zoeymind-desktop.git",
@@ -28,7 +30,7 @@
   },
   "scripts": {
     "build": "tsup",
-    "prepack": "pnpm build",
+    "prepack": "pnpm build && node ../../scripts/copy-license.mjs",
     "smoke": "tsx src/smoke.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Packaged license artifacts staged by prepack
+apps/cli/LICENSE
+apps/cli/LICENSING.md
+apps/mcp/LICENSE
+apps/mcp/LICENSING.md

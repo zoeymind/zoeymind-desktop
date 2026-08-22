@@ -82,3 +82,7 @@ The package requires Node.js 22 or newer. Descriptor path derivation and protoco
 Breaking CLI, MCP schema, structured error, or Broker protocol changes follow the repository [SemVer and deprecation policy](../../CHANGELOG.md#versioning-policy).
 
 架构、协议、安全边界和完整发布清单见[根 README](../../README.md)。
+
+## License
+
+PolyForm Noncommercial 1.0.0。商业用途请先联系 <https://github.com/zoeymind> 获取书面许可，详见 [`LICENSING.md`](../../LICENSING.md)。

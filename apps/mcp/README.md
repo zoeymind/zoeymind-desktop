@@ -139,3 +139,7 @@ The test suite spawns compiled `dist/index.js` over real stdio and clean-install
 - breaking-change and deprecation rules are defined in the repository [changelog](../../CHANGELOG.md#versioning-policy).
 
 完整架构和待办见[根 README](../../README.md)。
+
+## License
+
+PolyForm Noncommercial 1.0.0。商业用途请先联系 <https://github.com/zoeymind> 获取书面许可，详见 [`LICENSING.md`](../../LICENSING.md)。
