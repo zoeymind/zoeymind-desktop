@@ -34,11 +34,11 @@ const PLATFORMS = [
   },
   {
     id: "linux-x86_64",
-    match: (name) => /\.AppImage\.tar\.gz$/.test(name),
+    match: (name) => /\.AppImage$/.test(name),
   },
   {
     id: "windows-x86_64",
-    match: (name) => /\.nsis\.zip$/.test(name),
+    match: (name) => /\.exe$/i.test(name),
   },
 ]
 
