@@ -1,1 +1,41 @@
+#!/usr/bin/env sh
+# 每次 commit 前显式确认，与 commit-checklist skill 的 G 门对齐。
+#
+# 规则：
+# - 交互式终端（用户在 shell 里）：提示输入 "我确认"，非精确匹配即取消。
+# - 非交互式（agent / CI / 后台脚本）：必须显式携带 USER_CONFIRMED=1 环境变量。
+#   Agent 只在用户对话中明确说出「我确认」后才允许设置。
+#
+# 绕过：git commit --no-verify（后果自负）。
+
+set -e
+
+if [ -t 0 ]; then
+  # Interactive: prompt for exact keyword.
+  printf '\n> 输入「我确认」继续本次 commit（其它任何输入取消）：\n> '
+  read reply < /dev/tty || reply=""
+  if [ "$reply" != "我确认" ]; then
+    echo ""
+    echo "已取消：未收到「我确认」。" >&2
+    exit 1
+  fi
+else
+  # Non-interactive: env var must be explicitly set by the caller.
+  if [ "${USER_CONFIRMED:-}" != "1" ]; then
+    cat >&2 <<'EOF'
+
+BLOCKED: 非交互式提交必须显式携带 USER_CONFIRMED=1。
+
+这是 agent / CI / 后台脚本的情况。Agent 只有在用户对话中明确说出「我确认」
+后才允许设置。参考 .agents/skills/commit-checklist/SKILL.md 的 G 门。
+
+正确写法：
+  USER_CONFIRMED=1 git commit -m "..."
+
+EOF
+    exit 1
+  fi
+fi
+
+# 通过确认后跑常规质量门
 pnpm exec lint-staged

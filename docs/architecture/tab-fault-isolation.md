@@ -3,7 +3,7 @@
 - 状态：调研完成，暂不迁移 Electron
 - 最近核验：2026-08-20
 - 适用范围：ZoeyMind Desktop
-- 稳定术语：[Desktop Context](../../CONTEXT.md)
+- 稳定术语：[CONTEXT.md](../../CONTEXT.md)
 
 ## 1. 问题与目标
 

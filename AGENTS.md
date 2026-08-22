@@ -8,6 +8,45 @@
 - Branch: `main`，直接推送；无 PR 流程
 - Maintainer: GitHub [`chacelow`](https://github.com/chacelow) · npm [`caishilong`](https://www.npmjs.com/~caishilong)
 
+## Working with this repo
+
+### Tech stack
+
+- **Native**: Tauri 2 + Rust 1.77（`src-tauri/`）
+- **Web**: React 19 + Vite 6 + TypeScript 5（`apps/web/`）
+- **CLI/MCP**: Node 22 + tsup（`apps/cli/`、`apps/mcp/`）
+- **Workspace**: pnpm 10（`pnpm-workspace.yaml`）
+
+### App lifecycle（重要）
+
+**用户手动启动应用**，并在开发全程保持运行观察热更新。Agent **不启动、不重启**应用。
+
+- 用户已经在跑 `pnpm tauri:dev`，边改边看边测；Vite HMR + Tauri reload 会自动生效
+- Agent 改完 web/TS 代码 → 用户桌面上会自动刷新，Agent 假定"新代码已经在跑"进行下一步（询问 / 请用户测 / 读日志）
+- **例外**：改动确实需要重启才能生效（改 `src-tauri/**/*.rs`、`src-tauri/tauri.conf.json`、`src-tauri/capabilities/**`、`Cargo.toml` 依赖、`.env`、原生 plugin 注册）→ **明确告知用户"这次要重启 tauri:dev"**，不要自己跑
+- 类型 / 单测这类无副作用的可以直接跑，不需要用户配合
+
+### Common commands
+
+**Agent 可直接跑**（无副作用）：
+
+- `pnpm --filter @zoeymind-desktop/web typecheck` — 仅类型（最快信号）
+- `pnpm --filter @zoeymind-desktop/web test` — vitest 一次跑完
+- `pnpm --filter @zoeymind-desktop/web exec eslint <files>` — 单文件 lint
+- `pnpm release <version>` — 一次 bump 全部版本 + CHANGELOG + tag（见 [Release tooling](#release-tooling)）
+
+**只给用户参考，Agent 不主动跑**：
+
+- `pnpm tauri:dev` — 起 dev 应用（用户全程手动持有）
+- `pnpm --filter @zoeymind-desktop/web dev` — 只跑 web 端
+- `pnpm tauri:build` — 本地打包
+
+### Boundaries
+
+- ✅ **Always** — UI 组件从 `@zoeymind/ui` 引；提交前 lint-staged 自动跑 prettier + eslint --fix；跨文件重命名走 `lsp rename`；改完假定用户桌面上已经热更新
+- ⚠️ **Ask first** — 改 `src-tauri/tauri.conf.json`；动 `packages/ui/src/` 的组件公共 API；新增 npm 依赖；改 `.github/workflows/`；**任何需要用户重启 tauri:dev 的改动**
+- 🚫 **Never** — 提交任何 secrets / token / API key；把 CI 改成 push 就 publish；把商业价格 / 客户信息内联进源码或注释；**自启动、自重启、自杀 `pnpm tauri:dev` / 应用进程**
+
 ## Product positioning
 
 ZoeyMind Desktop 是**面向测试人员的功能测试用例编辑器**，不是通用思维导图工具。围绕三条差异化设计与描述：
@@ -82,3 +121,21 @@ The agent MUST NOT ask the user to create tags, modify source-controlled version
 - A Draft GitHub Release should exist only while an explicitly requested release is being assembled or recovered.
 - Normal release inputs are `version` and `release-ref`; the latter may name a stable commit, branch, or tag and defaults to `main`.
 - `artifact-run-id` and `release-tag` are recovery-only inputs for reusing successful installers after a final-stage failure.
+
+## Domain glossary
+
+稳定领域词汇（正式项目 / 恢复快照 / 文档标签 / 故障域 / Invariants 等）与架构文档索引住 [`CONTEXT.md`](./CONTEXT.md)。做领域相关改动 (`.zmind` 生命周期 / 文档标签隔离 / Portal 编辑协议) 前先读它。
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues (`zoeymind/zoeymind-desktop`), 用 `gh` CLI 驱动. 详见 [`docs/agents/issue-tracker.md`](./docs/agents/issue-tracker.md).
+
+### Triage labels
+
+采用 5 个 canonical triage roles (`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`), label string 与 role name 一致. 详见 [`docs/agents/triage-labels.md`](./docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context repo: root `CONTEXT.md` (稳定领域词汇) + `docs/architecture/*.md` (架构决策). 详见 [`docs/agents/domain.md`](./docs/agents/domain.md).

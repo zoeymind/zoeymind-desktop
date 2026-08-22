@@ -3,7 +3,7 @@
 - 状态：已实现；CLI/MCP release artifacts 和发布工作流已完成
 - 最近更新：2026-08-22
 - 适用范围：ZoeyMind Desktop
-- 稳定术语：[Desktop Context](../../CONTEXT.md)
+- 稳定术语：[CONTEXT.md](../../CONTEXT.md)
 
 ## 1. 最终目标
 
