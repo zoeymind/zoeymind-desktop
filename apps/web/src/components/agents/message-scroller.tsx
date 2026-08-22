@@ -146,6 +146,7 @@ export function MessageScroller({
   const viewportRef = useRef<HTMLElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const followingRef = useRef(followOutput)
+  const busyRef = useRef(busy ?? false)
   const programmaticScrollRef = useRef(false)
   const scrollTimerRef = useRef<number | undefined>(undefined)
   const frameRef = useRef<number | undefined>(undefined)
@@ -166,6 +167,10 @@ export function MessageScroller({
     onKeyDown: onViewportKeyDown,
     ...restViewportProps
   } = viewportProps ?? {}
+
+  useEffect(() => {
+    busyRef.current = busy ?? false
+  }, [busy])
 
   useImperativeHandle(externalViewportRef, () => viewportRef.current as HTMLElement)
 
@@ -395,7 +400,9 @@ export function MessageScroller({
     const observer = new ResizeObserver(() => {
       scheduleRailSync()
       if (!followOutput || !followingRef.current) return
-      scrollToEnd(reduce || !smooth ? "auto" : "smooth")
+      // 流式输出期间内容每帧增长, smooth 滚动动画不断被重启, 造成连续合成层滚动;
+      // busy 时直接贴底, 只有静态内容变化才用平滑滚动.
+      scrollToEnd(reduce || !smooth || busyRef.current ? "auto" : "smooth")
     })
     observer.observe(content)
 

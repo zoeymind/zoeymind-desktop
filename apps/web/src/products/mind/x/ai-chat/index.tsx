@@ -5,7 +5,7 @@
  * 所有状态通过 useAIChatV2Store 管理，组件间无 props 传递
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { McpServerItem, AiToolListResult } from "../lib/api-types"
 import { ChevronDown, Plus, History, AlertCircle, Settings, X } from "lucide-react"
 import {
@@ -71,20 +71,19 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const { messages, status } = runtime
   const isProcessing = status === "submitted" || status === "streaming"
 
-  // ✅ 从 store 读取 UI 状态
-  const {
-    showHistory,
-    setShowHistory,
-    currentConversationId,
-    totalTokenUsage,
-    showScrollToBottom,
-    setShowScrollToBottom,
-    createNewConversation,
-    loadConversation,
-    setMergedUserPrompt,
-    showSettings,
-    setShowSettings,
-  } = useAIChatV2Store()
+  // ✅ 从 store 读取 UI 状态 — 每个字段单独 selector.
+  // 整仓 useAIChatV2Store() 会让每次 inputMessage 击键都重渲染整个面板树.
+  const showHistory = useAIChatV2Store(s => s.showHistory)
+  const setShowHistory = useAIChatV2Store(s => s.setShowHistory)
+  const currentConversationId = useAIChatV2Store(s => s.currentConversationId)
+  const totalTokenUsage = useAIChatV2Store(s => s.totalTokenUsage)
+  const showScrollToBottom = useAIChatV2Store(s => s.showScrollToBottom)
+  const setShowScrollToBottom = useAIChatV2Store(s => s.setShowScrollToBottom)
+  const createNewConversation = useAIChatV2Store(s => s.createNewConversation)
+  const loadConversation = useAIChatV2Store(s => s.loadConversation)
+  const setMergedUserPrompt = useAIChatV2Store(s => s.setMergedUserPrompt)
+  const showSettings = useAIChatV2Store(s => s.showSettings)
+  const setShowSettings = useAIChatV2Store(s => s.setShowSettings)
 
   // 本地提示词库 (sqlite prompts 表). 启用的指令拼进 mergedUserPrompt,
   // 作为 system prompt 前置发给模型.
@@ -122,9 +121,14 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
     return getMindmapContextEnabled()
   })
 
+  // 恢复"未答完的 HITL 工具弹框": 会话加载时 store.loadConversation 已扫过一次,
+  // 这里只兜 HMR / 流结束后的场景. 挂 [status] 而非 [messages]:
+  // 流式期间 messages 引用每 50ms 换新, 全量扫 transcript 是纯浪费.
   useEffect(() => {
+    if (status === "streaming" || status === "submitted") return
     restorePendingFromMessages(messages)
-  }, [messages])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- messages 只在 status 落定时读取
+  }, [status])
 
   const handleScrollToBottom = () => {
     const messageContainer = document.querySelector("[data-message-container-v2]")
@@ -136,9 +140,18 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
     }
   }
 
-  const handleScrollStatusChange = (isNearBottom: boolean) => {
-    setShowScrollToBottom(!isNearBottom && messages.length > 0)
-  }
+  // 稳定引用: 该回调透传到 MessageScroller 的 onFollowChange, 每次 render 换新引用
+  // 会级联重建其内部 useCallback/observer 链. messages 走 ref 读取避免依赖.
+  const hasMessagesRef = useRef(false)
+  useEffect(() => {
+    hasMessagesRef.current = messages.length > 0
+  }, [messages])
+  const handleScrollStatusChange = useCallback(
+    (isNearBottom: boolean) => {
+      setShowScrollToBottom(!isNearBottom && hasMessagesRef.current)
+    },
+    [setShowScrollToBottom]
+  )
 
   const handleCreateNewConversation = async () => {
     if (!(mindMap as { workspaceId?: string } | null)?.workspaceId) return

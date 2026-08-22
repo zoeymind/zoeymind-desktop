@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- dormant AI chat / MCP mirror remains untyped */
 // @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * UnifiedAIPanel - AI 面板组件
@@ -38,18 +39,18 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
     max: MAX_WIDTH,
   })
 
-  const {
-    showHistory,
-    setShowHistory,
-    currentConversationId,
-    totalTokenUsage,
-    createNewConversation,
-    loadConversation,
-    setShowSettings,
-  } = useAIChatV2Store()
+  // 逐字段 selector: 面板常驻 (收起只是 display:none), 整仓订阅会让
+  // 输入框每次击键都触发这里 (以及整个 AIchatV2 子树) 重渲染.
+  const showHistory = useAIChatV2Store(s => s.showHistory)
+  const setShowHistory = useAIChatV2Store(s => s.setShowHistory)
+  const currentConversationId = useAIChatV2Store(s => s.currentConversationId)
+  const totalTokenUsage = useAIChatV2Store(s => s.totalTokenUsage)
+  const createNewConversation = useAIChatV2Store(s => s.createNewConversation)
+  const loadConversation = useAIChatV2Store(s => s.loadConversation)
+  const setShowSettings = useAIChatV2Store(s => s.setShowSettings)
   const runtime = useAIChatRuntime()
   const isProcessing = runtime.status === "submitted" || runtime.status === "streaming"
-  const { models, selectedModel, contextBudget } = useModelSelector()
+  const { contextBudget } = useModelSelector()
 
   const handleCreateNewConversation = async () => {
     if (!(mindMap as { workspaceId?: string } | null)?.workspaceId) return

@@ -4,10 +4,8 @@
 
 import React, { useMemo, useCallback, useState } from "react"
 import type { UIMessage } from "@ai-sdk/react"
-import ReactMarkdown from "react-markdown"
 import type { Components } from "react-markdown"
-import remarkGfm from "remark-gfm"
-import rehypeRaw from "rehype-raw"
+import { MemoizedMarkdown } from "./MemoizedMarkdown"
 import { useAIChatV2Store } from "../../../ai-chat/stores/useAIChatV2Store"
 import { ToolCallCard, type ToolCallPart } from "./ToolCallCard"
 import { ThinkingIndicator } from "./ThinkingIndicator"
@@ -267,13 +265,7 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
       if (!textContent.trim()) return null
       return (
         <div key={key}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw]}
-            components={markdownComponents}
-          >
-            {textContent}
-          </ReactMarkdown>
+          <MemoizedMarkdown text={textContent} components={markdownComponents} />
         </div>
       )
     },

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy mirrored chat module remains untyped */
 // @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * ToolUIRenderer — 遍历 pending 队列, 渲染每个 pending tool call 对应的 UI.
@@ -12,7 +13,7 @@
  * 但 SDK 一轮里多次 tool-call 串行也支持). 我们渲染所有 pending, 多个面板纵向堆叠.
  */
 
-import { useSyncExternalStore, useCallback, type ReactNode } from "react"
+import { useSyncExternalStore, useCallback, useMemo, type ReactNode } from "react"
 import {
   completeToolUICall,
   getToolUIHandler,
@@ -62,12 +63,17 @@ function ToolUIItem({ call }: ToolUIItemProps): ReactNode {
     void respond(handler.skipResponse())
   }, [handler, respond])
 
+  // parseArgs 每次渲染都跑会生成新引用, 打穿下游 Panel 的 useEffect deps
+  // (如 SimpleAskUserPanel [incomingQuestions] 会重置用户已填答案). 按 input 稳定住.
+  const args = useMemo(
+    () => (handler?.parseArgs ? handler.parseArgs(call.input, call.toolName) : call.input),
+    [handler, call.input, call.toolName]
+  )
+
   if (!handler) {
     logger.warn("[ToolUIRenderer] 找不到 handler", { toolName: call.toolName })
     return null
   }
-
-  const args = handler.parseArgs ? handler.parseArgs(call.input, call.toolName) : call.input
 
   return (
     <div key={call.toolCallId} data-tool-call-id={call.toolCallId}>

@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   metal-fx@1.0.4:
-    hash: 9b57dfd31414e20da2d91961e09f1677492d20ec2db41265bb74ba9b25d93cac
+    hash: 7604b3675f7237af96a857b1c0af2b09f03f2a1fa94d9af37cb6f17a89aa0d56
     path: patches/metal-fx@1.0.4.patch
 
 importers:
@@ -498,7 +498,7 @@ importers:
         version: 0.469.0(react@19.2.8)
       metal-fx:
         specifier: 1.0.4
-        version: 1.0.4(patch_hash=9b57dfd31414e20da2d91961e09f1677492d20ec2db41265bb74ba9b25d93cac)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 1.0.4(patch_hash=7604b3675f7237af96a857b1c0af2b09f03f2a1fa94d9af37cb6f17a89aa0d56)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       motion:
         specifier: ^12.23.24
         version: 12.43.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -10645,7 +10645,7 @@ snapshots:
 
   merge-descriptors@2.0.0: {}
 
-  metal-fx@1.0.4(patch_hash=9b57dfd31414e20da2d91961e09f1677492d20ec2db41265bb74ba9b25d93cac)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  metal-fx@1.0.4(patch_hash=7604b3675f7237af96a857b1c0af2b09f03f2a1fa94d9af37cb6f17a89aa0d56)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)

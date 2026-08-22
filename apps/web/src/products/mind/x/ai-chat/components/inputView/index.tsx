@@ -31,19 +31,18 @@ export const InputView: React.FC<InputViewProps> = ({
   usedTokens,
   maxTokens,
 }) => {
-  // 从 store 读取状态 (caseConfirm / simpleAskUser 已搬到 ToolUIRegistry, 不在 store 里)
-  const {
-    inputMessage,
-    setInputMessage,
-    attachments,
-    setAttachments,
-    sendMessage,
-    interruptAndSend,
-    stopGeneration,
-  } = useAIChatV2Store()
+  // 从 store 读取状态 — 逐字段 selector; inputMessage 高频变化,
+  // 整仓订阅会把 MessageComposerBox 之外的兄弟树一起拖着重渲染.
+  const inputMessage = useAIChatV2Store(s => s.inputMessage)
+  const setInputMessage = useAIChatV2Store(s => s.setInputMessage)
+  const attachments = useAIChatV2Store(s => s.attachments)
+  const setAttachments = useAIChatV2Store(s => s.setAttachments)
+  const sendMessage = useAIChatV2Store(s => s.sendMessage)
+  const interruptAndSend = useAIChatV2Store(s => s.interruptAndSend)
+  const stopGeneration = useAIChatV2Store(s => s.stopGeneration)
+  const abortedMessageId = useAIChatV2Store(s => s.abortedMessageId)
 
   const { status, messages } = useAIChatRuntime()
-  const abortedMessageId = useAIChatV2Store(state => state.abortedMessageId)
   const isProcessing = isChatProcessing(status, messages, abortedMessageId)
 
   const { mindMap } = useMindMapStore()
