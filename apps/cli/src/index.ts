@@ -20,8 +20,8 @@ function parseInput(tool: DocumentPortalTool, args: string[]): unknown {
   }
 }
 
-async function main(): Promise<void> {
-  const [tool, ...args] = process.argv.slice(2);
+export async function main(args = process.argv.slice(2)): Promise<void> {
+  const [tool, ...toolArgs] = args;
   if (
     tool !== "projects" &&
     tool !== "activate_project" &&
@@ -29,10 +29,10 @@ async function main(): Promise<void> {
     tool !== "edit_current_mindmap"
   )
     throw new Error(
-      "Usage: zoeymind-documents <projects|activate_project|query_current_mindmap|edit_current_mindmap> [json]",
+      "Usage: zoeymind <projects|activate_project|query_current_mindmap|edit_current_mindmap> [json]",
     );
   process.stdout.write(
-    `${JSON.stringify(await requestDocumentPortal(tool, parseInput(tool, args)))}\n`,
+    `${JSON.stringify(await requestDocumentPortal(tool, parseInput(tool, toolArgs)))}\n`,
   );
 }
 

@@ -348,6 +348,7 @@ pub fn run() {
     .manage(AbortMap::default())
     .manage(HttpAbortMap::default())
     .manage(PendingOpenFiles::default())
+    .manage(document_portal::DocumentPortalBrokerState::default())
     // Single-instance: OS 双击 .zmind (macOS: fileAssociations 转 open event;
     // Windows/Linux: argv). 第二次启动时把路径 emit 到前端 'zm:open-file' 事件,
     // 由 useTabs.openTab 命中已有 tab 就激活, 否则新开.
@@ -390,11 +391,12 @@ pub fn run() {
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,
       http_stream::http_stream_abort,
-      document_portal::document_portal_respond
+      document_portal::document_portal_respond,
+      document_portal::get_external_automation_config,
+      document_portal::set_external_automation_config
     ])
     .setup(|app| {
-      let broker = document_portal::DocumentPortalBroker::start(app.handle())?;
-      app.manage(broker);
+      document_portal::initialize(app.handle(), &app.state::<document_portal::DocumentPortalBrokerState>())?;
       #[cfg(any(windows, target_os = "linux"))]
       enqueue_open_files(
         app.handle(),

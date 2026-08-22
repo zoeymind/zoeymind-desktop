@@ -1,10 +1,10 @@
 [package]
-name = "app"
+name = "zoeymind-desktop"
 version = "0.0.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "ZoeyMind Desktop mind-map editor and local document automation host"
+authors = ["ZoeyMind"]
+license = "LicenseRef-Proprietary"
+repository = "https://github.com/zoeymind/zoeymind-desktop"
 edition = "2021"
 rust-version = "1.77.2"
 

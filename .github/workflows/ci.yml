@@ -36,6 +36,27 @@ jobs:
       - name: Build web application
         run: pnpm --filter @zoeymind-desktop/web build
 
+  packages:
+    name: CLI and MCP packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Typecheck packages
+        run: pnpm --filter @zoeymind/cli typecheck && pnpm --filter @zoeymind/mcp typecheck
+      - name: Test packed executables
+        run: pnpm test:packages
+
   native:
     name: Native check
     runs-on: macos-15
@@ -46,7 +67,6 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
 
       - name: Check native application
         run: cargo check --manifest-path src-tauri/Cargo.toml --locked

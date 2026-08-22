@@ -5,16 +5,17 @@ import type { DocumentPortalTool } from "./protocol.js"
 
 export type { DocumentPortalTool } from "./protocol.js"
 
-export type DocumentPortalDescriptor = { version: 1; pid: number; port: number; token: string }
+export const DOCUMENT_PORTAL_PROTOCOL_VERSION = 1 as const
+export type DocumentPortalDescriptor = { version: typeof DOCUMENT_PORTAL_PROTOCOL_VERSION; pid: number; port: number; token: string }
 export type DocumentPortalDescriptorLoader = () => Promise<DocumentPortalDescriptor>
 
-export const DOCUMENT_PORTAL_UNAVAILABLE = "ZoeyMind Document Portal is unavailable. Open the desktop app and wait until it is ready."
+export const DOCUMENT_PORTAL_UNAVAILABLE = "ZoeyMind external automation is unavailable. Open Desktop, enable External automation in Preferences, and wait until it is ready."
 
 export function isValidDocumentPortalDescriptor(descriptor: unknown): descriptor is DocumentPortalDescriptor {
   if (typeof descriptor !== "object" || descriptor === null) return false
   const candidate = descriptor as Partial<DocumentPortalDescriptor>
   const { pid, port, token } = candidate
-  return candidate.version === 1 && typeof pid === "number" && Number.isInteger(pid) && pid > 0 && typeof port === "number" && Number.isInteger(port) && port >= 1 && port <= 65535 && typeof token === "string" && /^[0-9a-f]{64}$/.test(token)
+  return candidate.version === DOCUMENT_PORTAL_PROTOCOL_VERSION && typeof pid === "number" && Number.isInteger(pid) && pid > 0 && typeof port === "number" && Number.isInteger(port) && port >= 1 && port <= 65535 && typeof token === "string" && /^[0-9a-f]{64}$/.test(token)
 }
 
 function descriptorPath(): string {

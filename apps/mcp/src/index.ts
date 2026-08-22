@@ -18,7 +18,19 @@ const client = {
 }
 
 const server = createDocumentPortalServer(client)
-void server.connect(new StdioServerTransport()).catch(error => {
+const transport = new StdioServerTransport()
+
+async function close(): Promise<void> {
+  await server.close()
+}
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    void close().finally(() => process.exit(0))
+  })
+}
+
+void server.connect(transport).catch(error => {
   process.stderr.write(`${error instanceof Error ? error.message : "ZoeyMind MCP server failed to start"}\n`)
   process.exitCode = 1
 })

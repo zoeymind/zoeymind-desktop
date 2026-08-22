@@ -100,7 +100,7 @@ export function createDocumentPortalServer(
   client: DocumentPortalClient,
 ): McpServer {
   const server = new McpServer({
-    name: "zoeymind-document-portal",
+    name: "zoeymind",
     version: "0.0.0",
   });
   server.registerTool(

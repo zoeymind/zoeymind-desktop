@@ -1,21 +1,46 @@
 {
-  "name": "@zoeymind-desktop/mcp",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@zoeymind/mcp",
+  "version": "0.1.0",
+  "description": "Local stdio MCP server for automating a running ZoeyMind Desktop app.",
   "type": "module",
-  "bin": { "zoeymind-document-portal-mcp": "./src/index.ts" },
+  "bin": {
+    "zoeymind-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoeymind/zoeymind-desktop.git",
+    "directory": "apps/mcp"
+  },
+  "homepage": "https://github.com/zoeymind/zoeymind-desktop#readme",
+  "bugs": {
+    "url": "https://github.com/zoeymind/zoeymind-desktop/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "build": "tsup",
+    "prepack": "pnpm build",
     "smoke": "tsx src/smoke.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@zoeymind-desktop/document-portal-client": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@zoeymind-desktop/document-portal-client": "workspace:*",
+    "tsup": "^8.5.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^3.0.0"

@@ -82,34 +82,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
-name = "app"
-version = "0.0.0"
-dependencies = [
- "base64 0.22.1",
- "futures-util",
- "log",
- "rand 0.8.5",
- "reqwest",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-log",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tauri-plugin-single-instance",
- "tauri-plugin-sql",
- "tauri-plugin-updater",
- "tokio",
- "url",
- "urlencoding",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6731,6 +6703,34 @@ dependencies = [
  "crc32fast",
  "indexmap 2.12.1",
  "memchr",
+]
+
+[[package]]
+name = "zoeymind-desktop"
+version = "0.0.0"
+dependencies = [
+ "base64 0.22.1",
+ "futures-util",
+ "log",
+ "rand 0.8.5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-log",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-sql",
+ "tauri-plugin-updater",
+ "tokio",
+ "url",
+ "urlencoding",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

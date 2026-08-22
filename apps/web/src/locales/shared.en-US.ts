@@ -19,6 +19,19 @@ export default {
     githubSupport: "Support ZoeyMind",
     githubSupportDescription: "Visit our GitHub profile, follow the project, and support our work.",
     githubSupportAction: "Visit GitHub",
+    externalAutomation: {
+      title: "External automation",
+      description: "Control local CLI and MCP access independently from built-in AI review.",
+      enabled: "Allow external automation",
+      enabledDescription:
+        "Starts an authenticated local Broker for @zoeymind/cli and @zoeymind/mcp. Disabled by default.",
+      destructiveEdits: "Allow destructive edits",
+      destructiveEditsDescription:
+        "Allows external Agents to edit the active mind map. Read and project access remain available when this is off.",
+      saved: "External automation settings updated",
+      loadFailed: "Failed to load external automation settings",
+      saveFailed: "Failed to update external automation settings",
+    },
     log: {
       title: "Logs",
       description: "Runtime logs stored on disk for troubleshooting.",

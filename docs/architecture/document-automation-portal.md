@@ -1,7 +1,7 @@
 # 文档自动化 Portal Epic
 
-- 状态：方案确定，待实施
-- 最近更新：2026-08-21
+- 状态：已实现；CLI/MCP release artifacts 和发布工作流已完成
+- 最近更新：2026-08-22
 - 适用范围：ZoeyMind Desktop
 - 稳定术语：[Desktop Context](../../CONTEXT.md)
 
@@ -15,64 +15,59 @@ ZoeyMind 提供一套统一的文档自动化能力，让以下调用方使用�
 
 Portal 是文档自动化内核，不是某个 Agent 的 Adapter。AI SDK、CLI 和 MCP 只负责协议转换，不实现各自的模块或测试用例 CRUD。
 
-第一阶段只操作当前已经打开且 ready 的文档标签。未打开文档的后台加载与保存不属于本 Epic。
+第一阶段操作当前已经打开且 ready 的文档标签。未打开文档的后台无界面加载与保存不属于本 Epic。
 
-外部 CLI 与 MCP Adapter 始终暴露 `documents`、`search`、`read`、`edit` 四个通用操作，并要求调用方在 document-scoped 请求中显式传入 `documentId`。内置 AI Chat 是例外：它不向模型暴露 `documents`，并在每次工具调用开始时解析一次当前活动且 ready 的 `ProjectSession`，将得到的 `documentId` 注入同一个通用 Portal 请求。当前文档解析器是独立 seam，后续 `search` 与 `edit` 复用它；它不会改变 Portal 的多文档协议。
+外部 CLI 与 MCP Adapter 暴露 `projects`、`activate_project`、`query_current_mindmap`、`edit_current_mindmap`。外部调用方先控制活动项目，随后 query/edit 在每次调用开始时解析当前 ready 的 `ProjectSession`。内置 AI Chat 不暴露项目控制，只暴露当前导图 query/edit，并使用同一个 Portal 内核。内部文档身份、节点 UID 和编辑审查 token 均不进入模型输入。
 
 ## MCP 配置
 
-先启动 ZoeyMind Desktop 并等待文档 Portal ready。MCP server 是无状态 stdio shim；每次工具调用都会重新读取本机 Broker descriptor，不保存 documentId 或 Broker token。把 `<mcp-command>` 替换为已安装包的 `zoeymind-document-portal-mcp` 可执行路径，或开发工作区中的 `pnpm --dir /absolute/path/to/apps/desktop --filter @zoeymind-desktop/mcp exec tsx src/index.ts`。
+先启动 ZoeyMind Desktop 并等待目标文档 ready。MCP server 是无状态 stdio Adapter；每次工具调用都会重新读取本机 Broker descriptor，不保存 Broker port 或 token。
 
-### Claude Code
+正式发行名称：
 
-在 `~/.claude.json` 的 `mcpServers` 中添加：
+```text
+npm package: @zoeymind/mcp
+executable:  zoeymind-mcp
+server key:  zoeymind
+```
+
+发布后的标准配置：
 
 ```json
 {
-  "zoeymind-document-portal": {
-    "command": "<mcp-command>",
-    "args": []
+  "mcpServers": {
+    "zoeymind": {
+      "command": "zoeymind-mcp",
+      "args": []
+    }
   }
 }
 ```
 
-### Codex
-
-在 `~/.codex/config.toml` 中添加：
-
-```toml
-[mcp_servers.zoeymind-document-portal]
-command = "<mcp-command>"
-args = []
-```
-
-### OpenCode
-
-在 OpenCode 配置的 `mcp` 节点中添加：
+开发工作区使用：
 
 ```json
 {
-  "zoeymind-document-portal": {
-    "type": "local",
-    "command": ["<mcp-command>"]
+  "mcpServers": {
+    "zoeymind": {
+      "command": "pnpm",
+      "args": [
+        "--dir",
+        "/absolute/path/to/apps/desktop",
+        "--filter",
+        "@zoeymind/mcp",
+        "exec",
+        "tsx",
+        "src/index.ts"
+      ]
+    }
   }
 }
 ```
 
-### OMP
+MCP Host 与 Adapter 通过 stdio JSON-RPC 通信；Adapter 再通过 authenticated dynamic loopback HTTP 调用 Desktop Broker。MCP Adapter 本身不监听端口。`query_current_mindmap` 为只读工具；`edit_current_mindmap` 是 destructive、非幂等写操作，必须使用 query 返回的 anchor。应用不可用、文档未 ready/已关闭或 anchor 冲突时，工具返回保留 Broker `errorCode` 的 MCP `isError` response。
 
-在 OMP MCP server 配置中添加：
-
-```json
-{
-  "zoeymind-document-portal": {
-    "command": "<mcp-command>",
-    "args": []
-  }
-}
-```
-
-`documents`、`search` 与 `read` 为只读工具。`edit` 是 destructive、非幂等写操作；调用前应先使用 `read` 返回的 anchor tag。应用不可用、文档未 ready/已关闭或 anchor 冲突时，工具返回可处理的 MCP `isError` response，并保留 Broker 的 `errorCode`。
+兼容与授权策略：npm packages 要求 Node.js 22+，descriptor protocol 当前为 version 1，未知版本 fail closed。Desktop 在 native setup 前读取持久化设置；外部自动化默认关闭，不创建 listener/descriptor。读取与项目控制开启后可用，`edit_current_mindmap` 仍由独立且默认关闭的 destructive-edit permission 控制。内置 AI 的 `ai-case-review-enabled` 与此权限完全独立。
 
 ## 2. 最终使用形式
 
@@ -90,11 +85,13 @@ args = []
 8:       等待超过 30 秒 & 系统主动查询退款结果
 ```
 
-Agent 不接触节点 UID，不生成完整思维导图 JSON，也不学习 ZTDL。它只执行以下流程：
+Agent 不接触节点 UID，不生成完整思维导图 JSON，也不学习 ZTDL。外部 Agent 执行：
 
 ```text
-documents → search → read → edit
+projects → activate_project → query_current_mindmap → edit_current_mindmap
 ```
+
+项目已经处于正确活动状态时，可直接从 query 开始。内置 Agent 只有 query/edit/question。
 
 编辑采用带快照校验的树形 Hashline Patch：
 
@@ -237,69 +234,48 @@ sequenceDiagram
     Portal-->>Agent: result + post-edit preview
 ```
 
-## 4. Portal Interface
+## 4. Adapter Interface
 
-Portal 对所有 Adapter 只暴露四个操作。
+### 外部 CLI/MCP
 
-### `documents`
+外部 Adapter 暴露四个操作：
 
-列出当前打开的文档标签。
+- `projects`：列出项目或创建临时草稿；
+- `activate_project`：打开或激活一个项目；
+- `query_current_mindmap`：使用 `outline`、`subtree` 或 `search` 查询当前导图；
+- `edit_current_mindmap`：接收 anchor tag、Tree Hashline Patch 和可选 return view。
 
-```text
-1. 电商测试    active ready dirty  R218
-2. 用户中心    ready clean          R37
-```
+### 内置 Agent
 
-每个结果包含稳定的文档会话身份、标题、ready、dirty、active 和 revision。外部写操作必须显式绑定文档，不能随 UI 活动标签变化而漂移。
-
-### `search`
-
-在领域树索引上搜索，不先序列化整篇 Test Document。
-
-输入包括：
-
-- document；
-- query；
-- 可选 scope；
-- fields：模块、用例名、前置条件、操作、预期；
-- mode：exact 或 hybrid；
-- limit 和 cursor。
-
-返回必须包含路径、命中字段、总命中数、当前返回数和是否截断。
-
-### `read`
-
-按需生成 Test Document 投影：
-
-- `outline`：模块目录和用例数量；
-- `summary`：指定模块的确定性统计；
-- `subtree`：指定节点及其后代；
-- `details`：少量用例的完整字段。
-
-只有实际返回给 Agent 的局部窗口注册行锚点并生成短期 anchor tag。
-
-### `edit`
-
-接收 anchor tag 和 Tree Hashline Patch。第一版支持：
+内置 Agent 不列出、创建或激活项目，只暴露：
 
 ```text
-PUT N.=M:   替换节点或连续节点
-PUT N*:     替换节点及其完整子树
-PUT <N:     在节点前插入同级节点
-PUT >N:     在节点后插入同级节点
-PUT >N*:    在子树后插入同级节点
-CUT N*      删除并捕获完整子树
-PUT >N @x   粘贴已捕获子树
-MOVE N* >M  移动完整子树
+query_current_mindmap
+edit_current_mindmap
+question
 ```
 
-Patch 中缩进表达树层级：
+### Query
 
-- `# 名称`：模块；
-- `[P1]`、`[P2]`、`[P3]`：测试用例；
-- 用例子行：测试步骤；
-- 用例名中的 `&`：前置条件；
-- 步骤中的 `&`：操作与预期结果。
+`outline` 返回 root、嵌套模块和用例标题，不返回步骤，`completeness` 为 `structure-only`。`subtree` 返回步骤和预期结果，只有 `truncated: false` 时才能支持完整子树替换。`search` 在结构化字段索引上运行，返回路径、命中字段、总数、分页和截断状态。
+
+只有实际返回给 Agent 的局部窗口注册行锚点。行号映射到内部 UID 和内容 hash，但 UID 不出现在公开结果中。
+
+### Edit
+
+Wire format：
+
+```text
+PUT N.=M:       替换节点或连续节点
+PUT <N:         在节点前插入同级节点
+PUT >N:         在节点后插入同级节点
+CUT N.=M:       删除连续节点
+MOVE N -> M:    移动子树
+```
+
+Patch body 每行以 `+` 开始，两个空格表示一层树深度。`# 名称` 表示模块，`[P1]`/`[P2]`/`[P3]` 表示用例，`&` 分隔用例前置条件或步骤操作/预期。
+
+一个 patch 对一个文档原子执行并形成一个 undo entry。成功后返回 revision、diagnostics、新的 bounded view 和新 anchor；旧 anchor 随提交失效。结构和事务错误整体回滚，内容质量问题以 localized diagnostics 随已提交结果返回。
 
 ## 5. 大文档处理
 
@@ -343,33 +319,23 @@ flowchart LR
 
 ## 7. 最终代码布局
 
-以下路径是本 Epic 的目标布局：
+以下是当前实现布局：
 
 ```text
 apps/web/src/products/mind/document-portal/
-├── document-portal.ts              # 唯一公开 interface 与请求/结果类型
-├── mindmap-document-portal.ts      # ProjectSession / MindMap adapter
-├── test-document-projector.ts      # 领域树 → Test Document
-├── read-anchor-registry.ts         # 短期行锚点、UID 映射、内容 hash 与过期回收
-├── document-search-index.ts        # 字段索引、scope、分页与命中证据
-├── tree-patch/
-│   ├── grammar.ts                  # Patch 语法
-│   ├── parser.ts                   # 文本 → TreeOperation
-│   ├── validator.ts                # 树结构和领域规则校验
-│   └── apply.ts                    # preview 与原子应用
-└── adapters/
-    └── ai-sdk.ts                   # 内置 AI Chat tools
+├── document-portal.ts              # Portal interface 与请求/结果类型
+├── mindmap-document-portal.ts      # ProjectSession / MindMap implementation
+├── current-document-adapter.ts     # 当前 ready 文档 query/edit seam
+├── local-broker-bridge.ts          # Tauri Broker event bridge
+├── project-controller.ts           # 外部项目 list/create/activate/discard
+├── read-anchor-registry.ts         # 短期行锚点、UID 映射、内容 hash
+├── test-document-projector.ts      # 领域树 → bounded Test Document
+└── tree-hashline.ts                # grammar、validation、data-tree apply
 
-src-tauri/src/document_portal/
-├── mod.rs                          # 本地 Broker 生命周期
-├── transport.rs                    # UDS / named pipe 或安全 loopback transport
-└── auth.rs                         # 本机连接 token 与请求授权
-
-apps/cli/
-└── src/                            # documents/search/read/edit CLI adapter
-
-apps/mcp/
-└── src/                            # MCP stdio shim 与四个 Portal tools
+src-tauri/src/document_portal/mod.rs # 动态 loopback Broker、token、descriptor
+packages/document-portal-client/     # Node Broker Client 与 wire tool names
+apps/cli/                            # CLI Adapter
+apps/mcp/                            # stdio MCP Adapter
 ```
 
 共享协议类型只保留一份。AI SDK、CLI 和 MCP 不复制领域编辑逻辑。
@@ -396,39 +362,29 @@ AI request
 - `MindmapContextManager` 改为通过 Portal 生成 outline、search result 和局部读取结果；
 - 原有多个模块/用例 CRUD 工具在调用方全部迁移后删除。
 
-## 9. 实施阶段
+## 9. 实施结果
 
-### 阶段 A：Portal 内核
+- Portal 内核、bounded projection、structured search、read anchor、per-document queue 和 Tree Hashline Patch 已完成；
+- 内置 AI 已迁移到当前导图 query/edit/question，并移除模型可见 ZTDL 和重复 CRUD tools；
+- Tauri Local Broker、CLI 实时集成和 stdio MCP Adapter 已完成；
+- 3000-case benchmark、真实 MindMap engine tests、live APP/Broker integration 和 Rust Broker tests 已建立；
+- npm CLI/MCP 的正式 package build、兼容矩阵、安全控制和发布自动化尚未完成，见仓库根 README。
 
-建立 `DocumentPortal`、Test Document 投影、短期 read anchor、每文档任务队列、精确搜索和 Tree Patch。现有 AI Chat 先通过 AI SDK Adapter 使用新接口。
-
-### 阶段 B：ZTDL 清理
-
-迁移上下文、工具返回、消息渲染和压缩逻辑；删除模型可见 ZTDL、Session 短 ID 和重复 CRUD 工具。
-
-### 阶段 C：本地 Broker 与 CLI
-
-由 Tauri 托管本机 Broker。CLI 作为第一个跨进程参考客户端，验证应用未启动、文档未 ready、标签关闭、anchor 失效和重连行为。
-
-### 阶段 D：MCP
-
-使用官方 MCP SDK注册 `documents`、`search`、`read`、`edit`，通过 stdio shim 转发到本地 Broker。Claude Code、Codex、OpenCode 和 OMP 使用相同 MCP Server。
-
-## 10. 验收标准
+## 10. 验收结果
 
 1. 内置 AI Chat 不再接收或生成 ZTDL；
 2. Agent 完成模块与用例增删改移时不提交节点 UID；
-3. 同一套四操作 Interface 同时驱动 AI SDK、CLI 和 MCP；
+3. 内置 Agent 与外部 CLI/MCP 共用 Portal 内核，Adapter 不复制领域逻辑；
 4. 3000 条用例样本不会默认完整进入模型上下文；
-5. 精确搜索结果包含路径、总数、截断状态和字段来源；
-6. 局部 read 返回可编辑行锚点，edit 只能引用已读取范围；
-7. 用户在 read 与 edit 之间修改目标节点时，旧 anchor 不会静默覆盖实时内容；
+5. 搜索结果包含路径、总数、截断状态和字段来源；
+6. 局部 query 返回可编辑行锚点，edit 只能引用已读取范围；
+7. query 与 edit 之间目标变化时，旧 anchor 不会静默覆盖实时内容；
 8. 子树删除和移动保持树结构合法，并生成一个 undo entry；
 9. Patch 部分失败时不留下半完成修改；
 10. 修改成功后 dirty、布局、保存与恢复生命周期保持一致；
-11. 两个文档可独立排队修改，不共享全局写队列；
-12. CLI 与 MCP 在桌面应用未运行或目标标签未 ready 时返回明确错误；
-13. 完成真实样本基准：搜索召回、目标定位、Patch 首次成功率、错误修改率和 token 使用量均有可重复记录。
+11. 两个文档使用独立写队列；
+12. CLI 与 MCP 在应用未运行或标签未 ready 时返回明确错误；
+13. 大文档 benchmark 与真实 live integration 可重复运行。
 
 ## 11. 不属于本 Epic
 
@@ -438,7 +394,7 @@ AI request
 - MCP Resources 和 subscriptions；
 - 默认启用的全文向量索引；
 - 跨文档原子事务；
-- 自动绕过 destructive preview；
+- 外部 Agent 的用户交互式 destructive review；当前外部调用是受信任本地自动化通道，Broker 内部完成 preview/commit；
 - 将 Test Document 作为新的持久化文件格式。
 
 Test Document 只作为 Agent Interface。`.zmind` 和文档会话的领域树仍是正式数据源。
