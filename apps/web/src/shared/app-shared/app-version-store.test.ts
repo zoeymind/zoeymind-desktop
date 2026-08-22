@@ -6,6 +6,7 @@ function updater(overrides: Partial<AppUpdater> = {}): AppUpdater {
     currentVersion: vi.fn(async () => "1.4.184"),
     check: vi.fn(async () => null),
     install: vi.fn(async () => undefined),
+    cancel: vi.fn(() => undefined),
     ...overrides,
   }
 }

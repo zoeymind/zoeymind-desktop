@@ -250,3 +250,58 @@
   height: 0;
   display: none;
 }
+
+/* AppVersionStatus 内联渲染 GitHub Release notes 的 markdown 排版 */
+.release-notes-prose {
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+.release-notes-prose h1,
+.release-notes-prose h2,
+.release-notes-prose h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0.75rem 0 0.35rem;
+}
+.release-notes-prose h1:first-child,
+.release-notes-prose h2:first-child,
+.release-notes-prose h3:first-child {
+  margin-top: 0;
+}
+.release-notes-prose p {
+  margin: 0.35rem 0;
+}
+.release-notes-prose ul,
+.release-notes-prose ol {
+  padding-left: 1.1rem;
+  margin: 0.3rem 0;
+  list-style: disc;
+}
+.release-notes-prose ol {
+  list-style: decimal;
+}
+.release-notes-prose li {
+  margin: 0.15rem 0;
+}
+.release-notes-prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.25rem;
+  background: color-mix(in oklab, var(--muted-foreground) 12%, transparent);
+  color: var(--foreground);
+}
+.release-notes-prose a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.release-notes-prose hr {
+  border-color: var(--border);
+  margin: 0.75rem 0;
+}
+.release-notes-prose strong {
+  color: var(--foreground);
+  font-weight: 600;
+}

@@ -28,6 +28,7 @@ export function isNewerVersion(candidate: string, current: string): boolean {
 }
 
 let pendingUpdate: Update | null = null
+let cancellationToken: { cancelled: boolean } | null = null
 
 export async function getCurrentAppVersion(): Promise<string> {
   return getVersion()
@@ -48,19 +49,36 @@ export async function installAppUpdate(
   onProgress: (downloaded: number, total: number | null) => void
 ): Promise<void> {
   if (!pendingUpdate) throw new Error("No application update is ready to install")
-
+  const token = { cancelled: false }
+  cancellationToken = token
   let downloaded = 0
   let total: number | null = null
-  await pendingUpdate.download((event: DownloadEvent) => {
-    if (event.event === "Started") {
-      total = event.data.contentLength ?? null
-      onProgress(0, total)
-    } else if (event.event === "Progress") {
-      downloaded += event.data.chunkLength
-      onProgress(downloaded, total)
-    }
-  })
-  await pendingUpdate.install()
+  try {
+    await pendingUpdate.download((event: DownloadEvent) => {
+      if (token.cancelled) throw new Error("UPDATE_CANCELLED")
+      if (event.event === "Started") {
+        total = event.data.contentLength ?? null
+        onProgress(0, total)
+      } else if (event.event === "Progress") {
+        downloaded += event.data.chunkLength
+        onProgress(downloaded, total)
+      }
+    })
+    if (token.cancelled) throw new Error("UPDATE_CANCELLED")
+    await pendingUpdate.install()
+  } finally {
+    if (cancellationToken === token) cancellationToken = null
+  }
+}
+
+export function cancelAppUpdate(): void {
+  if (cancellationToken) cancellationToken.cancelled = true
+  pendingUpdate?.close()
+  pendingUpdate = null
+}
+
+export function isAppUpdateCancelledError(error: unknown): boolean {
+  return error instanceof Error && error.message === "UPDATE_CANCELLED"
 }
 
 export async function restartApp(): Promise<void> {

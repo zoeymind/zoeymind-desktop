@@ -1,8 +1,10 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand"
 import {
+  cancelAppUpdate,
   checkForAppUpdate,
   getCurrentAppVersion,
   installAppUpdate,
+  isAppUpdateCancelledError,
   restartApp,
   type AvailableAppUpdate,
 } from "@/shared/native/app-version"
@@ -23,6 +25,7 @@ export interface AppUpdater {
   currentVersion: () => Promise<string>
   check: () => Promise<AvailableAppUpdate | null>
   install: (onProgress: (downloaded: number, total: number | null) => void) => Promise<void>
+  cancel: () => void
   restart?: () => Promise<void>
 }
 
@@ -36,6 +39,7 @@ interface AppVersionState {
   initialize: () => Promise<void>
   checkForUpdates: () => Promise<void>
   installUpdate: () => Promise<void>
+  cancelUpdate: () => void
   restart: () => Promise<void>
 }
 
@@ -46,6 +50,7 @@ const nativeUpdater: AppUpdater = {
   currentVersion: getCurrentAppVersion,
   check: checkForAppUpdate,
   install: installAppUpdate,
+  cancel: cancelAppUpdate,
   restart: restartApp,
 }
 
@@ -117,9 +122,19 @@ export function createAppVersionStore(
           })
           set({ status: "restart-required", progress: 100 })
         } catch (error) {
-          set({ status: "failed", error: messageFrom(error) })
+          if (isAppUpdateCancelledError(error)) {
+            set({ status: "available", progress: null, error: null })
+          } else {
+            set({ status: "failed", error: messageFrom(error) })
+          }
         }
       }),
+    cancelUpdate: () => {
+      const { status } = get()
+      if (status !== "downloading" && status !== "installing") return
+      updater.cancel()
+      set({ status: "available", progress: null, error: null })
+    },
     restart: async () => {
       if (!updater.restart || get().status !== "restart-required") return
       try {

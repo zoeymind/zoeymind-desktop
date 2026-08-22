@@ -1,6 +1,7 @@
-import { Download, Loader2, RefreshCw, RotateCcw } from "lucide-react"
+import { Download, Loader2, RefreshCw, RotateCcw, X } from "lucide-react"
+import Markdown from "react-markdown"
 import { useTranslation } from "@zoeymind/i18n"
-import { Button, Progress, cn } from "@zoeymind/ui"
+import { Button, cn } from "@zoeymind/ui"
 import { useAppVersion, type AppUpdateStatus } from "./app-version-store"
 
 type AppVersionStatusVariant = "compact" | "detail"
@@ -18,6 +19,7 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
   const progress = useAppVersion(state => state.progress)
   const checkForUpdates = useAppVersion(state => state.checkForUpdates)
   const installUpdate = useAppVersion(state => state.installUpdate)
+  const cancelUpdate = useAppVersion(state => state.cancelUpdate)
   const restart = useAppVersion(state => state.restart)
   const busy = status === "checking" || status === "downloading" || status === "installing"
 
@@ -42,21 +44,19 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
           <UpdateAction
             status={status}
             version={update?.version}
+            progress={progress}
             check={() => void checkForUpdates()}
             install={() => void installUpdate()}
+            cancel={() => cancelUpdate()}
             restart={() => void restart()}
           />
         </div>
         {update?.body ? (
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
-            <p className="mb-1 font-medium">{t("appVersion.releaseNotes")}</p>
-            <p className="whitespace-pre-wrap text-muted-foreground">{update.body}</p>
-          </div>
-        ) : null}
-        {(status === "downloading" || status === "installing") && progress !== null ? (
-          <div className="flex items-center gap-3">
-            <Progress value={progress} className="h-1.5" />
-            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{progress}%</span>
+            <p className="mb-2 font-medium">{t("appVersion.releaseNotes")}</p>
+            <div className="release-notes-prose max-h-80 overflow-y-auto text-muted-foreground">
+              <Markdown>{update.body}</Markdown>
+            </div>
           </div>
         ) : null}
       </div>
@@ -96,13 +96,22 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
 
   if (busy) {
     return (
-      <span
-        className={cn("flex items-center gap-1.5 px-2 text-xs text-muted-foreground", className)}
-      >
-        <Loader2 className="size-3 animate-spin" />
-        {status === "checking"
-          ? t("appVersion.checking")
-          : t("appVersion.downloading", { progress: progress ?? 0 })}
+      <span className={cn("flex items-center gap-1 px-1 text-xs text-muted-foreground", className)}>
+        <span className="flex items-center gap-1.5">
+          <Loader2 className="size-3 animate-spin" />
+          <span className="tabular-nums">{busyLabel(t, status, progress)}</span>
+        </span>
+        {status === "downloading" || status === "installing" ? (
+          <button
+            type="button"
+            onClick={() => cancelUpdate()}
+            className="ml-1 inline-flex size-5 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+            title={t("appVersion.cancel")}
+            aria-label={t("appVersion.cancel")}
+          >
+            <X className="size-3" />
+          </button>
+        ) : null}
       </span>
     )
   }
@@ -117,12 +126,22 @@ export function AppVersionStatus({ variant = "compact", className }: AppVersionS
 interface UpdateActionProps {
   status: AppUpdateStatus
   version?: string
+  progress: number | null
   check: () => void
   install: () => void
+  cancel: () => void
   restart: () => void
 }
 
-function UpdateAction({ status, version, check, install, restart }: UpdateActionProps) {
+function UpdateAction({
+  status,
+  version,
+  progress,
+  check,
+  install,
+  cancel,
+  restart,
+}: UpdateActionProps) {
   const { t } = useTranslation()
   if (status === "available" && version) {
     return (
@@ -140,11 +159,31 @@ function UpdateAction({ status, version, check, install, restart }: UpdateAction
       </Button>
     )
   }
-  if (status === "checking" || status === "downloading" || status === "installing") {
+  if (status === "downloading" || status === "installing") {
+    return (
+      <div className="flex items-center gap-2">
+        <Button size="sm" disabled className="tabular-nums">
+          <Loader2 className="animate-spin" data-icon="inline-start" />
+          {busyLabel(t, status, progress)}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={cancel}
+          title={t("appVersion.cancel")}
+          aria-label={t("appVersion.cancel")}
+        >
+          <X data-icon="inline-start" />
+          {t("appVersion.cancel")}
+        </Button>
+      </div>
+    )
+  }
+  if (status === "checking") {
     return (
       <Button size="sm" disabled>
         <Loader2 className="animate-spin" data-icon="inline-start" />
-        {status === "checking" ? t("appVersion.checking") : t("appVersion.installing")}
+        {t("appVersion.checking")}
       </Button>
     )
   }
@@ -154,4 +193,14 @@ function UpdateAction({ status, version, check, install, restart }: UpdateAction
       {t("appVersion.checkForUpdates")}
     </Button>
   )
+}
+
+function busyLabel(
+  t: (key: string, params?: Record<string, unknown>) => string,
+  status: AppUpdateStatus,
+  progress: number | null
+): string {
+  if (status === "checking") return t("appVersion.checking")
+  if (status === "installing") return t("appVersion.installing")
+  return t("appVersion.downloading", { progress: progress ?? 0 })
 }

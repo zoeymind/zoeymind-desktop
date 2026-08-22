@@ -73,6 +73,7 @@ export default {
     installing: "Installing",
     restart: "Restart",
     releaseNotes: "Release notes",
+    cancel: "Cancel",
     operationFailed: "The update service is unavailable. Try again later.",
   },
   routeError: {

@@ -73,6 +73,7 @@ export default {
     installing: "正在安装",
     restart: "重新启动",
     releaseNotes: "更新说明",
+    cancel: "取消",
     operationFailed: "更新服务暂时不可用，请稍后重试",
   },
   routeError: {
