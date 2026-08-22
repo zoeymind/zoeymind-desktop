@@ -57,8 +57,8 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           node -e 'if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(process.env.VERSION)) process.exit(1)'
-          pnpm --filter @zoeymind/cli exec npm version "$VERSION" --no-git-tag-version
-          pnpm --filter @zoeymind/mcp exec npm version "$VERSION" --no-git-tag-version
+          pnpm --filter @zoeymind/cli exec npm version "$VERSION" --no-git-tag-version --allow-same-version
+          pnpm --filter @zoeymind/mcp exec npm version "$VERSION" --no-git-tag-version --allow-same-version
       - run: pnpm build:packages
       - name: Publish with npm trusted publishing
         env:
