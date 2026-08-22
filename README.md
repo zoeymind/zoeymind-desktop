@@ -19,6 +19,14 @@
 
 <hr />
 
+<p align="center">
+  <img src=".github/assets/agent-in-action.jpeg" alt="ZoeyMind Desktop 与 AI Agent 协作" width="920" />
+</p>
+
+<p align="center">
+  <sub>ZoeyMind Desktop v0.3.0 · 内置 AI Agent 编辑当前思维导图</sub>
+</p>
+
 ZoeyMind 是一款基于 Tauri 2 + React 19 的本地优先思维导图应用，运行在 macOS / Windows / Linux。它把「文档编辑器」、「AI 工作台」和「Agent 自动化」合并成同一个应用：
 
 - 📄 **本地 `.zmind` 文档**，用户完全掌控存储位置，配套崩溃恢复与外部修改检测；
@@ -29,6 +37,7 @@ ZoeyMind 是一款基于 Tauri 2 + React 19 的本地优先思维导图应用，
 
 ## 目录
 
+- [截图](#截图)
 - [产品能力](#产品能力)
 - [快速开始](#快速开始)
 - [核心概念](#核心概念)
@@ -41,6 +50,16 @@ ZoeyMind 是一款基于 Tauri 2 + React 19 的本地优先思维导图应用，
 - [技术栈](#技术栈)
 - [License](#license)
 
+
+## 截图
+
+<table>
+  <tr>
+    <td width="33%"><a href="./.github/assets/library.jpeg"><img src=".github/assets/library.jpeg" alt="文件库" /></a><br><sub><b>文件库</b> — 所有 <code>.zmind</code> 文档聚合在同一视图</sub></td>
+    <td width="33%"><a href="./.github/assets/canvas-overview.jpeg"><img src=".github/assets/canvas-overview.jpeg" alt="思维导图画布" /></a><br><sub><b>思维导图画布</b> — 大文档全览与缩放</sub></td>
+    <td width="33%"><a href="./.github/assets/agent-mode.jpeg"><img src=".github/assets/agent-mode.jpeg" alt="AI Agent 模式" /></a><br><sub><b>AI Agent 模式</b> — 内置工具 + 可选 MCP 连接</sub></td>
+  </tr>
+</table>
 ## 产品能力
 
 ### 编辑器
