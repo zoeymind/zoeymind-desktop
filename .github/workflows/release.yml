@@ -243,8 +243,8 @@ jobs:
           while IFS= read -r -d '' asset; do
             name="$(basename "$asset")"
             case "$asset" in
-              dist/zoeymind-macos-arm64/*) name="${name/ZoeyMind/ZoeyMind-aarch64}" ;;
-              dist/zoeymind-macos-x64/*) name="${name/ZoeyMind/ZoeyMind-x64}" ;;
+              dist/zoeymind-macos-arm64/*.app.tar.gz*) name="${name/ZoeyMind/ZoeyMind-aarch64}" ;;
+              dist/zoeymind-macos-x64/*.app.tar.gz*) name="${name/ZoeyMind/ZoeyMind-x64}" ;;
             esac
             if [[ -e "release-assets/$name" ]]; then
               echo "duplicate release asset after architecture naming: $name" >&2
@@ -319,8 +319,8 @@ jobs:
           while IFS= read -r -d '' asset; do
             name="$(basename "$asset")"
             case "$asset" in
-              dist/zoeymind-macos-arm64/*) name="${name/ZoeyMind/ZoeyMind-aarch64}" ;;
-              dist/zoeymind-macos-x64/*) name="${name/ZoeyMind/ZoeyMind-x64}" ;;
+              dist/zoeymind-macos-arm64/*.app.tar.gz*) name="${name/ZoeyMind/ZoeyMind-aarch64}" ;;
+              dist/zoeymind-macos-x64/*.app.tar.gz*) name="${name/ZoeyMind/ZoeyMind-x64}" ;;
             esac
             if [[ -e "release-assets/$name" ]]; then
               echo "duplicate release asset after architecture naming: $name" >&2
