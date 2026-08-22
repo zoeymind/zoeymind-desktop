@@ -3,7 +3,7 @@ import Markdown from "react-markdown"
 import { useTranslation } from "@zoeymind/i18n"
 import { Button, cn } from "@zoeymind/ui"
 import { useAppVersion, type AppUpdateStatus } from "./app-version-store"
-import { useUpdateInstallGate } from "./OSGuidance"
+import { useUpdateInstallGate } from "./os-guidance-store"
 
 type AppVersionStatusVariant = "compact" | "detail"
 
