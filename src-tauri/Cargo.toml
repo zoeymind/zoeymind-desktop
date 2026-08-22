@@ -1,6 +1,6 @@
 [package]
 name = "zoeymind-desktop"
-version = "0.0.0"
+version = "0.3.0"
 description = "ZoeyMind Desktop mind-map editor and local document automation host"
 authors = ["ZoeyMind"]
 license = "LicenseRef-PolyForm-Noncommercial-1.0.0"

@@ -4,7 +4,7 @@
   "description": "Local stdio MCP server for automating a running ZoeyMind Desktop app.",
   "type": "module",
   "bin": {
-    "zoeymind-mcp": "./dist/index.js"
+    "zoeymind-mcp": "dist/index.js"
   },
   "files": ["dist", "README.md", "LICENSE", "LICENSING.md"],
   "engines": {
