@@ -234,7 +234,7 @@ jobs:
           fi
           asset_url="https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/$(basename "$arm_payload")"
           signature="$(cat "$arm_signature")"
-          notes="$(gh api "repos/${{ github.repository }}/releases/tags/$RELEASE_TAG" --jq '.body // ""')"
+          notes="$(gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" --json body --jq '.body // ""')"
           jq -n \
             --arg version "${RELEASE_TAG#v}" \
             --arg notes "$notes" \
@@ -294,7 +294,7 @@ jobs:
           fi
           asset_url="https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/$(basename "$arm_payload")"
           signature="$(cat "$arm_signature")"
-          notes="$(gh api "repos/${{ github.repository }}/releases/tags/$RELEASE_TAG" --jq '.body // ""')"
+          notes="$(gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" --json body --jq '.body // ""')"
           jq -n \
             --arg version "${RELEASE_TAG#v}" \
             --arg notes "$notes" \
