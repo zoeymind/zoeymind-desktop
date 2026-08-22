@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# 单一职责检查: 一个 commit 只解决一件事.
+# 详见 scripts/check-commit-scope.mjs.
+# 绕过 (慎用): git commit --no-verify.
+
+node "$(git rev-parse --show-toplevel)/scripts/check-commit-scope.mjs" "$1"
