@@ -28,6 +28,15 @@ if (typeof manifest.version !== "string" || !/^\d+\.\d+\.\d+/.test(manifest.vers
 }
 const platforms = manifest.platforms ?? {}
 const platformIds = Object.keys(platforms)
+const requiredPlatformIds = [
+  "darwin-aarch64",
+  "darwin-x86_64",
+  "linux-x86_64",
+  "windows-x86_64",
+]
+for (const id of requiredPlatformIds) {
+  if (!(id in platforms)) errors.push(`Missing required platform: ${id}`)
+}
 if (platformIds.length === 0) {
   errors.push("No platforms declared in manifest")
 }
