@@ -59,5 +59,17 @@ jobs:
         env:
           TAG: latest
         run: |
-          (cd apps/cli && npm publish --provenance --access public --tag "$TAG")
-          (cd apps/mcp && npm publish --provenance --access public --tag "$TAG")
+          publish_if_new() {
+            local dir="$1"
+            local pkg
+            pkg="$(node -p "require('./${dir}/package.json').name")"
+            local ver
+            ver="$(node -p "require('./${dir}/package.json').version")"
+            if npm view "${pkg}@${ver}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+              echo "${pkg}@${ver} already published, skipping"
+              return 0
+            fi
+            (cd "$dir" && npm publish --provenance --access public --tag "$TAG")
+          }
+          publish_if_new apps/cli
+          publish_if_new apps/mcp

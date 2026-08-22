@@ -54,9 +54,9 @@ try {
     ),
   );
 
-  if (cliPackage.bin.zoeymind !== "./dist/index.js")
+  if (cliPackage.bin.zoeymind !== "dist/index.js")
     throw new Error("CLI bin contract changed");
-  if (mcpPackage.bin["zoeymind-mcp"] !== "./dist/index.js")
+  if (mcpPackage.bin["zoeymind-mcp"] !== "dist/index.js")
     throw new Error("MCP bin contract changed");
   if (!readFileSync(cliBin, "utf8").includes("node"))
     throw new Error("CLI executable link is missing");
