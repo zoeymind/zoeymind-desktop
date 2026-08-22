@@ -447,6 +447,31 @@ describe("DocumentPortal with the real MindMap engine", () => {
     expect(center).toHaveBeenCalledOnce()
   })
 
+  it("accumulates the active node list across successive edits within an AI turn", async () => {
+    const { mindMap, portal } = createLivePortal({ includeStep: true })
+    const center = vi.spyOn(mindMap.renderer, "moveNodeToCenter")
+    const firstRead = portal.read({ documentId: "patches", view: "subtree" })
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: firstRead.anchorTag,
+      patch: "PUT 3.=3:\n+[P2] Case A updated & Ready",
+    })
+    const secondRead = portal.read({ documentId: "patches", view: "subtree" })
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: secondRead.anchorTag,
+      patch: "PUT 5.=5:\n+[P2] Case B updated & Ready",
+    })
+    expect(mindMap.renderer.activeNodeList.map(node => node.getData("uid")).sort()).toEqual([
+      "case-a",
+      "case-b",
+    ])
+    // 首次编辑将视口带到 case-a；第二次同批编辑不再重定位视口，
+    // case-a 仍留在用户可见区，两个节点同时高亮。
+    expect(center).toHaveBeenCalledOnce()
+    expect(center.mock.calls[0]?.[0]?.getData("uid")).toBe("case-a")
+  })
+
   it("commits the representative 107-line comment feature patch with one render", async () => {
     const { mindMap, portal } = createLivePortal({ includeStep: true })
     const read = portal.read({ documentId: "patches", view: "subtree" })

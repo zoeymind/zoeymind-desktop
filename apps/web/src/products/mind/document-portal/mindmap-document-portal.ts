@@ -190,7 +190,7 @@ interface FocusableMindMapNode {
 async function focusRenderedNodes(mindMap: MindMap, uids: readonly string[]): Promise<void> {
   if (uids.length === 0) return
   const renderer = mindMap.renderer as typeof mindMap.renderer & {
-    clearActiveNodeList?: () => void
+    activeNodeList?: FocusableMindMapNode[]
     addNodeToActiveList?: (node: FocusableMindMapNode, silent: boolean) => void
     emitNodeActiveEvent?: (node: FocusableMindMapNode, nodes: FocusableMindMapNode[]) => void
     moveNodeToCenter?: (node: FocusableMindMapNode) => void
@@ -201,15 +201,20 @@ async function focusRenderedNodes(mindMap: MindMap, uids: readonly string[]): Pr
     .filter((node): node is FocusableMindMapNode => node != null)
   if (
     nodes.length > 0 &&
-    renderer.clearActiveNodeList &&
     renderer.addNodeToActiveList &&
     renderer.emitNodeActiveEvent &&
     renderer.moveNodeToCenter
   ) {
-    renderer.clearActiveNodeList()
+    // 累积当前 AI 会话内多次 edit 的高亮：不清空既有 activeNodeList，
+    // 让批量编辑的所有目标节点同时呈激活态；后续用户点击会通过
+    // simple-mind-map 内建的 clearActiveNodeList 自然重置。
+    const wasEmpty = (renderer.activeNodeList?.length ?? 0) === 0
     for (const node of nodes) renderer.addNodeToActiveList(node, true)
-    renderer.emitNodeActiveEvent(nodes[0]!, nodes)
-    renderer.moveNodeToCenter(nodes[0]!)
+    const activeList = (renderer.activeNodeList ?? nodes) as FocusableMindMapNode[]
+    renderer.emitNodeActiveEvent(nodes[0]!, activeList)
+    // 只有在批次首个编辑（先前无任何激活节点）时把视口带到目标；后续同批次
+    // edit 保持用户当前视口，避免视口反复跳走导致先前节点滚出可视区。
+    if (wasEmpty) renderer.moveNodeToCenter(nodes[0]!)
     return
   }
   if (renderer.goTargetNode)
