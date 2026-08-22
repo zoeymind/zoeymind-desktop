@@ -44,6 +44,33 @@ describe("ZoeyMind MCP external project interface", () => {
       listed.tools.find((tool) => tool.name === "query_current_mindmap")
         ?.inputSchema,
     ).not.toHaveProperty("properties.documentId");
+    expect(
+      listed.tools.find((tool) => tool.name === "projects")?.inputSchema,
+    ).toMatchObject({
+      type: "object",
+      properties: {
+        action: { enum: ["list", "create"] },
+        title: { type: "string" },
+      },
+      required: ["action"],
+    });
+    expect(
+      listed.tools.find((tool) => tool.name === "query_current_mindmap")
+        ?.inputSchema,
+    ).toMatchObject({
+      type: "object",
+      properties: {
+        mode: { enum: ["outline", "subtree", "search"] },
+        path: { type: "array" },
+        maxLines: { type: "integer" },
+        query: { type: "string" },
+        scope: { type: "array" },
+        fields: { type: "array" },
+        limit: { type: "integer" },
+        cursor: { type: "string" },
+      },
+      required: ["mode"],
+    });
 
     await connection.session.callTool({
       name: "projects",
@@ -85,9 +112,12 @@ describe("ZoeyMind MCP external project interface", () => {
         name: "query_current_mindmap",
         arguments: { mode: "search", query: "" },
       },
+      {
+        name: "query_current_mindmap",
+        arguments: { mode: "search" },
+      },
       { name: "edit_current_mindmap", arguments: { anchorTag: "", patch: "" } },
     ];
-
     for (const request of invalidRequests) {
       const rejected = await connection.session.callTool(request);
       expect(rejected.isError).toBe(true);

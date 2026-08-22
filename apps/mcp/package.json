@@ -1,6 +1,6 @@
 {
   "name": "@zoeymind/mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local stdio MCP server for automating a running ZoeyMind Desktop app.",
   "type": "module",
   "bin": {

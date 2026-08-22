@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 
-const PACKAGE_VERSION = "0.3.0";
+const PACKAGE_VERSION = "0.3.1";
 
 export type DocumentPortalTool =
   | "projects"
@@ -35,23 +35,17 @@ const outputSchema = z
     error: z.string().min(1).optional(),
   })
   .passthrough();
-const projectsInput = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("list") }),
-  z.object({
-    action: z.literal("create"),
-    title: z.string().min(1).optional(),
-  }),
-]);
+const projectsInput = z.object({
+  action: z.enum(["list", "create"]),
+  title: z.string().min(1).optional(),
+});
 const activateInput = z.object({ projectId: z.string().min(1) });
-const queryInput = z.discriminatedUnion("mode", [
-  z.object({
-    mode: z.enum(["outline", "subtree"]),
+const queryInput = z
+  .object({
+    mode: z.enum(["outline", "subtree", "search"]),
     path: z.array(z.string().min(1)).optional(),
     maxLines: z.number().int().min(1).max(1_000).optional(),
-  }),
-  z.object({
-    mode: z.literal("search"),
-    query: z.string().min(1),
+    query: z.string().min(1).optional(),
     scope: z.array(z.string().min(1)).optional(),
     fields: z
       .array(
@@ -66,8 +60,16 @@ const queryInput = z.discriminatedUnion("mode", [
       .optional(),
     limit: z.number().int().min(1).max(100).optional(),
     cursor: z.string().min(1).optional(),
-  }),
-]);
+  })
+  .superRefine((input, context) => {
+    if (input.mode === "search" && input.query === undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "query is required when mode is search",
+        path: ["query"],
+      });
+    }
+  });
 const editInput = z.object({
   anchorTag: z.string().min(1),
   patch: z.string().min(1),

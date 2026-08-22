@@ -27,15 +27,16 @@ describe("published MCP stdio executable", () => {
       "query_current_mindmap",
       "edit_current_mindmap",
     ]);
-
-    const unavailable = await client.callTool({
-      name: "query_current_mindmap",
-      arguments: { mode: "outline" },
-    });
-    expect(unavailable.isError).toBe(true);
-    expect(unavailable.structuredContent).toMatchObject({
-      success: false,
-      errorCode: "APP_UNAVAILABLE",
-    });
+    expect(
+      listed.tools.find((tool) => tool.name === "projects")?.inputSchema,
+    ).toHaveProperty("properties.action.enum", ["list", "create"]);
+    expect(
+      listed.tools.find((tool) => tool.name === "query_current_mindmap")
+        ?.inputSchema,
+    ).toHaveProperty("properties.mode.enum", [
+      "outline",
+      "subtree",
+      "search",
+    ]);
   });
 });
