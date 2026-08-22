@@ -67,7 +67,7 @@ server key:  zoeymind
 
 MCP Host 与 Adapter 通过 stdio JSON-RPC 通信；Adapter 再通过 authenticated dynamic loopback HTTP 调用 Desktop Broker。MCP Adapter 本身不监听端口。`query_current_mindmap` 为只读工具；`edit_current_mindmap` 是 destructive、非幂等写操作，必须使用 query 返回的 anchor。应用不可用、文档未 ready/已关闭或 anchor 冲突时，工具返回保留 Broker `errorCode` 的 MCP `isError` response。
 
-兼容与授权策略：npm packages 要求 Node.js 22+，descriptor protocol 当前为 version 1，未知版本 fail closed。Desktop 在 native setup 前读取持久化设置；外部自动化默认关闭，不创建 listener/descriptor。读取与项目控制开启后可用，`edit_current_mindmap` 仍由独立且默认关闭的 destructive-edit permission 控制。内置 AI 的 `ai-case-review-enabled` 与此权限完全独立。
+兼容与授权策略：npm packages 要求 Node.js 22+，descriptor protocol 当前为 version 1，未知版本 fail closed。Desktop 启动时创建只监听 `127.0.0.1` 的 Broker 和权限受限 descriptor，每次启动生成新 token；本机 CLI/MCP 通过该 token 查询和编辑当前文档。`preview: true` 只计算影响，绝不提交；内置 AI 的编辑审查流程与外部 Adapter 相互独立。
 
 ## 2. 最终使用形式
 

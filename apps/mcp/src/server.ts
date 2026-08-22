@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 
-const PACKAGE_VERSION = "0.3.1";
+const PACKAGE_VERSION = "0.3.2";
 
 export type DocumentPortalTool =
   | "projects"
@@ -155,7 +155,7 @@ export function createDocumentPortalServer(
     {
       title: "Edit the current ZoeyMind mind map",
       description:
-        "Apply an anchored Tree Hashline patch to the currently active mind map.",
+        "Apply an anchored Tree Hashline patch. Query first and use its latest anchorTag. Each operation is on its own line; every PUT body row starts with + and uses two spaces per tree depth. Example: PUT >2:\n+  # Module\n+    [P1] Case & Precondition\n+      Action & Expected. Set preview:true to validate and inspect changes without committing.",
       inputSchema: editInput,
       outputSchema,
       annotations: {

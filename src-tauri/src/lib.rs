@@ -395,9 +395,7 @@ pub fn run() {
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,
       http_stream::http_stream_abort,
-      document_portal::document_portal_respond,
-      document_portal::get_external_automation_config,
-      document_portal::set_external_automation_config
+      document_portal::document_portal_respond
     ])
     .setup(|app| {
       document_portal::initialize(app.handle(), &app.state::<document_portal::DocumentPortalBrokerState>())?;

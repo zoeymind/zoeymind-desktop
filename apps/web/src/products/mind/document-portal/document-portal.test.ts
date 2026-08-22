@@ -7,7 +7,10 @@ import {
 } from "@/products/mind/editor-session"
 import type { OpenTab } from "@/shared/tabs/store"
 import { createMindMapDocumentPortal } from "./mindmap-document-portal"
-import { parseTreeHashlinePatch } from "./patch/tree-hashline-patch"
+import {
+  explainInvalidTreeHashlinePatch,
+  parseTreeHashlinePatch,
+} from "./patch/tree-hashline-patch"
 
 type EditableMindMap = MindMap & {
   renderer: MindMap["renderer"]
@@ -444,7 +447,7 @@ describe("DocumentPortal", () => {
         anchorTag: read.anchorTag,
         patch: "*** Begin Patch\n*** Update File\n@@\n+  # 新模块\n*** End Patch",
       })
-    ).rejects.toThrow("Git Patch is not valid Tree Hashline syntax; use PUT >N:")
+    ).rejects.toThrow("Git Patch is not valid Tree Hashline syntax")
 
     await expect(
       portal.edit({
@@ -452,7 +455,23 @@ describe("DocumentPortal", () => {
         anchorTag: read.anchorTag,
         patch: "ADD AFTER line 2:\n+  # 新模块",
       })
-    ).rejects.toThrow("ADD AFTER is not valid Tree Hashline syntax; use PUT >2:")
+    ).rejects.toThrow("ADD AFTER is not valid Tree Hashline syntax")
+  })
+
+  it("reports the first invalid patch line and accepts transport line endings", () => {
+    expect(explainInvalidTreeHashlinePatch("PUT >2: module")).toContain(
+      'Patch line 1 is invalid: "PUT >2: module"'
+    )
+    expect(explainInvalidTreeHashlinePatch("PUT >2:\nmodule")).toContain(
+      "Patch line 1 has no +tree body"
+    )
+    expect(explainInvalidTreeHashlinePatch("PUT >2:\n+ # odd indent")).toContain(
+      "Patch line 2 has invalid tree indentation"
+    )
+    expect(explainInvalidTreeHashlinePatch("PUT >2:\nmodule")).toContain("+  # 新模块")
+    expect(parseTreeHashlinePatch("PUT >2:\r\n+  # 新模块\r\n")).toMatchObject([
+      { kind: "insert-after", start: 2, nodes: [{ text: "新模块" }] },
+    ])
   })
 
   it("bounds default outline reads instead of returning the complete document", () => {

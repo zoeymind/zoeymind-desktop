@@ -72,8 +72,8 @@ ZoeyMind Desktop 是一款面向测试人员的**功能测试用例编辑器**�
 
 - [`@zoeymind/cli`](https://www.npmjs.com/package/@zoeymind/cli)：命令 `zoeymind`，脚本/本地工具驱动 Desktop；
 - [`@zoeymind/mcp`](https://www.npmjs.com/package/@zoeymind/mcp)：stdio MCP server，把 Desktop 暴露给 Claude Code / OMP / Codex / OpenCode；
-- 默认关闭；启用需要在 Preferences 里显式开启，破坏性编辑权限单独控制；
-- 通信走本地 authenticated loopback，每次启动新 token，不监听公网端口。
+- Desktop 启动后即可使用；通信走 authenticated loopback，每次启动生成新 token，不监听公网端口；
+- CLI/MCP 可直接查询和编辑当前已打开的测试用例文档。
 
 **系统与格式**
 

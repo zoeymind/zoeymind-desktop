@@ -50,17 +50,40 @@ function parseTree(lines: string[]): ParsedTreeNode[] | null {
   return roots.length ? roots : null
 }
 
+const CANONICAL_EXAMPLE =
+  "PUT >2:\n+  # 新模块\n+    [P1] 新用例 & 前置条件\n+      执行操作 & 预期结果"
+
 export function explainInvalidTreeHashlinePatch(patch: string): string {
   if (/^\*\*\* (?:Begin Patch|Update File)/m.test(patch) || /^@@/m.test(patch))
-    return "Git Patch is not valid Tree Hashline syntax; use PUT >N: followed by +tree rows"
+    return `Git Patch is not valid Tree Hashline syntax. Use:\n${CANONICAL_EXAMPLE}`
   const addAfter = /^ADD AFTER line ([1-9]\d*):/im.exec(patch)
   if (addAfter)
-    return `ADD AFTER is not valid Tree Hashline syntax; use PUT >${addAfter[1]}: followed by +tree rows`
-  return "Patch must use Tree Hashline operations: PUT N.=M:, PUT >N:, PUT <N:, CUT N.=M:, or MOVE N -> M:"
+    return `ADD AFTER is not valid Tree Hashline syntax. Use:\n${CANONICAL_EXAMPLE.replace(">2", `>${addAfter[1]}`)}`
+
+  const lines = patch.replace(/\r\n?/g, "\n").split("\n")
+  while (lines.at(-1) === "") lines.pop()
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? ""
+    if (OPERATION.test(line)) {
+      const operation = OPERATION.exec(line)
+      const needsBody = operation?.[1] !== undefined
+      if (needsBody && !lines[index + 1]?.startsWith("+"))
+        return `Patch line ${index + 1} has no +tree body: ${JSON.stringify(line)}. Use:\n${CANONICAL_EXAMPLE}`
+      continue
+    }
+    if (line.startsWith("+")) {
+      if (!parseNode(line.slice(1)))
+        return `Patch line ${index + 1} has invalid tree indentation or empty content: ${JSON.stringify(line)}. Use two spaces per depth. Example:\n${CANONICAL_EXAMPLE}`
+      continue
+    }
+    return `Patch line ${index + 1} is invalid: ${JSON.stringify(line)}. Operations must be on their own line and content rows must start with +. Example:\n${CANONICAL_EXAMPLE}`
+  }
+  return `Patch is empty. Use:\n${CANONICAL_EXAMPLE}`
 }
 
 export function parseTreeHashlinePatch(patch: string): TreePatchOperation[] | null {
-  const lines = patch.split("\n")
+  const lines = patch.replace(/\r\n?/g, "\n").split("\n")
+  while (lines.at(-1) === "") lines.pop()
   const operations: TreePatchOperation[] = []
   for (let index = 0; index < lines.length;) {
     const match = OPERATION.exec(lines[index] ?? "")

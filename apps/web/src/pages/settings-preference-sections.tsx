@@ -27,13 +27,10 @@ import { ThemeModeToggle, ThemePresetGrid } from "@/shared/app-shared/ThemeMenu"
 import { toast } from "@/shared/app-shared"
 import {
   clearLogs,
-  getExternalAutomationConfig,
   getLogConfig,
-  setExternalAutomationConfig,
   setLogDir,
   setLogLevel,
   LOG_LEVEL_OPTIONS,
-  type ExternalAutomationConfig,
   type LogInfo,
   type LogLevel,
 } from "@/shared/native"
@@ -68,9 +65,6 @@ export function PreferencesSettingsSection() {
       <EditorSettingsSection />
       <Separator />
       <WindowSettingsSection />
-      <Separator />
-      <ExternalAutomationSettingsSection />
-      <Separator />
       <LogSettingsSection />
     </div>
   )
@@ -115,85 +109,6 @@ function WindowSettingsSection() {
           </SelectContent>
         </Select>
       </Field>
-    </SettingsSection>
-  )
-}
-
-function ExternalAutomationSettingsSection() {
-  const { t } = useTranslation()
-  const [config, setConfig] = useState<ExternalAutomationConfig>({
-    enabled: false,
-    allowDestructiveEdits: false,
-  })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    void getExternalAutomationConfig()
-      .then(setConfig)
-      .catch(error =>
-        toast.error(`${t("settings.externalAutomation.loadFailed")}: ${String(error)}`)
-      )
-      .finally(() => setLoading(false))
-  }, [t])
-
-  const update = async (next: ExternalAutomationConfig) => {
-    const previous = config
-    setConfig(next)
-    try {
-      await setExternalAutomationConfig(next)
-      toast.success(t("settings.externalAutomation.saved"))
-    } catch (error) {
-      setConfig(previous)
-      toast.error(`${t("settings.externalAutomation.saveFailed")}: ${String(error)}`)
-    }
-  }
-
-  return (
-    <SettingsSection
-      title={t("settings.externalAutomation.title")}
-      description={t("settings.externalAutomation.description")}
-    >
-      <FieldGroup>
-        <Field orientation="horizontal">
-          <FieldContent>
-            <FieldLabel htmlFor="external-automation-enabled">
-              {t("settings.externalAutomation.enabled")}
-            </FieldLabel>
-            <FieldDescription>
-              {t("settings.externalAutomation.enabledDescription")}
-            </FieldDescription>
-          </FieldContent>
-          <Switch
-            id="external-automation-enabled"
-            checked={config.enabled}
-            disabled={loading}
-            onCheckedChange={enabled =>
-              void update({
-                enabled,
-                allowDestructiveEdits: enabled && config.allowDestructiveEdits,
-              })
-            }
-          />
-        </Field>
-        <Field orientation="horizontal">
-          <FieldContent>
-            <FieldLabel htmlFor="external-automation-writes">
-              {t("settings.externalAutomation.destructiveEdits")}
-            </FieldLabel>
-            <FieldDescription>
-              {t("settings.externalAutomation.destructiveEditsDescription")}
-            </FieldDescription>
-          </FieldContent>
-          <Switch
-            id="external-automation-writes"
-            checked={config.allowDestructiveEdits}
-            disabled={loading || !config.enabled}
-            onCheckedChange={allowDestructiveEdits =>
-              void update({ ...config, allowDestructiveEdits })
-            }
-          />
-        </Field>
-      </FieldGroup>
     </SettingsSection>
   )
 }

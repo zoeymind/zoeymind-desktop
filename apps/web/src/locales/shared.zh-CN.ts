@@ -29,19 +29,6 @@ export default {
       closeTray: "最小化到系统托盘",
       closeQuit: "直接退出",
     },
-    externalAutomation: {
-      title: "外部自动化",
-      description: "独立控制本地 CLI 和 MCP 访问，不影响内置 AI 的编辑审查。",
-      enabled: "允许外部自动化",
-      enabledDescription:
-        "为 @zoeymind/cli 和 @zoeymind/mcp 启动经过身份验证的本地 Broker。默认关闭。",
-      destructiveEdits: "允许破坏性编辑",
-      destructiveEditsDescription:
-        "允许外部 Agent 编辑当前思维导图。关闭时，读取和项目访问仍然可用。",
-      saved: "外部自动化设置已更新",
-      loadFailed: "读取外部自动化设置失败",
-      saveFailed: "更新外部自动化设置失败",
-    },
     log: {
       title: "日志",
       description: "运行日志保存在本地磁盘, 可用于排查问题.",

@@ -47,6 +47,8 @@ export async function dispatchDocumentPortalBrokerRequest(
   try {
     if (request.tool === "edit_current_mindmap") {
       const input = request.input as Record<string, unknown>
+      if (input.preview === true)
+        return await Promise.resolve(executeCurrentDocumentPortalTool(request.tool, input))
       const preview = await Promise.resolve(
         executeCurrentDocumentPortalTool(request.tool, { ...input, preview: true })
       )

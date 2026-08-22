@@ -111,7 +111,6 @@ OMP 用户配置通常位于：
 | anchor expired/conflict         | 文档在 query 后发生变化              | 使用最新返回 view/anchor，必要时重新 query     |
 | MCP initialize/JSON parse error | command 不可执行或 stdout 被日志污染 | 在 shell 验证 command；确保诊断只写 stderr     |
 | Broker unauthorized/timeout     | Desktop 重启或 Web bridge 未响应     | 重试并检查 Desktop 日志                        |
-| `EXTERNAL_EDITS_DISABLED`       | 未授权外部破坏性编辑                 | 在 Preferences 单独启用破坏性编辑              |
 
 ## 开发与验证
 
@@ -132,9 +131,9 @@ The test suite spawns compiled `dist/index.js` over real stdio and clean-install
 - Broker protocol version 1; unknown descriptor versions fail closed as unavailable;
 - descriptor path derivation is contract-tested for macOS, Windows, and Linux; installer-level OS acceptance follows the Desktop release matrix;
 - MCP SDK stdio child-process interoperability and OMP configuration discovery are verified;
-- Desktop external automation is disabled by default and must be enabled in Preferences;
-- destructive external edits are independently disabled by default;
-- `ai-case-review-enabled` applies only to built-in AI and is not an external authorization setting;
+- Desktop 启动后即提供 authenticated loopback Broker；
+- `edit_current_mindmap` 与读取、项目控制使用相同的本机 token 授权；
+- `preview: true` 只计算影响，不提交文档；
 - package SemVer may advance independently from Desktop releases while Broker protocol compatibility remains explicit;
 - breaking-change and deprecation rules are defined in the repository [changelog](../../CHANGELOG.md#versioning-policy).
 

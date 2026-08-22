@@ -15,7 +15,6 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 const DESCRIPTOR_FILE: &str = "document-portal-broker.json";
-const SETTINGS_FILE: &str = "document-portal-settings.json";
 const REQUEST_EVENT: &str = "document-portal:request";
 const RESPONSE_TIMEOUT: Duration = Duration::from_secs(15);
 const READ_TIMEOUT: Duration = Duration::from_secs(5);
@@ -46,18 +45,6 @@ struct Descriptor<'a> {
   token: &'a str,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExternalAutomationConfig {
-  pub enabled: bool,
-  pub allow_destructive_edits: bool,
-}
-
-impl Default for ExternalAutomationConfig {
-  fn default() -> Self {
-    Self { enabled: false, allow_destructive_edits: false }
-  }
-}
 
 #[derive(Default)]
 pub struct DocumentPortalBrokerState(Mutex<Option<DocumentPortalBroker>>);
@@ -69,7 +56,7 @@ pub struct DocumentPortalBroker {
 }
 
 impl DocumentPortalBroker {
-  fn start(app: &AppHandle, allow_destructive_edits: bool) -> Result<Self, String> {
+  fn start(app: &AppHandle) -> Result<Self, String> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
     listener.set_nonblocking(true).map_err(|error| error.to_string())?;
     let port = listener.local_addr().map_err(|error| error.to_string())?.port();
@@ -88,7 +75,6 @@ impl DocumentPortalBroker {
     let thread_token = token.clone();
     let thread_pending = Arc::clone(&pending);
     let thread_closed = Arc::clone(&closed);
-    let thread_allow_destructive_edits = allow_destructive_edits;
     thread::spawn(move || {
       while !thread_closed.load(Ordering::Relaxed) {
         match listener.accept() {
@@ -96,7 +82,7 @@ impl DocumentPortalBroker {
             let app = thread_app.clone();
             let token = thread_token.clone();
             let pending = Arc::clone(&thread_pending);
-            thread::spawn(move || serve(stream, &app, &token, &pending, thread_allow_destructive_edits));
+            thread::spawn(move || serve(stream, &app, &token, &pending));
           }
           Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => thread::sleep(Duration::from_millis(25)),
           Err(_) => break,
@@ -122,49 +108,13 @@ impl Drop for DocumentPortalBroker {
   fn drop(&mut self) { self.close(); }
 }
 
-fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
-  Ok(app.path().app_local_data_dir().map_err(|error| error.to_string())?.join(SETTINGS_FILE))
-}
-
-pub fn load_external_automation_config(app: &AppHandle) -> ExternalAutomationConfig {
-  settings_path(app).ok().and_then(|path| fs::read(path).ok()).and_then(|bytes| serde_json::from_slice(&bytes).ok()).unwrap_or_default()
-}
-
-fn save_external_automation_config(app: &AppHandle, config: &ExternalAutomationConfig) -> Result<(), String> {
-  let path = settings_path(app)?;
-  let directory = path.parent().ok_or_else(|| "External automation settings path has no parent".to_string())?;
-  fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-  let bytes = serde_json::to_vec_pretty(config).map_err(|error| error.to_string())?;
-  let temporary = path.with_extension("tmp");
-  fs::write(&temporary, bytes).map_err(|error| error.to_string())?;
-  fs::rename(temporary, path).map_err(|error| error.to_string())
-}
 
 pub fn initialize(app: &AppHandle, state: &DocumentPortalBrokerState) -> Result<(), String> {
-  let config = load_external_automation_config(app);
-  if config.enabled {
-    *state.0.lock().map_err(|_| "Document Portal Broker state is unavailable".to_string())? = Some(DocumentPortalBroker::start(app, config.allow_destructive_edits)?);
-  }
+  *state.0.lock().map_err(|_| "Document Portal Broker state is unavailable".to_string())? =
+    Some(DocumentPortalBroker::start(app)?);
   Ok(())
 }
 
-#[tauri::command]
-pub fn get_external_automation_config(app: AppHandle) -> ExternalAutomationConfig {
-  load_external_automation_config(&app)
-}
-
-#[tauri::command]
-pub fn set_external_automation_config(
-  app: AppHandle,
-  state: State<'_, DocumentPortalBrokerState>,
-  config: ExternalAutomationConfig,
-) -> Result<(), String> {
-  save_external_automation_config(&app, &config)?;
-  let mut broker = state.0.lock().map_err(|_| "Document Portal Broker state is unavailable".to_string())?;
-  if let Some(current) = broker.take() { current.close(); }
-  if config.enabled { *broker = Some(DocumentPortalBroker::start(&app, config.allow_destructive_edits)?); }
-  Ok(())
-}
 
 #[tauri::command]
 pub fn document_portal_respond(
@@ -222,7 +172,7 @@ fn read_header_line(reader: &mut BufReader<TcpStream>) -> std::io::Result<String
   }
 }
 
-fn serve(mut stream: TcpStream, app: &AppHandle, token: &str, pending: &Arc<Mutex<HashMap<String, mpsc::Sender<Value>>>>, allow_destructive_edits: bool) {
+fn serve(mut stream: TcpStream, app: &AppHandle, token: &str, pending: &Arc<Mutex<HashMap<String, mpsc::Sender<Value>>>>) {
   if stream.set_read_timeout(Some(READ_TIMEOUT)).is_err() { return; }
   if stream.set_write_timeout(Some(READ_TIMEOUT)).is_err() { return; }
   let mut reader = BufReader::new(match stream.try_clone() { Ok(value) => value, Err(_) => return });
@@ -248,10 +198,6 @@ fn serve(mut stream: TcpStream, app: &AppHandle, token: &str, pending: &Arc<Mute
   let mut body = vec![0; content_length];
   if reader.read_exact(&mut body).is_err() { write_response(&mut stream, 400, invalid_envelope()); return; }
   let envelope: HttpEnvelope = match serde_json::from_slice::<HttpEnvelope>(&body) { Ok(value) if valid_tool(&value.tool) => value, _ => { write_response(&mut stream, 400, invalid_envelope()); return; } };
-  if envelope.tool == "edit_current_mindmap" && !allow_destructive_edits {
-    write_response(&mut stream, 403, json!({"success":false,"errorCode":"EXTERNAL_EDITS_DISABLED","error":"External destructive edits are disabled in ZoeyMind Preferences"}));
-    return;
-  }
   let request_id = format!("{}-{}", std::process::id(), rand::random::<u64>());
   let (sender, receiver) = mpsc::channel();
   if pending.lock().map(|mut entries| entries.insert(request_id.clone(), sender)).is_err() { write_response(&mut stream, 503, unavailable()); return; }
@@ -292,23 +238,6 @@ mod tests {
     assert!(!valid_tool("delete"));
   }
 
-  #[test]
-  fn external_automation_is_default_deny() {
-    assert!(!ExternalAutomationConfig::default().enabled);
-    assert!(!ExternalAutomationConfig::default().allow_destructive_edits);
-  }
-
-  #[test]
-  fn external_automation_config_round_trips() {
-    let config = ExternalAutomationConfig { enabled: true, allow_destructive_edits: false };
-    let json = serde_json::to_string(&config).expect("serialize config");
-    assert_eq!(json, r#"{"enabled":true,"allowDestructiveEdits":false}"#);
-    assert!(
-      !serde_json::from_str::<ExternalAutomationConfig>(&json)
-        .expect("deserialize config")
-        .allow_destructive_edits
-    );
-  }
 
   #[test]
   fn errors_are_stable() { assert_eq!(invalid_envelope()["errorCode"], "INVALID_REQUEST"); assert_eq!(unavailable()["errorCode"], "BROKER_UNAVAILABLE"); }
