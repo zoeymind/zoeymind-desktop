@@ -39,13 +39,22 @@ export function TitleBar() {
     void detectPlatform().then(setPlatform)
   }, [])
   useEffect(() => {
-    const updateMaximized = () => void appWindow.isMaximized().then(setMaximized)
+    let disposed = false
+    const updateMaximized = () => {
+      void appWindow.isMaximized().then(value => {
+        if (!disposed) setMaximized(value)
+      })
+    }
     updateMaximized()
     let unlisten: (() => void) | undefined
     void appWindow.onResized(updateMaximized).then(stop => {
-      unlisten = stop
+      if (disposed) stop()
+      else unlisten = stop
     })
-    return () => unlisten?.()
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
   }, [])
   const isMac = platform === "macos"
 

@@ -56,6 +56,7 @@ export function WindowCloseDialog() {
   useEffect(() => {
     const window = getCurrentWindow()
     let allowClose = false
+    let disposed = false
     let unlistenCloseReq: (() => void) | undefined
     let unlistenExitReq: (() => void) | undefined
 
@@ -97,7 +98,8 @@ export function WindowCloseDialog() {
         setAskOpen(true)
       })
       .then(listener => {
-        unlistenCloseReq = listener
+        if (disposed) listener()
+        else unlistenCloseReq = listener
       })
 
     // Rust 托盘 "退出" 菜单转发. 显式退出意图: 跳过关闭偏好, 直接进入守卫.
@@ -111,10 +113,12 @@ export function WindowCloseDialog() {
         }
       )
     }).then(listener => {
-      unlistenExitReq = listener
+      if (disposed) listener()
+      else unlistenExitReq = listener
     })
 
     return () => {
+      disposed = true
       unlistenCloseReq?.()
       unlistenExitReq?.()
     }

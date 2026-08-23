@@ -10,11 +10,26 @@ import { activateProject, controlProjects } from "./project-controller"
 
 type BrokerRequest = { requestId: string; tool: string; input: unknown }
 
-export function startDocumentPortalBrokerBridge(): void {
+export function startDocumentPortalBrokerBridge(): () => void {
+  let disposed = false
+  let unlisten: (() => void) | undefined
+
   void listen<BrokerRequest>("document-portal:request", async ({ payload }) => {
     const response = await dispatchDocumentPortalBrokerRequest(payload)
-    await invoke("document_portal_respond", { requestId: payload.requestId, response })
-  }).catch(error => logger.error("Document Portal broker bridge failed to subscribe", { error }))
+    if (!disposed) {
+      await invoke("document_portal_respond", { requestId: payload.requestId, response })
+    }
+  })
+    .then(stop => {
+      if (disposed) stop()
+      else unlisten = stop
+    })
+    .catch(error => logger.error("Document Portal broker bridge failed to subscribe", { error }))
+
+  return () => {
+    disposed = true
+    unlisten?.()
+  }
 }
 
 export async function dispatchDocumentPortalBrokerRequest(

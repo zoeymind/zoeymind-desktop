@@ -28,7 +28,7 @@ import {
 } from "@/shared/app-shared"
 import { RecoveryDialog } from "@/pages/RecoveryDialog"
 import { WindowCloseDialog } from "@/pages/WindowCloseDialog"
-import { FileAssociationsListener, setupAppMenu } from "@/shared/native"
+import { FileAssociationsListener } from "@/shared/native"
 import { useCallback, useEffect, useState } from "react"
 import logoLightUrl from "@/assets/logo.svg?url"
 import logoDarkUrl from "@/assets/logo-dark.svg?url"
@@ -69,10 +69,6 @@ function InnerApp() {
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
   const loadingLogoUrl = resolvedTheme === "dark" ? logoDarkUrl : logoLightUrl
-  useEffect(() => {
-    const teardown = setupAppMenu()
-    return teardown
-  }, [])
   useEffect(() => {
     let cancelled = false
     void useAppVersion

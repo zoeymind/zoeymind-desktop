@@ -1,5 +1,5 @@
 // @ts-nocheck — vendored engine source
-import xmind from '../parse/xmind'
+import { transformToXmind } from '../parse/xmind-export'
 
 //  导出XMind插件，需要通过Export插件使用
 class ExportXMind {
@@ -13,13 +13,7 @@ class ExportXMind {
 
   // 导出xmind
   async xmind(data: Record<string, unknown>, name: string) {
-    const zipData = await xmind.transformToXmind(data, name)
-    return zipData
-  }
-
-  // 获取解析器
-  getXmind() {
-    return xmind
+    return transformToXmind(data, name)
   }
 }
 

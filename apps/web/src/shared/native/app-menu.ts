@@ -274,7 +274,12 @@ export async function installAppMenu(): Promise<void> {
     items: [appSubmenu, fileSubmenu, editSubmenu, langSubmenu, windowSubmenu],
   })
 
-  await menu.setAsAppMenu()
+  const previousMenu = await menu.setAsAppMenu()
+  if (previousMenu) {
+    await previousMenu.close().catch(error => {
+      logger.warn("close previous app menu failed", { error })
+    })
+  }
 }
 
 /**
