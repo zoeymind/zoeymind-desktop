@@ -168,10 +168,6 @@ export function MessageScroller({
     ...restViewportProps
   } = viewportProps ?? {}
 
-  useEffect(() => {
-    busyRef.current = busy ?? false
-  }, [busy])
-
   useImperativeHandle(externalViewportRef, () => viewportRef.current as HTMLElement)
 
   const setFollowing = useCallback(
@@ -267,14 +263,27 @@ export function MessageScroller({
     setRailOverflowing(viewport.scrollHeight > viewport.clientHeight + 1 && messages.length > 1)
   }, [navigation])
 
+  const pendingRailSyncRef = useRef(false)
   const scheduleRailSync = useCallback(() => {
     if (navigation !== "rail") return
+    // 流式期间内容每 tick 都变: 每次 rail 同步都要 querySelectorAll + 读全量
+    // textContent (强制布局), 且 setRailItems/setActiveRailId 在 observer 回调里
+    // 同步触发 React 更新. 忙时挂起, 流结束后补一次.
+    if (busyRef.current) {
+      pendingRailSyncRef.current = true
+      return
+    }
+    pendingRailSyncRef.current = false
     if (railFrameRef.current) cancelAnimationFrame(railFrameRef.current)
     railFrameRef.current = requestAnimationFrame(() => {
       syncRailItems()
       updateActiveRailItem()
     })
   }, [navigation, syncRailItems, updateActiveRailItem])
+  useEffect(() => {
+    busyRef.current = busy ?? false
+    if (!busy && pendingRailSyncRef.current) scheduleRailSync()
+  }, [busy, scheduleRailSync])
 
   const scrollToEnd = useCallback((behavior: ScrollBehavior) => {
     const viewport = viewportRef.current

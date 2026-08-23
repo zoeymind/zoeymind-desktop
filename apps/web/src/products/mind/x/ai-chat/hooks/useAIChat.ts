@@ -15,7 +15,11 @@ import {
   isClientRuntimeError,
   type ChatErrorCode,
 } from "../utils/errorHandler"
-import { shouldAutoContinueAfterTools } from "../utils/pendingToolCalls"
+import {
+  interruptTrailingPendingToolParts,
+  shouldAutoContinueAfterTools,
+  TOOL_EXECUTION_INTERRUPTED,
+} from "../utils/pendingToolCalls"
 import type { ChatRuntime } from "./internal/chatRuntime"
 import { clearPreparedTurn, useChatTransport } from "./useChatTransport"
 import {
@@ -156,17 +160,27 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
       setModuleAIChatRuntime(null)
     }
   }, [runtimeApi])
-  // 处理 chatError: 插入错误 part + 恢复输入框 (错误写入的唯一路径).
+  // 处理 chatError: 中断残留 tool part + 插入错误 part + 恢复输入框 (错误写入的唯一路径).
   // AI SDK streamText 的 maxRetries: 2 已覆盖网络层重试.
   // deps 只挂 chatError: 触发时经 module runtime 读最新 messages, 避免 messages
   // 每次流式更新都重排定时器.
   useEffect(() => {
     if (!chatError) return
-    if (isClientRuntimeError(chatError)) return
+    const clientRuntimeError = isClientRuntimeError(chatError)
     const timer = setTimeout(() => {
       const store = useAIChatV2Store.getState()
       const latest = getModuleAIChatRuntime()
       const currentMessages = latest?.messages ?? []
+      // 流被错误打断时, 末条 assistant 的 tool part 停在 input-*,
+      // isChatProcessing 会永久为 true (loading 卡死) 且 SDK 拒绝下一轮发送.
+      const interrupted = interruptTrailingPendingToolParts(
+        currentMessages,
+        TOOL_EXECUTION_INTERRUPTED
+      )
+      if (interrupted) latest?.setMessages(interrupted)
+      // React 自身的不变量错误不作为 provider 错误展示, 但上面的 tool part
+      // 清理仍然要做, 否则界面停在 loading.
+      if (clientRuntimeError) return
       const attemptKey = getAttemptKey()
       const code = classifyChatError(chatError)
       if (shouldSuppressOverflowError(code, attemptKey)) return
@@ -174,7 +188,9 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
         clearOverflowRecovery(attemptKey)
         clearPreparedTurn(attemptKey)
       }
-      addErrorToMessages(currentMessages, chatError, next => latest?.setMessages(next))
+      addErrorToMessages(interrupted ?? currentMessages, chatError, next =>
+        latest?.setMessages(next)
+      )
       if (store.lastSentInput && !store.inputMessage) store.restoreInput()
     }, 200)
     return () => clearTimeout(timer)

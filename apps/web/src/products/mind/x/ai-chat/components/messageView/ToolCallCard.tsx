@@ -100,7 +100,7 @@ interface ToolCallCardProps {
   part: ToolCallPart
 }
 
-export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
+const ToolCallCardImpl: React.FC<ToolCallCardProps> = ({ part }) => {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const toolName = part.type.replace("tool-", "")
@@ -326,3 +326,20 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({ part }) => {
     </div>
   )
 }
+
+/**
+ * 流式期间 AI SDK 每 tick structuredClone 整条消息, 所有 part 引用全换新.
+ * 已完成 (output-available / output-error) 的 tool part 内容不可变, 按
+ * toolCallId + state 判等跳过重渲染 — 避免每 tick 对完整 tool payload
+ * 重跑 tiktoken encode 和 JSON.stringify.
+ */
+function isSameSettledToolPart(prev: ToolCallCardProps, next: ToolCallCardProps): boolean {
+  const a = prev.part
+  const b = next.part
+  if (a.state !== b.state || a.type !== b.type || a.toolCallId !== b.toolCallId) return false
+  if (b.state === "output-available") return true
+  if (b.state === "output-error") return a.errorText === b.errorText
+  return false
+}
+
+export const ToolCallCard = React.memo(ToolCallCardImpl, isSameSettledToolPart)

@@ -53,6 +53,37 @@ function parseTree(lines: string[]): ParsedTreeNode[] | null {
 const CANONICAL_EXAMPLE =
   "PUT >2:\n+  # 新模块\n+    [P1] 新用例 & 前置条件\n+      执行操作 & 预期结果"
 
+/** 多操作 patch 的正确形状: 操作行独立成行且不带 '+', 每个 PUT 跟自己的 +tree body. */
+const MULTI_OP_EXAMPLE = "PUT <2:\n+  # 模块A\n+    [P1] 用例A & 前置条件\nPUT >8:\n+  # 模块B"
+
+function plusPrefixedOperationMessage(lineNumber: number, row: string): string {
+  return `Patch line ${lineNumber}: ${JSON.stringify(row)} is an operation line hidden inside a +tree body. Operation lines must not start with '+'. Write each operation on its own line:\n${MULTI_OP_EXAMPLE}`
+}
+
+/** 镜像 parseTree 的父子校验, 定位到具体出错行而不是让整个 patch 静默失败. */
+function explainBlockRows(lines: string[], start: number, end: number): string | null {
+  const depths: number[] = []
+  for (let index = start; index < end; index += 1) {
+    const row = lines[index]!
+    if (OPERATION.test(row.slice(1).trimStart()))
+      return plusPrefixedOperationMessage(index + 1, row)
+    const parsed = parseNode(row.slice(1))
+    if (!parsed)
+      return `Patch line ${index + 1} has invalid tree indentation or empty content: ${JSON.stringify(row)}. Use two spaces per depth. Example:\n${CANONICAL_EXAMPLE}`
+    depths.push(parsed.depth)
+  }
+  const base = Math.min(...depths)
+  const stack: number[] = []
+  for (let offset = 0; offset < depths.length; offset += 1) {
+    const depth = depths[offset]! - base
+    while (stack.length && stack[stack.length - 1]! >= depth) stack.pop()
+    if (depth > 0 && (!stack.length || stack[stack.length - 1]! !== depth - 1))
+      return `Patch line ${start + offset + 1} has invalid tree indentation: the row is ${depth * 2} spaces deeper than the block base but has no parent one level above it. Children indent exactly two spaces under their parent row.`
+    stack.push(depth)
+  }
+  return null
+}
+
 export function explainInvalidTreeHashlinePatch(patch: string): string {
   if (/^\*\*\* (?:Begin Patch|Update File)/m.test(patch) || /^@@/m.test(patch))
     return `Git Patch is not valid Tree Hashline syntax. Use:\n${CANONICAL_EXAMPLE}`
@@ -62,23 +93,36 @@ export function explainInvalidTreeHashlinePatch(patch: string): string {
 
   const lines = patch.replace(/\r\n?/g, "\n").split("\n")
   while (lines.at(-1) === "") lines.pop()
+  if (lines.length === 0) return `Patch is empty. Use:\n${CANONICAL_EXAMPLE}`
+
+  let sawOperation = false
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? ""
-    if (OPERATION.test(line)) {
-      const operation = OPERATION.exec(line)
-      const needsBody = operation?.[1] !== undefined
-      if (needsBody && !lines[index + 1]?.startsWith("+"))
+    const operation = OPERATION.exec(line)
+    if (operation) {
+      sawOperation = true
+      if (line.includes("*") && operation[2] !== ">")
+        return `Patch line ${index + 1}: the '*' block selector is only valid as PUT >N*:. Rewrite ${JSON.stringify(line)} without '*'.`
+      if (operation[3] === undefined) continue // CUT / MV take no body
+      const blockStart = index + 1
+      let blockEnd = blockStart
+      while (blockEnd < lines.length && lines[blockEnd]!.startsWith("+")) blockEnd += 1
+      if (blockEnd === blockStart)
         return `Patch line ${index + 1} has no +tree body: ${JSON.stringify(line)}. Use:\n${CANONICAL_EXAMPLE}`
+      const rowIssue = explainBlockRows(lines, blockStart, blockEnd)
+      if (rowIssue) return rowIssue
+      index = blockEnd - 1
       continue
     }
     if (line.startsWith("+")) {
-      if (!parseNode(line.slice(1)))
-        return `Patch line ${index + 1} has invalid tree indentation or empty content: ${JSON.stringify(line)}. Use two spaces per depth. Example:\n${CANONICAL_EXAMPLE}`
-      continue
+      if (OPERATION.test(line.slice(1).trimStart()))
+        return plusPrefixedOperationMessage(index + 1, line)
+      return `Patch line ${index + 1}: content row ${JSON.stringify(line)} must follow a PUT operation. CUT and MV take no +tree body. Example:\n${MULTI_OP_EXAMPLE}`
     }
     return `Patch line ${index + 1} is invalid: ${JSON.stringify(line)}. Operations must be on their own line and content rows must start with +. Example:\n${CANONICAL_EXAMPLE}`
   }
-  return `Patch is empty. Use:\n${CANONICAL_EXAMPLE}`
+  if (!sawOperation) return `Patch has no operations. Use:\n${CANONICAL_EXAMPLE}`
+  return `Patch could not be parsed. Each operation line (PUT/CUT/MV) stands alone without '+'; every content row starts with '+' and indents two spaces per level. Example:\n${MULTI_OP_EXAMPLE}`
 }
 
 export function parseTreeHashlinePatch(patch: string): TreePatchOperation[] | null {

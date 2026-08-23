@@ -73,3 +73,19 @@ export function interruptPendingToolParts(message: UIMessage, errorText: string)
   }
   return changed ? { ...message, parts } : message
 }
+
+/**
+ * 流因错误中断后, 末条 assistant 里未写回结果的 tool part 会停留在
+ * input-streaming / input-available, isChatProcessing 因此永久为 true.
+ * 返回清理后的新数组; 无需清理时返回 null.
+ */
+export function interruptTrailingPendingToolParts(
+  messages: readonly UIMessage[],
+  errorText: string
+): UIMessage[] | null {
+  const last = messages[messages.length - 1]
+  if (!last || last.role !== "assistant") return null
+  const interrupted = interruptPendingToolParts(last, errorText)
+  if (interrupted === last) return null
+  return [...messages.slice(0, -1), interrupted]
+}

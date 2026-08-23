@@ -474,6 +474,35 @@ describe("DocumentPortal", () => {
     ])
   })
 
+  it("pinpoints an operation line hidden inside a +tree body instead of claiming the patch is empty", () => {
+    const merged = [
+      "PUT <2:",
+      "+  # 模块A",
+      "+    [P1] 用例A & 前置条件",
+      "+PUT >8:",
+      "+  # 模块B",
+    ].join("\n")
+    expect(parseTreeHashlinePatch(merged)).toBeNull()
+    const explained = explainInvalidTreeHashlinePatch(merged)
+    expect(explained).toContain('Patch line 4: "+PUT >8:"')
+    expect(explained).toContain("must not start with '+'")
+    expect(explained).not.toContain("Patch is empty")
+  })
+
+  it("pinpoints the body row whose indentation has no parent", () => {
+    const orphan = "PUT <2:\n+  # 模块\n+      跳两级 & x"
+    expect(parseTreeHashlinePatch(orphan)).toBeNull()
+    expect(explainInvalidTreeHashlinePatch(orphan)).toContain(
+      "Patch line 3 has invalid tree indentation"
+    )
+  })
+
+  it("rejects a +tree body after CUT with a specific message", () => {
+    const cutWithBody = "CUT 3:\n+  # 模块"
+    expect(parseTreeHashlinePatch(cutWithBody)).toBeNull()
+    expect(explainInvalidTreeHashlinePatch(cutWithBody)).toContain("CUT and MV take no +tree body")
+  })
+
   it("bounds default outline reads instead of returning the complete document", () => {
     const tabs: OpenTab[] = [{ id: "large", kind: "file", title: "大型测试", projectId: "large" }]
     const { portal, registry } = createPortalFixture({ tabs })

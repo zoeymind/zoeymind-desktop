@@ -3,6 +3,7 @@ import type { UIMessage } from "@ai-sdk/react"
 import {
   hasPendingToolCalls,
   interruptPendingToolParts,
+  interruptTrailingPendingToolParts,
   pendingToolCallIds,
   isChatProcessing,
   isPendingToolPart,
@@ -100,5 +101,47 @@ describe("pending tool call state", () => {
       },
     ] as UIMessage[]
     expect(shouldAutoContinueAfterTools(completed, null)).toBe(true)
+  })
+
+  it("terminalizes trailing pending tools after a stream error so the chat leaves loading", () => {
+    const messages = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "hi" }] },
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          { type: "tool-edit_current_mindmap", toolCallId: "edit-1", state: "input-available" },
+        ],
+      },
+    ] as UIMessage[]
+    expect(isChatProcessing("ready", messages, null)).toBe(true)
+
+    const cleaned = interruptTrailingPendingToolParts(messages, "TOOL_EXECUTION_INTERRUPTED")
+    expect(cleaned).not.toBeNull()
+    expect(isChatProcessing("ready", cleaned!, null)).toBe(false)
+    // 原数组不被修改
+    expect(isChatProcessing("ready", messages, null)).toBe(true)
+  })
+
+  it("returns null when there is nothing to interrupt", () => {
+    const settled = [
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-read",
+            toolCallId: "r1",
+            state: "output-available",
+            input: {},
+            output: {},
+          },
+        ],
+      },
+    ] as UIMessage[]
+    expect(interruptTrailingPendingToolParts(settled, "x")).toBeNull()
+    expect(
+      interruptTrailingPendingToolParts([{ id: "u1", role: "user", parts: [] }] as UIMessage[], "x")
+    ).toBeNull()
   })
 })
