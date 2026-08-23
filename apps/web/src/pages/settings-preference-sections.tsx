@@ -28,6 +28,7 @@ import { toast } from "@/shared/app-shared"
 import {
   clearLogs,
   getLogConfig,
+  openLogDir,
   setLogDir,
   setLogLevel,
   LOG_LEVEL_OPTIONS,
@@ -40,7 +41,6 @@ import {
   getCloseBehavior,
   type CloseBehavior,
 } from "@/shared/native/close-behavior"
-import { openPath } from "@tauri-apps/plugin-opener"
 import { open as openDialog } from "@tauri-apps/plugin-dialog"
 
 const PERFORMANCE_MODE_KEY = "mind-map-performance-mode"
@@ -378,7 +378,7 @@ function LogSettingsSection() {
   const handleOpenDir = async () => {
     if (!info) return
     try {
-      await openPath(info.activeDir)
+      await openLogDir()
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
       toast.error(`${t("settings.log.openFailed")}: ${detail}`)

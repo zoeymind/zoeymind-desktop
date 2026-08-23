@@ -388,6 +388,7 @@ pub fn run() {
       frontend_ready,
       take_pending_open_files,
       log_config::get_log_config,
+      log_config::open_log_dir,
       log_config::set_log_level,
       log_config::set_log_dir,
       log_config::clear_logs,

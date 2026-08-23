@@ -17,6 +17,7 @@ use std::sync::OnceLock;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
+use tauri_plugin_opener::OpenerExt;
 
 const CONFIG_FILE_NAME: &str = "log-config.json";
 
@@ -173,6 +174,19 @@ pub fn get_log_config(app: AppHandle) -> Result<LogInfo, String> {
     default_dir: default.to_string_lossy().into_owned(),
     size_bytes,
   })
+}
+
+/// 用系统文件管理器打开当前会话正在写入的日志目录。
+///
+/// 路径只从原生侧的活跃日志配置读取，不接受 WebView 参数，避免为通用
+/// `openPath` 放宽到任意用户自定义路径。
+#[tauri::command]
+pub fn open_log_dir(app: AppHandle) -> Result<(), String> {
+  let dir = active_dir_snapshot(&app)?;
+  app
+    .opener()
+    .open_path(dir.to_string_lossy(), None::<&str>)
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

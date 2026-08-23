@@ -38,6 +38,11 @@ export async function getLogConfig(): Promise<LogInfo> {
   return await invoke<LogInfo>("get_log_config")
 }
 
+/** 用系统文件管理器打开本次会话正在写入的日志目录. */
+export async function openLogDir(): Promise<void> {
+  await invoke("open_log_dir")
+}
+
 export async function setLogLevel(level: LogLevel): Promise<void> {
   await invoke("set_log_level", { level })
 }
