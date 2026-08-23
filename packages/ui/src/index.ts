@@ -74,7 +74,6 @@ export * from "./toggle-group";
 
 // Custom widgets
 export * from "./animated-grid-pattern";
-export * from "./code-editor";
 export * from "./Loading";
 export * from "./motionTabs";
 export * from "./sortingTabs";

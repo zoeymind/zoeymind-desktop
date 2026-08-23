@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * Embedder — 浏览器内嵌入向量生成 (基于 transformers.js).
  *
@@ -16,11 +15,26 @@
  *     合成一个 status 状态机
  *   - 不阻塞 UI: getEmbedding() 在 ready 之前返 null, 调用方自己决定要不要 wait
  */
-
-import { env, pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers"
 import { logger } from "@zoeymind/logger"
 import { getMirrorHost } from "./settings"
 import { describeModelLoadError } from "./model-load-error"
+import type { FeatureExtractionPipeline } from "@huggingface/transformers"
+
+type TransformersModule = typeof import("@huggingface/transformers")
+
+let transformersModule: Promise<TransformersModule> | null = null
+
+/**
+ * 动态加载 transformers.js. 库本体(含 onnxruntime 绑定)重 ~500KB minified,
+ * 静态打包会进启动路径; 只有用户真正启用 AI 长期记忆并触发首次 load() 才需要.
+ * Vite 会把 dynamic import 拆成独立 chunk, 首屏不付这笔解析成本.
+ */
+function loadTransformers(): Promise<TransformersModule> {
+  if (!transformersModule) {
+    transformersModule = import("@huggingface/transformers")
+  }
+  return transformersModule
+}
 
 /**
  * 配置模型下载来源.
@@ -29,9 +43,9 @@ import { describeModelLoadError } from "./model-load-error"
  *   - 自托管: env.remoteHost 指向自家 CDN (需要先 mirror 一份模型文件)
  * 在 settings 里允许用户切换, 默认走 hf-mirror.com 兼容国内
  */
-function applyMirrorConfig() {
+function applyMirrorConfig(mod: Pick<TransformersModule, "env">) {
   const host = getMirrorHost()
-  env.remoteHost = host
+  mod.env.remoteHost = host
   // wasm 文件也要走镜像 (transformers.js 默认从 jsdelivr CDN 拉, 国内一般 OK; 保留默认)
   // env.backends.onnx.wasm.wasmPaths 不动
 }
@@ -81,8 +95,10 @@ class Embedder {
 
   private async doLoad(): Promise<FeatureExtractionPipeline | null> {
     try {
+      // 动态 import 在此 await — 模块求值成本只由真正启用记忆的用户支付
+      const { env, pipeline } = await loadTransformers()
       // 应用镜像配置 — 每次 load 都重读, 用户改了 settings 后下次 retry 立刻生效
-      applyMirrorConfig()
+      applyMirrorConfig({ env })
       this.setStatus({ kind: "loading-model" })
       const ext = (await pipeline("feature-extraction", MODEL_ID, {
         progress_callback: (data: unknown) => this.handleProgress(data),

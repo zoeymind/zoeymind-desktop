@@ -340,8 +340,8 @@ importers:
         specifier: ^8.0.2
         version: 8.2.1
       lucide-react:
-        specifier: ^0.469.0
-        version: 0.469.0(react@19.2.8)
+        specifier: ^0.555.0
+        version: 0.555.0(react@19.2.8)
       react:
         specifier: ^19.2.4
         version: 19.2.8
@@ -497,8 +497,8 @@ importers:
         specifier: ^1.4.2
         version: 1.5.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       lucide-react:
-        specifier: ^0.469.0
-        version: 0.469.0(react@19.2.8)
+        specifier: ^0.555.0
+        version: 0.555.0(react@19.2.8)
       metal-fx:
         specifier: 1.0.4
         version: 1.0.4(patch_hash=7604b3675f7237af96a857b1c0af2b09f03f2a1fa94d9af37cb6f17a89aa0d56)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -4804,11 +4804,6 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
-
-  lucide-react@0.469.0:
-    resolution: {integrity: sha512-28vvUnnKQ/dBwiCQtwJw7QauYnE7yd2Cyp4tTTJpvglX4EMpbflcdBgrgToX2j71B3YvugK/NH3BGUk+E/p/Fw==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   lucide-react@0.555.0:
     resolution: {integrity: sha512-D8FvHUGbxWBRQM90NZeIyhAvkFfsh3u9ekrMvJ30Z6gnpBHS6HC6ldLg7tL45hwiIz/u66eKDtdA23gwwGsAHA==}
@@ -10446,10 +10441,6 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
-
-  lucide-react@0.469.0(react@19.2.8):
-    dependencies:
-      react: 19.2.8
 
   lucide-react@0.555.0(react@19.2.8):
     dependencies:
