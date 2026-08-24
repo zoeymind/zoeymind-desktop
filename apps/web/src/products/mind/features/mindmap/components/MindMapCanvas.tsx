@@ -17,7 +17,6 @@ import { resolveMindMapLoading } from "./hooks/mindmap-loading"
 import { initPlugins } from "./managers/PluginManager.ts"
 import { useCurrentUser } from "@/shared/app-shared"
 import { AIFeaturePanel, AIChatProvider, resolveMindmapShortId } from "@zoeymind-ext-mind"
-import { CommentProvider } from "@/products/mind/features/mindmap/contexts/CommentContext"
 import { useLoading } from "@/shared/app-shared"
 import { useUIStore } from "@/products/mind/stores"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
@@ -264,32 +263,6 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
 
   const collaboration = useCollaborationManager(userInfo, updateProgress)
 
-  // 评论点击处理回调
-  const handleNodeCommentClick = useCallback((nodeUid: string) => {
-    // 使用FormatPanel的评论功能
-    formatPanelRef.current?.openCommentPanelForNode(nodeUid)
-  }, [])
-
-  // 监听评论标签点击事件
-  useEffect(() => {
-    if (!mindMap) return
-
-    const handleCommentLabelClick = (...args: unknown[]) => {
-      // 获取节点的 UID
-      const node = args[0] as { nodeData?: { data?: { uid?: string } } } | undefined
-      const nodeUid = node?.nodeData?.data?.uid
-      if (nodeUid) {
-        handleNodeCommentClick(nodeUid)
-      }
-    }
-
-    mindMap.on("node_comment_label_click", handleCommentLabelClick)
-
-    return () => {
-      mindMap.off("node_comment_label_click", handleCommentLabelClick)
-    }
-  }, [mindMap, handleNodeCommentClick])
-
   // 右键菜单管理现在由 MindMapDropdown 内部处理
 
   // ✅ 简化的Loading管理逻辑 —— 首次同步完成后，重连/重新同步不再覆盖全局 Loading
@@ -390,92 +363,90 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     return () => window.removeEventListener("focus", checkPath)
   }, [setLoadError, t, workspaceId])
   return (
-    <CommentProvider>
-      <AIChatProvider>
-        <div className="flex h-full min-h-0 overflow-hidden bg-editor-shell">
-          <section className="flex min-w-0 flex-1 flex-col">
-            <header className="z-30 flex h-12 shrink-0 items-center gap-1 px-3">
-              <TopBar collaboration={collaboration} />
-              <div className="flex-1" />
-              <FormatPanel ref={formatPanelRef} />
-              <CanvasTool />
-              <AIChatToggle />
-            </header>
-            <main className="flex min-h-0 flex-1 px-3">
-              <div
-                ref={canvasViewportRef}
-                className="relative h-full min-w-0 flex-1 overflow-hidden rounded-xl bg-background ring-1 ring-border/70"
-              >
-                <div
-                  ref={containerRef}
-                  key="mind-map-container"
-                  className="absolute inset-0"
-                  style={{ visibility: loading ? "hidden" : "visible" }}
-                />
-                <MindMapDropdown
-                  formatPanelRef={formatPanelRef}
-                  copyXMindDataToClipboard={copyXMindDataToClipboard}
-                />
-                <MindMapIconToolbar />
-                {saveFlow.conflict && !loadError && (
-                  <LoadErrorScreen
-                    title={t("fileConflict.title")}
-                    description={t("fileConflict.description")}
-                    secondaryLabel={t("fileConflict.reload")}
-                    onSecondary={() => {
-                      void saveFlow.reloadFromDisk().then(() => setReloadToken(value => value + 1))
-                    }}
-                    primaryLabel={t("fileConflict.saveCopy")}
-                    onPrimary={() => void saveFlow.saveCopy()}
-                  >
-                    <Button variant="destructive" onClick={() => void saveFlow.overwrite()}>
-                      {t("fileConflict.overwrite")}
-                    </Button>
-                  </LoadErrorScreen>
-                )}
-                {loadError && (
-                  <LoadErrorScreen
-                    title={t("fileRepair.title")}
-                    description={loadError}
-                    secondaryLabel={t("fileRepair.remove")}
-                    onSecondary={() => void handleRemoveMissingProject()}
-                    primaryLabel={t("fileRepair.locate")}
-                    onPrimary={() => void handleLocateMissingFile()}
-                  />
-                )}
-                <DiffSummary />
-                <DiffPopover containerRef={containerRef} />
-                <MindMapScrollbar />
-                <PreviewIndicator />
-                <CollaborationCursorLayer />
-              </div>
-            </main>
-            <StatusBar />
-          </section>
-          {aiPanelOpen && (
+    <AIChatProvider>
+      <div className="flex h-full min-h-0 overflow-hidden bg-editor-shell">
+        <section className="flex min-w-0 flex-1 flex-col">
+          <header className="z-30 flex h-12 shrink-0 items-center gap-1 px-3">
+            <TopBar collaboration={collaboration} />
+            <div className="flex-1" />
+            <FormatPanel ref={formatPanelRef} />
+            <CanvasTool />
+            <AIChatToggle />
+          </header>
+          <main className="flex min-h-0 flex-1 px-3">
             <div
-              role="separator"
-              aria-orientation="vertical"
-              aria-label={t("mindmap.aiChat.core.resizePanel")}
-              onPointerDown={handleAIWidthPointerDown}
-              className="group relative z-20 -mx-1 h-full w-2 shrink-0 cursor-col-resize touch-none"
+              ref={canvasViewportRef}
+              className="relative h-full min-w-0 flex-1 overflow-hidden rounded-xl bg-background ring-1 ring-border/70"
             >
-              <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-border group-data-[dragging=true]:bg-border" />
+              <div
+                ref={containerRef}
+                key="mind-map-container"
+                className="absolute inset-0"
+                style={{ visibility: loading ? "hidden" : "visible" }}
+              />
+              <MindMapDropdown
+                formatPanelRef={formatPanelRef}
+                copyXMindDataToClipboard={copyXMindDataToClipboard}
+              />
+              <MindMapIconToolbar />
+              {saveFlow.conflict && !loadError && (
+                <LoadErrorScreen
+                  title={t("fileConflict.title")}
+                  description={t("fileConflict.description")}
+                  secondaryLabel={t("fileConflict.reload")}
+                  onSecondary={() => {
+                    void saveFlow.reloadFromDisk().then(() => setReloadToken(value => value + 1))
+                  }}
+                  primaryLabel={t("fileConflict.saveCopy")}
+                  onPrimary={() => void saveFlow.saveCopy()}
+                >
+                  <Button variant="destructive" onClick={() => void saveFlow.overwrite()}>
+                    {t("fileConflict.overwrite")}
+                  </Button>
+                </LoadErrorScreen>
+              )}
+              {loadError && (
+                <LoadErrorScreen
+                  title={t("fileRepair.title")}
+                  description={loadError}
+                  secondaryLabel={t("fileRepair.remove")}
+                  onSecondary={() => void handleRemoveMissingProject()}
+                  primaryLabel={t("fileRepair.locate")}
+                  onPrimary={() => void handleLocateMissingFile()}
+                />
+              )}
+              <DiffSummary />
+              <DiffPopover containerRef={containerRef} />
+              <MindMapScrollbar />
+              <PreviewIndicator />
+              <CollaborationCursorLayer />
             </div>
-          )}
-          <aside
-            ref={aiPanelRef}
-            aria-hidden={!aiPanelOpen}
-            inert={!aiPanelOpen ? true : undefined}
-            className="t-resize h-full shrink-0 overflow-hidden pb-3 pr-3 data-[resizing=true]:transition-none data-[resizing=true]:will-change-auto"
-            style={{ width: aiPanelOpen ? aiPanelWidth + 12 : 0 }}
+          </main>
+          <StatusBar />
+        </section>
+        {aiPanelOpen && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t("mindmap.aiChat.core.resizePanel")}
+            onPointerDown={handleAIWidthPointerDown}
+            className="group relative z-20 -mx-1 h-full w-2 shrink-0 cursor-col-resize touch-none"
           >
-            <div ref={aiPanelContentRef} className="h-full" style={{ width: aiPanelWidth }}>
-              <AIFeaturePanel isActive={true} />
-            </div>
-          </aside>
-        </div>
-      </AIChatProvider>
-    </CommentProvider>
+            <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-border group-data-[dragging=true]:bg-border" />
+          </div>
+        )}
+        <aside
+          ref={aiPanelRef}
+          aria-hidden={!aiPanelOpen}
+          inert={!aiPanelOpen ? true : undefined}
+          className="t-resize h-full shrink-0 overflow-hidden pb-3 pr-3 data-[resizing=true]:transition-none data-[resizing=true]:will-change-auto"
+          style={{ width: aiPanelOpen ? aiPanelWidth + 12 : 0 }}
+        >
+          <div ref={aiPanelContentRef} className="h-full" style={{ width: aiPanelWidth }}>
+            <AIFeaturePanel isActive={true} />
+          </div>
+        </aside>
+      </div>
+    </AIChatProvider>
   )
 }

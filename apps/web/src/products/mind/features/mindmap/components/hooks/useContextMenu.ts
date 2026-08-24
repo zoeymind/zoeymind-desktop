@@ -4,7 +4,6 @@ import { NodeManager } from "@/products/mind/features/mindmap/components/manager
 import type { default as MindMap, MindMapNode, MindMapNodeTree } from "simple-mind-map"
 import { getRecentIcons } from "@/products/mind/features/mindmap/utils/storage/iconHistory"
 import { nodeIconList } from "simple-mind-map/src/svg/icons"
-import { useUIStore } from "@/products/mind/stores"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
 import { useTranslation } from "@zoeymind/i18n"
 import {
@@ -13,10 +12,9 @@ import {
   Clipboard,
   Plus,
   PlusCircle,
-  ChevronRight,
+  ChevronsUpDown,
   Trash2,
   FileText,
-  MessageCircle,
 } from "lucide-react"
 
 interface MenuItem {
@@ -268,22 +266,7 @@ export function useContextMenu(
   const buildMenuItems = useCallback((): MenuItem[] => {
     const { currentNode, isRoot } = menuState
 
-    const commentMenuItem: MenuItem = {
-      label: t("mindmap.contextMenu.comment"),
-      shortcut: "",
-      action: () => {
-        if (currentNode) {
-          const nodeUid = currentNode.getData("uid")
-          const { openFormatTab } = useUIStore.getState()
-          openFormatTab("comment", nodeUid!)
-        }
-      },
-      lucideIcon: MessageCircle,
-    }
-
-    if (!canEdit) {
-      return [commentMenuItem]
-    }
+    if (!canEdit) return []
 
     const nodeManager = mindMap ? new NodeManager(mindMap) : null
     const recentIcons = getRecentIcons()
@@ -292,7 +275,7 @@ export function useContextMenu(
     // 编辑操作组
     items.push(
       {
-        label: t("common.copy"),
+        label: t("mindmap.contextMenu.copyInternal"),
         shortcut: "Ctrl+C",
         action: () => handleNodeOperation("copy"),
         lucideIcon: Copy,
@@ -405,17 +388,16 @@ export function useContextMenu(
       },
       {
         label: t("mindmap.contextMenu.recursiveFold"),
-        shortcut: "Alt + /",
-        action: () => currentNode && nodeManager?.toggleFold(currentNode),
-        lucideIcon: ChevronRight,
+        shortcut: "/",
+        action: () => handleNodeOperation("fold"),
+        lucideIcon: ChevronsUpDown,
       },
       {
         divider: true,
         label: "",
         shortcut: "",
         action: () => {},
-      },
-      commentMenuItem
+      }
     )
 
     if (!isRoot) {

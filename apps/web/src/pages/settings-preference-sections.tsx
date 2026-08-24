@@ -11,7 +11,6 @@ import {
   FieldGroup,
   FieldLabel,
   FieldLegend,
-  FieldSeparator,
   FieldSet,
   Input,
   Select,
@@ -258,7 +257,6 @@ export function EditorSettingsSection() {
 
         {performanceMode ? (
           <>
-            <FieldSeparator />
             <FieldSet>
               <FieldLegend variant="label">
                 {t("mindmap.topbar.settings.performanceConfig")}

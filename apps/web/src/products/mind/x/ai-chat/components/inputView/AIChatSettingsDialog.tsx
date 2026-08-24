@@ -26,11 +26,10 @@ import {
   SettingsShell,
   Switch,
 } from "@zoeymind/ui"
-import { Settings, Sparkles, Server, Wrench } from "lucide-react"
-import { TOGGLEABLE_TOOL_NAMES, type ToggleableToolName } from "@zoeymind/shared"
+import { CheckCircle2, Settings, Sparkles, Server, Wrench } from "lucide-react"
+import { LOCAL_AI_TOOLS } from "../../local-tools"
 import { MemorySettingsTab } from "./MemorySettingsTab"
 import { MCPTab } from "../../settings/MCPTab"
-import { useToolSettings } from "../../hooks/useToolSettings"
 import { useDocumentEditApprovalSetting } from "../../hooks/useDocumentEditApprovalSetting"
 
 export interface AIChatSettingsDialogProps {
@@ -180,16 +179,9 @@ function ToggleRow({ id, label, hint, checked, onCheckedChange }: ToggleRowProps
   )
 }
 
-/**
- * ToolsSection — 可开关工具列表.
- *
- * 只列 TOGGLEABLE_TOOL_NAMES 里的工具 (网络搜索 / 网页抓取 / Figma). 核心工具
- * (思维导图 CRUD / question) 不在这里, 因为关掉它们 AI 就没法生成用例了.
- * 每个工具的名称/说明走 i18n: mindmap.aiChat.tools.<toolName>.{label,hint}.
- */
+/** Desktop only exposes tools with complete local executors. */
 function ToolsSection() {
   const { t } = useTranslation()
-  const { enabledMap, setToolEnabled } = useToolSettings()
 
   return (
     <SectionCard
@@ -197,15 +189,19 @@ function ToolsSection() {
       description={t("mindmap.aiChat.toolToggles.sectionDescription")}
     >
       <FieldGroup>
-        {TOGGLEABLE_TOOL_NAMES.map(toolName => (
-          <ToggleRow
-            key={toolName}
-            id={`tool-${toolName}`}
-            label={t(`mindmap.aiChat.toolToggles.${toolName}.label` as const)}
-            hint={t(`mindmap.aiChat.toolToggles.${toolName}.hint` as const)}
-            checked={enabledMap[toolName as ToggleableToolName]}
-            onCheckedChange={enabled => setToolEnabled(toolName as ToggleableToolName, enabled)}
-          />
+        {LOCAL_AI_TOOLS.map(tool => (
+          <Field key={tool.name} orientation="horizontal">
+            <FieldContent>
+              <FieldLabel>{t(`mindmap.aiChat.toolToggles.${tool.name}.label` as const)}</FieldLabel>
+              <FieldDescription>
+                {t(`mindmap.aiChat.toolToggles.${tool.name}.hint` as const)}
+              </FieldDescription>
+            </FieldContent>
+            <span className="inline-flex items-center gap-1 text-xs text-success">
+              <CheckCircle2 className="size-3.5" />
+              {t("mindmap.aiChat.toolToggles.available")}
+            </span>
+          </Field>
         ))}
       </FieldGroup>
     </SectionCard>

@@ -24,9 +24,6 @@ export interface FormatPanelRef {
   openTagsPanel: () => void
   closeTagsPanel: () => void
   toggleTagsPanel: () => void
-  openCommentPanel: () => void
-  openCommentPanelForNode: (nodeUid: string) => void
-  closeCommentPanel: () => void
 }
 
 export const FormatPanel = forwardRef<FormatPanelRef>((_props, ref) => {
@@ -48,9 +45,6 @@ export const FormatPanel = forwardRef<FormatPanelRef>((_props, ref) => {
       openTagsPanel: () => openFormatTab("tags"),
       closeTagsPanel: () => closeFormatTab(),
       toggleTagsPanel: () => toggleFormatTab("tags"),
-      openCommentPanel: () => openFormatTab("comment"),
-      openCommentPanelForNode: (nodeUid: string) => openFormatTab("comment", nodeUid),
-      closeCommentPanel: () => closeFormatTab(),
     }),
     [openFormatTab, closeFormatTab, toggleFormatTab]
   )

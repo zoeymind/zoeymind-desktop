@@ -151,26 +151,19 @@ export default {
         tabTools: "工具",
       },
       toolToggles: {
-        sectionDescription: "控制 AI 在生成用例时可以调用哪些扩展工具。关闭的工具模型将无法使用。",
-        web_search: {
-          label: "网络搜索",
-          hint: "允许 AI 实时联网搜索最新信息",
+        sectionDescription: "当前桌面版可实际调用的内置工具。",
+        available: "可用",
+        query_current_mindmap: {
+          label: "查询当前思维导图",
+          hint: "读取大纲、完整子树，或在当前用例文档中搜索节点",
         },
-        web_fetch: {
-          label: "网页抓取",
-          hint: "允许 AI 读取指定网页的正文内容",
+        edit_current_mindmap: {
+          label: "编辑当前思维导图",
+          hint: "使用 Tree Hashline Patch 原子修改当前用例文档",
         },
-        get_figma_metadata: {
-          label: "Figma 结构",
-          hint: "读取 Figma 设计稿的图层骨架（需先配置 Figma 令牌）",
-        },
-        get_figma_data: {
-          label: "Figma 数据",
-          hint: "读取 Figma 设计稿的详细数据（需先配置 Figma 令牌）",
-        },
-        get_figma_image: {
-          label: "Figma 截图",
-          hint: "读取 Figma 节点的渲染截图供视觉理解（需先配置 Figma 令牌）",
+        question: {
+          label: "向用户提问",
+          hint: "信息不足时发起结构化澄清问题",
         },
       },
       compaction: {
@@ -552,22 +545,15 @@ export default {
       testCaseStats: "共 {{count}} 个测试用例",
     },
     contextMenu: {
-      comment: "评论",
+      copyInternal: "复制节点结构",
       cut: "剪切",
       paste: "粘贴",
-      copyXmind: "复制XMind结构格式",
+      copyXmind: "复制为 XMind 大纲",
       addNode: "添加节点",
       addChildNode: "添加子节点",
-      recursiveFold: "递归折叠/展开",
+      recursiveFold: "递归折叠 / 展开",
       newNode: "新节点",
       newChildNode: "新子节点",
-    },
-    editor: {
-      documentTitle: "文档标题",
-      loadingOrg: "加载组织信息...",
-      newCloudProject: "新的云项目",
-      newProjectTitle: "未命名思维导图",
-      createFailed: "新建失败",
       importFailed: "导入失败",
     },
     formatPanel: {

@@ -186,10 +186,14 @@ export function MemorySettingsTab() {
               <div className="space-y-3 pt-2 border-t">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <Label className="font-medium">{t("mindmap.aiChat.memory.recallKLabel")}</Label>
+                    <Label htmlFor="memory-recall-count" className="font-medium">
+                      {t("mindmap.aiChat.memory.recallKLabel")}
+                    </Label>
                     <span className="font-mono text-muted-foreground">{recallK}</span>
                   </div>
                   <Slider
+                    id="memory-recall-count"
+                    aria-label={t("mindmap.aiChat.memory.recallKLabel")}
                     value={[recallK]}
                     onValueChange={value => {
                       const v = Array.isArray(value) ? value[0] : value

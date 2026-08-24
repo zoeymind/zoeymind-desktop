@@ -29,6 +29,7 @@ import {
 import { RecoveryDialog } from "@/pages/RecoveryDialog"
 import { WindowCloseDialog } from "@/pages/WindowCloseDialog"
 import { FileAssociationsListener } from "@/shared/native"
+import { installExternalLinkBoundary } from "@/shared/native/external-links"
 import { useCallback, useEffect, useState } from "react"
 import logoLightUrl from "@/assets/logo.svg?url"
 import logoDarkUrl from "@/assets/logo-dark.svg?url"
@@ -69,6 +70,7 @@ function InnerApp() {
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
   const loadingLogoUrl = resolvedTheme === "dark" ? logoDarkUrl : logoLightUrl
+  useEffect(() => installExternalLinkBoundary(), [])
   useEffect(() => {
     let cancelled = false
     void useAppVersion

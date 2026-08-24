@@ -156,12 +156,7 @@ export class NodeManager {
   // 展开/收起节点
   toggleNodeExpand(node: MindMapNode): void {
     try {
-      if (node.data) {
-        node.data.expand = !node.data.expand
-        if (node.update) {
-          node.update()
-        }
-      }
+      this.mindMap.execCommand("SET_NODE_EXPAND", node, !this.isNodeExpanded(node))
     } catch (error) {
       logger.error("切换节点展开状态失败:", error)
     }

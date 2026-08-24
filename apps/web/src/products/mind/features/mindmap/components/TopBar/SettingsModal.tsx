@@ -17,7 +17,6 @@ import {
   FieldGroup,
   FieldLabel,
   FieldLegend,
-  FieldSeparator,
   FieldSet,
 } from "@zoeymind/ui"
 import { Input } from "@zoeymind/ui"
@@ -117,7 +116,6 @@ export const SettingsModal: FC<SettingsModalProps> = ({ open, onOpenChange }) =>
 
           {performanceMode && (
             <>
-              <FieldSeparator />
               <FieldSet>
                 <FieldLegend variant="label">
                   {t("mindmap.topbar.settings.performanceConfig")}

@@ -85,9 +85,7 @@ export function TestCaseStats({ total, p1, p2, p3 }: TestCaseStatsProps) {
             <div key={priority.label} className="flex items-center gap-2">
               <span className={`size-1.5 rounded-full ${priority.dotClassName}`} />
               <span>{priority.label}</span>
-              <span className="ml-auto tabular-nums">
-                {priority.count} · {total > 0 ? Math.round((priority.count / total) * 100) : 0}%
-              </span>
+              <span className="ml-auto tabular-nums">{priority.count}</span>
             </div>
           ))}
         </div>

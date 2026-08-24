@@ -1,7 +1,7 @@
 /**
  * MentionEditor - 基于 Lexical + lexical-beautiful-mentions 的通用 @mention 输入框。
  *
- * 取代旧的 react-mentions。被 AI 对话输入框（InputBox）和评论输入框（CommentTextarea）共用。
+ * AI 对话输入框使用的受控 mention 编辑器。
  *
  * 对外契约（与下游解析一致，迁移自 react-mentions 时保持不变）：
  *   - value: 含 @[name](id) 标记的纯文本

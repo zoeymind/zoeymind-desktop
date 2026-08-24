@@ -154,27 +154,19 @@ export default {
         tabTools: "Tools",
       },
       toolToggles: {
-        sectionDescription:
-          "Control which extension tools the AI can call when generating test cases. Disabled tools are hidden from the model.",
-        web_search: {
-          label: "Web search",
-          hint: "Allow the AI to search the web for up-to-date information",
+        sectionDescription: "Built-in tools that the Desktop app can currently execute.",
+        available: "Available",
+        query_current_mindmap: {
+          label: "Query current mind map",
+          hint: "Read the outline or a complete subtree, or search the current test-case document",
         },
-        web_fetch: {
-          label: "Web fetch",
-          hint: "Allow the AI to read the main content of a given web page",
+        edit_current_mindmap: {
+          label: "Edit current mind map",
+          hint: "Apply an atomic Tree Hashline Patch to the current test-case document",
         },
-        get_figma_metadata: {
-          label: "Figma structure",
-          hint: "Read the layer skeleton of a Figma design (requires a configured Figma token)",
-        },
-        get_figma_data: {
-          label: "Figma data",
-          hint: "Read detailed data of a Figma design (requires a configured Figma token)",
-        },
-        get_figma_image: {
-          label: "Figma screenshot",
-          hint: "Read a rendered screenshot of a Figma node for visual understanding (requires a configured Figma token)",
+        question: {
+          label: "Ask the user",
+          hint: "Ask structured clarification questions when required information is missing",
         },
       },
       compaction: {
@@ -568,23 +560,15 @@ export default {
       testCaseStats: "{{count}} test cases total",
     },
     contextMenu: {
-      comment: "Comment",
+      copyInternal: "Copy node structure",
       cut: "Cut",
       paste: "Paste",
-      copyXmind: "Copy as XMind structure",
+      copyXmind: "Copy as XMind outline",
       addNode: "Add node",
       addChildNode: "Add child node",
-      recursiveFold: "Fold / unfold recursively",
+      recursiveFold: "Recursively collapse / expand",
       newNode: "New node",
       newChildNode: "New child node",
-    },
-    editor: {
-      documentTitle: "Document title",
-      loadingOrg: "Loading organization info...",
-      newCloudProject: "New cloud project",
-      newProjectTitle: "Untitled mind map",
-      createFailed: "Create failed",
-      importFailed: "Import failed",
     },
     formatPanel: {
       aiPanel: {

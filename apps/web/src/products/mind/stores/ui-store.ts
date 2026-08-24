@@ -6,7 +6,7 @@ import type {
 } from "@/products/mind/features/mindmap/components/types"
 import { logger } from "@zoeymind/logger"
 
-export type FormatTabType = "tags" | "ai" | "video" | "theme" | "stream" | "comment" | undefined
+export type FormatTabType = "tags" | "ai" | "video" | "theme" | "stream" | undefined
 
 interface UIState {
   // 格式面板状态

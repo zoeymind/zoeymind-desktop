@@ -18,7 +18,6 @@ import {
 } from "@/shared/native"
 import { getAgentTools } from "../agent-tools"
 import { contextCompactor } from "../compaction/ContextCompactor"
-import { getEnabledToolNames } from "./useToolSettings"
 import { buildSystemPrompt } from "../prompts/system-prompt"
 import { useAIChatV2Store } from "../stores/useAIChatV2Store"
 import { normalizeChatError } from "../utils/errorHandler"
@@ -29,7 +28,6 @@ interface PreparedTurn {
   userPrompt: string | undefined
   memoryContextText: string | undefined
   mindmapContextText: string | undefined
-  enabledToolNames: string[]
   systemContent: string
   requestedModelId: string
 }
@@ -94,7 +92,6 @@ export function useChatTransport() {
           prepared = preparedTurnCache.get(body.logicalTurnId ?? attemptKey)
           if (!prepared) return errorResponse("CONTEXT_OVERFLOW")
         } else {
-          const enabledToolNames = getEnabledToolNames()
           let mindmapContextText: string | undefined
           let memoryContextText: string | undefined
           const last = transcript[transcript.length - 1]
@@ -126,7 +123,6 @@ export function useChatTransport() {
             userPrompt,
             memoryContextText,
             mindmapContextText,
-            enabledToolNames,
             systemContent: assembleSystem(userPrompt, memoryContextText, mindmapContextText),
             requestedModelId,
           }
@@ -139,7 +135,6 @@ export function useChatTransport() {
             transcript,
             requestedModelId: prepared.requestedModelId,
             systemContent: prepared.systemContent,
-            enabledToolNames: prepared.enabledToolNames,
             force: forced,
             attemptKey,
           },
@@ -164,7 +159,6 @@ export async function runLocalStream(
     transcript: UIMessage[]
     requestedModelId: string
     systemContent: string
-    enabledToolNames: string[]
     force: boolean
     attemptKey: string
   },
