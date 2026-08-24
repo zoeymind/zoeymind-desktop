@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- legacy hook API retains product type gaps during desktop migration
 // @ts-nocheck
 /**
  * useCloudProjects —— 桌面端本地版：由 SqlProjectRepo 驱动，让 CloudProjectList 直接渲染本地导图列表。
@@ -8,27 +9,18 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { logger } from "@zoeymind/logger"
 import { i18next } from "@zoeymind/i18n"
 import { toast } from "@/shared/app-shared"
-import { useNavigate } from "react-router-dom"
-import type { MindMapNodeTree } from "simple-mind-map"
 import { defaultMindmapData } from "@zoeymind/shared"
-import { exists, mkdir } from "@tauri-apps/plugin-fs"
-import { join } from "@tauri-apps/api/path"
 import { useTabs } from "@/shared/tabs/store"
 import { projectSessionRegistry } from "@/products/mind/editor-session"
 import {
-  createUUID,
-  defaultVaultDir,
   listProjects,
   pendingProjects,
   notifyProjectRenamed,
   renameProjectFile,
-  registerProject,
   setStarred,
   useProjectsEvents,
   unregisterProject,
-  writeBundle,
   type ProjectRow,
-  type ZMindBundle,
 } from "@/shared/native"
 
 export interface CloudProjectWithStats {
@@ -77,27 +69,6 @@ function toCloud(row: ProjectRow): CloudProjectWithStats {
   }
 }
 
-function sanitizeFilename(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "Untitled"
-}
-
-async function pickUniquePath(dir: string, baseName: string): Promise<string> {
-  const first = await join(dir, `${baseName}.zmind`)
-  if (!(await exists(first))) return first
-  for (let i = 2; i < 1000; i++) {
-    const candidate = await join(dir, `${baseName}-${i}.zmind`)
-    if (!(await exists(candidate))) return candidate
-  }
-  throw new Error("cannot pick unique filename")
-}
-
-function countNodes(tree: MindMapNodeTree): number {
-  const children = Array.isArray(tree.children) ? tree.children : []
-  let total = 1
-  for (const child of children) total += countNodes(child)
-  return total
-}
-
 interface UseCloudProjectsOptions {
   searchText?: string
   sortType?: "recent" | "created" | "name" | "starred"
@@ -107,14 +78,19 @@ interface UseCloudProjectsOptions {
   onProjectsChanged?: () => void
 }
 
+export function openPendingProject(title: string, tree: MindMapNodeTree): string {
+  const tempId = pendingProjects.stash({ title, tree })
+  useTabs.getState().openTab({ id: tempId, kind: "draft", title })
+  return tempId
+}
+
 export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
   const { searchText = "", sortType = "recent", folderId, onProjectsChanged } = opts
   const [rows, setRows] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const navigate = useNavigate()
 
-  const refreshProjects = useCallback(async (_options?: { silent?: boolean }) => {
+  const refreshProjects = useCallback(async () => {
     try {
       const list = await listProjects()
       setRows(list)
@@ -126,6 +102,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
   const bumpCount = useProjectsEvents(s => s.bumpCount)
   useEffect(() => {
     let mounted = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh state accompanies the external repository read
     setLoading(true)
     listProjects()
       .then(list => {
@@ -166,11 +143,8 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
       setCreating(true)
       try {
         const title = name?.trim() || i18next.t("mindmap.editor.newProjectTitle")
-        // 桌面端：新建不落盘、不入索引。只把 bundle 放内存暂存池，跳转编辑器；
-        // 首次 Ctrl+S 时才让用户选保存路径并入库。
-        const tempId = pendingProjects.stash({ title, tree: defaultMindmapData })
+        openPendingProject(title, defaultMindmapData)
         onProjectsChanged?.()
-        navigate(`/editor/${tempId}`)
       } catch (error) {
         logger.error("创建失败", error)
         toast.error(i18next.t("mindmap.editor.createFailed"))
@@ -178,7 +152,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
         setCreating(false)
       }
     },
-    [creating, navigate, onProjectsChanged]
+    [creating, onProjectsChanged]
   )
 
   const renameProject = useCallback(

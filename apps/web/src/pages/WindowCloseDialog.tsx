@@ -22,6 +22,7 @@ import {
 import type { ProjectSessionStore } from "@/products/mind/editor-session"
 import {
   CLOSE_BEHAVIOR_KEY,
+  actionAfterGuard,
   getCloseBehavior,
   type CloseBehavior,
 } from "@/shared/native/close-behavior"
@@ -75,27 +76,33 @@ export function WindowCloseDialog() {
     void window
       .onCloseRequested(event => {
         if (allowClose) return
-        const proceed = () => {
+        const allowWindowClose = () => {
           allowClose = true
           void window.close()
         }
-        // 脏文件: 守卫先于关闭偏好.
-        if (runGuard(proceed)) {
+        const applyCloseButtonPolicy = () => {
+          const action = actionAfterGuard("close-button", getCloseBehavior())
+          if (action === "allow-close") {
+            allowWindowClose()
+            return
+          }
+          if (action === "hide-to-tray") {
+            void window.hide()
+            return
+          }
+          setRemember(false)
+          setAskOpen(true)
+        }
+        // Dirty sessions are handled first. Once save/discard finishes, evaluate the
+        // current close-button preference instead of bypassing it with window.close().
+        if (runGuard(applyCloseButtonPolicy)) {
           event.preventDefault()
           return
         }
-        const behavior = getCloseBehavior()
-        if (behavior === "quit") return // 放行
-        if (behavior === "tray") {
-          event.preventDefault()
-          void window.hide()
-          return
-        }
-        // ask
+        const action = actionAfterGuard("close-button", getCloseBehavior())
+        if (action === "allow-close") return
         event.preventDefault()
-        setRemember(false)
-        setPendingProceed({ run: proceed })
-        setAskOpen(true)
+        applyCloseButtonPolicy()
       })
       .then(listener => {
         if (disposed) listener()

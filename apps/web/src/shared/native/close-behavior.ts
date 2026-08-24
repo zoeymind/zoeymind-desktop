@@ -22,3 +22,18 @@ export function getCloseBehavior(): CloseBehavior {
     ? (raw as CloseBehavior)
     : DEFAULT_CLOSE_BEHAVIOR
 }
+
+export type CloseButtonAction = "allow-close" | "hide-to-tray" | "ask"
+
+export function closeButtonAction(behavior: CloseBehavior): CloseButtonAction {
+  if (behavior === "quit") return "allow-close"
+  if (behavior === "tray") return "hide-to-tray"
+  return "ask"
+}
+
+export function actionAfterGuard(
+  intent: "close-button" | "explicit-exit",
+  behavior: CloseBehavior
+) {
+  return intent === "explicit-exit" ? "exit-process" : closeButtonAction(behavior)
+}
