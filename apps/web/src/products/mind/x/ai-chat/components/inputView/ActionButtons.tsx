@@ -6,7 +6,7 @@ import React, { useRef } from "react"
 import { ArrowUp, Square, Plus, Loader2 } from "lucide-react"
 import { cn } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
-import { Button } from "@zoeymind/ui"
+import { Button, MetallicButton, useTheme } from "@zoeymind/ui"
 
 interface AttachmentButtonProps {
   onAddImage?: (files: File[]) => void
@@ -81,6 +81,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   hasContent,
 }) => {
   const { t } = useTranslation()
+  const { resolvedTheme } = useTheme()
   const showSend = hasContent && !disabled
   const showStop = isSending && !hasContent
   const isInterruptSend = showSend && isSending
@@ -97,7 +98,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     <ArrowUp className="size-[15px]" />
   )
   const className = cn(
-    "size-[23px] rounded-full shadow-sm active:scale-[0.96]",
+    "size-[23px] rounded-full border-0 shadow-sm",
     showStop
       ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
       : showSend
@@ -105,34 +106,20 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         : "bg-muted text-muted-foreground"
   )
 
-  if (isIdle) {
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-xs"
-        onClick={onSend}
-        disabled
-        className={className}
-        aria-label={label}
-        title={label}
-      >
-        {buttonContent}
-      </Button>
-    )
-  }
-
   return (
-    <Button
+    <MetallicButton
       type="button"
       variant="ghost"
       size="icon-xs"
+      metalTheme={resolvedTheme}
+      metalScale={0.5}
       onClick={showStop ? onStop : onSend}
+      disabled={isIdle}
       className={className}
       aria-label={label}
       title={label}
     >
       {buttonContent}
-    </Button>
+    </MetallicButton>
   )
 }

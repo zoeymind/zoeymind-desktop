@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react"
+import type { ComponentProps, ReactNode } from "react"
 import { describe, expect, it, vi } from "vitest"
 import { ActionButtons } from "./inputView/ActionButtons"
 import { ContextUsageIndicator } from "./ContextUsageIndicator"
@@ -8,6 +9,32 @@ import { ContextUsageIndicator } from "./ContextUsageIndicator"
 vi.mock("metal-fx", () => ({
   MetalFx: ({ children }: { children: React.ReactNode }) => children,
 }))
+vi.mock("@zoeymind/ui", async importOriginal => {
+  const actual = await importOriginal<typeof import("@zoeymind/ui")>()
+  return {
+    ...actual,
+    MetallicButton: ({
+      metalTheme,
+      metalScale,
+      children,
+      ...props
+    }: ComponentProps<"button"> & {
+      metalTheme?: "dark" | "light" | "auto"
+      metalScale?: number
+      children?: ReactNode
+    }) => (
+      <button
+        data-slot="metallic-button"
+        data-metal-theme={metalTheme}
+        data-metal-scale={metalScale}
+        {...props}
+      >
+        {children}
+      </button>
+    ),
+    useTheme: () => ({ resolvedTheme: "dark" as const }),
+  }
+})
 
 vi.mock("@zoeymind/i18n", () => ({
   useTranslation: () => ({
@@ -16,10 +43,14 @@ vi.mock("@zoeymind/i18n", () => ({
 }))
 
 describe("composer runtime regressions", () => {
-  it("does not leak metallic-only props to an active send button", () => {
+  it("keeps metallic rendering props off the underlying send button", () => {
     render(<ActionButtons onSend={vi.fn()} onStop={vi.fn()} isSending={false} hasContent />)
 
     const button = screen.getByRole("button")
+    expect(button.dataset.slot).toBe("metallic-button")
+    expect(button.dataset.metalTheme).toBe("dark")
+    expect(button.dataset.metalScale).toBe("0.5")
+    expect(button.getAttribute("metalTheme")).toBeNull()
     expect(button.getAttribute("metalScale")).toBeNull()
     expect(button.getAttribute("metalscale")).toBeNull()
   })
