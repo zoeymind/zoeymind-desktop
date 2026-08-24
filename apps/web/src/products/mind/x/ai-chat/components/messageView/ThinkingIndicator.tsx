@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * ThinkingIndicator - 思考过程指示器
  *
@@ -6,26 +5,26 @@
  * - 完成后：自动收起为一行摘要，可点击展开查看全文
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import { ChevronDown } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import type { Components } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { useTranslation } from '@zoeymind/i18n'
+import React, { useState, useEffect, useRef, useMemo } from "react"
+import { AnimatePresence, motion } from "motion/react"
+import { ChevronDown } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import type { Components } from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { useTranslation } from "@zoeymind/i18n"
 
 function extractReasoningHeading(text: string): string | undefined {
-  const markdown = text.replace(/\r\n?/g, '\n')
+  const markdown = text.replace(/\r\n?/g, "\n")
   const headings: string[] = []
 
   for (const match of markdown.matchAll(/^\s{0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/gm)) {
-    const cleaned = match[1].replace(/[*_~`]+/g, '').trim()
+    const cleaned = match[1].replace(/[*_~`]+/g, "").trim()
     if (cleaned) headings.push(cleaned)
   }
   if (headings.length > 0) return headings[headings.length - 1]
 
   for (const match of markdown.matchAll(/^\s*(?:\*\*|__)(.+?)(?:\*\*|__)\s*$/gm)) {
-    const cleaned = match[1].replace(/[*_~`]+/g, '').trim()
+    const cleaned = match[1].replace(/[*_~`]+/g, "").trim()
     if (cleaned) headings.push(cleaned)
   }
   if (headings.length > 0) return headings[headings.length - 1]
@@ -36,7 +35,7 @@ function extractReasoningHeading(text: string): string | undefined {
 const mdComponents: Components = {
   p: ({ children }) => <p className="my-0.5">{children}</p>,
   code: ({ className, children, ...props }) => {
-    const isBlock = /language-(\w+)/.test(className || '')
+    const isBlock = /language-(\w+)/.test(className || "")
     if (isBlock) {
       return (
         <pre className="my-1 p-1.5 rounded bg-muted overflow-x-auto">
@@ -67,7 +66,7 @@ const mdComponents: Components = {
   th: ({ children }) => (
     <th className="border border-muted px-1.5 py-0.5 text-left font-medium">{children}</th>
   ),
-  td: ({ children }) => <td className="border border-muted px-1.5 py-0.5">{children}</td>
+  td: ({ children }) => <td className="border border-muted px-1.5 py-0.5">{children}</td>,
 }
 
 interface ThinkingIndicatorProps {
@@ -77,7 +76,7 @@ interface ThinkingIndicatorProps {
 
 export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
   text,
-  isStreaming = false
+  isStreaming = false,
 }) => {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(isStreaming)
@@ -112,12 +111,12 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
         {isStreaming ? (
           <span className="inline-block size-3 rounded-full border-2 border-primary/30 border-t-primary animate-spin flex-shrink-0" />
         ) : (
-          <ChevronDown className={`size-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
         )}
         <span>
           {isStreaming
-            ? t('mindmap.aiChat.message.thinkingShort')
-            : t('mindmap.aiChat.message.thinkingProcess')}
+            ? t("mindmap.aiChat.message.thinkingShort")
+            : t("mindmap.aiChat.message.thinkingProcess")}
         </span>
         {heading && (
           <>
@@ -130,7 +129,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
         {expanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
             className="overflow-hidden"

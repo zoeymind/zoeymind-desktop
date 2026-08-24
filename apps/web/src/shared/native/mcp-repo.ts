@@ -6,12 +6,12 @@
  * 运行时 spawn / 协议客户端：本 repo 只管配置 CRUD；实际拉起 MCP server 进程
  * 由 tauri-plugin-shell 的 Command 完成（后续 wire-up）。
  */
-import { select, execute } from './db'
+import { select, execute } from "./db"
 
 export interface McpServerRow {
   id: string
   name: string
-  kind: 'stdio' | 'sse' | 'http'
+  kind: "stdio" | "sse" | "http"
   command: string | null
   args: string[]
   url: string | null
@@ -39,7 +39,7 @@ interface RawMcpRow {
 function safeParseObject(raw: string): Record<string, string> {
   try {
     const parsed: unknown = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return parsed as Record<string, string>
     }
     return {}
@@ -51,14 +51,14 @@ function safeParseObject(raw: string): Record<string, string> {
 function safeParseArray(raw: string): string[] {
   try {
     const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : []
   } catch {
     return []
   }
 }
 
 function toRow(row: RawMcpRow): McpServerRow {
-  const kind = row.kind === 'sse' || row.kind === 'http' ? row.kind : 'stdio'
+  const kind = row.kind === "sse" || row.kind === "http" ? row.kind : "stdio"
   return {
     id: row.id,
     name: row.name,
@@ -70,7 +70,7 @@ function toRow(row: RawMcpRow): McpServerRow {
     preset: row.preset,
     isEnabled: row.is_enabled === 1,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   }
 }
 
@@ -82,7 +82,7 @@ export async function listMcpServers(): Promise<McpServerRow[]> {
 export interface UpsertMcpServer {
   id: string
   name: string
-  kind: 'stdio' | 'sse' | 'http'
+  kind: "stdio" | "sse" | "http"
   command?: string | null
   args?: string[]
   url?: string | null
@@ -107,7 +107,7 @@ export async function createMcpServer(input: UpsertMcpServer): Promise<void> {
       JSON.stringify(input.headers ?? {}),
       input.preset ?? null,
       input.isEnabled === false ? 0 : 1,
-      now
+      now,
     ]
   )
 }
@@ -118,13 +118,13 @@ export async function updateMcpServer(id: string, patch: Partial<UpsertMcpServer
   const merged: UpsertMcpServer = {
     id,
     name: patch.name ?? existing.name,
-    kind: patch.kind ?? (existing.kind as UpsertMcpServer['kind']),
+    kind: patch.kind ?? (existing.kind as UpsertMcpServer["kind"]),
     command: patch.command ?? existing.command,
     args: patch.args ?? safeParseArray(existing.args_json),
     url: patch.url ?? existing.url,
     headers: patch.headers ?? safeParseObject(existing.headers_json),
     preset: patch.preset ?? existing.preset,
-    isEnabled: patch.isEnabled ?? existing.is_enabled === 1
+    isEnabled: patch.isEnabled ?? existing.is_enabled === 1,
   }
   await execute(
     `UPDATE mcp_servers
@@ -141,7 +141,7 @@ export async function updateMcpServer(id: string, patch: Partial<UpsertMcpServer
       merged.preset ?? null,
       merged.isEnabled === false ? 0 : 1,
       Date.now(),
-      id
+      id,
     ]
   )
 }
@@ -151,8 +151,9 @@ export async function deleteMcpServer(id: string): Promise<void> {
 }
 
 export async function toggleMcpServer(id: string, enabled: boolean): Promise<void> {
-  await execute(
-    `UPDATE mcp_servers SET is_enabled = $1, updated_at = $2 WHERE id = $3`,
-    [enabled ? 1 : 0, Date.now(), id]
-  )
+  await execute(`UPDATE mcp_servers SET is_enabled = $1, updated_at = $2 WHERE id = $3`, [
+    enabled ? 1 : 0,
+    Date.now(),
+    id,
+  ])
 }

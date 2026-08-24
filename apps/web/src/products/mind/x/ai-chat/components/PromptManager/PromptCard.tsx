@@ -6,18 +6,10 @@
  *   - 移除作者头像 (无 user 概念)
  */
 
-import { useTranslation } from '@zoeymind/i18n'
-import {
-  Button,
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  Switch
-} from '@zoeymind/ui'
-import { Edit2, Loader2, Trash2 } from 'lucide-react'
-import type { PromptRecord } from '../../storage/prompt-repo'
+import { useTranslation } from "@zoeymind/i18n"
+import { Button, Card, CardContent, CardFooter, CardHeader, CardTitle, Switch } from "@zoeymind/ui"
+import { Edit2, Loader2, Trash2 } from "lucide-react"
+import type { PromptRecord } from "../../storage/prompt-repo"
 
 interface PromptCardProps {
   prompt: PromptRecord
@@ -34,14 +26,14 @@ export function PromptCard({
   isDeleting = false,
   onToggleEnable,
   onEdit,
-  onDelete
+  onDelete,
 }: PromptCardProps) {
   const { t } = useTranslation()
 
   return (
     <Card
       className={`h-[180px] hover:shadow-md transition-shadow ${
-        isDeleting ? 'opacity-50 pointer-events-none' : ''
+        isDeleting ? "opacity-50 pointer-events-none" : ""
       }`}
     >
       <CardHeader className="pb-3 shrink-0">
@@ -56,7 +48,7 @@ export function PromptCard({
             checked={prompt.isEnabled}
             onCheckedChange={() => onToggleEnable(prompt.id, prompt.isEnabled)}
             disabled={isTogglingEnable}
-            aria-label={t('mindmap.aiChat.core.promptLibrary')}
+            aria-label={t("mindmap.aiChat.core.promptLibrary")}
             className="shrink-0"
           />
         </div>
@@ -79,7 +71,7 @@ export function PromptCard({
               onEdit(prompt.id)
             }}
             disabled={isDeleting}
-            aria-label={t('common.edit')}
+            aria-label={t("common.edit")}
           >
             <Edit2 className="size-4" />
           </Button>
@@ -92,7 +84,7 @@ export function PromptCard({
               onDelete(prompt.id)
             }}
             disabled={isDeleting}
-            aria-label={t('common.delete')}
+            aria-label={t("common.delete")}
           >
             {isDeleting ? (
               <Loader2 className="size-4 animate-spin" />

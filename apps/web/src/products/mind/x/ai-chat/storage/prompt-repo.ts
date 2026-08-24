@@ -5,7 +5,7 @@
  * community tab / togglePublic / saveToLibrary 都不会调到这里.
  */
 
-import { select, execute } from '@/shared/native/db'
+import { select, execute } from "@/shared/native/db"
 
 export interface PromptRecord {
   id: string
@@ -31,11 +31,11 @@ const fromRow = (r: PromptRow): PromptRecord => ({
   content: r.content,
   isEnabled: r.is_enabled === 1,
   createdAt: r.created_at,
-  updatedAt: r.updated_at
+  updatedAt: r.updated_at,
 })
 
 const genId = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID()
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -43,7 +43,7 @@ const genId = (): string => {
 
 export async function listPrompts(): Promise<PromptRecord[]> {
   const rows = await select<PromptRow>(
-    'SELECT id, title, content, is_enabled, created_at, updated_at FROM prompts ORDER BY updated_at DESC'
+    "SELECT id, title, content, is_enabled, created_at, updated_at FROM prompts ORDER BY updated_at DESC"
   )
   return rows.map(fromRow)
 }
@@ -55,7 +55,7 @@ export async function createPrompt(input: {
   const now = Date.now()
   const id = genId()
   await execute(
-    'INSERT INTO prompts (id, title, content, is_enabled, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)',
+    "INSERT INTO prompts (id, title, content, is_enabled, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)",
     [id, input.title, input.content, now, now]
   )
   return {
@@ -64,7 +64,7 @@ export async function createPrompt(input: {
     content: input.content,
     isEnabled: false,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   }
 }
 
@@ -73,22 +73,22 @@ export async function updatePrompt(input: {
   title: string
   content: string
 }): Promise<void> {
-  await execute(
-    'UPDATE prompts SET title = ?, content = ?, updated_at = ? WHERE id = ?',
-    [input.title, input.content, Date.now(), input.id]
-  )
+  await execute("UPDATE prompts SET title = ?, content = ?, updated_at = ? WHERE id = ?", [
+    input.title,
+    input.content,
+    Date.now(),
+    input.id,
+  ])
 }
 
-export async function togglePromptEnable(input: {
-  id: string
-  isEnabled: boolean
-}): Promise<void> {
-  await execute(
-    'UPDATE prompts SET is_enabled = ?, updated_at = ? WHERE id = ?',
-    [input.isEnabled ? 1 : 0, Date.now(), input.id]
-  )
+export async function togglePromptEnable(input: { id: string; isEnabled: boolean }): Promise<void> {
+  await execute("UPDATE prompts SET is_enabled = ?, updated_at = ? WHERE id = ?", [
+    input.isEnabled ? 1 : 0,
+    Date.now(),
+    input.id,
+  ])
 }
 
 export async function deletePrompt(id: string): Promise<void> {
-  await execute('DELETE FROM prompts WHERE id = ?', [id])
+  await execute("DELETE FROM prompts WHERE id = ?", [id])
 }

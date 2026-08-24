@@ -11,7 +11,7 @@ vi.mock("@zoeymind/i18n", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
-vi.mock("../../../ai-chat/context/AIChatRuntimeContext", () => ({
+vi.mock("../../../ai-chat/context/ai-chat-runtime", () => ({
   useAIChatRuntime: () => ({
     messages: [],
     status: "ready",

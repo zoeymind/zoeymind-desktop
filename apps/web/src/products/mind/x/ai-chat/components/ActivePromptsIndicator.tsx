@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * ActivePromptsIndicator — Sparkles 按钮 + Hover 展示当前已启用的 prompts 列表.
  *

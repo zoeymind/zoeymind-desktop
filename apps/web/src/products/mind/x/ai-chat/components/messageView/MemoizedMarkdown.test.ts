@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { splitMarkdownBlocks } from "./MemoizedMarkdown"
+import { splitMarkdownBlocks } from "./split-markdown-blocks"
 
 describe("splitMarkdownBlocks", () => {
   it("splits paragraphs at blank lines", () => {

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 用户自定义提示词管理
  *
@@ -8,16 +7,16 @@
  * - 管理思维导图数据感知开关
  */
 
-import { useState, useEffect } from 'react'
-const USER_PROMPT_STORAGE_PREFIX = 'ai_chat_v2_user_prompt_'
-const MINDMAP_CONTEXT_ENABLED_KEY = 'ai_chat_v2_mindmap_context_enabled'
+import { useState } from "react"
+const USER_PROMPT_STORAGE_PREFIX = "ai_chat_v2_user_prompt_"
+const MINDMAP_CONTEXT_ENABLED_KEY = "ai_chat_v2_mindmap_context_enabled"
 
 /**
  * 获取用户自定义提示词
  */
 export function getUserPrompt(workspaceId: string): string {
   const key = `${USER_PROMPT_STORAGE_PREFIX}${workspaceId}`
-  return localStorage.getItem(key) || ''
+  return localStorage.getItem(key) || ""
 }
 
 /**
@@ -38,7 +37,7 @@ export function setUserPrompt(workspaceId: string, prompt: string): void {
 export function getMindmapContextEnabled(): boolean {
   const value = localStorage.getItem(MINDMAP_CONTEXT_ENABLED_KEY)
   // 默认启用：未设置过（null）时返回 true
-  const enabled = value !== 'false'
+  const enabled = value !== "false"
   return enabled
 }
 
@@ -46,7 +45,7 @@ export function getMindmapContextEnabled(): boolean {
  * 设置思维导图数据感知开关状态
  */
 export function setMindmapContextEnabled(enabled: boolean): void {
-  localStorage.setItem(MINDMAP_CONTEXT_ENABLED_KEY, enabled ? 'true' : 'false')
+  localStorage.setItem(MINDMAP_CONTEXT_ENABLED_KEY, enabled ? "true" : "false")
 }
 
 /**
@@ -54,7 +53,7 @@ export function setMindmapContextEnabled(enabled: boolean): void {
  */
 export function useUserPrompt(workspaceId: string) {
   const [userPrompt, setUserPromptState] = useState(() =>
-    workspaceId ? getUserPrompt(workspaceId) : ''
+    workspaceId ? getUserPrompt(workspaceId) : ""
   )
   const [mindmapContextEnabled, setMindmapContextEnabledState] = useState(true)
 
@@ -76,6 +75,6 @@ export function useUserPrompt(workspaceId: string) {
     userPrompt,
     saveUserPrompt,
     mindmapContextEnabled,
-    saveMindmapContextEnabled
+    saveMindmapContextEnabled,
   }
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * ModelSelector - 模型选择器（DropdownMenu 下拉）。
  *

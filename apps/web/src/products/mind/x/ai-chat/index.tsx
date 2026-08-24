@@ -34,7 +34,7 @@ import { restorePendingFromMessages } from "./context/ToolUIRegistry"
 import { useMCPTools } from "./hooks/useMCPTools"
 import { useModelSelector } from "./hooks/useModelSelector"
 import { useAIChatV2Store } from "./stores/useAIChatV2Store"
-import { useAIChatRuntime } from "./context/AIChatRuntimeContext"
+import { useAIChatRuntime } from "./context/ai-chat-runtime"
 import { useMCPStore } from "../useMCPStore"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { cn, useSettingsDialog } from "@/shared/app-shared"
@@ -122,14 +122,10 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
     return getMindmapContextEnabled()
   })
 
-  // 恢复"未答完的 HITL 工具弹框": 会话加载时 store.loadConversation 已扫过一次,
-  // 这里只兜 HMR / 流结束后的场景. 挂 [status] 而非 [messages]:
-  // 流式期间 messages 引用每 50ms 换新, 全量扫 transcript 是纯浪费.
   useEffect(() => {
     if (status === "streaming" || status === "submitted") return
     restorePendingFromMessages(messages)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- messages 只在 status 落定时读取
-  }, [status])
+  }, [messages, status])
 
   const handleScrollToBottom = () => {
     const messageContainer = document.querySelector("[data-message-container-v2]")

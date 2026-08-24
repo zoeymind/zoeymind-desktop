@@ -289,8 +289,7 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   }, [message.parts])
 
   const renderPart = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (part: any, partIndex: number, isLastActive = false) => {
+    (part: unknown, partIndex: number, isLastActive = false) => {
       const genericPart = part as GenericMessagePart
       const isToolType =
         typeof genericPart.type === "string" && genericPart.type.startsWith("tool-")
@@ -315,7 +314,7 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
           />
         )
       }
-      if (part.type === "text") {
+      if (genericPart.type === "text") {
         return renderTextPart(genericPart, isLastActive ? `last-${partIndex}` : partIndex)
       }
       if (isToolCallPart(part)) {

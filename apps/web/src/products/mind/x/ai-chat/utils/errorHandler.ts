@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * AI Chat 错误处理工具
  *
@@ -17,10 +16,7 @@ import type { UIMessage } from "@ai-sdk/react"
 import { logger } from "@zoeymind/logger"
 
 export type ChatErrorCode =
-  | "INSUFFICIENT_QUOTA"
-  | "CONTEXT_OVERFLOW"
-  | "REQUEST_FAILED"
-  | "CLIENT_RUNTIME_ERROR"
+  "INSUFFICIENT_QUOTA" | "CONTEXT_OVERFLOW" | "REQUEST_FAILED" | "CLIENT_RUNTIME_ERROR"
 
 interface GenericPart {
   type: string
@@ -87,7 +83,6 @@ export function isClientRuntimeError(error: unknown): boolean {
     REACT_RUNTIME_PHRASES.some(phrase => normalized.includes(phrase))
   )
 }
-
 
 export function normalizeChatError(error: unknown): ChatErrorCode {
   if (isClientRuntimeError(error)) return "CLIENT_RUNTIME_ERROR"

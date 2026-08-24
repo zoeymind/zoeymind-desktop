@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { UIMessage } from "@ai-sdk/react"
-import { setModuleAIChatRuntime } from "../context/AIChatRuntimeContext"
+import { setModuleAIChatRuntime } from "../context/ai-chat-runtime"
 import { chatDB } from "../storage/chatDB"
 import { useAIChatV2Store } from "./useAIChatV2Store"
 

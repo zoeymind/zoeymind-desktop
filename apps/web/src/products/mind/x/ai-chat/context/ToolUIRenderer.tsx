@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy mirrored chat module remains untyped */
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * ToolUIRenderer — 遍历 pending 队列, 渲染每个 pending tool call 对应的 UI.
  *
@@ -21,7 +19,7 @@ import {
   subscribeToolUIPending,
   type PendingToolUICall,
 } from "./ToolUIRegistry"
-import { getModuleAIChatRuntime } from "./AIChatRuntimeContext"
+import { getModuleAIChatRuntime } from "./ai-chat-runtime"
 import { logger } from "@zoeymind/logger"
 
 interface ToolUIItemProps {

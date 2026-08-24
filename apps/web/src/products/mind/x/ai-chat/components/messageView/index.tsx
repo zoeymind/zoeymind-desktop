@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy mirrored chat module remains untyped */
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 import React, { useEffect, useRef, useState } from "react"
 import { UserMessage } from "./UserMessage"
 import { AssistantMessage } from "./AssistantMessage"
 import { CompactSummaryCard } from "./CompactSummaryCard"
 import { useCompactionStore } from "../../compaction/useCompactionStore"
 import { logger } from "@zoeymind/logger"
-import { useAIChatRuntime } from "../../../ai-chat/context/AIChatRuntimeContext"
+import { useAIChatRuntime } from "../../../ai-chat/context/ai-chat-runtime"
 import { hasRenderableContent } from "../../../ai-chat/utils/message-content"
 import { Spinner } from "@zoeymind/ui"
 import { ChevronUp } from "lucide-react"

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * QuestionToolUI — 把 'question' 工具的 UI 注册收成一个 hook.
  *

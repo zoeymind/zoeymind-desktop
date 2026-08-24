@@ -1,4 +1,3 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * 模块内部使用的 tRPC 类型入口。
  *
@@ -9,7 +8,7 @@
  * 具体路由的入参/返回不做静态绑定（那会把 apps/api 的编译上下文拉进本项目）。
  * 调用方用泛型参数声明期望形态：`useQuery<{ tools: Tool[] }>()`，缺省为 `unknown`。
  */
-import { trpc as baseTrpc, trpcClient as baseTrpcClient } from '@/shared/app-shared'
+import { trpc as baseTrpc, trpcClient as baseTrpcClient } from "@/shared/app-shared"
 
 interface QueryResult<TData> {
   data: TData | undefined
@@ -58,9 +57,9 @@ interface ModuleNamespaces {
 type BaseTrpc = typeof baseTrpc
 type BaseTrpcClient = typeof baseTrpcClient
 
-type BaseUtils = ReturnType<BaseTrpc['useUtils']>
+type BaseUtils = ReturnType<BaseTrpc["useUtils"]>
 
-type ExpandedTrpc = Omit<BaseTrpc, 'useUtils'> &
+type ExpandedTrpc = Omit<BaseTrpc, "useUtils"> &
   ModuleNamespaces & {
     useUtils: () => BaseUtils & ModuleNamespaces
   }

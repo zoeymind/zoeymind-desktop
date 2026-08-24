@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * SimpleAskUserPanel - AI `question` 工具的应答面板（单题分页，模块化）。
  *
@@ -11,12 +10,12 @@
  * （末题则停留、由用户点提交）。取消则保留当前题。
  */
 
-import { useState, useEffect } from 'react'
-import { motion } from 'motion/react'
-import { Button, Textarea } from '@zoeymind/ui'
-import { Check, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react'
-import { cn } from '@/shared/app-shared'
-import { useTranslation } from '@zoeymind/i18n'
+import { useState, useEffect } from "react"
+import { motion } from "motion/react"
+import { Button, Textarea } from "@zoeymind/ui"
+import { Check, ChevronLeft, ChevronRight, Pencil, X } from "lucide-react"
+import { cn } from "@/shared/app-shared"
+import { useTranslation } from "@zoeymind/i18n"
 
 interface QuestionOption {
   label: string
@@ -49,37 +48,40 @@ export interface SimpleAskUserPanelProps {
 }
 
 const OPTION_ROW_CLASS =
-  'w-full text-left px-2 py-1 rounded transition-colors hover:bg-muted/50 active:bg-muted/70'
+  "w-full text-left px-2 py-1 rounded transition-colors hover:bg-muted/50 active:bg-muted/70"
 
 export function SimpleAskUserPanel({
   questions: incomingQuestions,
   onSubmit,
-  onSkip
+  onSkip,
 }: SimpleAskUserPanelProps) {
   const { t } = useTranslation()
   const [questions, setQuestions] = useState<QuestionItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   // 自定义编辑态（仅作用于当前题）
   const [isEditing, setIsEditing] = useState(false)
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState("")
   // 多选时正在编辑的既有自定义值（null = 新增）
   const [editingValue, setEditingValue] = useState<string | null>(null)
 
   useEffect(() => {
-    setQuestions(
-      incomingQuestions.map((q, i) => ({
-        id: `q${i}`,
-        question: q.question,
-        options: q.options,
-        multiple: q.multiple,
-        placeholder: q.placeholder,
-        answer: q.multiple ? [] : undefined
-      }))
-    )
-    setCurrentIndex(0)
-    setIsEditing(false)
-    setDraft('')
-    setEditingValue(null)
+    const frame = requestAnimationFrame(() => {
+      setQuestions(
+        incomingQuestions.map((q, i) => ({
+          id: `q${i}`,
+          question: q.question,
+          options: q.options,
+          multiple: q.multiple,
+          placeholder: q.placeholder,
+          answer: q.multiple ? [] : undefined,
+        }))
+      )
+      setCurrentIndex(0)
+      setIsEditing(false)
+      setDraft("")
+      setEditingValue(null)
+    })
+    return () => cancelAnimationFrame(frame)
   }, [incomingQuestions])
 
   const totalQuestions = questions.length
@@ -97,7 +99,7 @@ export function SimpleAskUserPanel({
       )
     }
     const a = currentQuestion.answer
-    return typeof a === 'string' && a && !opts.some(o => o.label === a) ? [a] : []
+    return typeof a === "string" && a && !opts.some(o => o.label === a) ? [a] : []
   })()
 
   const handleAnswerChange = (questionId: string, answer: unknown) => {
@@ -106,7 +108,7 @@ export function SimpleAskUserPanel({
 
   const exitEdit = () => {
     setIsEditing(false)
-    setDraft('')
+    setDraft("")
     setEditingValue(null)
   }
 
@@ -155,7 +157,7 @@ export function SimpleAskUserPanel({
 
   const startCustomEdit = (existingValue?: string) => {
     setEditingValue(existingValue ?? null)
-    setDraft(existingValue ?? '')
+    setDraft(existingValue ?? "")
     setIsEditing(true)
   }
 
@@ -190,13 +192,13 @@ export function SimpleAskUserPanel({
         Array.isArray(currentQuestion.answer) && (currentQuestion.answer as string[]).length > 0
       )
     }
-    return typeof currentQuestion.answer === 'string' && currentQuestion.answer.length > 0
+    return typeof currentQuestion.answer === "string" && currentQuestion.answer.length > 0
   }
 
   const handleSubmit = () => {
     const responses = questions.map(q => {
       if (Array.isArray(q.answer)) return [...(q.answer as string[])]
-      if (typeof q.answer === 'string' && q.answer) return [q.answer]
+      if (typeof q.answer === "string" && q.answer) return [q.answer]
       return []
     })
     onSubmit(responses)
@@ -213,9 +215,9 @@ export function SimpleAskUserPanel({
   return (
     <motion.div
       initial={{ height: 0, opacity: 0 }}
-      animate={{ height: 'auto', opacity: 1 }}
+      animate={{ height: "auto", opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
-      transition={{ duration: 0.2, ease: 'easeInOut' }}
+      transition={{ duration: 0.2, ease: "easeInOut" }}
       className="overflow-hidden"
     >
       <div className="mb-2 rounded-md border bg-muted/50">
@@ -246,15 +248,15 @@ export function SimpleAskUserPanel({
                   onChange={e => setDraft(e.target.value)}
                   onKeyDown={e => {
                     e.stopPropagation()
-                    if (e.key === 'Escape') {
+                    if (e.key === "Escape") {
                       e.preventDefault()
                       exitEdit()
-                    } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                       e.preventDefault()
                       confirmCustomEdit()
                     }
                   }}
-                  placeholder={t('mindmap.aiChat.input.askUserCustomOptionPlaceholder')}
+                  placeholder={t("mindmap.aiChat.input.askUserCustomOptionPlaceholder")}
                   rows={3}
                   className="min-h-[64px] resize-none text-[11px]"
                 />
@@ -265,7 +267,7 @@ export function SimpleAskUserPanel({
                     className="h-6 px-2 text-[10px]"
                     onClick={exitEdit}
                   >
-                    {t('common.cancel')}
+                    {t("common.cancel")}
                   </Button>
                   <Button
                     size="sm"
@@ -274,7 +276,7 @@ export function SimpleAskUserPanel({
                     disabled={!draft.trim()}
                   >
                     <Check className="mr-0.5 size-3" />
-                    {t('mindmap.aiChat.input.askUserConfirm')}
+                    {t("mindmap.aiChat.input.askUserConfirm")}
                   </Button>
                 </div>
               </div>
@@ -288,7 +290,7 @@ export function SimpleAskUserPanel({
                       type="button"
                       key={i}
                       onClick={() => handleOptionSelect(option.label)}
-                      className={cn(OPTION_ROW_CLASS, selected && 'bg-primary/10 text-primary')}
+                      className={cn(OPTION_ROW_CLASS, selected && "bg-primary/10 text-primary")}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
@@ -311,7 +313,7 @@ export function SimpleAskUserPanel({
                     type="button"
                     key={`custom-${i}`}
                     onClick={() => startCustomEdit(customValue)}
-                    className={cn(OPTION_ROW_CLASS, 'bg-primary/10 text-primary')}
+                    className={cn(OPTION_ROW_CLASS, "bg-primary/10 text-primary")}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -328,29 +330,29 @@ export function SimpleAskUserPanel({
                   <button
                     type="button"
                     onClick={() => startCustomEdit()}
-                    className={cn(OPTION_ROW_CLASS, 'text-[11px] text-muted-foreground')}
+                    className={cn(OPTION_ROW_CLASS, "text-[11px] text-muted-foreground")}
                   >
                     {currentQuestion.multiple
-                      ? t('mindmap.aiChat.input.askUserAddCustomOption')
-                      : t('mindmap.aiChat.input.askUserCustomInput')}
+                      ? t("mindmap.aiChat.input.askUserAddCustomOption")
+                      : t("mindmap.aiChat.input.askUserCustomInput")}
                   </button>
                 )}
               </div>
             ) : (
               /* 纯文本题：可换行 textarea */
               <Textarea
-                value={(currentQuestion.answer as string) || ''}
+                value={(currentQuestion.answer as string) || ""}
                 onChange={e => handleAnswerChange(currentQuestion.id, e.target.value)}
                 onKeyDown={e => {
                   e.stopPropagation()
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && hasAnswer()) {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && hasAnswer()) {
                     e.preventDefault()
                     if (isLast) handleSubmit()
                     else goNext()
                   }
                 }}
                 placeholder={
-                  currentQuestion.placeholder || t('mindmap.aiChat.input.askUserDefaultPlaceholder')
+                  currentQuestion.placeholder || t("mindmap.aiChat.input.askUserDefaultPlaceholder")
                 }
                 rows={3}
                 className="min-h-[64px] resize-none text-[11px]"
@@ -371,7 +373,7 @@ export function SimpleAskUserPanel({
                   onClick={handleSkip}
                 >
                   <X className="mr-0.5 size-2.5" />
-                  {t('mindmap.aiChat.input.askUserSkip')}
+                  {t("mindmap.aiChat.input.askUserSkip")}
                 </Button>
               )}
               <Button
@@ -380,7 +382,7 @@ export function SimpleAskUserPanel({
                 className="size-6 text-muted-foreground hover:text-foreground"
                 onClick={goPrev}
                 disabled={isFirst}
-                title={t('common.prev')}
+                title={t("common.prev")}
               >
                 <ChevronLeft className="size-3.5" />
               </Button>
@@ -393,7 +395,7 @@ export function SimpleAskUserPanel({
                 className="size-6 text-muted-foreground hover:text-foreground"
                 onClick={goNext}
                 disabled={isLast}
-                title={t('common.next')}
+                title={t("common.next")}
               >
                 <ChevronRight className="size-3.5" />
               </Button>
@@ -402,11 +404,11 @@ export function SimpleAskUserPanel({
             {isLast ? (
               <Button size="sm" className="h-6 px-2 text-[10px]" onClick={handleSubmit}>
                 <Check className="mr-1 size-2.5" />
-                {t('mindmap.aiChat.input.askUserSubmitAll')}
+                {t("mindmap.aiChat.input.askUserSubmitAll")}
               </Button>
             ) : (
               <Button size="sm" className="h-6 px-2 text-[10px]" onClick={goNext}>
-                {t('common.next')}
+                {t("common.next")}
                 <ChevronRight className="ml-0.5 size-3" />
               </Button>
             )}

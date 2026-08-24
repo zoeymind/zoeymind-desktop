@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * useResizableWidth — 单向 (left handle drag-left → 变宽) 浮动面板 resize hook.
  *
@@ -7,7 +6,7 @@
  * `position: fixed` 单边 handle 的浮窗场景, 所以我们用自家 hook 替代库.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface UseResizableWidthOptions {
   initial: number
@@ -25,7 +24,7 @@ export interface UseResizableWidthResult {
 export function useResizableWidth({
   initial,
   min,
-  max
+  max,
 }: UseResizableWidthOptions): UseResizableWidthResult {
   const [width, setWidth] = useState(initial)
   const [isDragging, setIsDragging] = useState(false)
@@ -54,11 +53,11 @@ export function useResizableWidth({
     }
     const onMouseUp = () => setIsDragging(false)
 
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
     return () => {
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
     }
   }, [isDragging, min, max])
 

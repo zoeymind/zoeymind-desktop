@@ -5,13 +5,13 @@
  *   const stop = await streamChat({ providerId, model, messages, onDelta, onDone, onError })
  *   stop()  // 中止
  */
-import { invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { createUUID } from '@/shared/app-shared'
-import type { ModelProvider } from './models-config'
+import { invoke } from "@tauri-apps/api/core"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
+import { createUUID } from "@/shared/app-shared"
+import type { ModelProvider } from "./models-config"
 
 export interface StreamChatMessage {
-  role: 'user' | 'assistant' | 'system'
+  role: "user" | "assistant" | "system"
   content: string
 }
 
@@ -57,20 +57,18 @@ export async function streamChat(opts: StreamChatOptions): Promise<StreamChatHan
   }
 
   unlisten.push(
-    await listen<DeltaEvent['payload']>(`chat:${requestId}:delta`, event => {
+    await listen<DeltaEvent["payload"]>(`chat:${requestId}:delta`, event => {
       opts.onDelta?.(event.payload.text)
     })
   )
   unlisten.push(
-    await listen<DoneEvent['payload']>(`chat:${requestId}:done`, event => {
-      console.log('[desktop-chat] done', event.payload)
+    await listen<DoneEvent["payload"]>(`chat:${requestId}:done`, event => {
       opts.onDone?.(event.payload.finish_reason)
       cleanup()
     })
   )
   unlisten.push(
-    await listen<ErrorEvent['payload']>(`chat:${requestId}:error`, event => {
-      console.error('[desktop-chat] error event', event.payload)
+    await listen<ErrorEvent["payload"]>(`chat:${requestId}:error`, event => {
       opts.onError?.(event.payload.message)
       cleanup()
     })
@@ -81,22 +79,19 @@ export async function streamChat(opts: StreamChatOptions): Promise<StreamChatHan
       provider: {
         kind: opts.provider.kind,
         baseUrl: opts.provider.baseURL,
-        apiKey: opts.provider.apiKey
+        apiKey: opts.provider.apiKey,
       },
       model: opts.model,
       messages: opts.messages,
       temperature: opts.temperature,
-      maxTokens: opts.maxTokens
-    }
+      maxTokens: opts.maxTokens,
+    },
   }
-  console.log('[desktop-chat] invoke chat_stream', invokeArgs)
   try {
-    await invoke('chat_stream', invokeArgs)
-    console.log('[desktop-chat] invoke chat_stream returned Ok')
+    await invoke("chat_stream", invokeArgs)
   } catch (err) {
     cleanup()
     const msg = err instanceof Error ? err.message : String(err)
-    console.error('[desktop-chat] invoke chat_stream failed', err)
     opts.onError?.(msg)
     throw err
   }
@@ -105,10 +100,10 @@ export async function streamChat(opts: StreamChatOptions): Promise<StreamChatHan
     requestId,
     abort: async () => {
       try {
-        await invoke('chat_stream_abort', { requestId })
+        await invoke("chat_stream_abort", { requestId })
       } finally {
         cleanup()
       }
-    }
+    },
   }
 }

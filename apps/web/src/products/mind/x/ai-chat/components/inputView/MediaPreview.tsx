@@ -1,11 +1,10 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MediaPreview - 媒体文件预览组件
  */
 
-import React, { useRef, useEffect } from 'react'
-import { PreviewMedia } from '@zoeymind/ui'
-import type { Attachment } from '../../../ai-chat/types'
+import React, { useRef, useEffect } from "react"
+import { PreviewMedia } from "@zoeymind/ui"
+import type { Attachment } from "../../../ai-chat/types"
 
 interface MediaPreviewProps {
   attachments: Attachment[]
@@ -16,7 +15,7 @@ interface MediaPreviewProps {
 export const MediaPreview: React.FC<MediaPreviewProps> = ({
   attachments,
   onRemove,
-  disabled = false
+  disabled = false,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -27,19 +26,19 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
         e.preventDefault()
         scrollContainerRef.current.scrollBy({
           left: e.deltaY > 0 ? 40 : -40,
-          behavior: 'smooth'
+          behavior: "smooth",
         })
       }
     }
 
     const container = scrollContainerRef.current
     if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false })
+      container.addEventListener("wheel", handleWheel, { passive: false })
     }
 
     return () => {
       if (container) {
-        container.removeEventListener('wheel', handleWheel)
+        container.removeEventListener("wheel", handleWheel)
       }
     }
   }, [])
@@ -52,9 +51,9 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
   // 将 attachments 转换为 MediaItem 格式
   const mediaItems = attachments.map((att, index) => ({
     id: att.id || `attachment-${index}`,
-    name: att.name || 'image',
+    name: att.name || "image",
     url: att.dataUrl,
-    type: att.type === 'image' ? ('image' as const) : ('file' as const)
+    type: att.type === "image" ? ("image" as const) : ("file" as const),
   }))
 
   return (

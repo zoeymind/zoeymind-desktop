@@ -1,8 +1,7 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 时间格式化工具
  */
-import { i18next } from '@zoeymind/i18n'
+import { i18next } from "@zoeymind/i18n"
 
 /**
  * 格式化相对时间标签
@@ -16,15 +15,15 @@ export function formatRelativeTime(timestamp: number): string {
   const day = 24 * hour
 
   if (diff < day) {
-    return i18next.t('mindmap.aiChat.dateGroup.today')
+    return i18next.t("mindmap.aiChat.dateGroup.today")
   } else if (diff < 2 * day) {
-    return i18next.t('mindmap.aiChat.dateGroup.yesterday')
+    return i18next.t("mindmap.aiChat.dateGroup.yesterday")
   } else if (diff < 7 * day) {
-    return i18next.t('mindmap.aiChat.dateGroup.last7Days')
+    return i18next.t("mindmap.aiChat.dateGroup.last7Days")
   } else if (diff < 30 * day) {
-    return i18next.t('mindmap.aiChat.dateGroup.last30Days')
+    return i18next.t("mindmap.aiChat.dateGroup.last30Days")
   } else {
-    return i18next.t('mindmap.aiChat.dateGroup.earlier')
+    return i18next.t("mindmap.aiChat.dateGroup.earlier")
   }
 }
 

@@ -36,7 +36,7 @@ import {
   setModuleAIChatRuntime,
   getModuleAIChatRuntime,
   type AIChatRuntime,
-} from "../../ai-chat/context/AIChatRuntimeContext"
+} from "../../ai-chat/context/ai-chat-runtime"
 
 function getAttemptKey(): string | null {
   const store = useAIChatV2Store.getState()

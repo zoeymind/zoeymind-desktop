@@ -1,4 +1,3 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * MCP 连接状态存储（仅内存）
  *
@@ -6,7 +5,7 @@
  * 此 store 只保留前端「连接测试状态」这种纯 UI 临时态，不持久化。
  */
 
-import { create } from 'zustand'
+import { create } from "zustand"
 
 export interface MCPServerStatus {
   connected: boolean
@@ -29,7 +28,7 @@ export const useMCPStore = create<MCPStatusSlice>()((set, get) => ({
 
   updateServerStatus: (name, status) => {
     set(state => ({
-      serverStatus: { ...state.serverStatus, [name]: status }
+      serverStatus: { ...state.serverStatus, [name]: status },
     }))
   },
 
@@ -43,5 +42,5 @@ export const useMCPStore = create<MCPStatusSlice>()((set, get) => ({
 
   clearAllStatus: () => set({ serverStatus: {} }),
 
-  getServerStatus: name => get().serverStatus[name]
+  getServerStatus: name => get().serverStatus[name],
 }))

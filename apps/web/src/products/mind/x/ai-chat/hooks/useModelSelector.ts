@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- desktop model config shim retains legacy hook API gaps
-// @ts-nocheck
 /**
  * 模型选择器 Hook (AIchatV2) —— 桌面端本地版.
  *
@@ -70,20 +68,27 @@ export function useModelSelector() {
   const [cfg, setCfg] = useState<ModelsConfig | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const refresh = useCallback(() => {
-    setIsLoading(true)
-    void loadModelsConfig()
-      .then(setCfg)
-      .catch(err => logger.error("loadModelsConfig", err))
-      .finally(() => setIsLoading(false))
+  const refresh = useCallback(async () => {
+    try {
+      setCfg(await loadModelsConfig())
+    } catch (error) {
+      logger.error("loadModelsConfig", error)
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load synchronizes the external models.json file
-    refresh()
-    const onUpdate = () => refresh()
+    const frame = requestAnimationFrame(() => void refresh())
+    const onUpdate = () => {
+      setIsLoading(true)
+      void refresh()
+    }
     window.addEventListener(MODELS_UPDATED_EVENT, onUpdate)
-    return () => window.removeEventListener(MODELS_UPDATED_EVENT, onUpdate)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener(MODELS_UPDATED_EVENT, onUpdate)
+    }
   }, [refresh])
   const models = useMemo(() => configuredAIModels(cfg), [cfg])
 

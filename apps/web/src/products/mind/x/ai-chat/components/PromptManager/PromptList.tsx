@@ -5,8 +5,8 @@
  *   - trpc.prompt.* 换成 usePrompts.* (react-query + sqlite)
  */
 
-import { useMemo, useState } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
+import { useMemo, useState } from "react"
+import { useTranslation } from "@zoeymind/i18n"
 import {
   Button,
   Card,
@@ -14,15 +14,11 @@ import {
   CardFooter,
   CardHeader,
   ScrollArea,
-  Skeleton
-} from '@zoeymind/ui'
-import { AlertCircle, Edit2 } from 'lucide-react'
-import { DeleteDialog } from '@/products/mind/features/mindmap/components/projects/dialogs/DeleteDialog'
-import {
-  useDeletePrompt,
-  usePromptsQuery,
-  useTogglePromptEnable
-} from '../../hooks/usePrompts'
+  Skeleton,
+} from "@zoeymind/ui"
+import { AlertCircle, Edit2 } from "lucide-react"
+import { DeleteDialog } from "@/products/mind/features/mindmap/components/projects/dialogs/DeleteDialog"
+import { useDeletePrompt, usePromptsQuery, useTogglePromptEnable } from "../../hooks/usePrompts"
 
 interface PromptListProps {
   onEdit: (id: string) => void
@@ -36,10 +32,7 @@ export function PromptList({ onEdit }: PromptListProps) {
   const toggleEnableMutation = useTogglePromptEnable()
   const deleteMutation = useDeletePrompt()
 
-  const promptToDelete = useMemo(
-    () => prompts?.find(p => p.id === deleteId),
-    [deleteId, prompts]
-  )
+  const promptToDelete = useMemo(() => prompts?.find(p => p.id === deleteId), [deleteId, prompts])
 
   const handleToggleEnable = (id: string, current: boolean) => {
     toggleEnableMutation.mutate({ id, isEnabled: !current })
@@ -80,10 +73,10 @@ export function PromptList({ onEdit }: PromptListProps) {
           <AlertCircle className="size-8 opacity-50" />
         </div>
         <p className="text-sm text-center max-w-sm">
-          {t('mindmap.aiChat.error.requestFailed.body')}
+          {t("mindmap.aiChat.error.requestFailed.body")}
         </p>
         <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>
-          {t('common.retry')}
+          {t("common.retry")}
         </Button>
       </div>
     )
@@ -95,8 +88,8 @@ export function PromptList({ onEdit }: PromptListProps) {
         <div className="bg-muted p-4 rounded-full mb-4">
           <Edit2 className="size-8 opacity-50" />
         </div>
-        <p className="text-lg font-medium">{t('mindmap.aiChat.prompt.empty.title')}</p>
-        <p className="text-sm opacity-70 mt-1">{t('mindmap.aiChat.prompt.empty.myHint')}</p>
+        <p className="text-lg font-medium">{t("mindmap.aiChat.prompt.empty.title")}</p>
+        <p className="text-sm opacity-70 mt-1">{t("mindmap.aiChat.prompt.empty.myHint")}</p>
       </div>
     )
   }
@@ -128,10 +121,10 @@ export function PromptList({ onEdit }: PromptListProps) {
       <DeleteDialog
         open={Boolean(deleteId)}
         onOpenChange={open => !open && setDeleteId(null)}
-        itemName={promptToDelete?.title ?? ''}
-        title={t('mindmap.aiChat.prompt.delete.title')}
-        description={t('mindmap.aiChat.prompt.delete.description', {
-          name: promptToDelete?.title ?? ''
+        itemName={promptToDelete?.title ?? ""}
+        title={t("mindmap.aiChat.prompt.delete.title")}
+        description={t("mindmap.aiChat.prompt.delete.description", {
+          name: promptToDelete?.title ?? "",
         })}
         onConfirm={handleConfirmDelete}
         loading={deleteMutation.isPending}
@@ -141,5 +134,5 @@ export function PromptList({ onEdit }: PromptListProps) {
 }
 
 // 单独抽 lazy import 会更好, 但目前 PromptCard 已经足够轻, 直接引入即可.
-import { PromptCard } from './PromptCard'
+import { PromptCard } from "./PromptCard"
 const PromptCardLazy = PromptCard

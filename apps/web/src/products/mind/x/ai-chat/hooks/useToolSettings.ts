@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * useToolSettings — AI 聊天"可开关工具"偏好.
  *
@@ -10,33 +9,33 @@
  * 老用户默认自动启用它 (不在禁用列表里 = 启用), 符合"默认全开"的预期.
  */
 
-import { useCallback, useState } from 'react'
-import { TOGGLEABLE_TOOL_NAMES, type ToggleableToolName } from '@zoeymind/shared'
-import { logger } from '@zoeymind/logger'
+import { useCallback, useState } from "react"
+import { TOGGLEABLE_TOOL_NAMES, type ToggleableToolName } from "@zoeymind/shared"
+import { logger } from "@zoeymind/logger"
 
-const DISABLED_TOOLS_STORAGE_KEY = 'ai_chat_v2_disabled_tools'
+const DISABLED_TOOLS_STORAGE_KEY = "ai_chat_v2_disabled_tools"
 
 /** 从 localStorage 读被禁用的工具名集合 (脏数据静默忽略). */
 function readDisabledToolNames(): Set<string> {
-  if (typeof window === 'undefined') return new Set()
+  if (typeof window === "undefined") return new Set()
   try {
     const raw = localStorage.getItem(DISABLED_TOOLS_STORAGE_KEY)
     if (!raw) return new Set()
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return new Set()
-    return new Set(parsed.filter((name): name is string => typeof name === 'string'))
+    return new Set(parsed.filter((name): name is string => typeof name === "string"))
   } catch (error) {
-    logger.warn('[useToolSettings] 读取工具开关失败, 回退到默认全开', { error })
+    logger.warn("[useToolSettings] 读取工具开关失败, 回退到默认全开", { error })
     return new Set()
   }
 }
 
 function writeDisabledToolNames(disabled: Set<string>): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === "undefined") return
   try {
     localStorage.setItem(DISABLED_TOOLS_STORAGE_KEY, JSON.stringify([...disabled]))
   } catch (error) {
-    logger.warn('[useToolSettings] 保存工具开关失败', { error })
+    logger.warn("[useToolSettings] 保存工具开关失败", { error })
   }
 }
 

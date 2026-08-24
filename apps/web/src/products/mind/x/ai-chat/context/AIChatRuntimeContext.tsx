@@ -1,29 +1,6 @@
-/**
- * AIChatRuntimeContext — exposes the SDK handles and reactive chat state.
- */
-
-import {
-  createContext,
-  useContext,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type ReactNode,
-  type ReactElement,
-} from "react"
-import type { AddToolOutputParams, SendMessageParams } from "../../ai-chat/types"
-import type { UIMessage } from "@ai-sdk/react"
-
-export interface AIChatRuntime {
-  sendMessage: (params: SendMessageParams) => void
-  regenerate: (options?: { body?: Record<string, unknown> }) => void
-  stop: () => void
-  setMessages: (messages: UIMessage[]) => void
-  addToolOutput: (params: AddToolOutputParams) => Promise<void>
-  messages: UIMessage[]
-  status: string
-  error: Error | undefined
-}
+import { useLayoutEffect, useMemo, useRef, type ReactNode, type ReactElement } from "react"
+import { AIChatRuntimeContext } from "./ai-chat-runtime"
+import type { AIChatRuntime } from "./ai-chat-runtime"
 
 interface AIChatRuntimeActionRefs {
   sendMessage: AIChatRuntime["sendMessage"] | null
@@ -32,8 +9,6 @@ interface AIChatRuntimeActionRefs {
   setMessages: AIChatRuntime["setMessages"] | null
   addToolOutput: AIChatRuntime["addToolOutput"] | null
 }
-
-const AIChatRuntimeContext = createContext<AIChatRuntime | null>(null)
 
 interface AIChatRuntimeProviderProps {
   /** 由 useAIChat 计算好后传入; 必须稳定 (内部用 refs 解耦 identity) */
@@ -98,34 +73,4 @@ export function AIChatRuntimeProvider({
   )
 
   return <AIChatRuntimeContext.Provider value={value}>{children}</AIChatRuntimeContext.Provider>
-}
-
-/**
- * 在组件 / 派生 hook 里拿当前 AI 聊天的运行时. 必须在 AIChatRuntimeProvider 内调用,
- * 否则抛 — 漏 Provider 是程序员错误, 不应当作"运行时无 mindMap"那样默默吃掉.
- */
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAIChatRuntime(): AIChatRuntime {
-  const value = useContext(AIChatRuntimeContext)
-  if (!value) {
-    throw new Error("useAIChatRuntime must be called inside <AIChatRuntimeProvider>")
-  }
-  return value
-}
-
-/**
- * 非组件上下文 (store actions / module-level helpers) 也需要拿到 runtime,
- * 这里提供一个 module-level singleton, 由 useAIChat 在 mount 时填充.
- * 仅用于 Zustand store action 这种没法直接 useContext 的地方.
- */
-let moduleRuntime: AIChatRuntime | null = null
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function setModuleAIChatRuntime(runtime: AIChatRuntime | null): void {
-  moduleRuntime = runtime
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function getModuleAIChatRuntime(): AIChatRuntime | null {
-  return moduleRuntime
 }

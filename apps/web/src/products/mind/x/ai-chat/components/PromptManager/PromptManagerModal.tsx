@@ -4,18 +4,12 @@
  *   - 无 preview mode 分支
  */
 
-import { useState } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@zoeymind/ui'
-import { ArrowLeft, Plus, Sparkles } from 'lucide-react'
-import { PromptEditor } from './PromptEditor'
-import { PromptList } from './PromptList'
+import { useState } from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle } from "@zoeymind/ui"
+import { ArrowLeft, Plus, Sparkles } from "lucide-react"
+import { PromptEditor } from "./PromptEditor"
+import { PromptList } from "./PromptList"
 
 interface PromptManagerModalProps {
   isOpen: boolean
@@ -45,10 +39,10 @@ export function PromptManagerModal({ isOpen, onClose }: PromptManagerModalProps)
   }
 
   const title = editingPromptId
-    ? t('mindmap.aiChat.prompt.modal.editTitle')
+    ? t("mindmap.aiChat.prompt.modal.editTitle")
     : isCreating
-      ? t('mindmap.aiChat.prompt.modal.createTitle')
-      : t('mindmap.aiChat.prompt.modal.libraryTitle')
+      ? t("mindmap.aiChat.prompt.modal.createTitle")
+      : t("mindmap.aiChat.prompt.modal.libraryTitle")
 
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
@@ -64,7 +58,7 @@ export function PromptManagerModal({ isOpen, onClose }: PromptManagerModalProps)
                 size="icon"
                 className="-ml-2 size-8 rounded-full"
                 onClick={handleBackToList}
-                aria-label={t('common.back')}
+                aria-label={t("common.back")}
               >
                 <ArrowLeft className="size-4" />
               </Button>
@@ -90,11 +84,11 @@ export function PromptManagerModal({ isOpen, onClose }: PromptManagerModalProps)
             <div className="h-full flex flex-col">
               <div className="px-6 py-2 border-b bg-muted/40 flex justify-between items-center shrink-0">
                 <div className="text-sm font-medium text-muted-foreground">
-                  {t('mindmap.aiChat.prompt.tabs.my')}
+                  {t("mindmap.aiChat.prompt.tabs.my")}
                 </div>
                 <Button onClick={handleCreate} size="sm" className="gap-1 shadow-sm">
                   <Plus className="size-4" />
-                  {t('mindmap.aiChat.prompt.modal.createTitle')}
+                  {t("mindmap.aiChat.prompt.modal.createTitle")}
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden">

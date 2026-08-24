@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 索引器 — 把消息 embed 后存入 IndexedDB.
  *
@@ -9,12 +8,12 @@
  * 都通过 indexer.enqueue(...) 入队, 内部串行执行 (避免并发抢模型), 不阻塞 UI.
  */
 
-import { embedder } from './embedder'
-import { toStoredVector } from './vectorStore'
-import { chatDB, type MessageEmbedding } from '../storage/chatDB'
-import { getMemoryEnabled } from './settings'
-import { logger } from '@zoeymind/logger'
-import type { UIMessage } from '@ai-sdk/react'
+import { embedder } from "./embedder"
+import { toStoredVector } from "./vectorStore"
+import { chatDB, type MessageEmbedding } from "../storage/chatDB"
+import { getMemoryEnabled } from "./settings"
+import { logger } from "@zoeymind/logger"
+import type { UIMessage } from "@ai-sdk/react"
 
 interface IndexTask {
   message: UIMessage
@@ -75,7 +74,7 @@ class Indexer {
 
     this.backfillState = { active: false, current: pending.length, total: pending.length }
     this.emit()
-    logger.info('[Indexer] 回填完成', { count: pending.length })
+    logger.info("[Indexer] 回填完成", { count: pending.length })
   }
 
   private async processQueue(): Promise<void> {
@@ -100,7 +99,7 @@ class Indexer {
     if (existing.has(task.message.id)) return
 
     // 确保模型 ready
-    if (embedder.getStatus().kind !== 'ready') {
+    if (embedder.getStatus().kind !== "ready") {
       const loaded = await embedder.load()
       if (!loaded) return
     }
@@ -111,10 +110,10 @@ class Indexer {
     const entry: MessageEmbedding = {
       messageId: task.message.id,
       conversationId: task.conversationId,
-      role: task.message.role === 'user' ? 'user' : 'assistant',
+      role: task.message.role === "user" ? "user" : "assistant",
       text: truncate(text, 2000),
       embedding: toStoredVector(vec),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
     await chatDB.putMessageEmbedding(entry)
   }
@@ -132,9 +131,9 @@ interface ChatMessageLike extends UIMessage {
 
 function extractText(message: UIMessage): string {
   return (message.parts ?? [])
-    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
     .map(p => p.text)
-    .join('\n')
+    .join("\n")
 }
 
 function truncate(s: string, max: number): string {

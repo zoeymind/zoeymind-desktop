@@ -1,10 +1,9 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MCP 服务器列表组件
  */
 
-import React from 'react'
-import { MCPServerCard, type McpServerView } from './MCPServerCard'
+import React from "react"
+import { MCPServerCard, type McpServerView } from "./MCPServerCard"
 
 interface MCPServerListProps {
   servers: McpServerView[]
@@ -21,7 +20,7 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
   onTest,
   onToggle,
   onDelete,
-  testingServerId
+  testingServerId,
 }) => {
   const sortedServers = [...servers].sort((a, b) => {
     if (a.disabled && !b.disabled) return 1

@@ -1,14 +1,13 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 获取 MCP 工具列表 Hook（数据走 trpc.mcp.list）
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import type { McpServerItem } from '../../lib/api-types'
-import { trpc } from '../../lib/trpc'
-import { useMCPStore } from '../../useMCPStore'
-import { mcpManager } from '../../mcp-client'
-import { logger } from '@zoeymind/logger'
+import { useEffect, useMemo, useState } from "react"
+import type { McpServerItem } from "../../lib/api-types"
+import { trpc } from "../../lib/trpc"
+import { useMCPStore } from "../../useMCPStore"
+import { mcpManager } from "../../mcp-client"
+import { logger } from "@zoeymind/logger"
 
 export interface MCPToolDisplay {
   serverName: string
@@ -34,13 +33,11 @@ export function useMCPTools(options: UseMCPToolsOptions = {}) {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (!enabled) {
-      setIsLoading(false)
-      return
-    }
-
     let cancelled = false
-
+    if (!enabled) {
+      const frame = requestAnimationFrame(() => setIsLoading(false))
+      return () => cancelAnimationFrame(frame)
+    }
     const loadMCPTools = async () => {
       // 预设(native, 如 Figma REST)由后端直接执行, 无需客户端探测
       const enabledServers = servers.filter(s => !s.disabled && !s.preset && !!s.url)
@@ -48,6 +45,7 @@ export function useMCPTools(options: UseMCPToolsOptions = {}) {
       if (enabledServers.length === 0) {
         if (!cancelled) {
           setTools([])
+          setIsLoading(false)
         }
         return
       }
@@ -62,7 +60,7 @@ export function useMCPTools(options: UseMCPToolsOptions = {}) {
           const testResult = await mcpManager.testConnection({
             name: server.name,
             url: server.url,
-            headers: server.headers
+            headers: server.headers,
           })
 
           updateServerStatus(server.id, {
@@ -70,7 +68,7 @@ export function useMCPTools(options: UseMCPToolsOptions = {}) {
             toolCount: testResult.toolCount,
             tools: testResult.tools,
             error: testResult.error,
-            lastChecked: new Date().toISOString()
+            lastChecked: new Date().toISOString(),
           })
 
           if (testResult.success) {
@@ -79,8 +77,8 @@ export function useMCPTools(options: UseMCPToolsOptions = {}) {
               allTools.push({
                 serverName: server.name,
                 name: tool.name,
-                description: tool.description || '',
-                isMCP: true
+                description: tool.description || "",
+                isMCP: true,
               })
             })
           }
@@ -90,7 +88,7 @@ export function useMCPTools(options: UseMCPToolsOptions = {}) {
           setTools(allTools)
         }
       } catch (error) {
-        logger.error('[MCP] 工具加载失败', { error })
+        logger.error("[MCP] 工具加载失败", { error })
       } finally {
         if (!cancelled) {
           setIsLoading(false)

@@ -67,10 +67,7 @@ export interface GetModuleCasesInput {
   moduleId: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface ListModulesInput {
-  // 无参数
-}
+export type ListModulesInput = Record<string, never>
 
 // ============================================
 // SDK 相关类型

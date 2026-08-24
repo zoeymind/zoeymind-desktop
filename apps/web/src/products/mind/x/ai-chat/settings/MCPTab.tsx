@@ -1,25 +1,24 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MCP 服务器配置 Tab（数据走 trpc.mcp.*）
  */
 
-import React, { useState } from 'react'
-import type { McpServerItem, McpPresetItem } from '../../lib/api-types'
-import { useTranslation } from '@zoeymind/i18n'
-import { Plus, Server } from 'lucide-react'
+import React, { useState } from "react"
+import type { McpServerItem, McpPresetItem } from "../../lib/api-types"
+import { useTranslation } from "@zoeymind/i18n"
+import { Plus, Server } from "lucide-react"
 import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@zoeymind/ui'
-import { trpc } from '../../lib/trpc'
-import { useMCPStore } from '../../useMCPStore'
-import { MCPServerList } from './MCPServerList'
-import { MCPServerForm } from './MCPServerForm'
-import { mcpManager } from '../../mcp-client'
-import { useToast } from '@/shared/app-shared'
+  DropdownMenuTrigger,
+} from "@zoeymind/ui"
+import { trpc } from "../../lib/trpc"
+import { useMCPStore } from "../../useMCPStore"
+import { MCPServerList } from "./MCPServerList"
+import { MCPServerForm } from "./MCPServerForm"
+import { mcpManager } from "../../mcp-client"
+import { useToast } from "@/shared/app-shared"
 
 export const MCPTab: React.FC = () => {
   const { t } = useTranslation()
@@ -64,42 +63,42 @@ export const MCPTab: React.FC = () => {
       const result = await mcpManager.testConnection({
         name: server.name,
         url: server.url,
-        headers: server.headers
+        headers: server.headers,
       })
       updateServerStatus(id, {
         connected: result.success,
         toolCount: result.toolCount,
         tools: result.tools,
         error: result.error,
-        lastChecked: new Date().toISOString()
+        lastChecked: new Date().toISOString(),
       })
       if (result.success) {
         toast({
-          title: t('mindmap.aiChat.settings.toast.connectSuccess'),
-          description: t('mindmap.aiChat.settings.toast.connectSuccessNamed', {
+          title: t("mindmap.aiChat.settings.toast.connectSuccess"),
+          description: t("mindmap.aiChat.settings.toast.connectSuccessNamed", {
             name: server.name,
-            count: result.toolCount ?? 0
-          })
+            count: result.toolCount ?? 0,
+          }),
         })
       } else {
         toast({
-          title: t('mindmap.aiChat.settings.toast.connectFailed'),
-          description: result.error || t('mindmap.aiChat.settings.unknownError'),
-          variant: 'destructive'
+          title: t("mindmap.aiChat.settings.toast.connectFailed"),
+          description: result.error || t("mindmap.aiChat.settings.unknownError"),
+          variant: "destructive",
         })
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : t('mindmap.aiChat.settings.unknownError')
+        error instanceof Error ? error.message : t("mindmap.aiChat.settings.unknownError")
       updateServerStatus(id, {
         connected: false,
         error: message,
-        lastChecked: new Date().toISOString()
+        lastChecked: new Date().toISOString(),
       })
       toast({
-        title: t('mindmap.aiChat.settings.toast.connectFailed'),
+        title: t("mindmap.aiChat.settings.toast.connectFailed"),
         description: message,
-        variant: 'destructive'
+        variant: "destructive",
       })
     } finally {
       setTestingServerId(null)
@@ -116,7 +115,7 @@ export const MCPTab: React.FC = () => {
     await deleteMutation.mutateAsync({ id })
     clearServerStatus(id)
     await utils.mcp.list.invalidate()
-    toast({ description: t('mindmap.aiChat.settings.toast.serverDeleted') })
+    toast({ description: t("mindmap.aiChat.settings.toast.serverDeleted") })
   }
 
   const handleFormClose = () => {
@@ -129,9 +128,9 @@ export const MCPTab: React.FC = () => {
     <div className="space-y-4 py-4 w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium">{t('mindmap.aiChat.settings.tab.heading')}</h3>
+          <h3 className="text-lg font-medium">{t("mindmap.aiChat.settings.tab.heading")}</h3>
           <p className="text-sm text-muted-foreground">
-            {t('mindmap.aiChat.settings.tab.description')}
+            {t("mindmap.aiChat.settings.tab.description")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -142,7 +141,7 @@ export const MCPTab: React.FC = () => {
                 render={
                   <Button size="sm" variant="outline">
                     <Plus className="size-4 mr-1" />
-                    {t('mindmap.aiChat.settings.tab.addPreset')}
+                    {t("mindmap.aiChat.settings.tab.addPreset")}
                   </Button>
                 }
               />
@@ -157,7 +156,7 @@ export const MCPTab: React.FC = () => {
           )}
           <Button size="sm" onClick={handleAddServer}>
             <Plus className="size-4 mr-1" />
-            {t('mindmap.aiChat.settings.tab.addServer')}
+            {t("mindmap.aiChat.settings.tab.addServer")}
           </Button>
         </div>
       </div>
@@ -166,14 +165,14 @@ export const MCPTab: React.FC = () => {
         <div className="flex flex-col items-center justify-center py-12 px-6 border border-dashed rounded-lg">
           <Server className="size-12 text-muted-foreground/50 mb-3" />
           <div className="text-sm font-medium text-muted-foreground mb-1">
-            {t('mindmap.aiChat.settings.tab.emptyTitle')}
+            {t("mindmap.aiChat.settings.tab.emptyTitle")}
           </div>
           <div className="text-xs text-muted-foreground/70 text-center max-w-[300px]">
-            {t('mindmap.aiChat.settings.tab.emptyDescription')}
+            {t("mindmap.aiChat.settings.tab.emptyDescription")}
           </div>
           <Button size="sm" variant="outline" className="mt-4" onClick={handleAddServer}>
             <Plus className="size-4 mr-1" />
-            {t('mindmap.aiChat.settings.tab.addFirstServer')}
+            {t("mindmap.aiChat.settings.tab.addFirstServer")}
           </Button>
         </div>
       ) : (
@@ -188,6 +187,7 @@ export const MCPTab: React.FC = () => {
       )}
 
       <MCPServerForm
+        key={`${editingServerId ?? "new"}:${addPreset ?? "custom"}`}
         open={showAddDialog}
         onClose={handleFormClose}
         serverId={editingServerId}

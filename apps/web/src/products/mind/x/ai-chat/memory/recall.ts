@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * Recall 流程 — 给当前 user 输入找出 top-K 相关历史消息, 拼成给 AI 的 system 注入文本.
  *
@@ -11,11 +10,11 @@
  * 失败兜底: 模型未 ready / embed 失败 / IndexedDB 错 → 返回 null, 调用方退化到全量发送.
  */
 
-import { embedder } from './embedder'
-import { searchSimilar, type MemoryHit } from './vectorStore'
-import { getMemoryEnabled, getRecallK, getRecentN } from './settings'
-import type { UIMessage } from '@ai-sdk/react'
-import { logger } from '@zoeymind/logger'
+import { embedder } from "./embedder"
+import { searchSimilar, type MemoryHit } from "./vectorStore"
+import { getMemoryEnabled, getRecallK, getRecentN } from "./settings"
+import type { UIMessage } from "@ai-sdk/react"
+import { logger } from "@zoeymind/logger"
 
 export interface RecallResult {
   /** 召回的历史命中 (按 score 倒序) */
@@ -36,7 +35,7 @@ export async function recallForQuery(
 ): Promise<RecallResult | null> {
   if (!getMemoryEnabled()) return null
   if (!queryText.trim()) return null
-  if (embedder.getStatus().kind !== 'ready') return null
+  if (embedder.getStatus().kind !== "ready") return null
 
   const k = getRecallK()
   if (k <= 0) return null
@@ -49,19 +48,19 @@ export async function recallForQuery(
 
   // 给 AI 的注入格式 — 标记清晰, 让 AI 知道这不是当前对话内容而是"用户记忆"
   const lines = hits.map((h, idx) => {
-    const role = h.entry.role === 'user' ? '用户' : 'AI'
-    const time = new Date(h.entry.timestamp).toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+    const role = h.entry.role === "user" ? "用户" : "AI"
+    const time = new Date(h.entry.timestamp).toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     })
     return `[${idx + 1}] (${time}, ${role}) ${truncate(h.entry.text, 400)}`
   })
-  const injectedText = `以下是用户在其它对话里说过的相关内容 (按相关度排序), 仅供参考, 不要直接复读:\n${lines.join('\n')}`
+  const injectedText = `以下是用户在其它对话里说过的相关内容 (按相关度排序), 仅供参考, 不要直接复读:\n${lines.join("\n")}`
 
-  logger.debug('[Memory] 召回命中', { k, count: hits.length, topScore: hits[0]?.score })
+  logger.debug("[Memory] 召回命中", { k, count: hits.length, topScore: hits[0]?.score })
 
   return { hits, injectedText }
 }
@@ -80,14 +79,14 @@ export function getRecentMessageIds(messages: UIMessage[]): Set<string> {
 export function extractLatestUserText(messages: UIMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i]
-    if (msg.role !== 'user') continue
+    if (msg.role !== "user") continue
     const text = (msg.parts ?? [])
-      .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
       .map(p => p.text)
-      .join('\n')
+      .join("\n")
     return text
   }
-  return ''
+  return ""
 }
 
 function truncate(s: string, max: number): string {

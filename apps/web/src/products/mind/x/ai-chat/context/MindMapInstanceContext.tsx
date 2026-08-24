@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MindMapInstanceContext — 把 mindMap 实例通过 React Context 暴露给消息组件,
  * 替代之前 UserMessage / AssistantMessage 各自维护的 `globalMindMapInstance` 全局变量.
@@ -8,10 +7,9 @@
  * 现在统一从 Context 拿, 避免两份相互不同步的全局状态.
  */
 
-import { createContext, useContext, type ReactNode, type ReactElement } from 'react'
-import type MindMap from 'simple-mind-map'
-
-const MindMapInstanceContext = createContext<MindMap | null>(null)
+import { type ReactNode, type ReactElement } from "react"
+import type MindMap from "simple-mind-map"
+import { MindMapInstanceContext } from "./mindmap-instance"
 
 interface MindMapInstanceProviderProps {
   /** 当前活跃的 mindMap 实例; 没有时传 null, 消费方需自己兜底 */
@@ -21,14 +19,9 @@ interface MindMapInstanceProviderProps {
 
 export function MindMapInstanceProvider({
   mindMap,
-  children
+  children,
 }: MindMapInstanceProviderProps): ReactElement {
   return (
     <MindMapInstanceContext.Provider value={mindMap}>{children}</MindMapInstanceContext.Provider>
   )
-}
-
-/** 在 Markdown 组件 / 消息组件内拿当前 mindMap 实例. 没装载时返回 null. */
-export function useMindMapInstance(): MindMap | null {
-  return useContext(MindMapInstanceContext)
 }

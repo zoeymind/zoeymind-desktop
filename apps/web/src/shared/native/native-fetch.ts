@@ -12,9 +12,9 @@
  *   5. 监听 http:{id}:error -> controller.error(...)
  *   6. AbortSignal -> invoke http_stream_abort, 关流
  */
-import { invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { createUUID } from '@/shared/app-shared'
+import { invoke } from "@tauri-apps/api/core"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
+import { createUUID } from "@/shared/app-shared"
 
 interface HeadEventPayload {
   status: number
@@ -35,8 +35,8 @@ function base64ToUint8Array(b64: string): Uint8Array {
 }
 
 export const nativeFetch: typeof fetch = async (input, init) => {
-  const url = typeof input === 'string' || input instanceof URL ? String(input) : input.url
-  const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase()
+  const url = typeof input === "string" || input instanceof URL ? String(input) : input.url
+  const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase()
   const headers: Record<string, string> = {}
   const hdr = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
   hdr.forEach((v, k) => {
@@ -45,7 +45,7 @@ export const nativeFetch: typeof fetch = async (input, init) => {
 
   let bodyStr: string | undefined
   if (init?.body !== undefined && init.body !== null) {
-    if (typeof init.body === 'string') {
+    if (typeof init.body === "string") {
       bodyStr = init.body
     } else if (init.body instanceof Uint8Array) {
       bodyStr = new TextDecoder().decode(init.body)
@@ -53,7 +53,7 @@ export const nativeFetch: typeof fetch = async (input, init) => {
       bodyStr = new TextDecoder().decode(init.body)
     } else if (init.body instanceof URLSearchParams) {
       bodyStr = init.body.toString()
-    } else if (typeof (init.body as { text?: () => Promise<string> }).text === 'function') {
+    } else if (typeof (init.body as { text?: () => Promise<string> }).text === "function") {
       bodyStr = await (init.body as unknown as Blob).text()
     } else {
       bodyStr = JSON.stringify(init.body)
@@ -126,7 +126,7 @@ export const nativeFetch: typeof fetch = async (input, init) => {
 
   // AbortSignal: 触发 Rust 侧取消 + 关流
   const onAbort = () => {
-    void invoke('http_stream_abort', { requestId }).catch(() => undefined)
+    void invoke("http_stream_abort", { requestId }).catch(() => undefined)
     try {
       controllerRef?.close()
     } catch {
@@ -134,17 +134,17 @@ export const nativeFetch: typeof fetch = async (input, init) => {
     }
     cleanup()
   }
-  init?.signal?.addEventListener('abort', onAbort, { once: true })
+  init?.signal?.addEventListener("abort", onAbort, { once: true })
 
   try {
-    await invoke('http_stream_start', {
+    await invoke("http_stream_start", {
       req: {
         requestId,
         url,
         method,
         headers,
-        body: bodyStr
-      }
+        body: bodyStr,
+      },
     })
   } catch (err) {
     cleanup()
@@ -158,11 +158,11 @@ export const nativeFetch: typeof fetch = async (input, init) => {
     },
     cancel() {
       onAbort()
-    }
+    },
   })
 
   return new Response(body, {
     status: head.status,
-    headers: new Headers(head.headers)
+    headers: new Headers(head.headers),
   })
 }

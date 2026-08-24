@@ -5,9 +5,9 @@
  * Migrations 在 Rust 侧 lib.rs 声明（tauri-plugin-sql `add_migrations`），
  * 首次 load 时自动 up。前端只做 select/execute，schema 不在这里维护。
  */
-import Database from '@tauri-apps/plugin-sql'
+import Database from "@tauri-apps/plugin-sql"
 
-const DB_URL = 'sqlite:app.db'
+const DB_URL = "sqlite:app.db"
 
 let dbPromise: Promise<Database> | null = null
 

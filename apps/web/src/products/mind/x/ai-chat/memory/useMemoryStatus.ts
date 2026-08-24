@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * useMemoryStatus — 合并 embedder + indexer 的状态, 给设置 UI 一站式用.
  */
@@ -94,7 +93,8 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
 
   // 启用 / 回填完成 / clear 后都刷新统计
   useEffect(() => {
-    void refreshStats()
+    const frame = requestAnimationFrame(() => void refreshStats())
+    return () => cancelAnimationFrame(frame)
   }, [refreshStats, enabled, backfill.active])
 
   const setEnabled = useCallback(async (next: boolean) => {

@@ -1,8 +1,7 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
-import { useCallback, useState } from 'react'
-import { logger } from '@zoeymind/logger'
-import { compressImages } from '@/products/mind/utils/imageUtils'
-import type { Attachment } from '../../../ai-chat/types'
+import { useCallback, useState } from "react"
+import { logger } from "@zoeymind/logger"
+import { compressImages } from "@/products/mind/utils/imageUtils"
+import type { Attachment } from "../../../ai-chat/types"
 
 type SetAttachments = (
   attachments: Attachment[] | ((previous: Attachment[]) => Attachment[])
@@ -23,13 +22,13 @@ const readFileAsAttachment = (file: File, index: number): Promise<Attachment> =>
     reader.onload = () => {
       resolve({
         id: `${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
-        type: 'image',
+        type: "image",
         name: file.name,
-        dataUrl: String(reader.result || '')
+        dataUrl: String(reader.result || ""),
       })
     }
     reader.onerror = () => {
-      reject(reader.error ?? new Error('Failed to read image file'))
+      reject(reader.error ?? new Error("Failed to read image file"))
     }
     reader.readAsDataURL(file)
   })
@@ -38,7 +37,7 @@ const readFileAsAttachment = (file: File, index: number): Promise<Attachment> =>
 export const useImageAttachmentManager = ({
   supportsVision,
   setAttachments,
-  logPrefix
+  logPrefix,
 }: UseImageAttachmentManagerParams) => {
   const [isCompressing, setIsCompressing] = useState(false)
 
@@ -46,7 +45,7 @@ export const useImageAttachmentManager = ({
     async (files: File[]) => {
       if (!supportsVision) return
 
-      const imageFiles = files.filter(file => file.type.startsWith('image/'))
+      const imageFiles = files.filter(file => file.type.startsWith("image/"))
       if (imageFiles.length === 0) return
 
       const hasLargeImages = imageFiles.some(file => file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024)
@@ -64,7 +63,7 @@ export const useImageAttachmentManager = ({
           const totalCompressedSize = filesToAttach.reduce((sum, file) => sum + file.size, 0)
           logger.info(`${logPrefix} 图片压缩完成`, {
             originalMB: (totalOriginalSize / 1024 / 1024).toFixed(2),
-            compressedMB: (totalCompressedSize / 1024 / 1024).toFixed(2)
+            compressedMB: (totalCompressedSize / 1024 / 1024).toFixed(2),
           })
         }
       } catch (error) {
@@ -86,6 +85,6 @@ export const useImageAttachmentManager = ({
 
   return {
     isCompressing,
-    addImageFiles
+    addImageFiles,
   }
 }

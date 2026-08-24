@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- dormant AI chat / MCP mirror remains untyped */
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * UnifiedAIPanel - AI 面板组件
  *
@@ -15,7 +13,7 @@ import { ChatHistoryPanel } from "../ai-chat/components/historyView/ChatHistoryP
 import { logger } from "@zoeymind/logger"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { useAIChatV2Store } from "../ai-chat/stores/useAIChatV2Store"
-import { useAIChatRuntime } from "../ai-chat/context/AIChatRuntimeContext"
+import { useAIChatRuntime } from "../ai-chat/context/ai-chat-runtime"
 import { useModelSelector } from "../ai-chat/hooks/useModelSelector"
 import { useResizableWidth } from "../ai-chat/hooks/useResizableWidth"
 import { cn } from "@/shared/app-shared"

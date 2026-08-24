@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 向量检索 — 在 IndexedDB 全量 messageEmbeddings 上做 cosine top-K.
  *
@@ -8,7 +7,7 @@
  * 嵌入是已归一化的 (embedder 里 normalize: true), 所以余弦相似度 = 点积.
  */
 
-import { chatDB, type MessageEmbedding } from '../storage/chatDB'
+import { chatDB, type MessageEmbedding } from "../storage/chatDB"
 
 export interface MemoryHit {
   /** 命中分数, 已归一化向量的点积 ∈ [-1, 1] */

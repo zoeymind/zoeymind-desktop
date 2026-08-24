@@ -1,13 +1,12 @@
-// @ts-nocheck — dormant AI chat / MCP module (bridge.tsx flattens to no-op)
 /**
  * MCP 客户端管理服务
  *
  * 通过后端代理访问 MCP 服务器
  */
 
-import { trpcClient } from './lib/trpc'
-import type { McpTestResult } from './lib/api-types'
-import { logger } from '@zoeymind/logger'
+import { trpcClient } from "./lib/trpc"
+import type { McpTestResult } from "./lib/api-types"
+import { logger } from "@zoeymind/logger"
 
 export interface MCPServerConfig {
   url: string
@@ -38,21 +37,21 @@ export class MCPClientManager {
     if (!config.url) {
       return {
         success: false,
-        error: `MCP 服务器 "${config.name}" 缺少 URL`
+        error: `MCP 服务器 "${config.name}" 缺少 URL`,
       }
     }
 
     try {
       const result = await trpcClient.mcp.testConnection.mutate<McpTestResult>({
         url: config.url,
-        headers: config.headers
+        headers: config.headers,
       })
 
       return result
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to test connection'
+        error: error instanceof Error ? error.message : "Failed to test connection",
       }
     }
   }
@@ -69,13 +68,13 @@ export class MCPClientManager {
     try {
       const result = await trpcClient.mcp.testConnection.mutate<McpTestResult>({
         url: config.url!,
-        headers: config.headers
+        headers: config.headers,
       })
 
       // 解析响应
       let tools: MCPToolDefinition = {}
       const toolsList: Array<{ name?: string; description?: string }> =
-        result.success && 'tools' in result && Array.isArray(result.tools) ? result.tools : []
+        result.success && "tools" in result && Array.isArray(result.tools) ? result.tools : []
 
       if (toolsList.length > 0) {
         tools = toolsList.reduce(
@@ -83,7 +82,7 @@ export class MCPClientManager {
             if (tool?.name) {
               acc[tool.name] = {
                 name: tool.name,
-                description: tool.description || ''
+                description: tool.description || "",
               }
             }
             return acc
@@ -107,8 +106,8 @@ export class MCPClientManager {
 
     return Object.entries(tools).map(([name, tool]) => ({
       name,
-      description: tool.description || '',
-      inputSchema: tool.inputSchema
+      description: tool.description || "",
+      inputSchema: tool.inputSchema,
     }))
   }
 
@@ -136,8 +135,8 @@ export class MCPClientManager {
           if (!config.url) {
             return {
               serverName: config.name,
-              error: 'Missing URL',
-              success: false
+              error: "Missing URL",
+              success: false,
             }
           }
 
@@ -145,13 +144,13 @@ export class MCPClientManager {
           return {
             serverName: config.name,
             tools,
-            success: true
+            success: true,
           }
         } catch (error: unknown) {
           return {
             serverName: config.name,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            success: false
+            error: error instanceof Error ? error.message : "Unknown error",
+            success: false,
           }
         }
       })

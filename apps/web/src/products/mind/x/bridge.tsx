@@ -6,10 +6,10 @@
  *     转 AI SDK v6 UI Message Stream chunks)
  *   - hooks/useModelSelector.ts: trpc.models.list -> loadModelsConfig()
  */
-// @ts-nocheck
 import React, { Component, type ReactNode } from "react"
 import { AIchatV2 } from "./ai-chat"
 import { AIChatProvider as OriginalAIChatProvider } from "./ai-chat/AIChatProvider"
+import { logger } from "@zoeymind/logger"
 
 interface AIFeaturePanelProps {
   isActive?: boolean
@@ -23,16 +23,11 @@ class AIChatErrorBoundary extends Component<{ children: ReactNode }, { error: Er
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // 把 componentStack 完整打印, 便于定位 Maximum update depth 里的具体 Hook
-    // eslint-disable-next-line no-console
-    console.error(
-      "[AIChatErrorBoundary]",
-      error?.message,
-      "\ncomponentStack:",
-      info.componentStack,
-      "\nfullError:",
-      error
-    )
+    logger.error("[AIChatErrorBoundary]", {
+      message: error.message,
+      componentStack: info.componentStack,
+      error,
+    })
   }
 
   render() {
@@ -58,11 +53,11 @@ class AIChatErrorBoundary extends Component<{ children: ReactNode }, { error: Er
   }
 }
 
-export function AIChatProvider(props: { children: React.ReactNode }): JSX.Element {
+export function AIChatProvider(props: { children: React.ReactNode }): React.ReactElement {
   return <OriginalAIChatProvider {...props} />
 }
 
-export function AIFeaturePanel({ isActive }: AIFeaturePanelProps): JSX.Element | null {
+export function AIFeaturePanel({ isActive }: AIFeaturePanelProps): React.ReactElement | null {
   return (
     <AIChatErrorBoundary>
       <AIchatV2 isActive={isActive} />
@@ -73,13 +68,3 @@ export function AIFeaturePanel({ isActive }: AIFeaturePanelProps): JSX.Element |
 export function AIStatusBadge(): null {
   return null
 }
-
-export function useAIProcessing(): boolean {
-  return false
-}
-
-export function resolveMindmapShortId(nodeId: string): string {
-  return nodeId
-}
-
-export { attachGhostCompletion } from "./plugins/ghost-completion"

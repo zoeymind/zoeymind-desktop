@@ -6,18 +6,12 @@
  *   - trpc 换成 usePrompts hooks
  */
 
-import { useEffect, useMemo } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import {
-  Button,
-  Input,
-  Label,
-  ScrollArea,
-  Textarea
-} from '@zoeymind/ui'
-import { Loader2 } from 'lucide-react'
-import { useForm } from 'react-hook-form'
-import { useCreatePrompt, usePromptsQuery, useUpdatePrompt } from '../../hooks/usePrompts'
+import { useEffect, useMemo } from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { Button, Input, Label, ScrollArea, Textarea } from "@zoeymind/ui"
+import { Loader2 } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { useCreatePrompt, usePromptsQuery, useUpdatePrompt } from "../../hooks/usePrompts"
 
 interface PromptEditorProps {
   editPromptId: string | null
@@ -37,8 +31,8 @@ export function PromptEditor({ editPromptId, onCancel, onSuccess }: PromptEditor
     handleSubmit,
     reset,
     setValue,
-    formState: { errors }
-  } = useForm<PromptForm>({ defaultValues: { title: '', content: '' } })
+    formState: { errors },
+  } = useForm<PromptForm>({ defaultValues: { title: "", content: "" } })
 
   const { data: prompts, isLoading: isLoadingData } = usePromptsQuery()
   const promptData = useMemo(
@@ -48,10 +42,10 @@ export function PromptEditor({ editPromptId, onCancel, onSuccess }: PromptEditor
 
   useEffect(() => {
     if (promptData && editPromptId) {
-      setValue('title', promptData.title)
-      setValue('content', promptData.content)
+      setValue("title", promptData.title)
+      setValue("content", promptData.content)
     } else if (!editPromptId) {
-      reset({ title: '', content: '' })
+      reset({ title: "", content: "" })
     }
   }, [editPromptId, promptData, reset, setValue])
 
@@ -92,33 +86,31 @@ export function PromptEditor({ editPromptId, onCancel, onSuccess }: PromptEditor
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">
-                {t('mindmap.aiChat.prompt.titleLabel')} <span className="text-destructive">*</span>
+                {t("mindmap.aiChat.prompt.titleLabel")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="title"
-                {...register('title', { required: t('mindmap.aiChat.prompt.titleRequired') })}
-                placeholder={t('mindmap.aiChat.prompt.titlePlaceholder')}
-                className={errors.title ? 'border-destructive' : ''}
+                {...register("title", { required: t("mindmap.aiChat.prompt.titleRequired") })}
+                placeholder={t("mindmap.aiChat.prompt.titlePlaceholder")}
+                className={errors.title ? "border-destructive" : ""}
               />
-              {errors.title && (
-                <p className="text-xs text-destructive">{errors.title.message}</p>
-              )}
+              {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="content">
-                {t('mindmap.aiChat.prompt.systemPromptLabel')}{' '}
+                {t("mindmap.aiChat.prompt.systemPromptLabel")}{" "}
                 <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="content"
-                {...register('content', {
-                  required: t('mindmap.aiChat.prompt.contentRequired')
+                {...register("content", {
+                  required: t("mindmap.aiChat.prompt.contentRequired"),
                 })}
                 className={`min-h-[300px] font-mono text-sm resize-none ${
-                  errors.content ? 'border-destructive' : ''
+                  errors.content ? "border-destructive" : ""
                 }`}
-                placeholder={t('mindmap.aiChat.prompt.contentPlaceholder')}
+                placeholder={t("mindmap.aiChat.prompt.contentPlaceholder")}
               />
               {errors.content && (
                 <p className="text-xs text-destructive">{errors.content.message}</p>
@@ -130,13 +122,11 @@ export function PromptEditor({ editPromptId, onCancel, onSuccess }: PromptEditor
 
       <div className="p-4 border-t bg-muted/10 flex justify-end gap-2 shrink-0">
         <Button variant="outline" type="button" onClick={onCancel} disabled={isPending}>
-          {t('common.cancel')}
+          {t("common.cancel")}
         </Button>
         <Button type="submit" disabled={isPending}>
           {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-          {isPending
-            ? t('mindmap.aiChat.prompt.saving')
-            : t('mindmap.aiChat.prompt.savePrompt')}
+          {isPending ? t("mindmap.aiChat.prompt.saving") : t("mindmap.aiChat.prompt.savePrompt")}
         </Button>
       </div>
     </form>

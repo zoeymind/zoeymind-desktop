@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * AIChatProvider — 在 MindMapCanvas 顶层挂载 AI 聊天运行时.
  *
@@ -11,10 +10,10 @@
  * runtime 必须在共同祖先创建.
  */
 
-import type { ReactNode, ReactElement } from 'react'
-import { useAIChat } from './hooks/useAIChat'
-import { AIChatRuntimeProvider } from './context/AIChatRuntimeContext'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
+import type { ReactNode, ReactElement } from "react"
+import { useAIChat } from "./hooks/useAIChat"
+import { AIChatRuntimeProvider } from "./context/AIChatRuntimeContext"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 
 export function AIChatProvider({ children }: { children: ReactNode }): ReactElement {
   const { mindMap } = useMindMapStore()

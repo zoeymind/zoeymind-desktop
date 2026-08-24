@@ -1,19 +1,15 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 聊天历史面板
  */
 
-import React, { useState, useEffect } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import { motion, AnimatePresence } from 'motion/react'
-import { MessageSquare, Trash2, ChevronUp } from 'lucide-react'
-import { logger } from '@zoeymind/logger'
-import {
-  chatDB,
-  type Conversation as DBConversation
-} from '../../../ai-chat/storage/chatDB'
-import { formatRelativeTime } from '../../../ai-chat/utils/timeFormat'
-import { DeleteConfirmDialog } from './DeleteConfirmDialog'
+import React, { useCallback, useState, useEffect } from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { motion, AnimatePresence } from "motion/react"
+import { MessageSquare, Trash2, ChevronUp } from "lucide-react"
+import { logger } from "@zoeymind/logger"
+import { chatDB, type Conversation as DBConversation } from "../../../ai-chat/storage/chatDB"
+import { formatRelativeTime } from "../../../ai-chat/utils/timeFormat"
+import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
 
 interface Conversation extends DBConversation {
   messageCount: number
@@ -32,7 +28,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
   onClose,
   workspaceId,
   onSelectConversation,
-  currentConversationId
+  currentConversationId,
 }) => {
   const { t } = useTranslation()
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -44,16 +40,33 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
     loading: boolean
   }>({
     isOpen: false,
-    conversationId: '',
-    title: '',
-    loading: false
+    conversationId: "",
+    title: "",
+    loading: false,
   })
 
-  useEffect(() => {
-    if (isOpen) {
-      loadConversations()
+  const loadConversations = useCallback(async () => {
+    try {
+      setLoading(true)
+      const convs = await chatDB.getConversations(workspaceId)
+      const conversationsWithCount = await Promise.all(
+        convs.map(async conv => ({
+          ...conv,
+          messageCount: (await chatDB.loadMessages(conv.id)).length,
+        }))
+      )
+      setConversations(conversationsWithCount)
+    } catch (error) {
+      logger.error("[ChatHistoryPanel] Failed to load conversations", { error })
+    } finally {
+      setLoading(false)
     }
-  }, [isOpen, workspaceId])
+  }, [workspaceId])
+  useEffect(() => {
+    if (!isOpen) return
+    const frame = requestAnimationFrame(() => void loadConversations())
+    return () => cancelAnimationFrame(frame)
+  }, [isOpen, loadConversations])
 
   // 点击外部关闭面板
   useEffect(() => {
@@ -63,8 +76,8 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
       const target = event.target as Element
       // 如果点击的不是面板内部和历史按钮，则关闭面板
       if (
-        !target.closest('.chat-history-panel') &&
-        !target.closest('[data-chat-history-trigger]')
+        !target.closest(".chat-history-panel") &&
+        !target.closest("[data-chat-history-trigger]")
       ) {
         onClose()
       }
@@ -72,38 +85,14 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
 
     // 延迟添加监听器，避免立即触发
     const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener("mousedown", handleClickOutside)
     }, 200)
 
     return () => {
       clearTimeout(timer)
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [isOpen, onClose])
-
-  const loadConversations = async () => {
-    try {
-      setLoading(true)
-      const convs = await chatDB.getConversations(workspaceId)
-
-      // 为每个对话获取消息数量
-      const conversationsWithCount = await Promise.all(
-        convs.map(async conv => {
-          const messages = await chatDB.loadMessages(conv.id)
-          return {
-            ...conv,
-            messageCount: messages.length
-          }
-        })
-      )
-
-      setConversations(conversationsWithCount)
-    } catch (error) {
-      logger.error('[ChatHistoryPanel] Failed to load conversations', { error })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // 按时间分组对话
   const groupConversationsByTime = (conversations: Conversation[]) => {
@@ -142,7 +131,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
       isOpen: true,
       conversationId,
       title,
-      loading: false
+      loading: false,
     })
   }
 
@@ -158,18 +147,18 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
 
       // 如果删除的是当前对话，切换到空对话
       if (currentConversationId === deleteDialog.conversationId) {
-        await onSelectConversation('')
+        await onSelectConversation("")
       }
 
       // 关闭弹框
       setDeleteDialog({
         isOpen: false,
-        conversationId: '',
-        title: '',
-        loading: false
+        conversationId: "",
+        title: "",
+        loading: false,
       })
     } catch (error) {
-      logger.error('[ChatHistoryPanel] Failed to delete conversation', { error })
+      logger.error("[ChatHistoryPanel] Failed to delete conversation", { error })
       setDeleteDialog(prev => ({ ...prev, loading: false }))
     }
   }
@@ -179,9 +168,9 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
     if (!deleteDialog.loading) {
       setDeleteDialog({
         isOpen: false,
-        conversationId: '',
-        title: '',
-        loading: false
+        conversationId: "",
+        title: "",
+        loading: false,
       })
     }
   }
@@ -194,7 +183,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className="chat-history-panel absolute top-full left-0 right-0 bg-card border border-border shadow-lg z-20 rounded-b-lg"
           >
             {/* 内容 */}
@@ -203,16 +192,16 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
                 {loading ? (
                   <div className="p-3 text-center">
                     <div className="animate-spin size-3 border border-border border-t-foreground rounded-full mx-auto mb-1"></div>
-                    <p className="text-[10px] text-muted-foreground">{t('common.loading')}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("common.loading")}</p>
                   </div>
                 ) : conversations.length === 0 ? (
                   <div className="p-3 text-center">
                     <MessageSquare className="size-5 mx-auto mb-1.5 text-muted-foreground/50" />
                     <p className="text-[10px] text-muted-foreground">
-                      {t('mindmap.aiChat.history.empty.title')}
+                      {t("mindmap.aiChat.history.empty.title")}
                     </p>
                     <p className="text-[9px] text-muted-foreground/70 mt-0.5">
-                      {t('mindmap.aiChat.history.empty.hint')}
+                      {t("mindmap.aiChat.history.empty.hint")}
                     </p>
                   </div>
                 ) : (
@@ -227,7 +216,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
                             <button
                               type="button"
                               className={`w-full text-left p-2.5 hover:bg-muted/50 transition-colors ${
-                                currentConversationId === conversation.id ? 'bg-muted' : ''
+                                currentConversationId === conversation.id ? "bg-muted" : ""
                               }`}
                               onClick={() => handleSelectConversation(conversation.id)}
                             >

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * assistant 消息是否已有可渲染内容.
  *
@@ -11,16 +10,16 @@
  * 官方语义 (docs/research/ai-sdk-chat-streaming.md §3.3): 空 text/reasoning part
  * 是 text-start 到首个 delta 之间的正常瞬态.
  */
-import type { UIMessage } from '@ai-sdk/react'
+import type { UIMessage } from "@ai-sdk/react"
 
 export function hasRenderableContent(message: UIMessage): boolean {
   const parts = message.parts ?? []
   return parts.some(part => {
     const p = part as { type?: string; text?: unknown; errorText?: string }
-    if (typeof p.type === 'string' && p.type.startsWith('tool-')) return true
-    if (p.type === 'error' || p.errorText) return true
-    if (p.type === 'text' || p.type === 'reasoning') {
-      return typeof p.text === 'string' && p.text.trim().length > 0
+    if (typeof p.type === "string" && p.type.startsWith("tool-")) return true
+    if (p.type === "error" || p.errorText) return true
+    if (p.type === "text" || p.type === "reasoning") {
+      return typeof p.text === "string" && p.text.trim().length > 0
     }
     return false
   })

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MCP 服务器表单组件
  *
@@ -8,13 +7,13 @@
  *  - 预设模式（如 Figma）：只填一个 token，url/工具由后端预设决定
  */
 
-import React, { useState, useEffect, useMemo } from 'react'
-import type { McpServerItem, McpPresetItem } from '../../lib/api-types'
-import { useTranslation } from '@zoeymind/i18n'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@zoeymind/ui'
+import React, { useState, useEffect, useMemo } from "react"
+import type { McpServerItem, McpPresetItem } from "../../lib/api-types"
+import { useTranslation } from "@zoeymind/i18n"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@zoeymind/ui"
 import {
   Form,
   FormControl,
@@ -22,14 +21,14 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
-} from '@zoeymind/ui'
-import { Input } from '@zoeymind/ui'
-import { Button } from '@zoeymind/ui'
-import { Loader2, Globe } from 'lucide-react'
-import { trpc } from '../../lib/trpc'
-import { mcpManager } from '../../mcp-client'
-import { useToast } from '@/shared/app-shared'
+  FormMessage,
+} from "@zoeymind/ui"
+import { Input } from "@zoeymind/ui"
+import { Button } from "@zoeymind/ui"
+import { Loader2, Globe } from "lucide-react"
+import { trpc } from "../../lib/trpc"
+import { mcpManager } from "../../mcp-client"
+import { useToast } from "@/shared/app-shared"
 
 interface MCPServerFormProps {
   open: boolean
@@ -52,7 +51,7 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
   open,
   onClose,
   serverId,
-  preset = null
+  preset = null,
 }) => {
   const { t } = useTranslation()
   const { toast } = useToast()
@@ -60,9 +59,13 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
   const isEdit = !!serverId
 
   // 预设列表（拿到当前 preset 的元信息）
-  const { data: presets } = trpc.mcp.listPresets.useQuery<McpPresetItem[]>(undefined, { enabled: open })
+  const { data: presets } = trpc.mcp.listPresets.useQuery<McpPresetItem[]>(undefined, {
+    enabled: open,
+  })
   // 编辑时取现有服务器
-  const { data: servers } = trpc.mcp.list.useQuery<McpServerItem[]>(undefined, { enabled: open && isEdit })
+  const { data: servers } = trpc.mcp.list.useQuery<McpServerItem[]>(undefined, {
+    enabled: open && isEdit,
+  })
   const existing = useMemo(() => servers?.find(s => s.id === serverId) ?? null, [servers, serverId])
 
   // 当前生效的预设：新增预设模式用 prop.preset；编辑时用记录的 preset
@@ -75,42 +78,42 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
 
   const [isTesting, setIsTesting] = useState(false)
   const [headers, setHeaders] = useState<Record<string, string>>({})
-  const [token, setToken] = useState('')
+  const [token, setToken] = useState("")
 
   const serverFormSchema = useMemo(
     () =>
       z.object({
-        name: z.string().min(1, t('mindmap.aiChat.settings.form.errors.nameRequired')),
+        name: z.string().min(1, t("mindmap.aiChat.settings.form.errors.nameRequired")),
         url: isPresetMode
           ? z.string()
-          : z.string().url(t('mindmap.aiChat.settings.form.errors.invalidUrl'))
+          : z.string().url(t("mindmap.aiChat.settings.form.errors.invalidUrl")),
       }),
     [t, isPresetMode]
   )
 
   const form = useForm<{ name: string; url: string }>({
     resolver: zodResolver(serverFormSchema),
-    defaultValues: { name: '', url: '' }
+    defaultValues: { name: "", url: "" },
   })
 
   // 表单初始化：编辑回填 / 预设填默认名
   useEffect(() => {
     if (!open) return
-    if (isEdit && existing) {
-      form.reset({ name: existing.name, url: existing.url })
-      setHeaders(existing.headers ?? {})
-      setToken('')
-    } else if (activePreset) {
-      form.reset({ name: activePreset.name, url: activePreset.defaultUrl })
-      setHeaders({})
-      setToken('')
-    } else {
-      form.reset({ name: '', url: '' })
-      setHeaders({})
-      setToken('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isEdit, existing, activePreset])
+    const frame = requestAnimationFrame(() => {
+      if (isEdit && existing) {
+        form.reset({ name: existing.name, url: existing.url })
+        setHeaders(existing.headers ?? {})
+      } else if (activePreset) {
+        form.reset({ name: activePreset.name, url: activePreset.defaultUrl })
+        setHeaders({})
+      } else {
+        form.reset({ name: "", url: "" })
+        setHeaders({})
+      }
+      setToken("")
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, isEdit, existing, activePreset, form])
 
   const createMutation = trpc.mcp.create.useMutation()
   const updateMutation = trpc.mcp.update.useMutation()
@@ -119,7 +122,7 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
   const handleTestConnection = async () => {
     // 预设模式（如 Figma 原生工具）无远程连接可测
     if (isPresetMode) {
-      toast({ description: t('mindmap.aiChat.settings.form.presetNoTest') })
+      toast({ description: t("mindmap.aiChat.settings.form.presetNoTest") })
       return
     }
     const values = form.getValues()
@@ -128,28 +131,28 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
       const result = await mcpManager.testConnection({
         name: values.name,
         url: values.url,
-        headers
+        headers,
       })
       if (result.success) {
         toast({
-          title: t('mindmap.aiChat.settings.toast.connectSuccess'),
-          description: t('mindmap.aiChat.settings.toast.connectSuccessDesc', {
-            count: result.toolCount ?? 0
-          })
+          title: t("mindmap.aiChat.settings.toast.connectSuccess"),
+          description: t("mindmap.aiChat.settings.toast.connectSuccessDesc", {
+            count: result.toolCount ?? 0,
+          }),
         })
       } else {
         toast({
-          title: t('mindmap.aiChat.settings.toast.connectFailed'),
-          description: result.error || t('mindmap.aiChat.settings.unknownError'),
-          variant: 'destructive'
+          title: t("mindmap.aiChat.settings.toast.connectFailed"),
+          description: result.error || t("mindmap.aiChat.settings.unknownError"),
+          variant: "destructive",
         })
       }
     } catch (error) {
       toast({
-        title: t('mindmap.aiChat.settings.toast.connectFailed'),
+        title: t("mindmap.aiChat.settings.toast.connectFailed"),
         description:
-          error instanceof Error ? error.message : t('mindmap.aiChat.settings.unknownError'),
-        variant: 'destructive'
+          error instanceof Error ? error.message : t("mindmap.aiChat.settings.unknownError"),
+        variant: "destructive",
       })
     } finally {
       setIsTesting(false)
@@ -165,10 +168,10 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
           url: isPresetMode ? undefined : values.url,
           headers: isPresetMode ? undefined : headers,
           // 预设模式：token 非空才更新；普通模式不动 token
-          secretToken: isPresetMode && token ? token : undefined
+          secretToken: isPresetMode && token ? token : undefined,
         })
         toast({
-          description: t('mindmap.aiChat.settings.toast.serverUpdatedDesc', { name: values.name })
+          description: t("mindmap.aiChat.settings.toast.serverUpdatedDesc", { name: values.name }),
         })
       } else {
         await createMutation.mutateAsync({
@@ -176,25 +179,25 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
           preset: activePreset?.id ?? null,
           url: activePreset?.defaultUrl ?? values.url,
           secretToken: isPresetMode ? token : undefined,
-          headers: isPresetMode ? undefined : headers
+          headers: isPresetMode ? undefined : headers,
         })
         toast({
-          description: t('mindmap.aiChat.settings.toast.serverAddedDesc', { name: values.name })
+          description: t("mindmap.aiChat.settings.toast.serverAddedDesc", { name: values.name }),
         })
       }
       await utils.mcp.list.invalidate()
       onClose()
     } catch (error) {
       toast({
-        title: t('mindmap.aiChat.settings.toast.operationFailed'),
+        title: t("mindmap.aiChat.settings.toast.operationFailed"),
         description:
-          error instanceof Error ? error.message : t('mindmap.aiChat.settings.unknownError'),
-        variant: 'destructive'
+          error instanceof Error ? error.message : t("mindmap.aiChat.settings.unknownError"),
+        variant: "destructive",
       })
     }
   }
 
-  const addHeader = () => setHeaders({ ...headers, '': '' })
+  const addHeader = () => setHeaders({ ...headers, "": "" })
   const updateHeader = (index: number, key: string, value: string) => {
     const entries = Object.entries(headers)
     entries[index] = [key, value]
@@ -207,10 +210,10 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
   }
 
   const title = isEdit
-    ? t('mindmap.aiChat.settings.form.editTitle')
+    ? t("mindmap.aiChat.settings.form.editTitle")
     : activePreset
-      ? t('mindmap.aiChat.settings.form.addPresetTitle', { name: activePreset.name })
-      : t('mindmap.aiChat.settings.form.addTitle')
+      ? t("mindmap.aiChat.settings.form.addPresetTitle", { name: activePreset.name })
+      : t("mindmap.aiChat.settings.form.addTitle")
 
   return (
     <Dialog open={open} onOpenChange={open => !open && onClose()}>
@@ -226,15 +229,15 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('mindmap.aiChat.settings.form.nameLabel')}</FormLabel>
+                  <FormLabel>{t("mindmap.aiChat.settings.form.nameLabel")}</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder={t('mindmap.aiChat.settings.form.namePlaceholder')}
+                      placeholder={t("mindmap.aiChat.settings.form.namePlaceholder")}
                     />
                   </FormControl>
                   <FormDescription>
-                    {t('mindmap.aiChat.settings.form.nameDescription')}
+                    {t("mindmap.aiChat.settings.form.nameDescription")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -243,7 +246,7 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
 
             {isPresetMode ? (
               <FormItem>
-                <FormLabel>{t('mindmap.aiChat.settings.form.tokenLabel')}</FormLabel>
+                <FormLabel>{t("mindmap.aiChat.settings.form.tokenLabel")}</FormLabel>
                 <FormControl>
                   <Input
                     type="password"
@@ -251,8 +254,8 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
                     onChange={e => setToken(e.target.value)}
                     placeholder={
                       isEdit
-                        ? t('mindmap.aiChat.settings.form.tokenEditPlaceholder')
-                        : t('mindmap.aiChat.settings.form.tokenPlaceholder')
+                        ? t("mindmap.aiChat.settings.form.tokenEditPlaceholder")
+                        : t("mindmap.aiChat.settings.form.tokenPlaceholder")
                     }
                     className="font-mono text-sm"
                   />
@@ -268,12 +271,12 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
                   name="url"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('mindmap.aiChat.settings.form.urlLabel')}</FormLabel>
+                      <FormLabel>{t("mindmap.aiChat.settings.form.urlLabel")}</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="https://mcp.context7.com/mcp" />
                       </FormControl>
                       <FormDescription>
-                        {t('mindmap.aiChat.settings.form.urlDescription')}
+                        {t("mindmap.aiChat.settings.form.urlDescription")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -281,21 +284,21 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
                 />
 
                 <div>
-                  <FormLabel>{t('mindmap.aiChat.settings.form.headersLabel')}</FormLabel>
+                  <FormLabel>{t("mindmap.aiChat.settings.form.headersLabel")}</FormLabel>
                   <FormDescription className="mb-2">
-                    {t('mindmap.aiChat.settings.form.headersDescription')}
+                    {t("mindmap.aiChat.settings.form.headersDescription")}
                   </FormDescription>
                   <div className="space-y-2">
                     {Object.entries(headers).map(([key, value], index) => (
                       <div key={index} className="flex gap-2">
                         <Input
-                          placeholder={t('mindmap.aiChat.settings.form.headerNamePlaceholder')}
+                          placeholder={t("mindmap.aiChat.settings.form.headerNamePlaceholder")}
                           value={key}
                           onChange={e => updateHeader(index, e.target.value, value)}
                           className="flex-1 font-mono text-sm"
                         />
                         <Input
-                          placeholder={t('mindmap.aiChat.settings.form.headerValuePlaceholder')}
+                          placeholder={t("mindmap.aiChat.settings.form.headerValuePlaceholder")}
                           value={value}
                           onChange={e => updateHeader(index, key, e.target.value)}
                           className="flex-1 font-mono text-sm"
@@ -317,7 +320,7 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
                       onClick={addHeader}
                       className="w-full"
                     >
-                      {t('mindmap.aiChat.settings.form.addHeader')}
+                      {t("mindmap.aiChat.settings.form.addHeader")}
                     </Button>
                   </div>
                 </div>
@@ -326,7 +329,7 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
 
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={onClose}>
-                {t('common.cancel')}
+                {t("common.cancel")}
               </Button>
               {!isPresetMode && (
                 <Button
@@ -340,12 +343,12 @@ export const MCPServerForm: React.FC<MCPServerFormProps> = ({
                   ) : (
                     <Globe className="size-4 mr-2" />
                   )}
-                  {t('mindmap.aiChat.settings.form.testConnection')}
+                  {t("mindmap.aiChat.settings.form.testConnection")}
                 </Button>
               )}
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="size-4 mr-2 animate-spin" /> : null}
-                {isEdit ? t('common.save') : t('common.add')}
+                {isEdit ? t("common.save") : t("common.add")}
               </Button>
             </DialogFooter>
           </form>

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * CollapsibleSteps - 可折叠的工具步骤区域
  *
@@ -6,7 +5,7 @@
  * 当工具调用 >= 2 时由 AssistantMessage 使用。
  */
 
-import React, { useState, useCallback, useRef } from "react"
+import React, { useState, useCallback } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { GlowCard } from "./GlowCard"
 import { StepsSummaryBar } from "./StepsSummaryBar"
@@ -25,14 +24,11 @@ interface CollapsibleStepsProps {
   /** 用户发送到当前/最终响应的整轮 wall-clock。 */
   turnStartedAt?: number
   turnDurationMs?: number
-  /** 所有 parts（用于折叠区域内的渲染） */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  allParts: any[]
-  /** 最后一个活跃 part 的索引（在折叠区域外单独显示） */
+  /** All message parts, retained as unknown until the renderer narrows each part. */
+  allParts: unknown[]
+  /** Index of the final active part rendered outside the collapsed region. */
   lastActivePartIndex: number
-  /** 渲染单个 part 的函数 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  renderPart: (part: any, partIndex: number, isLastActive?: boolean) => React.ReactNode
+  renderPart: (part: unknown, partIndex: number, isLastActive?: boolean) => React.ReactNode
 }
 
 export const CollapsibleSteps: React.FC<CollapsibleStepsProps> = ({

@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 长期记忆 (Semantic Recall) 偏好设置 — localStorage 持久化.
  *

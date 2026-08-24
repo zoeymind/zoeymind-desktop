@@ -19,55 +19,7 @@ import ReactMarkdown from "react-markdown"
 import type { Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeRaw from "rehype-raw"
-
-const FENCE_RE = /^\s{0,3}(`{3,}|~{3,})/
-/** 列表项或缩进续行: 空行后跟这些内容时并入前一块 */
-const BLOCK_CONTINUATION_RE = /^(\s{4,}\S|\s*([-*+]|\d+[.)])\s)/
-
-// eslint-disable-next-line react-refresh/only-export-components -- 导出供单测使用的纯函数
-export function splitMarkdownBlocks(markdown: string): string[] {
-  const lines = markdown.split("\n")
-  const blocks: string[] = []
-  let current: string[] = []
-  let fenceChar: string | null = null
-  let pendingBlanks = 0
-
-  const flush = () => {
-    if (current.length > 0) {
-      blocks.push(current.join("\n"))
-      current = []
-    }
-    pendingBlanks = 0
-  }
-
-  for (const line of lines) {
-    const fenceMatch = FENCE_RE.exec(line)
-    if (fenceMatch) {
-      const char = fenceMatch[1][0]
-      if (fenceChar === null) fenceChar = char
-      else if (char === fenceChar) fenceChar = null
-    }
-
-    if (fenceChar === null && line.trim() === "") {
-      if (current.length > 0) pendingBlanks += 1
-      continue
-    }
-
-    if (pendingBlanks > 0) {
-      if (BLOCK_CONTINUATION_RE.test(line)) {
-        // loose list / 缩进块: 空行属于同一语义块, 原样保留
-        for (let i = 0; i < pendingBlanks; i += 1) current.push("")
-        pendingBlanks = 0
-      } else {
-        flush()
-      }
-    }
-    current.push(line)
-  }
-  flush()
-
-  return blocks.length > 0 ? blocks : [markdown]
-}
+import { splitMarkdownBlocks } from "./split-markdown-blocks"
 
 const REMARK_PLUGINS = [remarkGfm]
 const REHYPE_PLUGINS = [rehypeRaw]

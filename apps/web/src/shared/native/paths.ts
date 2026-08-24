@@ -9,17 +9,17 @@
  * 之前默认写死 `<appData>/mindmaps/` (~/Library/Application Support/... 隐藏路径),
  * 用户在 Finder 里翻不到, 现在换成用户可见位置.
  */
-import { appDataDir, documentDir, join } from '@tauri-apps/api/path'
-import { exists, mkdir } from '@tauri-apps/plugin-fs'
-import { getDB, execute } from './db'
+import { appDataDir, documentDir, join } from "@tauri-apps/api/path"
+import { exists, mkdir } from "@tauri-apps/plugin-fs"
+import { getDB, execute } from "./db"
 
-const LAST_SAVE_DIR_KEY = 'last_save_dir'
-const APP_FOLDER_NAME = 'ZoeyMind'
+const LAST_SAVE_DIR_KEY = "last_save_dir"
+const APP_FOLDER_NAME = "ZoeyMind"
 
 /** appData 目录下的应用内部 vault (recovery / 内部索引仍用这个). */
 export async function defaultVaultDir(): Promise<string> {
   const base = await appDataDir()
-  return join(base, 'mindmaps')
+  return join(base, "mindmaps")
 }
 
 export async function configFilePath(name: string): Promise<string> {
@@ -37,10 +37,9 @@ export async function userVaultDir(): Promise<string> {
 async function readLastSaveDir(): Promise<string | null> {
   try {
     const db = await getDB()
-    const rows = (await db.select(
-      'SELECT value FROM app_kv WHERE key = $1',
-      [LAST_SAVE_DIR_KEY]
-    )) as Array<{ value: string }>
+    const rows = (await db.select("SELECT value FROM app_kv WHERE key = $1", [
+      LAST_SAVE_DIR_KEY,
+    ])) as Array<{ value: string }>
     return rows[0]?.value ?? null
   } catch {
     return null
@@ -50,7 +49,7 @@ async function readLastSaveDir(): Promise<string | null> {
 async function writeLastSaveDir(dir: string): Promise<void> {
   try {
     await execute(
-      'INSERT INTO app_kv (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      "INSERT INTO app_kv (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
       [LAST_SAVE_DIR_KEY, dir]
     )
   } catch {
@@ -78,7 +77,7 @@ export async function preferredSaveDir(): Promise<string> {
 
 /** 保存成功后调用, 记住这次挑选的目录. */
 export async function rememberSaveDir(fullPath: string): Promise<void> {
-  const idx = Math.max(fullPath.lastIndexOf('/'), fullPath.lastIndexOf('\\'))
+  const idx = Math.max(fullPath.lastIndexOf("/"), fullPath.lastIndexOf("\\"))
   if (idx < 0) return
   await writeLastSaveDir(fullPath.slice(0, idx))
 }

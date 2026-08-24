@@ -1,23 +1,22 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * MCP 服务器卡片组件（数据来自 trpc.mcp.list）
  */
 
-import React from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import { Switch } from '@zoeymind/ui'
-import { Button } from '@zoeymind/ui'
-import { Card, CardContent } from '@zoeymind/ui'
+import React from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { Switch } from "@zoeymind/ui"
+import { Button } from "@zoeymind/ui"
+import { Card, CardContent } from "@zoeymind/ui"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@zoeymind/ui'
-import { Badge } from '@zoeymind/ui'
-import { MoreVertical, Globe, CheckCircle2, AlertCircle, CircleDashed } from 'lucide-react'
-import { useMCPStore } from '../../useMCPStore'
-import { ConfirmDialog } from '@zoeymind/ui'
+  DropdownMenuTrigger,
+} from "@zoeymind/ui"
+import { Badge } from "@zoeymind/ui"
+import { MoreVertical, Globe, CheckCircle2, AlertCircle, CircleDashed } from "lucide-react"
+import { useMCPStore } from "../../useMCPStore"
+import { ConfirmDialog } from "@zoeymind/ui"
 
 export interface McpServerView {
   id: string
@@ -44,7 +43,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
   onTest,
   onToggle,
   onDelete,
-  isTesting
+  isTesting,
 }) => {
   const { t } = useTranslation()
   const { getServerStatus } = useMCPStore()
@@ -53,7 +52,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
   const isPreset = !!server.preset
 
   return (
-    <Card className={server.disabled ? 'opacity-60' : ''}>
+    <Card className={server.disabled ? "opacity-60" : ""}>
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -66,7 +65,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
               <h3 className="font-semibold text-sm truncate">{server.name}</h3>
               <p className="text-muted-foreground text-xs truncate">
                 {isPreset
-                  ? t('mindmap.aiChat.settings.card.presetType', { preset: server.preset })
+                  ? t("mindmap.aiChat.settings.card.presetType", { preset: server.preset })
                   : server.url}
               </p>
             </div>
@@ -83,18 +82,18 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
             />
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onEdit(server.id)}>
-                {t('common.edit')}
+                {t("common.edit")}
               </DropdownMenuItem>
               {!isPreset && (
                 <DropdownMenuItem
                   onClick={() => onTest(server.id)}
                   disabled={isTesting || server.disabled}
                 >
-                  {t('mindmap.aiChat.settings.form.testConnection')}
+                  {t("mindmap.aiChat.settings.form.testConnection")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} variant="destructive">
-                {t('common.delete')}
+                {t("common.delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -103,33 +102,33 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
         <div className="flex items-center gap-3 text-xs mt-4">
           <Badge variant="outline" className="gap-1">
             <Globe className="size-3" />
-            {isPreset ? t('mindmap.aiChat.settings.card.presetBadge') : 'HTTP'}
+            {isPreset ? t("mindmap.aiChat.settings.card.presetBadge") : "HTTP"}
           </Badge>
           <span className="text-muted-foreground">•</span>
           {server.disabled ? (
             <span className="text-muted-foreground">
-              {t('mindmap.aiChat.settings.card.statusDisabled')}
+              {t("mindmap.aiChat.settings.card.statusDisabled")}
             </span>
           ) : isPreset ? (
             <span className="text-muted-foreground">
               {server.maskedToken
-                ? t('mindmap.aiChat.settings.card.tokenConfigured')
-                : t('mindmap.aiChat.settings.card.tokenMissing')}
+                ? t("mindmap.aiChat.settings.card.tokenConfigured")
+                : t("mindmap.aiChat.settings.card.tokenMissing")}
             </span>
           ) : status?.connected ? (
             <Badge variant="success" className="gap-1">
               <CheckCircle2 />
-              {t('mindmap.aiChat.settings.card.statusConnected')}
+              {t("mindmap.aiChat.settings.card.statusConnected")}
             </Badge>
           ) : status ? (
-            <Badge variant="destructive" className="gap-1" title={status.error || ''}>
+            <Badge variant="destructive" className="gap-1" title={status.error || ""}>
               <AlertCircle />
-              {t('mindmap.aiChat.settings.card.statusDisconnected')}
+              {t("mindmap.aiChat.settings.card.statusDisconnected")}
             </Badge>
           ) : (
             <span className="text-muted-foreground inline-flex items-center gap-1">
               <CircleDashed className="size-3" />
-              {t('mindmap.aiChat.settings.card.statusUnchecked')}
+              {t("mindmap.aiChat.settings.card.statusUnchecked")}
             </span>
           )}
         </div>
@@ -137,7 +136,7 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
         {status?.connected && Array.isArray(status.tools) && status.tools.length > 0 && (
           <div className="mt-3">
             <div className="text-[11px] text-muted-foreground mb-1">
-              {t('mindmap.aiChat.settings.card.toolList')}
+              {t("mindmap.aiChat.settings.card.toolList")}
             </div>
             <div className="flex flex-wrap gap-1.5">
               {status.tools.map(tool => (
@@ -157,12 +156,12 @@ export const MCPServerCard: React.FC<MCPServerCardProps> = ({
       <ConfirmDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
-        title={t('mindmap.aiChat.settings.card.confirmDeleteTitle')}
-        description={t('mindmap.aiChat.settings.card.confirmDeleteDescription', {
-          name: server.name
+        title={t("mindmap.aiChat.settings.card.confirmDeleteTitle")}
+        description={t("mindmap.aiChat.settings.card.confirmDeleteDescription", {
+          name: server.name,
         })}
-        confirmText={t('common.delete')}
-        cancelText={t('common.cancel')}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="destructive"
         onConfirm={() => onDelete(server.id)}
       />

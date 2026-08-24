@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * Tool UI Registry — 声明式注册"哪个工具弹什么 UI" + 自动接 respond 链路.
  *
@@ -165,8 +164,10 @@ export function useToolUI<TArgs = unknown, TOutput = unknown>(
 ): void {
   // ref 持续指向最新 handler, 让 dispatcher 通过 registry.getHandler 拿到最新闭包
   const handlerRef = useRef(handler)
-  handlerRef.current = handler
 
+  useEffect(() => {
+    handlerRef.current = handler
+  }, [handler])
   useEffect(() => {
     // 用代理 handler 让所有方法走 ref, 这样 render 闭包变化时无需重新注册
     const proxy: ToolUIHandler<TArgs, TOutput> = {
@@ -183,7 +184,7 @@ export function useToolUI<TArgs = unknown, TOutput = unknown>(
     }
     return registry.register(proxy as ToolUIHandler)
     // 仅在 name (注册键) 变化时 re-register
-  }, [Array.isArray(handler.name) ? handler.name.join("|") : handler.name])
+  }, [handler])
 }
 
 /** dispatcher 调: 命中 UI handler 则入队并返回 true, 否则 false */

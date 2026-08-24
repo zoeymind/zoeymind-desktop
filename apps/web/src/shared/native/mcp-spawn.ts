@@ -8,9 +8,9 @@
  * 交付形态：`launchStdioServer(row)` 返回一个 `SpawnedMcpProcess` 句柄。
  * 具体 JSON-RPC 编解码（initialize/list_tools/call_tool）由后续 MCP client 实现。
  */
-import { Command, type Child } from '@tauri-apps/plugin-shell'
-import { logger } from '@zoeymind/logger'
-import type { McpServerRow } from './mcp-repo'
+import { Command, type Child } from "@tauri-apps/plugin-shell"
+import { logger } from "@zoeymind/logger"
+import type { McpServerRow } from "./mcp-repo"
 
 export interface SpawnedMcpProcess {
   child: Child
@@ -21,7 +21,7 @@ export interface SpawnedMcpProcess {
 }
 
 export async function launchStdioServer(row: McpServerRow): Promise<SpawnedMcpProcess> {
-  if (row.kind !== 'stdio') {
+  if (row.kind !== "stdio") {
     throw new Error(`MCP server ${row.name} is not stdio (kind=${row.kind})`)
   }
   if (!row.command) {
@@ -33,18 +33,18 @@ export async function launchStdioServer(row: McpServerRow): Promise<SpawnedMcpPr
   const stdoutHandlers = new Set<(chunk: string) => void>()
   const stderrHandlers = new Set<(chunk: string) => void>()
 
-  cmd.stdout.on('data', chunk => {
-    const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+  cmd.stdout.on("data", chunk => {
+    const text = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
     for (const h of stdoutHandlers) h(text)
   })
-  cmd.stderr.on('data', chunk => {
-    const text = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+  cmd.stderr.on("data", chunk => {
+    const text = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk)
     for (const h of stderrHandlers) h(text)
   })
-  cmd.on('close', ({ code }) => {
+  cmd.on("close", ({ code }) => {
     logger.info(`[mcp:${row.name}] closed code=${code}`)
   })
-  cmd.on('error', error => {
+  cmd.on("error", error => {
     logger.error(`[mcp:${row.name}] error`, error)
   })
 
@@ -53,7 +53,7 @@ export async function launchStdioServer(row: McpServerRow): Promise<SpawnedMcpPr
   return {
     child,
     async send(line) {
-      await child.write(line.endsWith('\n') ? line : `${line}\n`)
+      await child.write(line.endsWith("\n") ? line : `${line}\n`)
     },
     async kill() {
       await child.kill()
@@ -65,6 +65,6 @@ export async function launchStdioServer(row: McpServerRow): Promise<SpawnedMcpPr
     onStderr(handler) {
       stderrHandlers.add(handler)
       return () => stderrHandlers.delete(handler)
-    }
+    },
   }
 }

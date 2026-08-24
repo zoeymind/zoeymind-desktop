@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * 多步骤工具卡片的执行态边框。
  * 仅在工具仍在运行时播放流光；完成后保留普通主题边框。

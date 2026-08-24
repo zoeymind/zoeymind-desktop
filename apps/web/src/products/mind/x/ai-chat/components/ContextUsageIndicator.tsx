@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * ContextUsageIndicator - Context Token 使用率圆环进度条
  */
@@ -8,7 +7,6 @@ import { Button, HoverCard, HoverCardContent, HoverCardTrigger } from "@zoeymind
 import { useTranslation } from "@zoeymind/i18n"
 import { Loader2 } from "lucide-react"
 import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
-import { cn } from "@/shared/app-shared"
 
 interface ContextUsageIndicatorProps {
   usedTokens: number

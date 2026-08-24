@@ -9,7 +9,7 @@ import { logger } from "@zoeymind/logger"
 import type { Attachment, SendMessageParams, TokenUsage } from "../../ai-chat/types"
 import { chatDB } from "../../ai-chat/storage/chatDB"
 import type { Conversation } from "../../ai-chat/storage/chatDB"
-import { getModuleAIChatRuntime } from "../../ai-chat/context/AIChatRuntimeContext"
+import { getModuleAIChatRuntime } from "../../ai-chat/context/ai-chat-runtime"
 import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
 import { resetToolUI, restorePendingFromMessages } from "../../ai-chat/context/ToolUIRegistry"
 import {
