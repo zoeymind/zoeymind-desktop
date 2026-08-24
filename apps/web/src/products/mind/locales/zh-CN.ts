@@ -1078,10 +1078,6 @@ export default {
       searchPlaceholder: "搜索项目...",
       viewGridLabel: "切换为网格视图",
       viewListLabel: "切换为列表视图",
-      welcomeAlt: "欢迎使用 Zoey Mind",
-      welcomeDescription: "创建你的第一个思维导图项目，开始规划测试用例",
-      welcomeStart: "创建项目",
-      welcomeTitle: "欢迎来到 Zoey Mind",
     },
     rules: {
       entry: "用例格式说明",

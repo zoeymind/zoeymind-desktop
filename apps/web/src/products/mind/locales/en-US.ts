@@ -1110,10 +1110,6 @@ export default {
       searchPlaceholder: "Search projects...",
       viewGridLabel: "Switch to grid view",
       viewListLabel: "Switch to list view",
-      welcomeAlt: "Welcome to Zoey Mind",
-      welcomeDescription: "Create your first mind map project to start planning test cases.",
-      welcomeStart: "Create project",
-      welcomeTitle: "Welcome to Zoey Mind",
     },
     rules: {
       entry: "Test case format",
