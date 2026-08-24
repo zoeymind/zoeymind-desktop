@@ -311,8 +311,6 @@ export function MorphingTabs({
   const itemIds = useMemo(() => items.map(item => item.id), [items])
   const itemMap = useMemo(() => new Map(items.map(item => [item.id, item])), [items])
   const [order, setOrder] = useState(itemIds)
-  const orderRef = useRef(order)
-  orderRef.current = order
 
   const [internalValue, setInternalValue] = useState<string | null>(
     defaultValue ?? itemIds[0] ?? null
@@ -321,6 +319,7 @@ export function MorphingTabs({
   const currentValue = controlled ? (value ?? null) : internalValue
 
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const [surfaceHost, setSurfaceHost] = useState<HTMLDivElement | null>(null)
   const railRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const tabPositionRefs = useRef<Record<string, MotionValue<number> | null>>({})
@@ -334,24 +333,26 @@ export function MorphingTabs({
   const dragLeft = useMotionValue(SURFACE_INSET)
   const surfaceLeft = useMotionValue(SURFACE_INSET)
 
+  const reconciledOrder = useMemo(() => {
+    const available = new Set(itemIds)
+    const retained = order.filter(id => available.has(id))
+    const retainedSet = new Set(retained)
+    return [...retained, ...itemIds.filter(id => !retainedSet.has(id))]
+  }, [itemIds, order])
   useEffect(() => {
-    setOrder(current => {
-      const available = new Set(itemIds)
-      const retained = current.filter(id => available.has(id))
-      const retainedSet = new Set(retained)
-      const added = itemIds.filter(id => !retainedSet.has(id))
-      const next = [...retained, ...added]
-      return sameOrder(current, next) ? current : next
+    const frame = requestAnimationFrame(() => {
+      setOrder(current => (sameOrder(current, reconciledOrder) ? current : reconciledOrder))
     })
-  }, [itemIds])
+    return () => cancelAnimationFrame(frame)
+  }, [reconciledOrder])
 
   const orderedItems = useMemo(
     () =>
-      order.flatMap(id => {
+      reconciledOrder.flatMap(id => {
         const item = itemMap.get(id)
         return item ? [item] : []
       }),
-    [itemMap, order]
+    [itemMap, reconciledOrder]
   )
 
   const firstEnabledItem = orderedItems.find(item => !item.disabled) ?? orderedItems[0] ?? null
@@ -371,8 +372,11 @@ export function MorphingTabs({
   // Every tier fits inside the panel by construction, so no tab is ever cut off
   // and the notch never has to be clamped away from the tab that cut it.
   const { tabWidth, slotGap } = useMemo(() => {
-    const count = order.length
-    const pinnedCount = order.reduce((acc, id) => acc + (itemMap.get(id)?.pinned ? 1 : 0), 0)
+    const count = reconciledOrder.length
+    const pinnedCount = reconciledOrder.reduce(
+      (acc, id) => acc + (itemMap.get(id)?.pinned ? 1 : 0),
+      0
+    )
     const nonPinnedCount = count - pinnedCount
     if (!surfaceWidth || nonPinnedCount === 0) {
       return { tabWidth: MAX_TAB_WIDTH, slotGap: tabGap }
@@ -394,25 +398,25 @@ export function MorphingTabs({
       return { tabWidth: MIN_TAB_WIDTH, slotGap: Math.max(0, gap) }
     }
     return { tabWidth: Math.max(0, widthAt(0)), slotGap: 0 }
-  }, [order, surfaceWidth, tabGap, itemMap, startInset, endInset])
+  }, [reconciledOrder, surfaceWidth, tabGap, itemMap, startInset, endInset])
 
   const widthOf = useCallback(
-    (index: number) => (itemMap.get(order[index])?.pinned ? PINNED_TAB_WIDTH : tabWidth),
-    [itemMap, order, tabWidth]
+    (index: number) => (itemMap.get(reconciledOrder[index])?.pinned ? PINNED_TAB_WIDTH : tabWidth),
+    [itemMap, reconciledOrder, tabWidth]
   )
 
   // slotLefts: prefix-sum, per-slot width. pinned 位置只占 PINNED_TAB_WIDTH.
   const slotLefts = useMemo(() => {
     const arr: number[] = []
     let cursor = SURFACE_INSET + startInset
-    for (let i = 0; i < order.length; i += 1) {
+    for (let i = 0; i < reconciledOrder.length; i += 1) {
       arr.push(cursor)
       cursor += widthOf(i) + slotGap
     }
     return arr
-  }, [order, slotGap, widthOf, startInset])
+  }, [reconciledOrder, slotGap, widthOf, startInset])
 
-  const dragStartIndex = draggingId ? order.indexOf(draggingId) : -1
+  const dragStartIndex = draggingId ? reconciledOrder.indexOf(draggingId) : -1
 
   const visualIndexFor = useCallback(
     (index: number) => {
@@ -456,14 +460,7 @@ export function MorphingTabs({
     [controlled, itemMap, onValueChange]
   )
 
-  useEffect(() => {
-    if (currentValue && itemMap.has(currentValue)) return
-    if (firstEnabledItem && firstEnabledItem.id !== currentValue) {
-      setActive(firstEnabledItem.id)
-    }
-  }, [currentValue, firstEnabledItem, itemMap, setActive])
-
-  const activeOrderIndex = activeId ? order.indexOf(activeId) : -1
+  const activeOrderIndex = activeId ? reconciledOrder.indexOf(activeId) : -1
   const activeVisualIndex = activeOrderIndex < 0 ? -1 : visualIndexFor(activeOrderIndex)
 
   useLayoutEffect(() => {
@@ -489,7 +486,6 @@ export function MorphingTabs({
 
   const commitOrder = useCallback(
     (next: string[], notify: boolean) => {
-      orderRef.current = next
       setOrder(current => (sameOrder(current, next) ? current : next))
       if (notify) onOrderChange?.(next)
     },
@@ -511,12 +507,12 @@ export function MorphingTabs({
         return
       }
 
-      const startIndex = orderRef.current.indexOf(id)
+      const startIndex = reconciledOrder.indexOf(id)
       if (startIndex < 0) return
       const capturedSlots: number[] = []
       {
         let cursor = SURFACE_INSET + startInset
-        for (let i = 0; i < orderRef.current.length; i += 1) {
+        for (let i = 0; i < reconciledOrder.length; i += 1) {
           capturedSlots.push(cursor)
           cursor += widthOf(i) + slotGap
         }
@@ -535,11 +531,11 @@ export function MorphingTabs({
         targetIndex: startIndex,
         moved: false,
         finishing: false,
-        startOrder: orderRef.current.slice(),
+        startOrder: reconciledOrder.slice(),
         slotLefts: capturedSlots,
       }
     },
-    [dragLeft, itemMap, slotGap, widthOf, startInset]
+    [dragLeft, itemMap, reconciledOrder, slotGap, startInset, widthOf]
   )
 
   const moveDrag = useCallback(
@@ -670,7 +666,7 @@ export function MorphingTabs({
 
   const moveBy = useCallback(
     (id: string, direction: -1 | 1) => {
-      const current = orderRef.current
+      const current = reconciledOrder
       const index = current.indexOf(id)
       const nextIndex = index + direction
       if (index < 0 || nextIndex < 0 || nextIndex >= current.length || itemMap.get(id)?.disabled) {
@@ -678,12 +674,12 @@ export function MorphingTabs({
       }
       commitOrder(moveItem(current, index, nextIndex), true)
     },
-    [commitOrder, itemMap]
+    [commitOrder, itemMap, reconciledOrder]
   )
 
   const handleTabKeyDown = useCallback(
     (id: string, event: React.KeyboardEvent<HTMLButtonElement>) => {
-      const index = orderRef.current.indexOf(id)
+      const index = reconciledOrder.indexOf(id)
       if (index < 0) return
 
       if (event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
@@ -695,19 +691,22 @@ export function MorphingTabs({
 
       event.preventDefault()
       const direction = event.key === "ArrowLeft" ? -1 : 1
-      const nextIndex = (index + direction + orderRef.current.length) % orderRef.current.length
-      const nextId = orderRef.current[nextIndex]
+      const nextIndex = (index + direction + reconciledOrder.length) % reconciledOrder.length
+      const nextId = reconciledOrder[nextIndex]
       setActive(nextId)
       requestAnimationFrame(() => tabButtonRefs.current[nextId]?.focus())
     },
-    [moveBy, setActive]
+    [moveBy, reconciledOrder, setActive]
   )
 
   if (!orderedItems.length) return null
 
   return (
     <div
-      ref={rootRef}
+      ref={node => {
+        rootRef.current = node
+        setSurfaceHost(node)
+      }}
       className={cn(
         "relative isolate min-w-0 overflow-visible bg-transparent text-foreground",
         classNames?.root,
@@ -740,7 +739,7 @@ export function MorphingTabs({
                 reduce={reduce}
                 active={isActive}
                 anyDragging={Boolean(draggingId)}
-                surfaceHost={rootRef.current}
+                surfaceHost={surfaceHost}
                 surfaceWidth={surfaceWidth}
                 tabWidth={widthOf(index)}
                 surfaceClassName={classNames?.activeTab}
@@ -884,9 +883,9 @@ export function MorphingTabs({
               className="absolute z-30 flex items-center transition-[left] duration-200 ease-out"
               style={{
                 left:
-                  order.length > 0
-                    ? (slotLefts[order.length - 1] ?? SURFACE_INSET) +
-                      widthOf(order.length - 1) +
+                  reconciledOrder.length > 0
+                    ? (slotLefts[reconciledOrder.length - 1] ?? SURFACE_INSET) +
+                      widthOf(reconciledOrder.length - 1) +
                       slotGap
                     : SURFACE_INSET + startInset,
                 top: TAB_TOP,

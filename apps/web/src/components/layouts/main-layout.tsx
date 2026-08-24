@@ -1,5 +1,5 @@
-import { Outlet } from 'react-router-dom'
-import { TitleBar } from './titlebar'
+import { Outlet } from "react-router-dom"
+import { TitleBar } from "./titlebar"
 
 /**
  * 顶层布局：

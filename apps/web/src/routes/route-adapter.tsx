@@ -37,9 +37,7 @@ export function RouteAdapter() {
 
       navigate("/", { replace: true })
     })()
-    // URL 只在首次挂载时解释为 tab，之后由 tabs store 主导。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location.pathname, navigate])
 
   return <WorkspaceShell />
 }

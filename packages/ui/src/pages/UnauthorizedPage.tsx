@@ -1,42 +1,39 @@
-import { Button } from '../button'
-import { useNavigate } from '@tanstack/react-router'
-import { Shield, ArrowLeft, LogIn } from 'lucide-react'
+import { Button } from "../button";
+import { Shield, ArrowLeft, LogIn } from "lucide-react";
 
 interface UnauthorizedPageProps {
-  title?: string
-  description?: string
-  showBackButton?: boolean
-  showLoginButton?: boolean
-  backButtonText?: string
-  loginButtonText?: string
-  onBack?: () => void
-  onLogin?: () => void
+  title?: string;
+  description?: string;
+  showBackButton?: boolean;
+  showLoginButton?: boolean;
+  backButtonText?: string;
+  loginButtonText?: string;
+  onBack?: () => void;
+  onLogin?: () => void;
 }
 
 /**
  * 401 权限不足页面 — shadcn 风格, 主题色全跟随.
  */
 export function UnauthorizedPage({
-  title = '访问受限',
-  description = '抱歉,您没有访问此页面的权限,请联系管理员获取访问权限',
+  title = "访问受限",
+  description = "抱歉,您没有访问此页面的权限,请联系管理员获取访问权限",
   showBackButton = true,
   showLoginButton = true,
-  backButtonText = '返回',
-  loginButtonText = '重新登录',
+  backButtonText = "返回",
+  loginButtonText = "重新登录",
   onBack,
-  onLogin
+  onLogin,
 }: UnauthorizedPageProps) {
-  const navigate = useNavigate()
-
   const handleBack = () => {
-    if (onBack) onBack()
-    else window.history.back()
-  }
+    if (onBack) onBack();
+    else window.history.back();
+  };
 
   const handleLogin = () => {
-    if (onLogin) onLogin()
-    else navigate({ to: '/login' })
-  }
+    if (onLogin) onLogin();
+    else window.location.assign("/login");
+  };
 
   return (
     <div className="min-h-svh flex items-center justify-center bg-background px-4">
@@ -71,5 +68,5 @@ export function UnauthorizedPage({
         </div>
       </div>
     </div>
-  )
+  );
 }

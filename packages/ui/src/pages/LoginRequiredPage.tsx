@@ -1,12 +1,11 @@
-import { Button } from '../button'
-import { useNavigate } from '@tanstack/react-router'
-import { LogIn, User } from 'lucide-react'
+import { Button } from "../button";
+import { LogIn, User } from "lucide-react";
 
 interface LoginRequiredPageProps {
-  title?: string
-  description?: string
-  showLoginButton?: boolean
-  onLogin?: () => void
+  title?: string;
+  description?: string;
+  showLoginButton?: boolean;
+  onLogin?: () => void;
 }
 
 /**
@@ -15,17 +14,15 @@ interface LoginRequiredPageProps {
  * 默认作为 401 状态展示 (访问需登录的资源, 但用户未登录).
  */
 export function LoginRequiredPage({
-  title = '需要登录',
-  description = '请先登录您的账户以访问此功能',
+  title = "需要登录",
+  description = "请先登录您的账户以访问此功能",
   showLoginButton = true,
-  onLogin
+  onLogin,
 }: LoginRequiredPageProps) {
-  const navigate = useNavigate()
-
   const handleLogin = () => {
-    if (onLogin) onLogin()
-    else navigate({ to: '/login' })
-  }
+    if (onLogin) onLogin();
+    else window.location.assign("/login");
+  };
 
   return (
     <div className="min-h-svh flex items-center justify-center bg-background px-4">
@@ -54,5 +51,5 @@ export function LoginRequiredPage({
         )}
       </div>
     </div>
-  )
+  );
 }

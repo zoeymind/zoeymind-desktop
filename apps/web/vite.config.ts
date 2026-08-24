@@ -18,10 +18,6 @@ export default defineConfig({
         find: "@zoeymind-ext-mind",
         replacement: path.resolve(__dirname, "./src/products/mind/x/index.ts"),
       },
-      {
-        find: "@tanstack/react-router",
-        replacement: path.resolve(__dirname, "./src/shared/tanstack-router-shim.tsx"),
-      },
     ],
   },
 })
