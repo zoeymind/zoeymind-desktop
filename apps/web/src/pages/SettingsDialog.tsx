@@ -98,6 +98,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const persist = useCallback(async (next: ModelsConfig) => {
     setCfg(next)
     await saveModelsConfig(next)
+    window.dispatchEvent(new Event("zm:models-updated"))
   }, [])
 
   return (
@@ -276,6 +277,7 @@ function ProviderDetail({
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(provider)
   const models = cfg.models.filter(model => model.providerId === provider.id)
+  const hasFetchedModels = providerFetchCache.has(provider.id)
   const fetched = providerFetchCache.get(provider.id) ?? []
 
   const saveProvider = async () => {
@@ -444,16 +446,6 @@ function ProviderDetail({
           {saving ? <Loader2 className="animate-spin" /> : <Save />}
           保存服务商
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void fetchModels()}
-          disabled={fetching || dirty}
-          title={dirty ? "请先保存服务商" : undefined}
-        >
-          {fetching ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-          {fetched ? "重新拉取模型" : "拉取模型"}
-        </Button>
         {fetchError && <span className="truncate text-xs text-destructive">{fetchError}</span>}
       </div>
 
@@ -479,6 +471,10 @@ function ProviderDetail({
                 key={newModel.id}
                 model={newModel}
                 suggestions={fetched.map(item => item.id)}
+                hasFetchedSuggestions={hasFetchedModels}
+                suggestionsLoading={fetching}
+                suggestionsError={fetchError}
+                onRefreshSuggestions={fetchModels}
                 expanded
                 isNew
                 onExpandedChange={() => undefined}
@@ -492,6 +488,10 @@ function ProviderDetail({
                 key={model.id}
                 model={model}
                 suggestions={fetched.map(item => item.id)}
+                hasFetchedSuggestions={hasFetchedModels}
+                suggestionsLoading={fetching}
+                suggestionsError={fetchError}
+                onRefreshSuggestions={fetchModels}
                 expanded={expandedModelId === model.id}
                 onExpandedChange={expanded => setExpandedModelId(expanded ? model.id : null)}
                 onConfirm={confirmModelEdit}
@@ -505,10 +505,13 @@ function ProviderDetail({
     </div>
   )
 }
-
 interface ModelEditorProps {
   model: ModelEntry
   suggestions: string[]
+  hasFetchedSuggestions: boolean
+  suggestionsLoading: boolean
+  suggestionsError: string | null
+  onRefreshSuggestions: () => Promise<void>
   expanded: boolean
   isNew?: boolean
   onExpandedChange: (expanded: boolean) => void
@@ -516,10 +519,13 @@ interface ModelEditorProps {
   onCancel: () => void
   onRemove: () => void
 }
-
 function ModelEditor({
   model,
   suggestions,
+  hasFetchedSuggestions,
+  suggestionsLoading,
+  suggestionsError,
+  onRefreshSuggestions,
   expanded,
   isNew = false,
   onExpandedChange,
@@ -600,7 +606,15 @@ function ModelEditor({
             </div>
             <div className="space-y-1.5">
               <Label>模型 ID</Label>
-              <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <Popover
+                open={pickerOpen}
+                onOpenChange={open => {
+                  setPickerOpen(open)
+                  if (open && !hasFetchedSuggestions && !suggestionsLoading) {
+                    void onRefreshSuggestions()
+                  }
+                }}
+              >
                 <PopoverTrigger
                   nativeButton
                   render={
@@ -617,11 +631,25 @@ function ModelEditor({
                 />
                 <PopoverContent align="start" className="w-(--anchor-width) p-0">
                   <Command shouldFilter={false}>
-                    <CommandInput
-                      placeholder="搜索或输入模型 ID"
-                      value={query}
-                      onValueChange={setQuery}
-                    />
+                    <div className="flex items-center gap-1 p-1 pb-0">
+                      <CommandInput
+                        className="min-w-0 flex-1"
+                        placeholder="搜索或输入模型 ID"
+                        value={query}
+                        onValueChange={setQuery}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => void onRefreshSuggestions()}
+                        disabled={suggestionsLoading}
+                        aria-label="刷新模型列表"
+                        title="刷新模型列表"
+                      >
+                        <RefreshCw className={cn(suggestionsLoading && "animate-spin")} />
+                      </Button>
+                    </div>
                     <CommandList>
                       {query.trim() && query.trim() !== draft.name && (
                         <CommandGroup heading="自定义">
@@ -633,7 +661,12 @@ function ModelEditor({
                           </CommandItem>
                         </CommandGroup>
                       )}
-                      <CommandEmpty>输入模型 ID 后使用上方选项。</CommandEmpty>
+                      <CommandEmpty>
+                        {suggestionsLoading ? "正在获取模型…" : "输入模型 ID 后使用上方选项。"}
+                      </CommandEmpty>
+                      {suggestionsError && (
+                        <p className="px-3 py-2 text-xs text-destructive">{suggestionsError}</p>
+                      )}
                       {filteredSuggestions.length > 0 && (
                         <CommandGroup heading="可用模型">
                           {filteredSuggestions.map(suggestion => (

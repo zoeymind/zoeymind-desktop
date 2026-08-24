@@ -53,7 +53,8 @@ export default {
       core: {
         agentDescription: "在 Agent 模式下，AI 可直接操作思维导图，自动完成用例管理任务",
         agentMode: "Agent 模式",
-        aiNotConfigured: "AI 服务异常",
+        aiNotConfigured: "配置 AI 模型后开始使用",
+        configureAI: "前往 AI 模型设置",
         builtinTools: "内置工具",
         chatHistory: "历史聊天",
         componentError: "组件渲染错误",
@@ -68,7 +69,7 @@ export default {
         newConversation: "创建新对话",
         noActiveMcp: "暂无已启用 MCP 服务器",
         noTools: "暂无可用工具",
-        notConfiguredMember: "AI 服务暂时不可用,请稍后再试.",
+        notConfiguredMember: "添加服务商、API Key 和模型。Key 仅保存在本机。",
         promptLibrary: "Prompt 指令库",
         activePromptsTitle: "已启用 {{count}} 条提示词",
         activePromptsEmpty: "未启用任何提示词",

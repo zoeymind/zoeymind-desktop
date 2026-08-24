@@ -1,4 +1,3 @@
-// @ts-nocheck — desktop mirror of cloud AI chat; runtime bridged via bridge.tsx
 /**
  * Composer actions — attachment lives beside the model selector; send stays right-aligned.
  */
@@ -7,7 +6,7 @@ import React, { useRef } from "react"
 import { ArrowUp, Square, Plus, Loader2 } from "lucide-react"
 import { cn } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
-import { Button, MetallicButton } from "@zoeymind/ui"
+import { Button } from "@zoeymind/ui"
 
 interface AttachmentButtonProps {
   onAddImage?: (files: File[]) => void
@@ -98,23 +97,20 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     <ArrowUp className="size-[15px]" />
   )
   const className = cn(
-    "size-[23px] rounded-full shadow-sm",
+    "size-[23px] rounded-full shadow-sm active:scale-[0.96]",
     showStop
-      ? "bg-muted-foreground text-background hover:bg-muted-foreground/80"
-      : isInterruptSend
-        ? "bg-warning text-white hover:bg-warning/90"
-        : showSend
-          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-          : "text-foreground"
+      ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+      : showSend
+        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+        : "bg-muted text-muted-foreground"
   )
 
   if (isIdle) {
     return (
-      <MetallicButton
+      <Button
         type="button"
         variant="ghost"
         size="icon-xs"
-        metalScale={0.5}
         onClick={onSend}
         disabled
         className={className}
@@ -122,7 +118,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         title={label}
       >
         {buttonContent}
-      </MetallicButton>
+      </Button>
     )
   }
 

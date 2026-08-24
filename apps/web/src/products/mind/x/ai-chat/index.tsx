@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { McpServerItem, AiToolListResult } from "../lib/api-types"
-import { ChevronDown, Plus, History, AlertCircle, Settings, X } from "lucide-react"
+import { ChevronDown, Plus, History, Settings, X } from "lucide-react"
 import {
   Badge,
   Button,
@@ -37,7 +37,7 @@ import { useAIChatV2Store } from "./stores/useAIChatV2Store"
 import { useAIChatRuntime } from "./context/AIChatRuntimeContext"
 import { useMCPStore } from "../useMCPStore"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
-import { cn } from "@/shared/app-shared"
+import { cn, useSettingsDialog } from "@/shared/app-shared"
 import { trpc } from "../lib/trpc"
 import { useTranslation } from "@zoeymind/i18n"
 import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useUserPrompt"
@@ -85,6 +85,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const showSettings = useAIChatV2Store(s => s.showSettings)
   const setShowSettings = useAIChatV2Store(s => s.setShowSettings)
 
+  const openAISettings = useSettingsDialog(state => state.openSettings)
   // 本地提示词库 (sqlite prompts 表). 启用的指令拼进 mergedUserPrompt,
   // 作为 system prompt 前置发给模型.
   const { data: myPromptsData } = usePromptsQuery()
@@ -258,15 +259,23 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
       {/* Message Area */}
       <div className="flex-1 min-h-0 relative" data-message-container-v2>
         {!isAIConfigured && !modelsLoading ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-4 px-6">
-            <AlertCircle className="size-12 mb-2 text-warning" />
-            <div className="text-lg font-medium text-foreground">
-              {t("mindmap.aiChat.core.aiNotConfigured")}
-            </div>
-            <div className="text-sm text-center text-muted-foreground max-w-[320px]">
-              {t("mindmap.aiChat.core.notConfiguredMember")}
-            </div>
-          </div>
+          <Empty className="h-full rounded-none border-0 px-6">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Settings />
+              </EmptyMedia>
+              <EmptyTitle>{t("mindmap.aiChat.core.aiNotConfigured")}</EmptyTitle>
+              <EmptyDescription className="max-w-[320px]">
+                {t("mindmap.aiChat.core.notConfiguredMember")}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => openAISettings("ai")}>
+                <Settings data-icon="inline-start" />
+                {t("mindmap.aiChat.core.configureAI")}
+              </Button>
+            </EmptyContent>
+          </Empty>
         ) : messages.length === 0 ? (
           <Empty className="h-full rounded-none border-0">
             <EmptyHeader>

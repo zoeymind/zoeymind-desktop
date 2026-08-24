@@ -24,6 +24,23 @@ describe("composer runtime regressions", () => {
     expect(button.getAttribute("metalscale")).toBeNull()
   })
 
+  it("uses semantic theme tokens for every send-button state", () => {
+    const { container, rerender } = render(
+      <ActionButtons onSend={vi.fn()} onStop={vi.fn()} isSending={false} hasContent />
+    )
+    const button = () => container.querySelector("button") as HTMLButtonElement
+    expect(button().className).toContain("bg-primary")
+    expect(button().className).toContain("text-primary-foreground")
+
+    rerender(<ActionButtons onSend={vi.fn()} onStop={vi.fn()} isSending hasContent={false} />)
+    expect(button().className).toContain("bg-secondary")
+    expect(button().className).toContain("text-secondary-foreground")
+
+    rerender(<ActionButtons onSend={vi.fn()} isSending={false} hasContent={false} />)
+    expect(button().className).toContain("bg-muted")
+    expect(button().className).toContain("text-muted-foreground")
+  })
+
   it("normalizes missing token values instead of crashing the chat tree", () => {
     render(
       <ContextUsageIndicator

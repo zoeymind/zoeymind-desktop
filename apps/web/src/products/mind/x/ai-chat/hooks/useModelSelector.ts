@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- desktop model config shim retains legacy hook API gaps
 // @ts-nocheck
 /**
  * 模型选择器 Hook (AIchatV2) —— 桌面端本地版.
@@ -41,6 +42,30 @@ const LOCAL_STORAGE_KEY = "aichatv2-selected-model"
 // 触发外部刷新 (设置面板保存新模型后 dispatch 这个事件).
 const MODELS_UPDATED_EVENT = "zm:models-updated"
 
+export function configuredAIModels(cfg: ModelsConfig | null): AIModel[] {
+  if (!cfg) return []
+  return cfg.models.flatMap(model => {
+    const provider = cfg.providers.find(item => item.id === model.providerId)
+    if (!provider) return []
+    const hasCredentials = provider.kind === "ollama" || Boolean(provider.apiKey?.trim())
+    if (!hasCredentials) return []
+    return [
+      {
+        id: model.name,
+        configId: model.id,
+        name: model.alias,
+        description: model.name,
+        provider: provider.kind,
+        hasVision: model.capabilities?.includes("vision") ?? false,
+        hasToolCalling: model.capabilities?.includes("tools") ?? false,
+        icon: PROVIDER_ICONS[provider.kind],
+        maxContextTokens: model.maxContextTokens,
+        pricingNote: null,
+      },
+    ]
+  })
+}
+
 export function useModelSelector() {
   const [cfg, setCfg] = useState<ModelsConfig | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -54,33 +79,13 @@ export function useModelSelector() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load synchronizes the external models.json file
     refresh()
     const onUpdate = () => refresh()
     window.addEventListener(MODELS_UPDATED_EVENT, onUpdate)
     return () => window.removeEventListener(MODELS_UPDATED_EVENT, onUpdate)
   }, [refresh])
-
-  const models: AIModel[] = useMemo(() => {
-    if (!cfg) return []
-    return cfg.models.flatMap(m => {
-      const p = cfg.providers.find(p => p.id === m.providerId)
-      if (!p) return []
-      return [
-        {
-          id: m.name, // 用 model.name 作为 id, 直接是 provider 那边可识别的字符串
-          configId: m.id,
-          name: m.alias,
-          description: m.name,
-          provider: p.kind,
-          hasVision: m.capabilities?.includes("vision") ?? false,
-          hasToolCalling: m.capabilities?.includes("tools") ?? false,
-          icon: PROVIDER_ICONS[p.kind],
-          maxContextTokens: m.maxContextTokens,
-          pricingNote: null,
-        },
-      ]
-    })
-  }, [cfg])
+  const models = useMemo(() => configuredAIModels(cfg), [cfg])
 
   const defaultModelId = cfg?.defaults?.chat ?? models[0]?.id
 

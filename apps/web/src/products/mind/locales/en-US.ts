@@ -54,7 +54,8 @@ export default {
         agentDescription:
           "In Agent mode, AI can directly operate the mind map to automatically complete use case management tasks.",
         agentMode: "Agent mode",
-        aiNotConfigured: "AI service unavailable",
+        aiNotConfigured: "Configure an AI model to get started",
+        configureAI: "Open AI model settings",
         builtinTools: "Built-in tools",
         chatHistory: "Chat history",
         conversation: "Conversation",
@@ -69,7 +70,7 @@ export default {
         newConversation: "New conversation",
         noActiveMcp: "No active MCP servers",
         noTools: "No tools available",
-        notConfiguredMember: "AI service is temporarily unavailable. Please try again later.",
+        notConfiguredMember: "Add a provider, API key, and model. Your key stays on this device.",
         promptLibrary: "Prompt library",
         activePromptsTitle: "{{count}} prompts active",
         activePromptsEmpty: "No prompts active",
