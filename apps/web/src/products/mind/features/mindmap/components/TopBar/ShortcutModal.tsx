@@ -1,8 +1,8 @@
-import { type FC, useMemo } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@zoeymind/ui'
-import { Badge } from '@zoeymind/ui'
-import { Separator } from '@zoeymind/ui'
+import { type FC, useMemo } from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@zoeymind/ui"
+import { Badge } from "@zoeymind/ui"
+import { Separator } from "@zoeymind/ui"
 import {
   Search,
   Copy,
@@ -17,9 +17,9 @@ import {
   AlertTriangle,
   AlertCircle,
   Info,
-  Lightbulb
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+  Lightbulb,
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
 interface ShortcutItem {
   keys: string[]
@@ -42,90 +42,90 @@ export const ShortcutModal: FC<ShortcutModalProps> = ({ isOpen, onClose }) => {
   const shortcuts: ShortcutCategory[] = useMemo(
     () => [
       {
-        category: t('mindmap.topbar.shortcuts.categorySearch'),
+        category: t("mindmap.topbar.shortcuts.categorySearch"),
         items: [
           {
-            keys: ['Ctrl', 'F'],
-            description: t('mindmap.topbar.shortcuts.openSearch'),
-            icon: Search
-          }
-        ]
+            keys: ["Ctrl", "F"],
+            description: t("mindmap.topbar.shortcuts.openSearch"),
+            icon: Search,
+          },
+        ],
       },
       {
-        category: t('mindmap.topbar.shortcuts.categoryEdit'),
+        category: t("mindmap.topbar.shortcuts.categoryEdit"),
         items: [
           {
-            keys: ['Ctrl', 'C'],
-            description: t('mindmap.topbar.shortcuts.copyNode'),
-            icon: Copy
+            keys: ["Ctrl", "C"],
+            description: t("mindmap.topbar.shortcuts.copyNode"),
+            icon: Copy,
           },
           {
-            keys: ['Ctrl', 'X'],
-            description: t('mindmap.topbar.shortcuts.cutNode'),
-            icon: Scissors
+            keys: ["Ctrl", "X"],
+            description: t("mindmap.topbar.shortcuts.cutNode"),
+            icon: Scissors,
           },
           {
-            keys: ['Ctrl', 'V'],
-            description: t('mindmap.topbar.shortcuts.pasteNode'),
-            icon: Clipboard
+            keys: ["Ctrl", "V"],
+            description: t("mindmap.topbar.shortcuts.pasteNode"),
+            icon: Clipboard,
           },
           {
-            keys: ['Ctrl', 'D'],
-            description: t('mindmap.topbar.shortcuts.duplicateNode'),
-            icon: FileText
+            keys: ["Ctrl", "D"],
+            description: t("mindmap.topbar.shortcuts.duplicateNode"),
+            icon: FileText,
           },
           {
-            keys: ['Delete'],
-            description: t('mindmap.topbar.shortcuts.deleteNode'),
-            icon: Trash2
-          }
-        ]
+            keys: ["Delete"],
+            description: t("mindmap.topbar.shortcuts.deleteNode"),
+            icon: Trash2,
+          },
+        ],
       },
       {
-        category: t('mindmap.topbar.shortcuts.categoryNode'),
+        category: t("mindmap.topbar.shortcuts.categoryNode"),
         items: [
           {
-            keys: ['Enter'],
-            description: t('mindmap.topbar.shortcuts.addSibling'),
-            icon: Plus
+            keys: ["Enter"],
+            description: t("mindmap.topbar.shortcuts.addSibling"),
+            icon: Plus,
           },
           {
-            keys: ['Tab'],
-            description: t('mindmap.topbar.shortcuts.addChild'),
-            icon: PlusCircle
+            keys: ["Tab"],
+            description: t("mindmap.topbar.shortcuts.addChild"),
+            icon: PlusCircle,
           },
           {
-            keys: ['Alt', '/'],
-            description: t('mindmap.topbar.shortcuts.toggleExpand'),
-            icon: RotateCcw
-          }
-        ]
+            keys: ["Alt", "/"],
+            description: t("mindmap.topbar.shortcuts.toggleExpand"),
+            icon: RotateCcw,
+          },
+        ],
       },
       {
-        category: t('mindmap.topbar.shortcuts.categoryIcon'),
+        category: t("mindmap.topbar.shortcuts.categoryIcon"),
         items: [
           {
-            keys: ['·'],
-            description: t('mindmap.topbar.shortcuts.iconModule'),
-            icon: Tag
+            keys: ["·"],
+            description: t("mindmap.topbar.shortcuts.iconModule"),
+            icon: Tag,
           },
           {
-            keys: ['1'],
-            description: t('mindmap.topbar.shortcuts.iconP1'),
-            icon: AlertTriangle
+            keys: ["1"],
+            description: t("mindmap.topbar.shortcuts.iconP1"),
+            icon: AlertTriangle,
           },
           {
-            keys: ['2'],
-            description: t('mindmap.topbar.shortcuts.iconP2'),
-            icon: AlertCircle
+            keys: ["2"],
+            description: t("mindmap.topbar.shortcuts.iconP2"),
+            icon: AlertCircle,
           },
           {
-            keys: ['3'],
-            description: t('mindmap.topbar.shortcuts.iconP3'),
-            icon: Info
-          }
-        ]
-      }
+            keys: ["3"],
+            description: t("mindmap.topbar.shortcuts.iconP3"),
+            icon: Info,
+          },
+        ],
+      },
     ],
     [t]
   )
@@ -135,7 +135,7 @@ export const ShortcutModal: FC<ShortcutModalProps> = ({ isOpen, onClose }) => {
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-xl font-semibold">
-            {t('mindmap.topbar.shortcuts.title')}
+            {t("mindmap.topbar.shortcuts.title")}
           </DialogTitle>
         </DialogHeader>
 
@@ -188,8 +188,8 @@ export const ShortcutModal: FC<ShortcutModalProps> = ({ isOpen, onClose }) => {
             <p className="text-sm text-primary dark:text-primary flex items-start gap-1.5">
               <Lightbulb className="size-4 flex-shrink-0 mt-0.5" />
               <span>
-                <strong>{t('mindmap.topbar.shortcuts.tipPrefix')}</strong>
-                {t('mindmap.topbar.shortcuts.tipBody')}
+                <strong>{t("mindmap.topbar.shortcuts.tipPrefix")}</strong>
+                {t("mindmap.topbar.shortcuts.tipBody")}
               </span>
             </p>
           </div>

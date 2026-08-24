@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { logger } from "@zoeymind/logger"
 import { useTranslation } from "@zoeymind/i18n"
 import { useEffect, forwardRef, useImperativeHandle } from "react"
@@ -7,9 +6,7 @@ import { useFeature } from "@/shared/app-shared"
 import { useUIStore } from "@/products/mind/stores"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
-import { useCommentContext } from "@/products/mind/features/mindmap/contexts/CommentContext"
 import {
-  Badge,
   FloatingToolbar,
   FloatingToolbarButton,
   FloatingToolbarGroup,
@@ -23,11 +20,6 @@ import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
 import zoeyLogoLightUrl from "@/assets/logo.svg"
 import zoeyLogoDarkUrl from "@/assets/logo-dark.svg"
 
-interface FormatPanelProps {
-  onPreviewStateChange?: (isPreview: boolean) => void
-  setExitPreviewCallback?: (callback: (() => void) | null) => void
-}
-
 export interface FormatPanelRef {
   openTagsPanel: () => void
   closeTagsPanel: () => void
@@ -37,19 +29,17 @@ export interface FormatPanelRef {
   closeCommentPanel: () => void
 }
 
-export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>((_props, ref) => {
+export const FormatPanel = forwardRef<FormatPanelRef>((_props, ref) => {
   const { t } = useTranslation()
   // 从stores获取状态和数据
   const { mindMap } = useMindMapStore()
   const canEdit = usePermissionStore(state => state.canEdit)
   const {
     activeFormatTab: activeTab,
-    targetNodeUid,
     openFormatTab,
     closeFormatTab,
     toggleFormatTab,
   } = useUIStore()
-  const { totalComments } = useCommentContext()
 
   // 暴露方法给父组件
   useImperativeHandle(
@@ -74,14 +64,8 @@ export const FormatPanel = forwardRef<FormatPanelRef, FormatPanelProps>((_props,
   }, [mindMap])
 
   useEffect(() => {
-    // 只读用户切到只有 owner 可用的 tab 时自动收起 (tags/theme/ai/snapshot 都是编辑向面板)
-    if (
-      !canEdit &&
-      (activeTab === "ai" ||
-        activeTab === "snapshot" ||
-        activeTab === "theme" ||
-        activeTab === "tags")
-    ) {
+    // Read-only users cannot open editing panels.
+    if (!canEdit && (activeTab === "ai" || activeTab === "theme" || activeTab === "tags")) {
       closeFormatTab()
     }
   }, [canEdit, activeTab, closeFormatTab])

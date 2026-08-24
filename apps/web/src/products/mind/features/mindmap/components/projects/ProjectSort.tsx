@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
-import { CalendarDays, Clock, Star, ArrowUpDown } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@zoeymind/ui'
-import { useTranslation } from '@zoeymind/i18n'
+import { useMemo } from "react"
+import { CalendarDays, Clock, Star, ArrowUpDown } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@zoeymind/ui"
+import { useTranslation } from "@zoeymind/i18n"
 
 interface ProjectSortProps {
   onSortChange?: (sortKey: string) => void
@@ -12,19 +12,19 @@ interface ProjectSortProps {
 
 export function ProjectSort({
   onSortChange,
-  defaultSort = 'recent',
+  defaultSort = "recent",
   className,
-  sortType
+  sortType,
 }: ProjectSortProps) {
   const { t } = useTranslation()
 
   const sortOptions = useMemo(
     () =>
       [
-        { key: 'recent', label: t('projects.tabs.sortRecent'), icon: Clock },
-        { key: 'created', label: t('projects.tabs.sortCreated'), icon: CalendarDays },
-        { key: 'name', label: t('projects.tabs.sortName'), icon: ArrowUpDown },
-        { key: 'starred', label: t('projects.tabs.sortStarred'), icon: Star }
+        { key: "recent", label: t("projects.tabs.sortRecent"), icon: Clock },
+        { key: "created", label: t("projects.tabs.sortCreated"), icon: CalendarDays },
+        { key: "name", label: t("projects.tabs.sortName"), icon: ArrowUpDown },
+        { key: "starred", label: t("projects.tabs.sortStarred"), icon: Star },
       ] as const,
     [t]
   )

@@ -1,6 +1,6 @@
-import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
-import type { default as MindMap } from 'simple-mind-map'
+import { create } from "zustand"
+import { devtools } from "zustand/middleware"
+import type { default as MindMap } from "simple-mind-map"
 
 export type MindMapRef = MindMap | null
 
@@ -99,12 +99,12 @@ export const useMindMapStore = create<MindMapState>()(
           loadError: null,
           isPreviewMode: false,
           exitPreviewCallback: null,
-          title: null
+          title: null,
         })
-      }
+      },
     }),
     {
-      name: 'mindmap-store'
+      name: "mindmap-store",
     }
   )
 )

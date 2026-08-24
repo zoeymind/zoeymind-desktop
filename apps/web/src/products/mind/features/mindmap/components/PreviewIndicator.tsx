@@ -1,9 +1,8 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import React from 'react'
-import { Eye, X } from 'lucide-react'
-import { Button } from '@zoeymind/ui'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import { useTranslation } from '@zoeymind/i18n'
+import React from "react"
+import { Eye, X } from "lucide-react"
+import { Button } from "@zoeymind/ui"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import { useTranslation } from "@zoeymind/i18n"
 
 export const PreviewIndicator: React.FC = () => {
   const { t } = useTranslation()
@@ -21,7 +20,7 @@ export const PreviewIndicator: React.FC = () => {
         <div className="flex items-center gap-2">
           <Eye className="size-4 text-warning" />
           <span className="text-sm font-medium text-warning">
-            {t('mindmap.canvas.previewModeText')}
+            {t("mindmap.canvas.previewModeText")}
           </span>
         </div>
         <Button
@@ -31,7 +30,7 @@ export const PreviewIndicator: React.FC = () => {
           onClick={handleExit}
         >
           <X className="size-3 mr-1" />
-          {t('mindmap.canvas.exitPreview')}
+          {t("mindmap.canvas.exitPreview")}
         </Button>
       </div>
     </div>

@@ -8,7 +8,7 @@
  * 注意：这里只做索引 CRUD；.zmind 文件本身的读写在 `zmind-file.ts`；
  * 保存流程（更新 mtime/size/nodeCount/preview 缓存）由 editor 层协调。
  */
-import { exists, stat } from "@tauri-apps/plugin-fs"
+import { exists, rename, stat } from "@tauri-apps/plugin-fs"
 import { select, execute } from "./db"
 
 export interface ProjectRow {
@@ -200,7 +200,6 @@ export async function renameProjectFile(
   if (path === row.path) return { path, name }
   if (await exists(path)) throw new Error(`已存在同名文件“${name}.zmind”`)
 
-  const { rename } = await import("@tauri-apps/plugin-fs")
   await rename(row.path, path)
   try {
     await execute(

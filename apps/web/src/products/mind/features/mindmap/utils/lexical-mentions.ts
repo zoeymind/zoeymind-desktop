@@ -7,17 +7,17 @@
  * getMentionedNodesData 解析）都依赖该格式，迁移到 Lexical 后必须保持不变。
  */
 
-import { $createTextNode, $getRoot, $isParagraphNode, type LexicalNode } from 'lexical'
-import { $createBeautifulMentionNode, $isBeautifulMentionNode } from 'lexical-beautiful-mentions'
+import { $createTextNode, $getRoot, $isParagraphNode, type LexicalNode } from "lexical"
+import { $createBeautifulMentionNode, $isBeautifulMentionNode } from "lexical-beautiful-mentions"
 
 /** mention 触发符 */
-export const MENTION_TRIGGER = '@'
+export const MENTION_TRIGGER = "@"
 
 /** 匹配 @[name](id) 标记，与 useAIChatV2Store / UserMessage 的解析正则保持一致 */
 const MENTION_MARKUP_REGEX = /@\[([^\]]+)\]\(([^)]+)\)/g
 
 /** 编辑器内 mention 节点 data 中存放节点 id 的键 */
-export const MENTION_DATA_ID_KEY = 'id'
+export const MENTION_DATA_ID_KEY = "id"
 
 /** 建议菜单项：value 为显示名称，id 为思维导图节点 id */
 export interface MentionSuggestion {
@@ -59,7 +59,7 @@ export function $serializeToMarkup(): string {
   const blocks: string[] = []
   for (const child of root.getChildren()) {
     if ($isParagraphNode(child)) {
-      let line = ''
+      let line = ""
       for (const node of child.getChildren()) {
         if ($isBeautifulMentionNode(node)) {
           const value = node.getValue()
@@ -75,5 +75,5 @@ export function $serializeToMarkup(): string {
       blocks.push(child.getTextContent())
     }
   }
-  return blocks.join('\n')
+  return blocks.join("\n")
 }

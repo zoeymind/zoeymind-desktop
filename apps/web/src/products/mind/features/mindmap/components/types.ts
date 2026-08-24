@@ -1,4 +1,4 @@
-import type { MindMapNode } from 'simple-mind-map'
+import type { MindMapNode } from "simple-mind-map"
 
 export interface Position {
   x: number

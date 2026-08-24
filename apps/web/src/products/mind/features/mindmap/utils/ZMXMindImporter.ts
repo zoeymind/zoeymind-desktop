@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import JSZip from "jszip"
 import { logger } from "@zoeymind/logger"
 import { parseXmlContent } from "@/products/mind/utils/xmlParser"

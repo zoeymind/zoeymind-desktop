@@ -1,15 +1,15 @@
-import { type FC, useState } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
+import { type FC, useState } from "react"
+import { useTranslation } from "@zoeymind/i18n"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter
-} from '@zoeymind/ui'
-import { Button } from '@zoeymind/ui'
-import { Switch } from '@zoeymind/ui'
+  DialogFooter,
+} from "@zoeymind/ui"
+import { Button } from "@zoeymind/ui"
+import { Switch } from "@zoeymind/ui"
 import {
   Field,
   FieldContent,
@@ -18,18 +18,18 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSeparator,
-  FieldSet
-} from '@zoeymind/ui'
-import { Input } from '@zoeymind/ui'
+  FieldSet,
+} from "@zoeymind/ui"
+import { Input } from "@zoeymind/ui"
 
-const PERFORMANCE_MODE_KEY = 'mind-map-performance-mode'
-const PERFORMANCE_CONFIG_KEY = 'mind-map-performance-config'
-const ALIGN_SAME_LEVEL_WIDTH_KEY = 'mind-map-align-same-level-width'
+const PERFORMANCE_MODE_KEY = "mind-map-performance-mode"
+const PERFORMANCE_CONFIG_KEY = "mind-map-performance-config"
+const ALIGN_SAME_LEVEL_WIDTH_KEY = "mind-map-align-same-level-width"
 
 const defaultPerformanceConfig = {
   time: 250,
   padding: 100,
-  removeNodeWhenOutCanvas: true
+  removeNodeWhenOutCanvas: true,
 }
 
 interface SettingsModalProps {
@@ -42,17 +42,17 @@ export { ALIGN_SAME_LEVEL_WIDTH_KEY }
 export const SettingsModal: FC<SettingsModalProps> = ({ open, onOpenChange }) => {
   const { t } = useTranslation()
   const [performanceMode, setPerformanceMode] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(PERFORMANCE_MODE_KEY) === 'true'
+    if (typeof window === "undefined") return false
+    return localStorage.getItem(PERFORMANCE_MODE_KEY) === "true"
   })
 
   const [alignSameLevelWidth, setAlignSameLevelWidth] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(ALIGN_SAME_LEVEL_WIDTH_KEY) === 'true'
+    if (typeof window === "undefined") return false
+    return localStorage.getItem(ALIGN_SAME_LEVEL_WIDTH_KEY) === "true"
   })
 
   const [config, setConfig] = useState(() => {
-    if (typeof window === 'undefined') return defaultPerformanceConfig
+    if (typeof window === "undefined") return defaultPerformanceConfig
     const savedConfig = localStorage.getItem(PERFORMANCE_CONFIG_KEY)
     try {
       return savedConfig ? JSON.parse(savedConfig) : defaultPerformanceConfig
@@ -73,7 +73,7 @@ export const SettingsModal: FC<SettingsModalProps> = ({ open, onOpenChange }) =>
 
   const handleConfigChange = (field: keyof typeof config, value: string | number | boolean) => {
     const newConfig = { ...config, [field]: value }
-    if (field === 'time' || field === 'padding') {
+    if (field === "time" || field === "padding") {
       newConfig[field] = Number(value)
     }
     setConfig(newConfig)
@@ -84,17 +84,17 @@ export const SettingsModal: FC<SettingsModalProps> = ({ open, onOpenChange }) =>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{t('common.settings')}</DialogTitle>
-          <DialogDescription>{t('mindmap.topbar.settings.description')}</DialogDescription>
+          <DialogTitle>{t("common.settings")}</DialogTitle>
+          <DialogDescription>{t("mindmap.topbar.settings.description")}</DialogDescription>
         </DialogHeader>
         <FieldGroup className="py-4">
           <Field orientation="horizontal">
             <FieldContent>
               <FieldLabel htmlFor="align-same-level-width">
-                {t('mindmap.topbar.settings.alignSameLevelWidth')}
+                {t("mindmap.topbar.settings.alignSameLevelWidth")}
               </FieldLabel>
               <FieldDescription>
-                {t('mindmap.topbar.settings.alignSameLevelWidthDesc')}
+                {t("mindmap.topbar.settings.alignSameLevelWidthDesc")}
               </FieldDescription>
             </FieldContent>
             <Switch
@@ -106,7 +106,7 @@ export const SettingsModal: FC<SettingsModalProps> = ({ open, onOpenChange }) =>
 
           <Field orientation="horizontal">
             <FieldLabel htmlFor="performance-mode">
-              {t('mindmap.topbar.settings.performanceMode')}
+              {t("mindmap.topbar.settings.performanceMode")}
             </FieldLabel>
             <Switch
               id="performance-mode"
@@ -120,42 +120,42 @@ export const SettingsModal: FC<SettingsModalProps> = ({ open, onOpenChange }) =>
               <FieldSeparator />
               <FieldSet>
                 <FieldLegend variant="label">
-                  {t('mindmap.topbar.settings.performanceConfig')}
+                  {t("mindmap.topbar.settings.performanceConfig")}
                 </FieldLegend>
                 <FieldGroup>
                   <Field orientation="horizontal">
                     <FieldLabel htmlFor="perf-time">
-                      {t('mindmap.topbar.settings.refreshDelay')}
+                      {t("mindmap.topbar.settings.refreshDelay")}
                     </FieldLabel>
                     <Input
                       id="perf-time"
                       type="number"
                       value={config.time}
-                      onChange={e => handleConfigChange('time', e.target.value)}
+                      onChange={e => handleConfigChange("time", e.target.value)}
                     />
                   </Field>
 
                   <Field orientation="horizontal">
                     <FieldLabel htmlFor="perf-padding">
-                      {t('mindmap.topbar.settings.preloadRange')}
+                      {t("mindmap.topbar.settings.preloadRange")}
                     </FieldLabel>
                     <Input
                       id="perf-padding"
                       type="number"
                       value={config.padding}
-                      onChange={e => handleConfigChange('padding', e.target.value)}
+                      onChange={e => handleConfigChange("padding", e.target.value)}
                     />
                   </Field>
 
                   <Field orientation="horizontal">
                     <FieldLabel htmlFor="perf-remove-node">
-                      {t('mindmap.topbar.settings.removeOutOfCanvas')}
+                      {t("mindmap.topbar.settings.removeOutOfCanvas")}
                     </FieldLabel>
                     <Switch
                       id="perf-remove-node"
                       checked={config.removeNodeWhenOutCanvas}
                       onCheckedChange={checked =>
-                        handleConfigChange('removeNodeWhenOutCanvas', checked)
+                        handleConfigChange("removeNodeWhenOutCanvas", checked)
                       }
                     />
                   </Field>
@@ -165,7 +165,7 @@ export const SettingsModal: FC<SettingsModalProps> = ({ open, onOpenChange }) =>
           )}
         </FieldGroup>
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>{t('common.close')}</Button>
+          <Button onClick={() => onOpenChange(false)}>{t("common.close")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

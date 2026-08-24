@@ -4,7 +4,7 @@
  * 文件夹在桌面端是"虚拟标签"：不映射真实目录，只在 projects_index.folder_id
  * 里作为可空外键存在，用户在 Finder 里看不到文件夹结构。
  */
-import { select, execute } from './db'
+import { select, execute } from "./db"
 
 export interface FolderRow {
   id: string
@@ -28,7 +28,7 @@ function toFolder(row: RawFolderRow): FolderRow {
     name: row.name,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
-    mindmapCount: row.mindmap_count
+    mindmapCount: row.mindmap_count,
   }
 }
 
@@ -43,10 +43,12 @@ export async function listFolders(): Promise<FolderRow[]> {
 }
 
 export async function createFolder(id: string, name: string, sortOrder: number): Promise<void> {
-  await execute(
-    `INSERT INTO folders (id, name, sort_order, created_at) VALUES ($1, $2, $3, $4)`,
-    [id, name, sortOrder, Date.now()]
-  )
+  await execute(`INSERT INTO folders (id, name, sort_order, created_at) VALUES ($1, $2, $3, $4)`, [
+    id,
+    name,
+    sortOrder,
+    Date.now(),
+  ])
 }
 
 export async function renameFolder(id: string, name: string): Promise<void> {

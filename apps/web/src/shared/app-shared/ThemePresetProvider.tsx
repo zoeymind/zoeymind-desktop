@@ -1,24 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useTheme, THEME_PRESET_STORAGE_KEY, THEME_PRESETS, applyThemeOrClear } from "@zoeymind/ui"
-
-interface ThemePresetContextValue {
-  presetId: string
-  setPreset: (id: string) => void
-}
-
-const ThemePresetContext = createContext<ThemePresetContextValue | undefined>(undefined)
-
-/**
- * Hook to consume the theme preset context.
- * Returns the current preset ID and a setter function.
- */
-export function useThemePreset(): ThemePresetContextValue {
-  const ctx = useContext(ThemePresetContext)
-  if (!ctx) {
-    throw new Error("useThemePreset must be used within ThemePresetProvider")
-  }
-  return ctx
-}
+import { ThemePresetContext, type ThemePresetContextValue } from "./theme-preset-context"
 
 interface ThemePresetProviderProps {
   children: ReactNode

@@ -1,13 +1,10 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy cloud/collab file remains intentionally unchecked */
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { logger } from "@zoeymind/logger"
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import MindMap from "simple-mind-map"
 import { customCheckIsTouchPad } from "@/products/mind/lib/isTouchPad"
 import { defaultMindmapData, MAX_NODE_COUNT } from "@zoeymind/shared"
-import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
-import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
-import { useThemePreset } from "@/shared/app-shared"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/project-context"
+import { useThemePreset } from "@/shared/app-shared/theme-preset-context"
 import { colorToHsl, useTheme } from "@zoeymind/ui"
 
 const PERFORMANCE_MODE_KEY = "mind-map-performance-mode"
@@ -168,7 +165,7 @@ interface SavedData {
  */
 export function useCanvasManager(
   containerRef: React.RefObject<HTMLDivElement | null>,
-  setMindMap: React.Dispatch<React.SetStateAction<MindMap | null>>,
+  setMindMap: (mindMap: MindMap | null) => void,
   loadSavedData?: () => Promise<SavedData>,
   saveData?: () => Promise<void>,
   reloadToken: number = 0,
@@ -176,9 +173,7 @@ export function useCanvasManager(
   updateProgress?: (progress: number) => void
 ) {
   // ✅ 从 store 获取权限状态和检查完成状态
-  const { canEdit, checkCompleted, hasPermission } = usePermissionStore()
-  // 🎯 从 Context 获取 workspaceId 和 cloudMode (页面级作用域)
-  const { workspaceId, cloudMode } = useProjectContext()
+  const { workspaceId } = useProjectContext()
   // 保存实例的引用以便在清理时使用
   const instanceRef = useRef<MindMap | null>(null)
   // 每次 effect 运行分配递增代次；只有最新代次可以创建引擎。
@@ -188,27 +183,24 @@ export function useCanvasManager(
   const currentReloadTokenRef = useRef<number>(0)
   const { resolvedTheme } = useTheme()
   const { presetId } = useThemePreset()
-  const hasUsableContainerSize = () => {
+  const hasUsableContainerSize = useCallback(() => {
     const container = containerRef.current
     if (!container) return false
     const rect = container.getBoundingClientRect()
     return rect.width > 0 && rect.height > 0
-  }
-  const waitForUsableContainer = (isCancelled: () => boolean) =>
-    new Promise<boolean>(resolve => {
-      const check = () => {
-        if (isCancelled()) {
-          resolve(false)
-          return
+  }, [containerRef])
+  const waitForUsableContainer = useCallback(
+    (isCancelled: () => boolean) =>
+      new Promise<boolean>(resolve => {
+        const check = () => {
+          if (isCancelled()) return resolve(false)
+          if (hasUsableContainerSize()) return resolve(true)
+          requestAnimationFrame(check)
         }
-        if (hasUsableContainerSize()) {
-          resolve(true)
-          return
-        }
-        requestAnimationFrame(check)
-      }
-      check()
-    })
+        check()
+      }),
+    [hasUsableContainerSize]
+  )
 
   // Every mounted editor keeps a measurable container. Resize is safe for active and
   // inactive panes alike; visibility changes never participate in engine initialization.
@@ -225,7 +217,7 @@ export function useCanvasManager(
       observer.disconnect()
       window.removeEventListener("resize", resize)
     }
-  }, [])
+  }, [containerRef, hasUsableContainerSize])
 
   useEffect(() => {
     const attempt = initializationAttemptRef.current + 1
@@ -238,12 +230,6 @@ export function useCanvasManager(
     }
     if (!workspaceId) {
       // logger.debug('useCanvasManager: 没有projectId，跳过初始化')
-      return
-    }
-
-    // ✅ 等待权限检查完成后再初始化（修复权限时序问题）
-    if (!checkCompleted) {
-      // logger.debug('useCanvasManager: 权限检查未完成，等待中...', { workspaceId, checkCompleted })
       return
     }
 
@@ -270,10 +256,10 @@ export function useCanvasManager(
         if (instanceRef.current) {
           try {
             if (saveData) await saveData()
-            instanceRef.current.destroy()
+            const previousInstance = instanceRef.current
             instanceRef.current = null
-            // ✅ 清空 store 中的实例，避免其他组件引用已销毁的实例
             setMindMap(null)
+            previousInstance.destroy()
           } catch (error) {
             logger.warn("清理旧实例失败:", error)
           }
@@ -292,9 +278,7 @@ export function useCanvasManager(
             updateProgress?.(60)
           } catch (error) {
             logger.error("加载数据失败:", error)
-            if (cloudMode) {
-              throw error
-            }
+            throw error
           }
         }
         if (isCancelled()) return
@@ -321,15 +305,6 @@ export function useCanvasManager(
           } catch {
             performanceConfig = {}
           }
-        }
-
-        // 确保容器仍然存在
-        if (cloudMode && !checkCompleted) {
-          return
-        }
-
-        if (cloudMode && checkCompleted && !hasPermission) {
-          return
         }
 
         if (!containerRef.current) {
@@ -369,26 +344,18 @@ export function useCanvasManager(
           // 添加自定义触控板检测函数
           customCheckIsTouchPad,
           maxNodeCount: MAX_NODE_COUNT,
-          cooperateDisableInitialSync: false, // 正常模式下不禁用初始同步
+          cooperateDisableInitialSync: false,
           cooperateInitialDocState: initialDocState,
-          allowReadonlyContextMenu: canEdit === false,
-          readonly: canEdit === false,
-          // 协同更新前的钩子函数，用于权限控制
-          beforeCooperateUpdate:
-            canEdit === false
-              ? (updateInfo: { list?: unknown[]; type?: string }) => {
-                  // 如果用户没有编辑权限，阻止所有协同更新
-                  logger.warn("只读用户尝试进行协同更新，已阻止:", updateInfo)
-                  // 清空更新列表来阻止协同更新
-                  if (updateInfo.list) {
-                    updateInfo.list.length = 0
-                  }
-                }
-              : null,
+          allowReadonlyContextMenu: false,
+          readonly: false,
+          beforeCooperateUpdate: null,
         }
 
         const instance = new MindMap(mindMapOptions)
-
+        if (isCancelled()) {
+          instance.destroy()
+          return
+        }
         // 设置当前项目ID（通过扩展属性）
         if (workspaceId) {
           ;(instance as MindMap & { workspaceId?: string }).workspaceId = workspaceId
@@ -425,11 +392,13 @@ export function useCanvasManager(
 
         // 在 setMindMap 之前先监听渲染完成事件
         const handleFirstRender = () => {
-          updateProgress?.(70)
-          // 触发 setMindMap,标记画布已渲染
-          setMindMap(instance)
-          // 移除监听器,只需要首次渲染
           instance.off("node_tree_render_end", handleFirstRender)
+          if (isCancelled() || instanceRef.current !== instance) {
+            instance.destroy()
+            return
+          }
+          updateProgress?.(70)
+          setMindMap(instance)
         }
 
         instance.on("node_tree_render_end", handleFirstRender)
@@ -448,20 +417,17 @@ export function useCanvasManager(
     return () => {
       cancelled = true
     }
-  }, [workspaceId, reloadToken, checkCompleted, cloudMode, canEdit, hasPermission])
-
-  // 单独的useEffect来处理权限变化时的模式设置
-  useEffect(() => {
-    if (instanceRef.current && canEdit !== undefined) {
-      const shouldBeReadonly = canEdit === false
-      const currentMode = instanceRef.current.opt.readonly
-      instanceRef.current.opt.allowReadonlyContextMenu = shouldBeReadonly
-
-      if (currentMode !== shouldBeReadonly) {
-        instanceRef.current.setMode(shouldBeReadonly ? "readonly" : "edit")
-      }
-    }
-  }, [canEdit])
+  }, [
+    containerRef,
+    loadSavedData,
+    onLoadError,
+    reloadToken,
+    saveData,
+    setMindMap,
+    updateProgress,
+    waitForUsableContainer,
+    workspaceId,
+  ])
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -478,15 +444,15 @@ export function useCanvasManager(
     return () => {
       if (instanceRef.current) {
         try {
-          instanceRef.current.destroy()
+          const instance = instanceRef.current
           instanceRef.current = null
           currentProjectIdRef.current = undefined
-          // ✅ 清空 store 中的实例，避免下次打开时误判
           setMindMap(null)
+          instance.destroy()
         } catch (error) {
           logger.warn("组件卸载时销毁 MindMap 实例失败:", error)
         }
       }
     }
-  }, []) // ✅ 空依赖数组，只在组件真正卸载时执行
+  }, [setMindMap])
 }

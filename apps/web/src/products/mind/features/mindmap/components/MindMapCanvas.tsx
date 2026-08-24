@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { useCallback, useRef, useMemo, useEffect, useState } from "react"
 import { MindMapDropdown } from "./MindMapDropdown.tsx"
 import { AIChatToggle, FormatPanel, type FormatPanelRef } from "./FormatPanel/FormatPanel.tsx"
@@ -7,7 +6,6 @@ import { StatusBar } from "./StatusBar/StatusBar"
 import { useEventManager } from "./hooks/useEventManager.ts"
 import { useNodeLimitGuard } from "./hooks/useNodeLimitGuard.ts"
 import { useStorageManager } from "./hooks/useStorageManager.ts"
-import { useCloudStorageManager } from "./hooks/useCloudStorageManager.ts"
 import { useShortcutManager } from "./hooks/useShortcutManager.ts"
 import { useViewManager } from "./hooks/useViewManager.ts"
 import { useCanvasManager, defaultData } from "./hooks/useCanvasManager.ts"
@@ -16,26 +14,16 @@ import { useIconToolbarManager } from "./hooks/useIconToolbarManager.ts"
 import { useConvertMindMap } from "./hooks/useConvertMindMap.ts"
 import { useCollaborationManager } from "./hooks/useCollaborationManager"
 import { resolveMindMapLoading } from "./hooks/mindmap-loading"
-import { initPlugins, setCurrentOrganizationId } from "./managers/PluginManager.ts"
+import { initPlugins } from "./managers/PluginManager.ts"
 import { useCurrentUser } from "@/shared/app-shared"
-import { useCommentYJS } from "@/products/mind/features/mindmap/hooks/useCommentYJS"
 import { AIFeaturePanel, AIChatProvider, resolveMindmapShortId } from "@zoeymind-ext-mind"
-import {
-  CommentProvider,
-  type CommentContextValue,
-} from "@/products/mind/features/mindmap/contexts/CommentContext"
-import { EMPTY_SNAPSHOT } from "@/products/mind/features/mindmap/services/comment-service"
+import { CommentProvider } from "@/products/mind/features/mindmap/contexts/CommentContext"
 import { useLoading } from "@/shared/app-shared"
-import { trpcClient } from "@/shared/app-shared"
 import { useUIStore } from "@/products/mind/stores"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
-import { useCommentStore } from "@/products/mind/features/mindmap/stores/comment-store"
-import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
-import { useOrganization } from "@/shared/app-shared"
-import { toast, toastLoading, dismissToast } from "@/shared/app-shared"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/project-context"
 import { useTranslation } from "@zoeymind/i18n"
 import { Button, LoadErrorScreen } from "@zoeymind/ui"
-import type { default as MindMap } from "simple-mind-map"
 import { isWaitingForCollaboration } from "@/products/mind/features/mindmap/types/mindmap-extensions"
 import { logger } from "@zoeymind/logger"
 // Save 按钮的位置在 TopBar 内 (菜单右侧), 由 TopBar 自身消费 HeaderSaveButton.
@@ -44,7 +32,6 @@ import { CanvasTool } from "./canvasTool/index.tsx"
 import { MindMapScrollbar } from "./MindMapScrollbar.tsx"
 import { PreviewIndicator } from "./PreviewIndicator.tsx"
 import { CollaborationCursorLayer } from "./CollaborationCursorLayer"
-import { usePermissionStore } from "@/products/mind/features/mindmap/stores/permission-store"
 import {
   getProject,
   notifyProjectPathChanged,
@@ -61,38 +48,21 @@ import "@/products/mind/diff-view/diff-view.css"
 // 初始化插件
 initPlugins()
 
-// 协作同步中 Toast 的固定 id：toast.loading 原位更新避免重复弹
-const MINDMAP_SYNC_TOAST_ID = "mindmap-collab-sync"
-
 export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
-  // 🎯 记录页面组件开始时间，用于计算总加载耗时（只在首次渲染时设置）
-  const componentStartTimeRef = useRef<number>(undefined)
-  const mountCountRef = useRef(0)
-
-  // 只在首次渲染时记录开始时间
-  if (componentStartTimeRef.current === undefined) {
-    componentStartTimeRef.current = performance.now()
-    mountCountRef.current += 1
-  }
-
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasViewportRef = useRef<HTMLDivElement>(null)
   const visibleRef = useRef(visible)
-  visibleRef.current = visible
+  useEffect(() => {
+    visibleRef.current = visible
+  }, [visible])
   const [reloadToken, setReloadToken] = useState(0)
   const saveFlow = useSaveFlowContext()
   useDiffTracking()
   const formatPanelRef = useRef<FormatPanelRef>(null)
 
   // 🎯 从 Context 获取 workspaceId 和 cloudMode (页面级作用域)
-  const { workspaceId, cloudMode } = useProjectContext()
-  const { currentOrg } = useOrganization()
-
-  // 同步组织 ID 到 PluginManager（供 Ghost Completion 使用）
-  useEffect(() => {
-    setCurrentOrganizationId(currentOrg?.id)
-  }, [currentOrg?.id])
+  const { workspaceId } = useProjectContext()
 
   const { showLoading, hideLoading, updateProgress: updateGlobalProgress, loading } = useLoading()
   const updateProgress = useCallback(
@@ -210,11 +180,6 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     }
   }, [visible])
 
-  const { syncFromHook } = useCommentStore()
-
-  // 权限管理 - 从store获取权限状态
-  const { hasPermission, canEdit } = usePermissionStore()
-
   const handleLoadError = useCallback(
     (error: unknown) => {
       if (visibleRef.current) hideLoading()
@@ -224,20 +189,6 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     },
     [hideLoading, setLoadError, t]
   )
-
-  const handleUseDefaultTemplate = useCallback(() => {
-    if (visibleRef.current) showLoading(t("mindmap.canvas.loadingDefaultTemplate"))
-    setLoadError(null)
-    setForceDefaultTemplate(true)
-    setMindMap(null)
-  }, [setMindMap, showLoading, setLoadError, setForceDefaultTemplate, t])
-
-  const handleUseSnapshot = useCallback(() => {
-    toast({
-      title: t("mindmap.canvas.snapshotComingSoonTitle"),
-      description: t("mindmap.canvas.snapshotComingSoonDescription"),
-    })
-  }, [toast, t])
 
   // ✅ 项目切换时清理错误状态（reloadToken 由 store 统一管理）
   useEffect(() => {
@@ -253,13 +204,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
   useEventManager(mindMap)
   useNodeLimitGuard(mindMap)
 
-  // 根据云模式选择不同的存储管理器
-  const { loadSavedData: loadLocalSavedData, saveData: saveLocalData } = useStorageManager()
-  const { saveData: saveCloudData, uploadPreviewThrottled } = useCloudStorageManager(mindMap, {
-    collaborative: cloudMode,
-  })
-
-  const saveData = cloudMode ? saveCloudData : saveLocalData
+  const { loadSavedData: loadLocalSavedData, saveData } = useStorageManager()
 
   // 使用快捷键管理器，现在直接使用 store
   useShortcutManager()
@@ -295,86 +240,21 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
       updateProgress(50)
       return { savedData: defaultData as MindMapSavedData, savedViewData: null }
     }
-    if (cloudMode) {
-      // 先获取 Y.Doc 二进制数据，再实例化画布
-      if (workspaceId) {
-        try {
-          updateProgress(30)
-          const yDocResponse = await trpcClient.mindmap.content.getYDocBinary.query({
-            mindmapId: workspaceId,
-          })
-          updateProgress(50)
-
-          if (yDocResponse.success && yDocResponse.hasYDocData && yDocResponse.binary) {
-            // Base64 -> Uint8Array
-            const binaryString = atob(yDocResponse.binary)
-            const binary = new Uint8Array(binaryString.length)
-            for (let i = 0; i < binaryString.length; i++) {
-              binary[i] = binaryString.charCodeAt(i)
-            }
-
-            // 直接将 binary 注入给 cooperate 插件的 bootstrapFromInitialState
-            // document-sync 会通过 Y.Map observe 自动渲染到 MindMap
-            return {
-              savedData: {
-                ...defaultData,
-                __initialYDocState: binary,
-                __hasRealData: true,
-              } as MindMapSavedData,
-              savedViewData: null,
-            }
-          }
-
-          // 没有远端数据时，使用默认模板并等待协作同步
-          if (yDocResponse.success && !yDocResponse.hasYDocData) {
-            return {
-              savedData: {
-                ...defaultData,
-                __waitForCollaboration: true,
-              } as MindMapSavedData,
-              savedViewData: null,
-            }
-          }
-        } catch (error) {
-          logger.warn("HTTP获取YDoc数据失败，使用默认数据等待WebSocket同步", error)
-        }
-      }
-
-      // HTTP获取失败或无数据，使用默认数据让WebSocket处理协作同步
-      updateProgress(40)
-      return {
-        savedData: {
-          ...defaultData,
-          __waitForCollaboration: true,
-        } as MindMapSavedData,
-        savedViewData: null,
-      }
-    }
     updateProgress(40)
     const result = await loadLocalSavedData()
     updateProgress(50)
-    return {
-      savedData: result.savedData as MindMapSavedData,
-      savedViewData: result.savedViewData,
-    }
-  }, [forceDefaultTemplate, cloudMode, workspaceId, loadLocalSavedData, trpcClient, updateProgress])
-
-  // MindMap状态设置函数
-  const setMindMapReact = useCallback(
-    (mindMapOrUpdater: MindMap | null | ((prev: MindMap | null) => MindMap | null)) => {
-      if (typeof mindMapOrUpdater === "function") {
-        setMindMap(mindMapOrUpdater(mindMap))
-      } else {
-        setMindMap(mindMapOrUpdater)
-      }
-    },
-    [mindMap, setMindMap]
-  )
+    const savedViewData = result.savedViewData as {
+      scale: number
+      translateX: number
+      translateY: number
+    } | null
+    return { savedData: result.savedData as unknown as MindMapSavedData, savedViewData }
+  }, [forceDefaultTemplate, loadLocalSavedData, updateProgress])
 
   // 使用画布管理器初始化和管理画布（从 Context 获取 workspaceId 和 cloudMode）
   useCanvasManager(
     containerRef,
-    setMindMapReact,
+    setMindMap,
     loadSavedData,
     saveData,
     reloadToken,
@@ -384,37 +264,11 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
 
   const collaboration = useCollaborationManager(userInfo, updateProgress)
 
-  // 评论协同系统
-  const commentData = useCommentYJS(mindMap, true)
-
-  // 同步评论数据到 store（FormatPanel 的 badge 需要 totalComments）
-  useEffect(() => {
-    syncFromHook({ totalComments: commentData.totalComments, stats: commentData.stats })
-  }, [commentData.totalComments, commentData.stats, syncFromHook])
-
-  // CommentContext value（传给子组件）
-  const commentContextValue: CommentContextValue = useMemo(
-    () => ({
-      service: commentData.service ?? null,
-      comments: commentData.comments ?? EMPTY_SNAPSHOT.comments,
-      stats: commentData.stats ?? EMPTY_SNAPSHOT.stats,
-      totalComments: commentData.totalComments ?? 0,
-    }),
-    [commentData.service, commentData.comments, commentData.stats, commentData.totalComments]
-  )
-
   // 评论点击处理回调
   const handleNodeCommentClick = useCallback((nodeUid: string) => {
     // 使用FormatPanel的评论功能
     formatPanelRef.current?.openCommentPanelForNode(nodeUid)
   }, [])
-
-  // 设置评论插件的点击回调
-  useEffect(() => {
-    if (mindMap && mindMap.comment) {
-      mindMap.comment.options.onNodeCommentClick = handleNodeCommentClick
-    }
-  }, [mindMap, handleNodeCommentClick])
 
   // 监听评论标签点击事件
   useEffect(() => {
@@ -436,39 +290,14 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     }
   }, [mindMap, handleNodeCommentClick])
 
-  // 只读模式提示
-  useEffect(() => {
-    if (mindMap && cloudMode && !canEdit && hasPermission) {
-      toast({
-        title: t("mindmap.canvas.readOnlyModeTitle"),
-        description: t("mindmap.canvas.readOnlyModeDescription"),
-        variant: "default",
-      })
-    }
-  }, [mindMap, cloudMode, canEdit, hasPermission, toast, t])
-
   // 右键菜单管理现在由 MindMapDropdown 内部处理
-
-  // 预览状态管理
-  const handlePreviewStateChange = useCallback(() => {
-    // 这个功能现在由store管理
-  }, [])
-
-  // 退出预览模式的回调（这个会被PreviewIndicator调用，然后转发给SnapshotPanel）
-  const exitPreviewRef = useRef<(() => void) | null>(null)
-
-  // 预览退出现在由 PreviewIndicator 内部处理
-
-  const setExitPreviewCallback = useCallback((callback: (() => void) | null) => {
-    exitPreviewRef.current = callback
-  }, [])
 
   // ✅ 简化的Loading管理逻辑 —— 首次同步完成后，重连/重新同步不再覆盖全局 Loading
   useEffect(() => {
     if (!visible) return
     const decision = resolveMindMapLoading({
       workspaceId,
-      cloudMode,
+      cloudMode: false,
       hasMindMap: Boolean(mindMap),
       loadError,
       collaboration: collaboration
@@ -486,7 +315,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
       return
     }
     if (decision.kind === "show") {
-      showLoading(t(decision.tipKey), decision.progress)
+      showLoading(t(decision.tipKey))
       return
     }
     // complete: 已就绪
@@ -497,12 +326,9 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     }, 1000)
     return () => clearTimeout(progressTimer)
   }, [
-    cloudMode,
     workspaceId,
     mindMap,
-    collaboration?.status,
-    collaboration?.synced,
-    collaboration?.initialSyncDone,
+    collaboration,
     loadError,
     showLoading,
     hideLoading,
@@ -510,42 +336,6 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
     t,
     visible,
   ])
-
-  // 轻量"同步中" Toast：首次同步完成后用右上角 sonner 提示；连接恢复后自动收起。
-  // 不再覆盖全局 Loading，画布保持原样。
-  useEffect(() => {
-    if (!cloudMode || !collaboration?.initialSyncDone) return
-    const syncing = collaboration.status !== "connected" || !collaboration.synced
-    if (syncing) {
-      toastLoading(t("mindmap.canvas.syncingIndicator"), MINDMAP_SYNC_TOAST_ID)
-    } else {
-      dismissToast(MINDMAP_SYNC_TOAST_ID)
-    }
-  }, [cloudMode, collaboration?.initialSyncDone, collaboration?.status, collaboration?.synced, t])
-
-  // 组件卸载时清理同步 Toast
-  useEffect(() => () => dismissToast(MINDMAP_SYNC_TOAST_ID), [])
-
-  useEffect(() => {
-    if (!cloudMode || !mindMap || !uploadPreviewThrottled) return
-    if (!collaboration?.synced || loadError) return
-    if (!canEdit) return
-
-    let cancelled = false
-
-    const trigger = async () => {
-      if (cancelled) return
-      await uploadPreviewThrottled()
-    }
-
-    trigger()
-    const interval = window.setInterval(trigger, 30_000)
-
-    return () => {
-      cancelled = true
-      window.clearInterval(interval)
-    }
-  }, [cloudMode, mindMap, collaboration?.synced, loadError, uploadPreviewThrottled, canEdit])
 
   // 监听来自AI Chat的节点激活事件（支持短 ID 自动 resolve）
   useEffect(() => {
@@ -591,27 +381,23 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
   }, [workspaceId])
 
   useEffect(() => {
-    if (!workspaceId || cloudMode) return
+    if (!workspaceId) return
     const checkPath = async () => {
       const project = await getProject(workspaceId)
       if (project && !project.exists) setLoadError(t("fileRepair.missingDescription"))
     }
     window.addEventListener("focus", checkPath)
     return () => window.removeEventListener("focus", checkPath)
-  }, [cloudMode, setLoadError, t, workspaceId])
+  }, [setLoadError, t, workspaceId])
   return (
-    <CommentProvider value={commentContextValue}>
+    <CommentProvider>
       <AIChatProvider>
         <div className="flex h-full min-h-0 overflow-hidden bg-editor-shell">
           <section className="flex min-w-0 flex-1 flex-col">
             <header className="z-30 flex h-12 shrink-0 items-center gap-1 px-3">
               <TopBar collaboration={collaboration} />
               <div className="flex-1" />
-              <FormatPanel
-                ref={formatPanelRef}
-                onPreviewStateChange={handlePreviewStateChange}
-                setExitPreviewCallback={setExitPreviewCallback}
-              />
+              <FormatPanel ref={formatPanelRef} />
               <CanvasTool />
               <AIChatToggle />
             </header>
@@ -661,10 +447,7 @@ export function MindMapCanvas({ visible = true }: { visible?: boolean }) {
                 <DiffPopover containerRef={containerRef} />
                 <MindMapScrollbar />
                 <PreviewIndicator />
-                <CollaborationCursorLayer
-                  containerRef={containerRef}
-                  collaboration={collaboration}
-                />
+                <CollaborationCursorLayer />
               </div>
             </main>
             <StatusBar />

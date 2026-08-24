@@ -12,7 +12,7 @@ export type Priority = 1 | 2 | 3
 export function extractPriorityFromIcons(icons?: string[]): Priority {
   if (!icons || !Array.isArray(icons)) return 2
 
-  const priorityIcon = icons.find(icon => icon.startsWith('priority_'))
+  const priorityIcon = icons.find(icon => icon.startsWith("priority_"))
   if (!priorityIcon) return 2
 
   const match = priorityIcon.match(/^priority_([1-3])$/)
@@ -39,7 +39,7 @@ export function parsePriorityFromText(text: string): {
   if (priorityMatch) {
     return {
       priority: parseInt(priorityMatch[1]) as Priority,
-      cleanText: priorityMatch[2]
+      cleanText: priorityMatch[2],
     }
   }
 
@@ -48,7 +48,7 @@ export function parsePriorityFromText(text: string): {
   if (zeroMatch) {
     return {
       priority: 1,
-      cleanText: zeroMatch[1]
+      cleanText: zeroMatch[1],
     }
   }
 

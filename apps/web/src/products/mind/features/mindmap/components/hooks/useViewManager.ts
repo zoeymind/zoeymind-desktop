@@ -1,9 +1,6 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { logger } from "@zoeymind/logger"
 import { useEffect, useRef } from "react"
-import { mindmapDB } from "@/products/mind/features/mindmap/utils/storage/mindmapDB"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
-import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
 import { animate } from "motion"
 import type { AnimationPlaybackControls } from "motion"
 import {
@@ -30,7 +27,6 @@ const KEYBOARD_PAN_STEP = 120
 
 export function useViewManager() {
   // 🚀 从 store 获取 mindMap 和 workspaceId，确保状态一致性
-  const { workspaceId } = useProjectContext()
   const { mindMap } = useMindMapStore()
   const releaseFrameRef = useRef<number | null>(null)
   const dragSampleRef = useRef({ x: 0, y: 0, time: 0, velocityX: 0, velocityY: 0 })
@@ -42,6 +38,8 @@ export function useViewManager() {
   const lastZoomWheelTimeRef = useRef(0)
   useEffect(() => {
     if (!mindMap) return
+    const canvas = mindMap.el
+    if (!canvas) return
 
     const stopPanMotion = () => {
       if (releaseFrameRef.current !== null) cancelAnimationFrame(releaseFrameRef.current)
@@ -57,6 +55,11 @@ export function useViewManager() {
       mindMap.view.y = y
       mindMap.view.transform()
       mindMap.view.emitEvent("translate")
+    }
+    const viewOptions = mindMap.opt as typeof mindMap.opt & {
+      minZoomRatio: number
+      maxZoomRatio: number
+      scaleRatio: number
     }
     const setZoomAt = (scale: number, anchorX: number, anchorY: number) => {
       const position = getAnchoredViewTransform(
@@ -74,8 +77,8 @@ export function useViewManager() {
       mindMap.view.emitEvent("scale")
     }
     const getZoomBounds = () => {
-      const minScale = mindMap.opt.minZoomRatio / 100
-      const maxScale = mindMap.opt.maxZoomRatio === -1 ? Infinity : mindMap.opt.maxZoomRatio / 100
+      const minScale = viewOptions.minZoomRatio / 100
+      const maxScale = viewOptions.maxZoomRatio === -1 ? Infinity : viewOptions.maxZoomRatio / 100
       return { minScale, maxScale }
     }
     const startZoomDecay = (initialVelocity: number, anchorX: number, anchorY: number) => {
@@ -282,8 +285,8 @@ export function useViewManager() {
     const panRight = () => animatePanBy(-KEYBOARD_PAN_STEP, 0)
     const panUp = () => animatePanBy(0, KEYBOARD_PAN_STEP)
     const panDown = () => animatePanBy(0, -KEYBOARD_PAN_STEP)
-    const zoomIn = () => animateZoomTo(mindMap.view.scale + mindMap.opt.scaleRatio)
-    const zoomOut = () => animateZoomTo(mindMap.view.scale - mindMap.opt.scaleRatio)
+    const zoomIn = () => animateZoomTo(mindMap.view.scale + viewOptions.scaleRatio)
+    const zoomOut = () => animateZoomTo(mindMap.view.scale - viewOptions.scaleRatio)
     const zoomTo = (scale: number) => animateZoomTo(scale)
     const handleZoomShortcut = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return
@@ -294,7 +297,7 @@ export function useViewManager() {
       else zoomIn()
     }
 
-    mindMap.el.addEventListener("wheel", handleWheelCapture, { capture: true, passive: false })
+    canvas.addEventListener("wheel", handleWheelCapture, { capture: true, passive: false })
     mindMap.keyCommand.addShortcut("Shift+Left", panLeft)
     mindMap.keyCommand.addShortcut("Shift+Right", panRight)
     mindMap.keyCommand.addShortcut("Shift+Up", panUp)
@@ -309,7 +312,7 @@ export function useViewManager() {
     mindMap.on("scrollbar_interaction_start", stopPanMotion)
     return () => {
       stopPanMotion()
-      mindMap.el.removeEventListener("wheel", handleWheelCapture, { capture: true })
+      canvas.removeEventListener("wheel", handleWheelCapture, { capture: true })
       mindMap.keyCommand.removeShortcut("Shift+Left", panLeft)
       mindMap.keyCommand.removeShortcut("Shift+Right", panRight)
       mindMap.keyCommand.removeShortcut("Shift+Up", panUp)
@@ -331,10 +334,7 @@ export function useViewManager() {
     const handleViewDataChange = () => {
       try {
         const viewData = mindMap.view.getTransformData()
-        // 使用 IndexedDB 保存视图数据
-        mindmapDB.saveViewData(viewData, workspaceId).catch(error => {
-          logger.error("保存视图数据失败:", error)
-        })
+        void viewData
       } catch (error) {
         logger.error("保存视图数据失败:", error)
       }
@@ -345,5 +345,5 @@ export function useViewManager() {
     return () => {
       mindMap.off("view_data_change", handleViewDataChange)
     }
-  }, [mindMap, workspaceId])
+  }, [mindMap])
 }

@@ -11,7 +11,7 @@
  * 目标是让编译通过，不是让运行时展示"账号信息"；用户已明确要求
  * "桌面端不需要用户相关内容，个人中心去掉"。
  */
-import type { ComponentType, ReactNode } from 'react'
+import type { ComponentType, ReactNode } from "react"
 
 export interface UserAvatarProps {
   size?: UserAvatarSize
@@ -20,7 +20,7 @@ export interface UserAvatarProps {
   children?: ReactNode
 }
 
-export type UserAvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+export type UserAvatarSize = "xs" | "sm" | "md" | "lg" | "xl"
 
 /** 桌面端不显示用户头像 —— 直接 null，UI 会自然折叠。 */
 export const UserAvatar: ComponentType<UserAvatarProps> = () => null
@@ -32,8 +32,9 @@ export const WorkspaceAvatar: ComponentType<Record<string, unknown>> = () => nul
 export const SessionItem: ComponentType<Record<string, unknown>> = () => null
 
 /** hub 设置页跳转 URL：桌面端没有 hub，返回锚点让链接不跳转。 */
-export function hubSettingsUrl(_section?: string): string {
-  return '#'
+export function hubSettingsUrl(section?: string): string {
+  void section
+  return "#"
 }
 
 interface UseAuthResult {
@@ -53,7 +54,7 @@ interface AccountUI {
 
 const NOOP_ACCOUNT_UI: AccountUI = {
   openAccountMenu: () => undefined,
-  closeAccountMenu: () => undefined
+  closeAccountMenu: () => undefined,
 }
 
 export function useAccountUI(): AccountUI {
@@ -69,5 +70,5 @@ interface AuthClient {
 export const authClient: AuthClient = {
   useSession: () => ({ data: null, isPending: false }),
   signIn: { social: async () => undefined },
-  signOut: async () => undefined
+  signOut: async () => undefined,
 }

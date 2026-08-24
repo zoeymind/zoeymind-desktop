@@ -1,10 +1,9 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { generateUUID } from '@/shared/app-shared'
-import { logger } from '@zoeymind/logger'
-import type { default as MindMapClass, MindMapNode } from 'simple-mind-map'
+import { generateUUID } from "@/shared/app-shared"
+import { logger } from "@zoeymind/logger"
+import type { default as MindMapClass, MindMapNode } from "simple-mind-map"
 
 // 使用官方的 NodeData 类型
-import type { NodeData } from 'simple-mind-map'
+import type { NodeData } from "simple-mind-map"
 
 export class NodeManager {
   private mindMap: MindMapClass
@@ -21,18 +20,18 @@ export class NodeManager {
         uid: generateUUID(),
         expand: true,
         isActive: false,
-        ...customData
+        ...customData,
       },
-      children: []
+      children: [],
     }
   }
 
   // 查找节点
   findNodeByUid(uid: string): MindMapNode | null {
     try {
-      return this.mindMap.renderer.findNodeByUid(uid)
+      return this.mindMap.renderer.findNodeByUid(uid) ?? null
     } catch (error) {
-      logger.error('查找节点失败:', error)
+      logger.error("查找节点失败:", error)
       return null
     }
   }
@@ -56,19 +55,19 @@ export class NodeManager {
         node.remove()
       }
     } catch (error) {
-      logger.error('删除节点失败:', error)
+      logger.error("删除节点失败:", error)
     }
   }
 
   // 更新节点数据
-  updateNodeData(node: MindMapNode, data: Partial<NodeData['data']>): void {
+  updateNodeData(node: MindMapNode, data: Partial<NodeData["data"]>): void {
     try {
       Object.assign(node.data, data)
       if (node.update) {
         node.update()
       }
     } catch (error) {
-      logger.error('更新节点数据失败:', error)
+      logger.error("更新节点数据失败:", error)
     }
   }
 
@@ -79,7 +78,7 @@ export class NodeManager {
         node.setIcon(icons)
       }
     } catch (error) {
-      logger.error('设置节点图标失败:', error)
+      logger.error("设置节点图标失败:", error)
     }
   }
 
@@ -90,7 +89,7 @@ export class NodeManager {
         node.active()
       }
     } catch (error) {
-      logger.error('激活节点失败:', error)
+      logger.error("激活节点失败:", error)
     }
   }
 
@@ -101,7 +100,7 @@ export class NodeManager {
         node.deactivate()
       }
     } catch (error) {
-      logger.error('取消激活节点失败:', error)
+      logger.error("取消激活节点失败:", error)
     }
   }
 
@@ -110,7 +109,7 @@ export class NodeManager {
     try {
       return node.getRect ? node.getRect() : null
     } catch (error) {
-      logger.error('获取节点位置失败:', error)
+      logger.error("获取节点位置失败:", error)
       return null
     }
   }
@@ -122,7 +121,7 @@ export class NodeManager {
 
   // 获取节点文本
   getNodeText(node: MindMapNode): string {
-    return node.data?.text || ''
+    return node.data?.text || ""
   }
 
   // 设置节点文本
@@ -135,7 +134,7 @@ export class NodeManager {
         }
       }
     } catch (error) {
-      logger.error('设置节点文本失败:', error)
+      logger.error("设置节点文本失败:", error)
     }
   }
 
@@ -164,7 +163,7 @@ export class NodeManager {
         }
       }
     } catch (error) {
-      logger.error('切换节点展开状态失败:', error)
+      logger.error("切换节点展开状态失败:", error)
     }
   }
 
@@ -173,7 +172,7 @@ export class NodeManager {
   // 通过 UID 激活节点
   activateNodeByUid(uid: string): void {
     // ✅ GO_TARGET_NODE 支持 UID 字符串,会自动展开折叠的节点
-    this.mindMap.execCommand('GO_TARGET_NODE', uid)
+    this.mindMap.execCommand("GO_TARGET_NODE", uid)
   }
 
   // 获取所有节点
@@ -207,12 +206,12 @@ export class NodeManager {
       if (!node) return
       const { expand, uid } = node.getData()
       if (expand) {
-        this.mindMap.execCommand('UNEXPAND_ALL', false, uid)
+        this.mindMap.execCommand("UNEXPAND_ALL", false, uid)
       } else {
-        this.mindMap.execCommand('EXPAND_ALL', uid)
+        this.mindMap.execCommand("EXPAND_ALL", uid)
       }
     } catch (error) {
-      logger.error('递归折叠/展开节点失败:', error)
+      logger.error("递归折叠/展开节点失败:", error)
       // 降级处理：使用简单的展开/收起
       this.toggleNodeExpand(node)
     }
@@ -221,46 +220,46 @@ export class NodeManager {
   // 复制节点（使用 renderer.copy 以支持飞书/XMind格式）
   copyNode(): void {
     try {
-      if (this.mindMap.renderer && typeof this.mindMap.renderer.copy === 'function') {
+      if (this.mindMap.renderer && typeof this.mindMap.renderer.copy === "function") {
         this.mindMap.renderer.copy()
       } else {
-        this.mindMap.execCommand('COPY')
+        this.mindMap.execCommand("COPY")
       }
     } catch (error) {
-      logger.error('复制节点失败:', error)
+      logger.error("复制节点失败:", error)
     }
   }
 
   // 剪切节点
   cutNode(): void {
     try {
-      this.mindMap.execCommand('CUT_NODE', () => {
-        logger.debug('节点已剪切到剪贴板')
+      this.mindMap.execCommand("CUT_NODE", () => {
+        logger.debug("节点已剪切到剪贴板")
       })
     } catch (error) {
-      logger.error('剪切节点失败:', error)
+      logger.error("剪切节点失败:", error)
     }
   }
 
   // 粘贴节点（使用 renderer.paste 以支持飞书/XMind格式）
   pasteNode(): void {
     try {
-      if (this.mindMap.renderer && typeof this.mindMap.renderer.paste === 'function') {
+      if (this.mindMap.renderer && typeof this.mindMap.renderer.paste === "function") {
         this.mindMap.renderer.paste()
       } else {
-        this.mindMap.execCommand('PASTE_NODE')
+        this.mindMap.execCommand("PASTE_NODE")
       }
     } catch (error) {
-      logger.error('粘贴节点失败:', error)
+      logger.error("粘贴节点失败:", error)
     }
   }
 
   // 删除节点
   deleteNode(): void {
     try {
-      this.mindMap.execCommand('REMOVE_NODE')
+      this.mindMap.execCommand("REMOVE_NODE")
     } catch (error) {
-      logger.error('删除节点失败:', error)
+      logger.error("删除节点失败:", error)
     }
   }
 
@@ -269,7 +268,7 @@ export class NodeManager {
     try {
       const activeNodes = this.mindMap.renderer.activeNodeList
       if (activeNodes.length === 0) {
-        logger.warn('没有激活的节点可以复制')
+        logger.warn("没有激活的节点可以复制")
         return
       }
 
@@ -277,7 +276,7 @@ export class NodeManager {
       activeNodes.forEach(node => {
         // 如果是根节点，不能复制
         if (node.isRoot) {
-          logger.warn('根节点不能被复制')
+          logger.warn("根节点不能被复制")
           return
         }
 
@@ -287,7 +286,7 @@ export class NodeManager {
         // 使用 INSERT_NODE 命令在同级位置插入复制的节点
         // 参数：openEdit=false, appointNodes=[当前节点], appointData=复制的数据, appointChildren=复制的子节点
         this.mindMap.execCommand(
-          'INSERT_NODE',
+          "INSERT_NODE",
           false,
           [node],
           nodeData.data,
@@ -295,43 +294,45 @@ export class NodeManager {
         )
       })
 
-      logger.info('节点复制完成')
+      logger.info("节点复制完成")
     } catch (error) {
-      logger.error('复制节点失败:', error)
+      logger.error("复制节点失败:", error)
     }
   }
 
   // 添加同级节点
   addNode(text: string): void {
     try {
-      this.mindMap.execCommand('INSERT_NODE', false, [], { text })
+      this.mindMap.execCommand("INSERT_NODE", false, [], { text })
     } catch (error) {
-      logger.error('添加节点失败:', error)
+      logger.error("添加节点失败:", error)
     }
   }
 
   // 添加子节点（重载方法，兼容旧的调用方式）
   addChildNode(parentNodeOrText: MindMapNode | string, nodeData?: NodeData): void {
     try {
-      if (typeof parentNodeOrText === 'string') {
+      if (typeof parentNodeOrText === "string") {
         // 旧的调用方式：addChildNode('新子节点')
-        this.mindMap.execCommand('INSERT_CHILD_NODE', false, [], { text: parentNodeOrText })
+        this.mindMap.execCommand("INSERT_CHILD_NODE", false, [], { text: parentNodeOrText })
       } else {
         // 新的调用方式：addChildNode(parentNode, nodeData)
         if (!nodeData) {
-          throw new Error('nodeData is required when parentNode is provided')
+          throw new Error("nodeData is required when parentNode is provided")
         }
 
-        const parentNode = parentNodeOrText
-        this.mindMap.renderer.insertChildNode(
-          true, // openEdit
-          [parentNode], // appointNodes
-          nodeData.data, // appointData
-          nodeData.children || [] // appointChildren
-        )
+        const renderer = this.mindMap.renderer as unknown as {
+          insertChildNode(
+            openEdit: boolean,
+            appointNodes: MindMapNode[],
+            appointData: NodeData["data"],
+            appointChildren: NodeData[]
+          ): void
+        }
+        renderer.insertChildNode(true, [parentNodeOrText], nodeData.data, nodeData.children || [])
       }
     } catch (error) {
-      logger.error('添加子节点失败:', error)
+      logger.error("添加子节点失败:", error)
     }
   }
 }

@@ -1,12 +1,12 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { FC, useEffect, useState, useRef } from 'react'
-import { nodeIconList as iconGroups } from 'simple-mind-map/src/svg/icons'
-import { Trash2 } from 'lucide-react'
-import { Button, Separator } from '@zoeymind/ui'
-import { addIconToHistory } from '@/products/mind/features/mindmap/utils/storage/iconHistory'
-import { useUIStore } from '@/products/mind/stores'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import { useTranslation } from '@zoeymind/i18n'
+import { useEffect, useRef } from "react"
+import type { FC } from "react"
+import { nodeIconList as iconGroups } from "simple-mind-map/src/svg/icons"
+import { Trash2 } from "lucide-react"
+import { Button, Separator } from "@zoeymind/ui"
+import { addIconToHistory } from "@/products/mind/features/mindmap/utils/storage/iconHistory"
+import { useUIStore } from "@/products/mind/stores"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import { useTranslation } from "@zoeymind/i18n"
 
 interface IconItem {
   name: string
@@ -19,7 +19,7 @@ export const MindMapIconToolbar: FC = () => {
   const { mindMap } = useMindMapStore()
   const { iconToolbarState, setIconToolbarState } = useUIStore()
 
-  const { show, position, node, iconType, iconName } = iconToolbarState
+  const { show, position, node, iconType, iconName, nodeIconList } = iconToolbarState
 
   // 关闭工具栏
   const onClose = () => {
@@ -27,65 +27,40 @@ export const MindMapIconToolbar: FC = () => {
       show: false,
       position: { x: 0, y: 0 },
       node: null,
-      iconType: '',
-      iconName: '',
-      nodeIconList: []
+      iconType: "",
+      iconName: "",
+      nodeIconList: [],
     })
   }
 
-  const [nodeIconList, setNodeIconList] = useState<string[]>([])
-  const [iconList, setIconList] = useState<IconItem[]>([])
+  const iconList: IconItem[] =
+    iconGroups.find(
+      (item: { type: string; name: string; list: IconItem[] }) => item.type === iconType
+    )?.list ?? []
   const toolbarRef = useRef<HTMLDivElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
 
   // 获取图标类型的中文标签
   const getIconTypeLabel = (type: string): string => {
     switch (type) {
-      case 'priority':
-        return t('mindmap.canvas.iconTypePriority')
-      case 'progress':
-        return t('mindmap.canvas.iconTypeProgress')
-      case 'expression':
-        return t('mindmap.canvas.iconTypeExpression')
-      case 'sign':
-        return t('mindmap.canvas.iconTypeSign')
+      case "priority":
+        return t("mindmap.canvas.iconTypePriority")
+      case "progress":
+        return t("mindmap.canvas.iconTypeProgress")
+      case "expression":
+        return t("mindmap.canvas.iconTypeExpression")
+      case "sign":
+        return t("mindmap.canvas.iconTypeSign")
       default:
         return type
     }
   }
 
-  // 初始化组件数据
-  useEffect(() => {
-    if (!node || !show) return
-
-    // 获取节点当前图标
-    const icons = node.getData('icon') || []
-    setNodeIconList(icons)
-
-    // 获取当前类型的所有图标列表
-    const currentTypeIcons = iconGroups.find(
-      (item: { type: string; name: string; list: Array<{ name: string; icon: string }> }) =>
-        item.type === iconType
-    )
-    if (currentTypeIcons?.list) {
-      setIconList([...currentTypeIcons.list])
-    }
-  }, [node, show, iconType])
-
   // 计算和设置位置
   useEffect(() => {
-    if (!show || !node) {
-      setIsVisible(false)
-      return
-    }
-
-    // 先隐藏工具栏，等位置设置好后再显示，避免闪烁
-    setIsVisible(false)
-
+    const toolbar = toolbarRef.current
+    if (!show || !node || !toolbar) return
     // 获取节点位置
     const updatePosition = () => {
-      if (!toolbarRef.current) return
-
       // 根据节点位置设置工具栏位置
       let left = position.x
       let top = position.y + 5 // 增加5px的间距
@@ -98,13 +73,10 @@ export const MindMapIconToolbar: FC = () => {
       }
 
       // 应用位置
-      toolbarRef.current.style.left = `${left}px`
-      toolbarRef.current.style.top = `${top}px`
+      toolbar.style.left = `${left}px`
+      toolbar.style.top = `${top}px`
 
-      // 位置设置完成后再显示工具栏，避免闪烁
-      setTimeout(() => {
-        setIsVisible(true)
-      }, 0)
+      toolbar.style.visibility = "visible"
     }
 
     // 首次更新位置
@@ -112,14 +84,15 @@ export const MindMapIconToolbar: FC = () => {
 
     // 监听缩放事件，更新位置
     if (mindMap) {
-      mindMap.on('scale', updatePosition)
-      mindMap.on('viewChange', updatePosition)
+      mindMap.on("scale", updatePosition)
+      mindMap.on("viewChange", updatePosition)
     }
 
     return () => {
+      toolbar.style.visibility = "hidden"
       if (mindMap) {
-        mindMap.off('scale', updatePosition)
-        mindMap.off('viewChange', updatePosition)
+        mindMap.off("scale", updatePosition)
+        mindMap.off("viewChange", updatePosition)
       }
     }
   }, [mindMap, node, show, position])
@@ -139,7 +112,7 @@ export const MindMapIconToolbar: FC = () => {
       icons.splice(index, 1)
     } else {
       // 查找同类型图标的位置
-      const typeIndex = icons.findIndex(item => item.split('_')[0] === iconType)
+      const typeIndex = icons.findIndex(item => item.split("_")[0] === iconType)
 
       // 如果存在同类型图标，则替换
       if (typeIndex !== -1) {
@@ -158,7 +131,7 @@ export const MindMapIconToolbar: FC = () => {
 
     // 更新节点图标
     node.setIcon(icons)
-    setNodeIconList(icons)
+    setIconToolbarState({ ...iconToolbarState, nodeIconList: icons })
 
     // 触发渲染
     mindMap?.render()
@@ -172,7 +145,6 @@ export const MindMapIconToolbar: FC = () => {
     const icons = nodeIconList.filter(item => item !== key)
 
     node.setIcon(icons)
-    setNodeIconList(icons)
 
     mindMap?.render()
     onClose()
@@ -196,9 +168,7 @@ export const MindMapIconToolbar: FC = () => {
       ref={toolbarRef}
       role="dialog"
       aria-label={getIconTypeLabel(iconType)}
-      className={`fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-md transition-opacity duration-100 ease-in-out ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}
+      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-md transition-opacity duration-100 ease-in-out"
       onClick={e => e.stopPropagation()}
     >
       <div className="px-3 py-2 text-sm font-medium">{getIconTypeLabel(iconType)}</div>
@@ -215,7 +185,7 @@ export const MindMapIconToolbar: FC = () => {
                 title={`${getIconTypeLabel(iconType)} ${icon.name}`}
                 aria-pressed={active}
                 className={`flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
-                  active ? 'bg-accent text-accent-foreground ring-1 ring-primary/40' : ''
+                  active ? "bg-accent text-accent-foreground ring-1 ring-primary/40" : ""
                 }`}
                 dangerouslySetInnerHTML={{ __html: getHtml(icon.icon) }}
               />
@@ -230,8 +200,8 @@ export const MindMapIconToolbar: FC = () => {
           variant="ghost"
           size="icon-sm"
           onClick={deleteIcon}
-          title={t('mindmap.canvas.deleteIcon')}
-          aria-label={t('mindmap.canvas.deleteIcon')}
+          title={t("mindmap.canvas.deleteIcon")}
+          aria-label={t("mindmap.canvas.deleteIcon")}
           className="text-muted-foreground hover:text-destructive"
         >
           <Trash2 className="size-4" />

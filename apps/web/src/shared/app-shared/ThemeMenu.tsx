@@ -20,7 +20,7 @@ import {
   useTheme,
 } from "@zoeymind/ui"
 import { useTranslation } from "@zoeymind/i18n"
-import { useThemePreset } from "./ThemePresetProvider"
+import { useThemePreset } from "./theme-preset-context"
 
 const THEME_MODES: { mode: Theme; icon: typeof Sun; labelKey: string }[] = [
   { mode: "light", icon: Sun, labelKey: "ui.theme.light" },

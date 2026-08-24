@@ -11,7 +11,7 @@
  */
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { useLoadingStore } from "@/shared/app-shared/loading"
+import { useLoadingStore } from "@/shared/app-shared/loading-state"
 import { useTabLoading } from "./loading"
 
 export type TabId = string | "home"

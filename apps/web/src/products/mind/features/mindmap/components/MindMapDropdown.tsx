@@ -1,21 +1,22 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import React, { FC, useEffect, useMemo } from 'react'
-import { MoreHorizontal } from 'lucide-react'
-import type { FormatPanelRef } from './FormatPanel/FormatPanel'
+import React, { useEffect, useMemo } from "react"
+import type { MindMapNode } from "simple-mind-map"
+import type { FC } from "react"
+import { MoreHorizontal } from "lucide-react"
+import type { FormatPanelRef } from "./FormatPanel/FormatPanel"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuPortal
-} from '@zoeymind/ui'
-import { cn } from '@/shared/app-shared'
-import { useContextMenu } from './hooks/useContextMenu'
-import { useIconManager } from './hooks/useIconManager'
-import { useUIStore } from '@/products/mind/stores'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import { useTranslation } from '@zoeymind/i18n'
+  DropdownMenuPortal,
+} from "@zoeymind/ui"
+import { cn } from "@/shared/app-shared"
+import { useContextMenu } from "./hooks/useContextMenu"
+import { useIconManager } from "./hooks/useIconManager"
+import { useUIStore } from "@/products/mind/stores"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import { useTranslation } from "@zoeymind/i18n"
 
 interface MindMapDropdownProps {
   formatPanelRef: React.RefObject<FormatPanelRef | null>
@@ -24,7 +25,7 @@ interface MindMapDropdownProps {
 
 export const MindMapDropdown: FC<MindMapDropdownProps> = ({
   formatPanelRef,
-  copyXMindDataToClipboard
+  copyXMindDataToClipboard,
 }) => {
   const { t } = useTranslation()
   // 从store获取mindMap实例和UI状态
@@ -39,7 +40,7 @@ export const MindMapDropdown: FC<MindMapDropdownProps> = ({
   const pointerAnchor = useMemo(
     () => ({
       getBoundingClientRect: () =>
-        DOMRect.fromRect({ x: position.x, y: position.y, width: 0, height: 0 })
+        DOMRect.fromRect({ x: position.x, y: position.y, width: 0, height: 0 }),
     }),
     [position.x, position.y]
   )
@@ -71,7 +72,7 @@ export const MindMapDropdown: FC<MindMapDropdownProps> = ({
       show,
       position,
       isRoot,
-      currentNode
+      currentNode,
     })
   }, [show, position, isRoot, currentNode, setMenuVisible])
 
@@ -90,7 +91,13 @@ export const MindMapDropdown: FC<MindMapDropdownProps> = ({
     const targetNodes = activeNodes.length > 0 ? activeNodes : currentNode ? [currentNode] : []
 
     // 使用统一的图标操作处理，支持切换逻辑（重复点击可取消）
-    const result = handleIconOperation(type, name, icon, targetNodes, false)
+    const result = handleIconOperation(
+      type,
+      name,
+      icon,
+      targetNodes as unknown as MindMapNode[],
+      false
+    )
 
     if (result.success) {
       // 关闭菜单
@@ -123,18 +130,18 @@ export const MindMapDropdown: FC<MindMapDropdownProps> = ({
                         }}
                         dangerouslySetInnerHTML={{ __html: recentIcon.icon }}
                         title={`${
-                          recentIcon.type === 'priority'
-                            ? t('mindmap.canvas.iconTypePriority')
-                            : recentIcon.type === 'progress'
-                              ? t('mindmap.canvas.iconTypeProgress')
-                              : recentIcon.type === 'expression'
-                                ? t('mindmap.canvas.iconTypeExpression')
-                                : t('mindmap.canvas.iconTypeSign')
+                          recentIcon.type === "priority"
+                            ? t("mindmap.canvas.iconTypePriority")
+                            : recentIcon.type === "progress"
+                              ? t("mindmap.canvas.iconTypeProgress")
+                              : recentIcon.type === "expression"
+                                ? t("mindmap.canvas.iconTypeExpression")
+                                : t("mindmap.canvas.iconTypeSign")
                         } ${recentIcon.name}`}
                       />
                     ))}
                     {Array.from({
-                      length: Math.max(0, 7 - (item.recentIcons?.length || 0))
+                      length: Math.max(0, 7 - (item.recentIcons?.length || 0)),
                     }).map((_, emptyIndex) => (
                       <div key={`empty-${emptyIndex}`} className="size-7" />
                     ))}
@@ -146,7 +153,7 @@ export const MindMapDropdown: FC<MindMapDropdownProps> = ({
                           stopPropagation(e)
                           item.onOpenTagsPanel?.()
                         }}
-                        title={t('mindmap.canvas.moreIcons')}
+                        title={t("mindmap.canvas.moreIcons")}
                       >
                         <MoreHorizontal className="size-4" />
                       </button>
@@ -173,7 +180,7 @@ export const MindMapDropdown: FC<MindMapDropdownProps> = ({
                     handleMenuAction(item.action)
                     onClose()
                   }}
-                  className={cn('cursor-pointer', item.className)}
+                  className={cn("cursor-pointer", item.className)}
                 >
                   {item.icon && (
                     <span
@@ -183,7 +190,7 @@ export const MindMapDropdown: FC<MindMapDropdownProps> = ({
                   )}
                   {item.lucideIcon &&
                     React.createElement(item.lucideIcon as React.ComponentType<{ size?: number }>, {
-                      size: 16
+                      size: 16,
                     })}
                   <span>{item.label}</span>
                   {item.shortcut && <DropdownMenuShortcut>{item.shortcut}</DropdownMenuShortcut>}

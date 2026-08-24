@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { defaultMindmapData } from "@zoeymind/shared"
 import { pendingProjects } from "@/shared/native"
 import { useTabs } from "@/shared/tabs/store"
-import { openPendingProject } from "./useCloudProjects"
+import { openPendingProject } from "./useLocalProjects"
 
 describe("empty project list creation", () => {
   beforeEach(() => {

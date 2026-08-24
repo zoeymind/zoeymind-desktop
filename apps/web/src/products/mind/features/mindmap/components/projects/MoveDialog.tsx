@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 /**
  * MoveDialog —— 桌面端虚拟文件夹分类。
  *
@@ -25,12 +24,12 @@ import { toast } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
 import { useFolders } from "./hooks/useFolders"
 import { moveProjectToFolder, bumpProjects } from "@/shared/native"
-import type { CloudProjectWithStats } from "./hooks/useCloudProjects"
+import type { LocalProject } from "./project-model"
 
 interface MoveDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  project: CloudProjectWithStats | null
+  project: LocalProject | null
   onMoved?: () => void
 }
 
@@ -43,7 +42,9 @@ export function MoveDialog({ open, onOpenChange, project, onMoved }: MoveDialogP
 
   // Dialog 每次打开时同步选中当前项目所在文件夹.
   useEffect(() => {
-    if (open) setSelectedFolderId(currentFolderId)
+    if (!open) return
+    const frame = requestAnimationFrame(() => setSelectedFolderId(currentFolderId))
+    return () => cancelAnimationFrame(frame)
   }, [open, currentFolderId])
 
   if (!project) return null
@@ -75,9 +76,7 @@ export function MoveDialog({ open, onOpenChange, project, onMoved }: MoveDialogP
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("projects.home.moveTo", "移动到")}</DialogTitle>
-          <DialogDescription className="truncate">
-            {project.name ?? project.title ?? ""}
-          </DialogDescription>
+          <DialogDescription className="truncate">{project.name}</DialogDescription>
         </DialogHeader>
 
         <div className="no-scrollbar max-h-72 space-y-1 overflow-y-auto py-1">

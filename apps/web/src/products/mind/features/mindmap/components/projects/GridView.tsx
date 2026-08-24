@@ -1,16 +1,16 @@
-import { forwardRef } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import ProjectCard from './ProjectCard'
-import type { ProjectWithStats } from '@/shared/mindmap-bridge'
+import { forwardRef } from "react"
+import { motion, AnimatePresence } from "motion/react"
+import ProjectCard from "./ProjectCard"
+import type { LocalProject } from "./project-model"
 
 interface GridViewProps {
-  projects: ProjectWithStats[]
-  onRename: (project: ProjectWithStats) => void
-  onDelete: (project: ProjectWithStats) => void
-  onToggleFavorite?: (project: ProjectWithStats) => void
+  projects: LocalProject[]
+  onRename: (project: LocalProject) => void
+  onDelete: (project: LocalProject) => void
+  onToggleFavorite?: (project: LocalProject) => void
   onUpdate: () => void
-  onProjectClick?: (project: ProjectWithStats) => void
-  onMove?: (project: ProjectWithStats) => void
+  onProjectClick?: (project: LocalProject) => void
+  onMove?: (project: LocalProject) => void
 }
 
 const GridView = forwardRef<HTMLDivElement, GridViewProps>(
@@ -36,10 +36,10 @@ const GridView = forwardRef<HTMLDivElement, GridViewProps>(
               transition={{
                 opacity: { duration: 0.2 },
                 layout: {
-                  type: 'spring',
+                  type: "spring",
                   stiffness: 350,
-                  damping: 25
-                }
+                  damping: 25,
+                },
               }}
             >
               <ProjectCard
@@ -60,6 +60,6 @@ const GridView = forwardRef<HTMLDivElement, GridViewProps>(
 )
 
 // 添加显示名称以便调试
-GridView.displayName = 'GridView'
+GridView.displayName = "GridView"
 
 export default GridView

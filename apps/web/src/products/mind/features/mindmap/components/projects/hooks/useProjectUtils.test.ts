@@ -1,10 +1,28 @@
 // @vitest-environment jsdom
-// @ts-nocheck — test files not part of runtime build
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { renderHook } from "@testing-library/react"
 import { useProjectUtils } from "./useProjectUtils"
 import { initI18n } from "@zoeymind/i18n"
 import { appLocales } from "@/locales"
+import type { LocalProject } from "../project-model"
+
+function project(overrides: Partial<LocalProject> = {}): LocalProject {
+  return {
+    id: "test-project",
+    name: "Test Project",
+    path: "/tmp/test-project.zmind",
+    folderId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    exists: true,
+    isArchived: false,
+    isStarred: false,
+    tags: [],
+    nodeCount: 0,
+    size: 0,
+    ...overrides,
+  }
+}
 
 await initI18n(appLocales).changeLanguage("zh-CN")
 
@@ -66,46 +84,17 @@ describe("useProjectUtils", () => {
   describe("getProjectSize", () => {
     it("should return size from metadata if available", () => {
       const { result } = renderHook(() => useProjectUtils())
-      const project = {
-        id: "test-1",
-        name: "Test Project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isArchived: false,
-        owner: "user-1",
-        metadata: {
-          fileSize: 102400, // 100KB
-        },
-        stats: {
-          conversationCount: 0,
-          messageCount: 0,
-        },
-      }
+      const item = project({ id: "test-1", size: 102400 })
 
-      const size = result.current.getProjectSize(project)
+      const size = result.current.getProjectSize(item)
       expect(size).toBe("100.0KB")
     })
 
     it("should estimate size when metadata not available", () => {
       const { result } = renderHook(() => useProjectUtils())
-      const project = {
-        id: "test-2",
-        name: "Test Project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isArchived: false,
-        owner: "user-1",
-        metadata: {
-          nodeCount: 10,
-          preview: `data:image/png;base64,${"A".repeat(1000)}`,
-        },
-        stats: {
-          conversationCount: 2,
-          messageCount: 5,
-        },
-      }
+      const item = project({ id: "test-2", nodeCount: 10 })
 
-      const size = result.current.getProjectSize(project)
+      const size = result.current.getProjectSize(item)
       expect(size).toBeTruthy()
       expect(typeof size).toBe("string")
     })
@@ -114,42 +103,15 @@ describe("useProjectUtils", () => {
       const { result } = renderHook(() => useProjectUtils())
 
       // Bytes
-      const projectB = {
-        id: "test-3",
-        name: "Test",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isArchived: false,
-        owner: "user-1",
-        metadata: { fileSize: 500 },
-        stats: { conversationCount: 0, messageCount: 0 },
-      }
+      const projectB = project({ id: "test-3", size: 500 })
       expect(result.current.getProjectSize(projectB)).toBe("500B")
 
       // KB
-      const projectKB = {
-        id: "test-4",
-        name: "Test",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isArchived: false,
-        owner: "user-1",
-        metadata: { fileSize: 1024 * 50 },
-        stats: { conversationCount: 0, messageCount: 0 },
-      }
+      const projectKB = project({ id: "test-4", size: 1024 * 50 })
       expect(result.current.getProjectSize(projectKB)).toBe("50.0KB")
 
       // MB
-      const projectMB = {
-        id: "test-5",
-        name: "Test",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isArchived: false,
-        owner: "user-1",
-        metadata: { fileSize: 1024 * 1024 * 2 },
-        stats: { conversationCount: 0, messageCount: 0 },
-      }
+      const projectMB = project({ id: "test-5", size: 1024 * 1024 * 2 })
       expect(result.current.getProjectSize(projectMB)).toBe("2.0MB")
     })
   })

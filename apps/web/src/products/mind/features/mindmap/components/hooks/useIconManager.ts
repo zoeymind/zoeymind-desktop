@@ -1,9 +1,8 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { useCallback } from 'react'
-import type { default as MindMap, MindMapNode } from 'simple-mind-map'
-import { addIconToHistory } from '@/products/mind/features/mindmap/utils/storage/iconHistory'
-import { nodeIconList } from 'simple-mind-map/src/svg/icons'
-import { i18next } from '@zoeymind/i18n'
+import { useCallback } from "react"
+import type { default as MindMap, MindMapNode } from "simple-mind-map"
+import { addIconToHistory } from "@/products/mind/features/mindmap/utils/storage/iconHistory"
+import { nodeIconList } from "simple-mind-map/src/svg/icons"
+import { i18next } from "@zoeymind/i18n"
 
 /**
  * 图标操作的统一管理 Hook
@@ -22,19 +21,19 @@ export function useIconManager(mindMap: MindMap | null) {
     (
       type: string,
       name: string,
-      iconSvg: string = '',
+      iconSvg: string = "",
       targetNodes?: MindMapNode[],
       forceAdd: boolean = false
     ) => {
-      if (!mindMap) return { success: false, action: 'none' }
+      if (!mindMap) return { success: false, action: "none" }
 
       // 获取目标节点
       const activeNodes = targetNodes || mindMap.renderer.activeNodeList || []
       if (activeNodes.length === 0) {
         return {
           success: false,
-          action: 'none',
-          message: i18next.t('mindmap.toast.noNodeSelected')
+          action: "none",
+          message: i18next.t("mindmap.toast.noNodeSelected"),
         }
       }
 
@@ -42,15 +41,15 @@ export function useIconManager(mindMap: MindMap | null) {
 
       // 检查第一个节点是否已有该图标，决定是添加还是删除
       const firstNode = activeNodes[0]
-      const firstNodeIcons = (firstNode.getData('icon') || []) as string[]
+      const firstNodeIcons = (firstNode.getData("icon") || []) as string[]
       const shouldRemove = !forceAdd && firstNodeIcons.includes(iconKey)
 
       // 统一的图标类型顺序
-      const typeOrder = ['priority', 'progress', 'expression', 'sign'] as const
+      const typeOrder = ["priority", "progress", "expression", "sign"] as const
 
       // 对所有节点执行操作
       activeNodes.forEach(node => {
-        const currentIcons = (node.getData('icon') || []) as string[]
+        const currentIcons = (node.getData("icon") || []) as string[]
         let newIcons = [...currentIcons]
 
         if (shouldRemove) {
@@ -94,7 +93,7 @@ export function useIconManager(mindMap: MindMap | null) {
         if (!iconSvg) {
           const iconGroup = nodeIconList.find((group: { type: string }) => group.type === type)
           const iconData = iconGroup?.list?.find((icon: { name: string }) => icon.name === name)
-          iconSvg = iconData?.icon || ''
+          iconSvg = iconData?.icon || ""
         }
 
         if (iconSvg) {
@@ -104,8 +103,8 @@ export function useIconManager(mindMap: MindMap | null) {
 
       return {
         success: true,
-        action: shouldRemove ? 'remove' : 'add',
-        affectedNodes: activeNodes.length
+        action: shouldRemove ? "remove" : "add",
+        affectedNodes: activeNodes.length,
       }
     },
     [mindMap]
@@ -128,7 +127,7 @@ export function useIconManager(mindMap: MindMap | null) {
 
       // 只要第一个节点有该图标就认为是激活状态
       const firstNode = activeNodes[0]
-      const icons = (firstNode.getData('icon') || []) as string[]
+      const icons = (firstNode.getData("icon") || []) as string[]
       return icons.includes(iconKey)
     },
     [mindMap]
@@ -147,9 +146,9 @@ export function useIconManager(mindMap: MindMap | null) {
 
       // 返回第一个节点的图标列表
       const firstNode = activeNodes[0]
-      const icons = (firstNode.getData('icon') || []) as string[]
+      const icons = (firstNode.getData("icon") || []) as string[]
       return icons.map((icon: string) => {
-        const [type, name] = icon.split('_')
+        const [type, name] = icon.split("_")
         return { type, name }
       })
     },
@@ -159,6 +158,6 @@ export function useIconManager(mindMap: MindMap | null) {
   return {
     handleIconOperation,
     isIconActive,
-    getActiveIcons
+    getActiveIcons,
   }
 }

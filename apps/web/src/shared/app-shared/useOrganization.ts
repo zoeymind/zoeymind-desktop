@@ -8,10 +8,10 @@
 export interface LocalOrg {
   id: string
   name: string
-  role: 'OWNER'
+  role: "OWNER"
 }
 
-const LOCAL_ORG: LocalOrg = { id: 'local', name: 'Local', role: 'OWNER' }
+const LOCAL_ORG: LocalOrg = { id: "local", name: "Local", role: "OWNER" }
 
 interface UseOrganizationResult {
   currentOrg: LocalOrg
@@ -25,6 +25,6 @@ export function useOrganization(): UseOrganizationResult {
     currentOrg: LOCAL_ORG,
     organizations: [LOCAL_ORG],
     switchOrg: () => undefined,
-    isLoading: false
+    isLoading: false,
   }
 }

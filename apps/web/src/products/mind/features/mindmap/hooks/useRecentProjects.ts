@@ -4,8 +4,8 @@
  * 数据源: SqlProjectRepo listProjects(). 用 useProjectsEvents.bumpCount 触发刷新
  * (openTab 会 touchLastOpened -> bump; save 也会 bump).
  */
-import { useEffect, useState } from 'react'
-import { listProjects, useProjectsEvents, type ProjectRow } from '@/shared/native'
+import { useEffect, useState } from "react"
+import { listProjects, useProjectsEvents, type ProjectRow } from "@/shared/native"
 
 export function useRecentProjects(limit = 10): ProjectRow[] {
   const [rows, setRows] = useState<ProjectRow[]>([])

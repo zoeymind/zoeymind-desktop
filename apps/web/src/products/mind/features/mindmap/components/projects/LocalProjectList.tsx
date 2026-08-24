@@ -1,6 +1,4 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import React, { useCallback, useState, useEffect } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import React, { useCallback, useEffect, useState } from "react"
 import { Loader2, PlusIcon } from "lucide-react"
 import { AnimatePresence } from "motion/react"
 
@@ -12,32 +10,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@zoeymind/ui"
-import { useOrganization } from "@/shared/app-shared"
+import { useTabs } from "@/shared/tabs/store"
 import { useTranslation } from "@zoeymind/i18n"
 
 import GridView from "./GridView"
 import ListView from "./ListView"
 import { DeleteDialog, RenameDialog } from "./dialogs"
 import { MoveDialog } from "./MoveDialog"
-import { useCloudProjects } from "./hooks/useCloudProjects"
-import type { CloudProjectWithStats } from "./hooks/useCloudProjects"
+import { useLocalProjects } from "./hooks/useLocalProjects"
+import type { LocalProject } from "./project-model"
 import { ProjectCardSkeleton } from "./ProjectCardSkeleton"
 import { ProjectListItemSkeleton } from "./ProjectListItemSkeleton"
 
 type ViewType = "grid" | "list"
 
-interface CloudProjectListProps {
+interface LocalProjectListProps {
   viewType: ViewType
   searchText: string
   sortType: "recent" | "created" | "name" | "starred"
   onProjectsChanged?: () => void
   onClearSearch?: () => void
   onProjectCountChange?: (count: number) => void
-  onProjectClick?: (project: CloudProjectWithStats) => void
-  filter?: "all" | "owned" | "favorited" | "mine"
+  onProjectClick?: (project: LocalProject) => void
+  filter?: "all" | "favorited"
   folderId?: string
-  /** 当前项目空间 ID; 传了则 mindmap 列表 & 新建都挂在这个 workspace 下 */
-  workspaceId?: string | null
 }
 
 /**
@@ -51,7 +47,7 @@ function computeSkeletonColumns(): number {
   return columns * 3
 }
 
-export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
+export const LocalProjectList: React.FC<LocalProjectListProps> = React.memo(
   ({
     viewType,
     searchText,
@@ -62,11 +58,8 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     onProjectClick,
     filter = "all",
     folderId,
-    workspaceId,
   }) => {
     const { t } = useTranslation()
-    const navigate = useNavigate()
-    const { currentOrg } = useOrganization()
     const [skeletonColumns, setSkeletonColumns] = useState(() => computeSkeletonColumns())
 
     // 监听 resize 重新计算；初值在 useState 里同步算出。
@@ -77,7 +70,6 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     }, [])
 
     const {
-      isAuthenticated,
       projects,
       loading,
       creating,
@@ -88,22 +80,10 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
       renameProject,
       deleteProject,
       toggleFavorite,
-    } = useCloudProjects({
-      searchText,
-      sortType,
-      onProjectsChanged,
-      folderId,
-      // "我的图" 虚拟视图: 跨 project 展示自己创建的全部, 忽略 workspaceId
-      workspaceId: filter === "mine" ? undefined : workspaceId,
-      owner: filter === "mine" ? "me" : undefined,
-    })
+    } = useLocalProjects({ searchText, sortType, onProjectsChanged, folderId })
 
     const displayProjects =
-      filter === "owned"
-        ? projects.filter(p => p.isOwner)
-        : filter === "favorited"
-          ? projects.filter(p => p.isFavorited)
-          : projects
+      filter === "favorited" ? projects.filter(project => project.isStarred) : projects
 
     // 通知父组件项目数量变化
     useEffect(() => {
@@ -112,20 +92,20 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
 
     const [renameDialogOpen, setRenameDialogOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-    const [currentProject, setCurrentProject] = useState<CloudProjectWithStats | null>(null)
+    const [currentProject, setCurrentProject] = useState<LocalProject | null>(null)
     const [moveDialogOpen, setMoveDialogOpen] = useState(false)
 
-    const openRenameDialog = useCallback((project: CloudProjectWithStats) => {
+    const openRenameDialog = useCallback((project: LocalProject) => {
       setCurrentProject(project)
       setRenameDialogOpen(true)
     }, [])
 
-    const openDeleteDialog = useCallback((project: CloudProjectWithStats) => {
+    const openDeleteDialog = useCallback((project: LocalProject) => {
       setCurrentProject(project)
       setDeleteDialogOpen(true)
     }, [])
 
-    const openMoveDialog = useCallback((project: CloudProjectWithStats) => {
+    const openMoveDialog = useCallback((project: LocalProject) => {
       setCurrentProject(project)
       setMoveDialogOpen(true)
     }, [])
@@ -134,7 +114,7 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
       async (newName: string) => {
         if (!currentProject) return
         await renameProject(currentProject, newName)
-        setCurrentProject(prev => (prev ? { ...prev, title: newName, name: newName } : prev))
+        setCurrentProject(previous => (previous ? { ...previous, name: newName } : previous))
       },
       [currentProject, renameProject]
     )
@@ -150,7 +130,7 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
     }, [createProject])
 
     const handleToggleFavorite = useCallback(
-      (project: CloudProjectWithStats) => {
+      (project: LocalProject) => {
         toggleFavorite(project).catch(() => {
           // 错误提示同样在 hook 内部处理
         })
@@ -171,17 +151,6 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
         setCurrentProject(null)
       }
     }, [])
-
-    if (!isAuthenticated) {
-      return (
-        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-          <p className="text-lg mb-4">{t("projects.cloud.needLogin")}</p>
-          <Button onClick={() => navigate({ to: "/login" })} variant="outline">
-            {t("projects.cloud.login")}
-          </Button>
-        </div>
-      )
-    }
 
     if (loading) {
       // 根据视图类型显示不同的骨架屏
@@ -247,43 +216,36 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
       )
     }
 
-    // 默认的项目点击处理：使用传入的 onProjectClick 或导航到新路由
-    const handleProjectClick = onProjectClick
-      ? (project: CloudProjectWithStats) => onProjectClick(project)
-      : async (project: CloudProjectWithStats) => {
-          // 桌面端: openTab 到工作区 tab, 不再直接 navigate.
-          const { useTabs } = await import("@/shared/tabs/store")
-          useTabs.getState().openTab({
-            id: project.id,
-            kind: "file",
-            title: project.name ?? project.title ?? "",
-          })
-        }
+    const handleProjectClick =
+      onProjectClick ??
+      ((project: LocalProject) => {
+        useTabs.getState().openTab({ id: project.id, kind: "file", title: project.name })
+      })
 
     return (
       <>
         <AnimatePresence mode="wait" initial={false}>
           {viewType === "grid" ? (
             <GridView
-              key="cloud-grid-view"
+              key="local-grid-view"
               projects={displayProjects}
-              onRename={project => openRenameDialog(project as CloudProjectWithStats)}
-              onDelete={project => openDeleteDialog(project as CloudProjectWithStats)}
-              onToggleFavorite={project => handleToggleFavorite(project as CloudProjectWithStats)}
-              onUpdate={() => refreshProjects({ silent: true })}
-              onProjectClick={project => handleProjectClick(project as CloudProjectWithStats)}
-              onMove={project => openMoveDialog(project as CloudProjectWithStats)}
+              onRename={openRenameDialog}
+              onDelete={openDeleteDialog}
+              onToggleFavorite={handleToggleFavorite}
+              onUpdate={() => void refreshProjects()}
+              onProjectClick={handleProjectClick}
+              onMove={openMoveDialog}
             />
           ) : (
             <ListView
-              key="cloud-list-view"
+              key="local-list-view"
               projects={displayProjects}
-              onRename={project => openRenameDialog(project as CloudProjectWithStats)}
-              onDelete={project => openDeleteDialog(project as CloudProjectWithStats)}
-              onToggleFavorite={project => handleToggleFavorite(project as CloudProjectWithStats)}
-              onUpdate={() => refreshProjects({ silent: true })}
-              onProjectClick={project => handleProjectClick(project as CloudProjectWithStats)}
-              onMove={project => openMoveDialog(project as CloudProjectWithStats)}
+              onRename={openRenameDialog}
+              onDelete={openDeleteDialog}
+              onToggleFavorite={handleToggleFavorite}
+              onUpdate={() => void refreshProjects()}
+              onProjectClick={handleProjectClick}
+              onMove={openMoveDialog}
             />
           )}
         </AnimatePresence>
@@ -291,7 +253,7 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
         <RenameDialog
           open={renameDialogOpen}
           onOpenChange={handleRenameOpenChange}
-          currentName={currentProject?.title || ""}
+          currentName={currentProject?.name || ""}
           onConfirm={handleRenameConfirm}
           loading={renameLoading}
         />
@@ -299,9 +261,9 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
         <DeleteDialog
           open={deleteDialogOpen}
           onOpenChange={handleDeleteOpenChange}
-          itemName={currentProject?.title || ""}
+          itemName={currentProject?.name || ""}
           onConfirm={handleDeleteConfirm}
-          title={t("projects.dialogs.removeTitle", { itemName: currentProject?.title || "" })}
+          title={t("projects.dialogs.removeTitle", { itemName: currentProject?.name || "" })}
           description={t("projects.dialogs.removeDescription")}
           destructiveText={t("projects.dialogs.removeAction")}
           loading={deleteLoading}
@@ -314,7 +276,7 @@ export const CloudProjectList: React.FC<CloudProjectListProps> = React.memo(
             if (!open) setCurrentProject(null)
           }}
           project={currentProject}
-          onMoved={() => refreshProjects({ silent: true })}
+          onMoved={() => void refreshProjects()}
         />
 
         {/*

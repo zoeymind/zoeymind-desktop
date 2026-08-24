@@ -1,2 +1,2 @@
-export { RenameDialog } from './RenameDialog'
-export { DeleteDialog } from './DeleteDialog'
+export { RenameDialog } from "./RenameDialog"
+export { DeleteDialog } from "./DeleteDialog"

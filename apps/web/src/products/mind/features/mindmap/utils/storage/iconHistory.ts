@@ -1,6 +1,6 @@
 // 图标历史管理工具
-import { logger } from '@zoeymind/logger'
-const ICON_HISTORY_KEY = 'mindmap_recent_icons'
+import { logger } from "@zoeymind/logger"
+const ICON_HISTORY_KEY = "mindmap_recent_icons"
 const MAX_RECENT_ICONS = 8 // 最多保存8个最近使用的图标
 
 export interface RecentIcon {
@@ -22,7 +22,7 @@ export function getRecentIcons(): RecentIcon[] {
     // 按最后使用时间排序
     return icons.sort((a, b) => b.lastUsed - a.lastUsed)
   } catch (error) {
-    logger.error('获取最近使用图标失败:', error)
+    logger.error("获取最近使用图标失败:", error)
     return []
   }
 }
@@ -32,7 +32,7 @@ export function getRecentIcons(): RecentIcon[] {
  */
 export function addIconToHistory(type: string, name: string, icon: string): void {
   try {
-    logger.info('添加图标到历史记录:', { type, name, icon: `${icon.substring(0, 50)}...` })
+    logger.info("添加图标到历史记录:", { type, name, icon: `${icon.substring(0, 50)}...` })
 
     const recentIcons = getRecentIcons()
     const now = Date.now()
@@ -43,16 +43,16 @@ export function addIconToHistory(type: string, name: string, icon: string): void
     if (existingIndex !== -1) {
       // 更新现有图标的使用时间
       recentIcons[existingIndex].lastUsed = now
-      logger.info('更新现有图标使用时间')
+      logger.info("更新现有图标使用时间")
     } else {
       // 添加新图标
       recentIcons.unshift({
         type,
         name,
         icon,
-        lastUsed: now
+        lastUsed: now,
       })
-      logger.info('添加新图标到历史')
+      logger.info("添加新图标到历史")
     }
 
     // 限制数量
@@ -60,9 +60,9 @@ export function addIconToHistory(type: string, name: string, icon: string): void
 
     // 保存到本地存储
     localStorage.setItem(ICON_HISTORY_KEY, JSON.stringify(limitedIcons))
-    logger.info('图标历史已保存，当前数量:', limitedIcons.length)
+    logger.info("图标历史已保存，当前数量:", limitedIcons.length)
   } catch (error) {
-    logger.error('保存图标历史失败:', error)
+    logger.error("保存图标历史失败:", error)
   }
 }
 
@@ -73,7 +73,7 @@ export function clearIconHistory(): void {
   try {
     localStorage.removeItem(ICON_HISTORY_KEY)
   } catch (error) {
-    logger.error('清空图标历史失败:', error)
+    logger.error("清空图标历史失败:", error)
   }
 }
 
@@ -81,27 +81,27 @@ export function clearIconHistory(): void {
  * 测试函数：添加一些示例图标到历史记录
  */
 export function addTestIcons(): void {
-  logger.info('添加测试图标到历史记录')
+  logger.info("添加测试图标到历史记录")
 
   // 添加一些测试图标
-  addIconToHistory('priority', '1', '<svg><circle cx="12" cy="12" r="10" fill="red"/></svg>')
-  addIconToHistory('progress', '25', '<svg><rect width="20" height="20" fill="blue"/></svg>')
+  addIconToHistory("priority", "1", '<svg><circle cx="12" cy="12" r="10" fill="red"/></svg>')
+  addIconToHistory("progress", "25", '<svg><rect width="20" height="20" fill="blue"/></svg>')
   addIconToHistory(
-    'expression',
-    'smile',
+    "expression",
+    "smile",
     '<svg><circle cx="12" cy="12" r="10" fill="yellow"/></svg>'
   )
   addIconToHistory(
-    'sign',
-    'star',
+    "sign",
+    "star",
     '<svg><polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" fill="gold"/></svg>'
   )
 
-  logger.info('测试图标添加完成，当前历史:', getRecentIcons())
+  logger.info("测试图标添加完成，当前历史:", getRecentIcons())
 }
 
 // 在开发环境下，将函数暴露到全局，方便测试
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   // 定义全局 window 接口的扩展类型
   interface Window {
     addTestIcons?: typeof addTestIcons

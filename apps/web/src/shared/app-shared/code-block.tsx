@@ -4,7 +4,7 @@
  * 产品仓版走 shiki 高亮 + 富文本注入 mentions；桌面端第一版只保留 `<pre><code>`，
  * 未来若 mind features 需要高亮再补。
  */
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react"
 
 interface CodeBlockProps {
   code: string

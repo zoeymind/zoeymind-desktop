@@ -1,20 +1,12 @@
-import { create } from 'zustand'
-import { devtools } from 'zustand/middleware'
+import { create } from "zustand"
+import { devtools } from "zustand/middleware"
 import type {
   DropdownState,
-  IconToolbarState
-} from '@/products/mind/features/mindmap/components/types'
-import { logger } from '@zoeymind/logger'
+  IconToolbarState,
+} from "@/products/mind/features/mindmap/components/types"
+import { logger } from "@zoeymind/logger"
 
-export type FormatTabType =
-  | 'tags'
-  | 'ai'
-  | 'video'
-  | 'theme'
-  | 'stream'
-  | 'snapshot'
-  | 'comment'
-  | undefined
+export type FormatTabType = "tags" | "ai" | "video" | "theme" | "stream" | "comment" | undefined
 
 interface UIState {
   // 格式面板状态
@@ -69,16 +61,16 @@ const initialDropdownState: DropdownState = {
   show: false,
   position: { x: 0, y: 0 },
   currentNode: null,
-  isRoot: false
+  isRoot: false,
 }
 
 const initialIconToolbarState: IconToolbarState = {
   show: false,
   position: { x: 0, y: 0 },
   node: null,
-  iconType: '',
-  iconName: '',
-  nodeIconList: []
+  iconType: "",
+  iconName: "",
+  nodeIconList: [],
 }
 
 export const useUIStore = create<UIState>()(
@@ -90,7 +82,7 @@ export const useUIStore = create<UIState>()(
       dropdownState: initialDropdownState,
       iconToolbarState: initialIconToolbarState,
       isSearchActive: false,
-      searchInitialText: '',
+      searchInitialText: "",
       isPreviewMode: false,
       isLoading: false,
       loadError: undefined,
@@ -141,14 +133,14 @@ export const useUIStore = create<UIState>()(
       openFormatTab: (tab, nodeUid) => {
         set({
           activeFormatTab: tab,
-          targetNodeUid: nodeUid || undefined
+          targetNodeUid: nodeUid || undefined,
         })
       },
 
       closeFormatTab: () => {
         set({
           activeFormatTab: undefined,
-          targetNodeUid: undefined
+          targetNodeUid: undefined,
         })
       },
 
@@ -157,44 +149,44 @@ export const useUIStore = create<UIState>()(
         const newTab = activeFormatTab === tab ? undefined : tab
         set({
           activeFormatTab: newTab,
-          targetNodeUid: newTab ? get().targetNodeUid : undefined
+          targetNodeUid: newTab ? get().targetNodeUid : undefined,
         })
       },
 
       // 搜索操作
-      startSearch: (initialText = '') => {
+      startSearch: (initialText = "") => {
         set({
           isSearchActive: true,
-          searchInitialText: initialText
+          searchInitialText: initialText,
         })
       },
 
       endSearch: () => {
         set({
           isSearchActive: false,
-          searchInitialText: ''
+          searchInitialText: "",
         })
       },
 
       // 重置操作
       resetUI: () => {
-        logger.info('UIStore: 重置UI状态')
+        logger.info("UIStore: 重置UI状态")
         set({
           activeFormatTab: undefined,
           targetNodeUid: undefined,
           dropdownState: initialDropdownState,
           iconToolbarState: initialIconToolbarState,
           isSearchActive: false,
-          searchInitialText: '',
+          searchInitialText: "",
           isPreviewMode: false,
           isLoading: false,
           loadError: undefined,
-          forceDefaultTemplate: false
+          forceDefaultTemplate: false,
         })
-      }
+      },
     }),
     {
-      name: 'ui-store'
+      name: "ui-store",
     }
   )
 )

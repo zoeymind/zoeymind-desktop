@@ -10,7 +10,7 @@ export const customCheckIsTouchPad = (e: WheelEvent) => {
   const isSmallDelta = Math.abs(e.deltaY) < 10 && e.deltaMode === 0
 
   // 某些Mac触控板会设置这个属性
-  const hasWebkitForce = 'webkitForce' in e || 'force' in e
+  const hasWebkitForce = "webkitForce" in e || "force" in e
 
   return hasBothAxis || (isSmallDelta && !e.ctrlKey) || hasWebkitForce
 }

@@ -6,31 +6,31 @@
  *   <LanguageSwitcher variant="text" />  // 纯文本版 (页脚链接)
  */
 
-import { Languages } from 'lucide-react'
+import { Languages } from "lucide-react"
 import {
   Button,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuCheckboxItem
-} from '@zoeymind/ui'
-import { useTranslation } from '@zoeymind/i18n'
-import { SUPPORTED_LOCALES, type SupportedLocale } from '@zoeymind/i18n'
-import { useLocale, useChangeLocale } from '@zoeymind/i18n'
+  DropdownMenuCheckboxItem,
+} from "@zoeymind/ui"
+import { useTranslation } from "@zoeymind/i18n"
+import { SUPPORTED_LOCALES, type SupportedLocale } from "@zoeymind/i18n"
+import { useLocale, useChangeLocale } from "@zoeymind/i18n"
 
 export interface LanguageSwitcherProps {
   /** 'icon' (默认): 图标按钮; 'text': 纯文本 link */
-  variant?: 'icon' | 'text'
+  variant?: "icon" | "text"
   className?: string
 }
 
-export function LanguageSwitcher({ variant = 'icon', className }: LanguageSwitcherProps) {
+export function LanguageSwitcher({ variant = "icon", className }: LanguageSwitcherProps) {
   const { t } = useTranslation()
   const current = useLocale()
   const changeLocale = useChangeLocale()
 
-  if (variant === 'text') {
+  if (variant === "text") {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -39,7 +39,7 @@ export function LanguageSwitcher({ variant = 'icon', className }: LanguageSwitch
             <button
               type="button"
               className={
-                className ?? 'text-xs text-muted-foreground hover:text-foreground hover:underline'
+                className ?? "text-xs text-muted-foreground hover:text-foreground hover:underline"
               }
             >
               {t(`language.${current}`)}
@@ -70,7 +70,7 @@ export function LanguageSwitcher({ variant = 'icon', className }: LanguageSwitch
             variant="ghost"
             size="icon-sm"
             className={className}
-            aria-label={t('language.switch')}
+            aria-label={t("language.switch")}
           >
             <Languages className="size-4" />
           </Button>
@@ -81,7 +81,7 @@ export function LanguageSwitcher({ variant = 'icon', className }: LanguageSwitch
           <DropdownMenuItem
             key={loc}
             onClick={() => changeLocale(loc)}
-            className={loc === current ? 'font-medium' : undefined}
+            className={loc === current ? "font-medium" : undefined}
           >
             {t(`language.${loc}`)}
           </DropdownMenuItem>

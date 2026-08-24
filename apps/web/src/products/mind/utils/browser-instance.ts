@@ -3,7 +3,7 @@
  * 用于区分同一用户的不同浏览器实例
  */
 
-const BROWSER_INSTANCE_KEY = 'browser_instance_id'
+const BROWSER_INSTANCE_KEY = "browser_instance_id"
 
 /**
  * 生成浏览器实例 ID

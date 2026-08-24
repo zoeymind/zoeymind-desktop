@@ -13,7 +13,7 @@ const NOOP_CLIENT: AnalyticsClient = {
   track: () => undefined,
   trackEvent: () => Promise.resolve(),
   page: () => undefined,
-  identify: () => undefined
+  identify: () => undefined,
 }
 
 export function useAnalytics(): AnalyticsClient {

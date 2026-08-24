@@ -1,4 +1,4 @@
-import type { CollaborationState } from './useCollaborationManager'
+import type { CollaborationState } from "./useCollaborationManager"
 
 /**
  * 全局 Loading 的展示决策。
@@ -7,16 +7,14 @@ import type { CollaborationState } from './useCollaborationManager'
  * - complete: 已就绪；触发 updateProgress(100) 并准备 1s 后收起
  */
 export type MindMapLoadingDecision =
-  | { kind: 'hide' }
-  | { kind: 'show'; tipKey: string; progress: number }
-  | { kind: 'complete' }
+  { kind: "hide" } | { kind: "show"; tipKey: string; progress: number } | { kind: "complete" }
 
 export interface MindMapLoadingInput {
   workspaceId?: string
   cloudMode: boolean
   hasMindMap: boolean
   loadError: string | null
-  collaboration: Pick<CollaborationState, 'status' | 'synced' | 'initialSyncDone'> | null
+  collaboration: Pick<CollaborationState, "status" | "synced" | "initialSyncDone"> | null
   waitingForCollaboration: boolean
 }
 
@@ -31,31 +29,31 @@ export function resolveMindMapLoading(input: MindMapLoadingInput): MindMapLoadin
   const { workspaceId, cloudMode, hasMindMap, loadError, collaboration, waitingForCollaboration } =
     input
 
-  if (!workspaceId) return { kind: 'hide' }
-  if (loadError) return { kind: 'hide' }
+  if (!workspaceId) return { kind: "hide" }
+  if (loadError) return { kind: "hide" }
   if (!hasMindMap) {
-    return { kind: 'show', tipKey: 'mindmap.canvas.initializingCanvas', progress: 30 }
+    return { kind: "show", tipKey: "mindmap.canvas.initializingCanvas", progress: 30 }
   }
 
   if (cloudMode) {
     // 首次同步完成 → 不再覆盖全局 Loading，交给轻量 Toast
     if (!collaboration?.initialSyncDone) {
       if (!collaboration) {
-        return { kind: 'show', tipKey: 'mindmap.canvas.preparingCollaboration', progress: 75 }
+        return { kind: "show", tipKey: "mindmap.canvas.preparingCollaboration", progress: 75 }
       }
-      if (collaboration.status === 'connecting') {
-        return { kind: 'show', tipKey: 'mindmap.canvas.connectingCollaboration', progress: 80 }
+      if (collaboration.status === "connecting") {
+        return { kind: "show", tipKey: "mindmap.canvas.connectingCollaboration", progress: 80 }
       }
-      if (collaboration.status === 'disconnected') {
-        return { kind: 'show', tipKey: 'mindmap.canvas.reconnectingCollaboration', progress: 50 }
+      if (collaboration.status === "disconnected") {
+        return { kind: "show", tipKey: "mindmap.canvas.reconnectingCollaboration", progress: 50 }
       }
       if (!collaboration.synced) {
-        return { kind: 'show', tipKey: 'mindmap.canvas.syncingData', progress: 85 }
+        return { kind: "show", tipKey: "mindmap.canvas.syncingData", progress: 85 }
       }
     }
   } else if (waitingForCollaboration) {
-    return { kind: 'show', tipKey: 'mindmap.canvas.syncingData', progress: 85 }
+    return { kind: "show", tipKey: "mindmap.canvas.syncingData", progress: 85 }
   }
 
-  return { kind: 'complete' }
+  return { kind: "complete" }
 }

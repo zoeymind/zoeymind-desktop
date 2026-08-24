@@ -1,7 +1,6 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { useEffect } from 'react'
-import type { default as MindMap, MindMapNode } from 'simple-mind-map'
-import { useUIStore } from '@/products/mind/stores'
+import { useEffect } from "react"
+import type { default as MindMap, MindMapNode } from "simple-mind-map"
+import { useUIStore } from "@/products/mind/stores"
 
 export function useEventManager(mindMap: MindMap | null) {
   useEffect(() => {
@@ -15,7 +14,7 @@ export function useEventManager(mindMap: MindMap | null) {
     const handleDOMContextMenu = (e: MouseEvent) => {
       const target = e.target as Element
       // 检查是否点击在节点上
-      const nodeElement = target.closest('.smm-node')
+      const nodeElement = target.closest(".smm-node")
       if (!nodeElement) return
 
       // 获取当前激活的节点列表
@@ -35,7 +34,7 @@ export function useEventManager(mindMap: MindMap | null) {
       if (shouldPreserveSelection && preservedActiveNodes.length > 1) {
         // 检查右键的节点是否在之前的选择中
         const isNodeInSelection = preservedActiveNodes.some(
-          activeNode => activeNode.getData('uid') === node.getData('uid')
+          activeNode => activeNode.getData("uid") === node.getData("uid")
         )
 
         if (isNodeInSelection) {
@@ -67,29 +66,29 @@ export function useEventManager(mindMap: MindMap | null) {
         show: true,
         position: { x: e.clientX, y: e.clientY },
         isRoot:
-          node.getData('uid') === (mindMap.renderer?.root as MindMapNode | null)?.getData('uid'),
-        currentNode: node
+          node.getData("uid") === (mindMap.renderer?.root as MindMapNode | null)?.getData("uid"),
+        currentNode: node,
       })
     }
 
     // 处理画布点击关闭菜单
     const handleDrawClick = () => {
       // 仅当点击非菜单区域时关闭
-      const menuElement = document.querySelector('.mindmap-context-menu')
+      const menuElement = document.querySelector(".mindmap-context-menu")
       if (!menuElement) {
         const { setDropdownState } = useUIStore.getState()
         setDropdownState({
           show: false,
           position: { x: 0, y: 0 },
           isRoot: false,
-          currentNode: null
+          currentNode: null,
         })
       }
     }
 
     // 全局点击事件，用于在点击画布外部时关闭菜单
     const handleGlobalClick = (e: MouseEvent) => {
-      const menuElement = document.querySelector('.mindmap-context-menu')
+      const menuElement = document.querySelector(".mindmap-context-menu")
       // 如果菜单存在，且点击的不是菜单内部元素
       if (menuElement && !menuElement.contains(e.target as Node)) {
         const { setDropdownState } = useUIStore.getState()
@@ -97,27 +96,22 @@ export function useEventManager(mindMap: MindMap | null) {
           show: false,
           position: { x: 0, y: 0 },
           isRoot: false,
-          currentNode: null
+          currentNode: null,
         })
       }
     }
 
-    // 监听事件
-    mindMap.on('node_contextmenu', handleNodeContextMenu)
-    mindMap.on('draw_click', handleDrawClick)
-    document.addEventListener('click', handleGlobalClick)
-    // 添加 DOM 级别的右键事件监听，捕获阶段执行
-    if (mindMap.el) {
-      mindMap.el.addEventListener('contextmenu', handleDOMContextMenu, true)
-    }
+    const canvas = mindMap.el
+    mindMap.on("node_contextmenu", handleNodeContextMenu)
+    mindMap.on("draw_click", handleDrawClick)
+    document.addEventListener("click", handleGlobalClick)
+    canvas?.addEventListener("contextmenu", handleDOMContextMenu, true)
 
     return () => {
-      mindMap.off('node_contextmenu', handleNodeContextMenu)
-      mindMap.off('draw_click', handleDrawClick)
-      document.removeEventListener('click', handleGlobalClick)
-      if (mindMap.el) {
-        mindMap.el.removeEventListener('contextmenu', handleDOMContextMenu, true)
-      }
+      mindMap.off("node_contextmenu", handleNodeContextMenu)
+      mindMap.off("draw_click", handleDrawClick)
+      document.removeEventListener("click", handleGlobalClick)
+      canvas?.removeEventListener("contextmenu", handleDOMContextMenu, true)
     }
   }, [mindMap])
 }

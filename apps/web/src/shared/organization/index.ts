@@ -2,7 +2,7 @@
  * organization shim —— 桌面端不做多租户/工作区切换。
  * 保留最少 API 表面让 ProjectsSidebar / MoveDialog 等文件 import 不炸。
  */
-import type { ComponentType } from 'react'
+import type { ComponentType } from "react"
 
 export interface LocalWorkspace {
   id: string
@@ -14,7 +14,7 @@ export interface WorkspaceOption {
   name: string
 }
 
-const LOCAL_WORKSPACE: LocalWorkspace = { id: 'local', name: 'Local' }
+const LOCAL_WORKSPACE: LocalWorkspace = { id: "local", name: "Local" }
 
 interface UseCurrentWorkspaceResult {
   workspaceId: string
@@ -26,16 +26,18 @@ interface UseCurrentWorkspaceResult {
 }
 
 export function useCurrentWorkspace(
-  _orgId: string | null,
-  _role?: string
+  orgId: string | null,
+  role?: string
 ): UseCurrentWorkspaceResult {
+  void orgId
+  void role
   return {
     workspaceId: LOCAL_WORKSPACE.id,
     list: [LOCAL_WORKSPACE],
     isLoading: false,
     setWorkspace: () => undefined,
     canCreate: false,
-    refetch: async () => undefined
+    refetch: async () => undefined,
   }
 }
 

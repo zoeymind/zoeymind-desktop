@@ -4,6 +4,7 @@ export type CursorPosition = { x: number; y: number }
 export type AwarenessSync = unknown
 export type CooperatePlugin = unknown
 
-export function isWaitingForCollaboration(_mindMap: unknown): boolean {
+export function isWaitingForCollaboration(mindMap: unknown): boolean {
+  void mindMap
   return false
 }

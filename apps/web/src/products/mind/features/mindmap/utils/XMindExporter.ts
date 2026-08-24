@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import JSZip from "jszip"
 import { logger } from "@zoeymind/logger"
 import type { default as MindMap, MindMapNodeTree } from "simple-mind-map"
@@ -201,16 +200,5 @@ export class XMindExporter {
       .catch(e => {
         logger.error("Failed to generate zip:", e)
       })
-  }
-
-  private downloadBlob(blob: Blob, fileName: string): void {
-    const link = document.createElement("a")
-    link.href = URL.createObjectURL(blob)
-    link.download = `${fileName}.xmind`
-    link.style.display = "none"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(link.href)
   }
 }

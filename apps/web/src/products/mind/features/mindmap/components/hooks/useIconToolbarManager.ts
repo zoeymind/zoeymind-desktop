@@ -1,7 +1,6 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { useEffect } from 'react'
-import type { default as MindMap, MindMapNode } from 'simple-mind-map'
-import { useUIStore } from '@/products/mind/stores'
+import { useEffect } from "react"
+import type { default as MindMap, MindMapNode } from "simple-mind-map"
+import { useUIStore } from "@/products/mind/stores"
 
 /**
  * 自定义Hook，用于管理图标工具栏的事件和状态
@@ -13,7 +12,7 @@ export function useIconToolbarManager(mindMap: MindMap | null) {
 
     const handleNodeIconClick = (node: MindMapNode, icon: string) => {
       // 解析图标类型和名称
-      const [type, name] = icon.split('_')
+      const [type, name] = icon.split("_")
 
       // 获取节点的位置和尺寸
       const rect = node.getRect()
@@ -26,7 +25,7 @@ export function useIconToolbarManager(mindMap: MindMap | null) {
         node,
         iconType: type,
         iconName: name,
-        nodeIconList: node.getData('icon') || []
+        nodeIconList: node.getData("icon") || [],
       })
     }
 
@@ -37,9 +36,9 @@ export function useIconToolbarManager(mindMap: MindMap | null) {
         show: false,
         position: { x: 0, y: 0 },
         node: null,
-        iconType: '',
-        iconName: '',
-        nodeIconList: []
+        iconType: "",
+        iconName: "",
+        nodeIconList: [],
       })
     }
 
@@ -50,9 +49,9 @@ export function useIconToolbarManager(mindMap: MindMap | null) {
         show: false,
         position: { x: 0, y: 0 },
         node: null,
-        iconType: '',
-        iconName: '',
-        nodeIconList: []
+        iconType: "",
+        iconName: "",
+        nodeIconList: [],
       })
     }
 
@@ -64,9 +63,9 @@ export function useIconToolbarManager(mindMap: MindMap | null) {
         show: false,
         position: { x: 0, y: 0 },
         node: null,
-        iconType: '',
-        iconName: '',
-        nodeIconList: []
+        iconType: "",
+        iconName: "",
+        nodeIconList: [],
       })
     }
 
@@ -77,26 +76,26 @@ export function useIconToolbarManager(mindMap: MindMap | null) {
         show: false,
         position: { x: 0, y: 0 },
         node: null,
-        iconType: '',
-        iconName: '',
-        nodeIconList: []
+        iconType: "",
+        iconName: "",
+        nodeIconList: [],
       })
     }
 
     // 注册事件监听
-    mindMap.on('node_icon_click', handleNodeIconClick)
-    mindMap.on('draw_click', handleDrawClick)
-    mindMap.on('node_dblclick', handleNodeDblclick)
-    mindMap.on('node_active', handleNodeActive)
-    mindMap.on('svg_mousedown', handleSvgMousedown)
+    mindMap.on("node_icon_click", handleNodeIconClick)
+    mindMap.on("draw_click", handleDrawClick)
+    mindMap.on("node_dblclick", handleNodeDblclick)
+    mindMap.on("node_active", handleNodeActive)
+    mindMap.on("svg_mousedown", handleSvgMousedown)
 
     return () => {
       // 移除事件监听
-      mindMap.off('node_icon_click', handleNodeIconClick)
-      mindMap.off('draw_click', handleDrawClick)
-      mindMap.off('node_dblclick', handleNodeDblclick)
-      mindMap.off('node_active', handleNodeActive)
-      mindMap.off('svg_mousedown', handleSvgMousedown)
+      mindMap.off("node_icon_click", handleNodeIconClick)
+      mindMap.off("draw_click", handleDrawClick)
+      mindMap.off("node_dblclick", handleNodeDblclick)
+      mindMap.off("node_active", handleNodeActive)
+      mindMap.off("svg_mousedown", handleSvgMousedown)
     }
   }, [mindMap])
 }

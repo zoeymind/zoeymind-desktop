@@ -1,17 +1,15 @@
-import { logger } from '@zoeymind/logger'
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
+import { logger } from "@zoeymind/logger"
+import { useState, useCallback, useEffect, useRef } from "react"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import type MindMap from "simple-mind-map"
 
-// 节流函数
-const throttle = <T extends (...args: unknown[]) => void>(fn: T, delay: number): T => {
-  let lastCall = 0
-  return ((...args: Parameters<T>) => {
-    const now = Date.now()
-    if (now - lastCall >= delay) {
-      lastCall = now
-      fn(...args)
-    }
-  }) as T
+function configurePanMode(mindMap: MindMap, enabled: boolean) {
+  mindMap.opt.useLeftKeySelectionRightKeyDrag = !enabled
+  if (mindMap.el) mindMap.el.style.cursor = enabled ? "grab" : ""
+}
+
+function setCanvasCursor(element: HTMLElement | null | undefined, cursor: string) {
+  if (element) element.style.cursor = cursor
 }
 
 export function usePanTool() {
@@ -30,56 +28,28 @@ export function usePanTool() {
     setIsPanMode(newPanMode)
 
     try {
-      if (newPanMode) {
-        // 启用手掌拖动模式：使用库原生的左键拖动配置
-        mindMap.opt.useLeftKeySelectionRightKeyDrag = false
-        // 设置画布样式为抓手
-        if (mindMap.el) {
-          mindMap.el.style.cursor = 'grab'
-        }
-        logger.info('已启用手掌拖动模式')
-      } else {
-        // 恢复默认模式：左键选择，右键拖拽
-        mindMap.opt.useLeftKeySelectionRightKeyDrag = true
-        // 恢复默认光标
-        if (mindMap.el) {
-          mindMap.el.style.cursor = ''
-        }
-        logger.info('已恢复默认选择模式')
-      }
+      configurePanMode(mindMap, newPanMode)
+      logger.info(newPanMode ? "已启用手掌拖动模式" : "已恢复默认选择模式")
     } catch (error) {
-      logger.error('切换拖动模式失败:', error)
+      logger.error("切换拖动模式失败:", error)
     }
   }, [mindMap, isPanMode])
 
-  // 节流的拖动开始处理
-  const throttledDragStart = useCallback(
-    throttle(() => {
-      if (!isRightDragging) {
-        setIsRightDragging(true)
-        if (mindMap?.el) {
-          mindMap.el.style.cursor = 'grabbing'
-        }
-        logger.info('右键拖动开始')
-      }
-    }, 100),
-    [mindMap, isRightDragging]
-  )
+  const handleDragStart = useCallback(() => {
+    if (isRightDragging) return
+    setIsRightDragging(true)
+    setCanvasCursor(mindMap?.el, "grabbing")
+    logger.info("右键拖动开始")
+  }, [mindMap, isRightDragging])
 
-  // 节流的拖动结束处理
-  const throttledDragEnd = useCallback(
-    throttle(() => {
-      if (isRightDragging) {
-        setIsRightDragging(false)
-        if (mindMap?.el && !isPanMode) {
-          mindMap.el.style.cursor = ''
-        }
-        logger.info('右键拖动结束')
-      }
-      isDragMovingRef.current = false
-    }, 100),
-    [mindMap, isPanMode, isRightDragging]
-  )
+  const handleDragEnd = useCallback(() => {
+    if (isRightDragging) {
+      setIsRightDragging(false)
+      if (!isPanMode) setCanvasCursor(mindMap?.el, "")
+      logger.info("右键拖动结束")
+    }
+    isDragMovingRef.current = false
+  }, [mindMap, isPanMode, isRightDragging])
 
   // 监听右键拖动状态
   useEffect(() => {
@@ -94,7 +64,7 @@ export function usePanTool() {
         // 延迟检测是否真的在拖动
         setTimeout(() => {
           if (isDragMovingRef.current) {
-            throttledDragStart()
+            handleDragStart()
           }
         }, 50)
       }
@@ -114,7 +84,7 @@ export function usePanTool() {
 
         // 只有真正拖动过才触发结束事件
         if (isDragMovingRef.current && dragDuration > 100) {
-          throttledDragEnd()
+          handleDragEnd()
         }
 
         dragStartTimeRef.current = 0
@@ -131,24 +101,24 @@ export function usePanTool() {
 
     // 添加事件监听
     const canvas = mindMap.el
-    canvas.addEventListener('mousedown', handleMouseDown)
-    canvas.addEventListener('mousemove', handleMouseMove)
-    canvas.addEventListener('mouseup', handleMouseUp)
-    canvas.addEventListener('contextmenu', handleContextMenu)
+    canvas.addEventListener("mousedown", handleMouseDown)
+    canvas.addEventListener("mousemove", handleMouseMove)
+    canvas.addEventListener("mouseup", handleMouseUp)
+    canvas.addEventListener("contextmenu", handleContextMenu)
 
     return () => {
-      canvas.removeEventListener('mousedown', handleMouseDown)
-      canvas.removeEventListener('mousemove', handleMouseMove)
-      canvas.removeEventListener('mouseup', handleMouseUp)
-      canvas.removeEventListener('contextmenu', handleContextMenu)
+      canvas.removeEventListener("mousedown", handleMouseDown)
+      canvas.removeEventListener("mousemove", handleMouseMove)
+      canvas.removeEventListener("mouseup", handleMouseUp)
+      canvas.removeEventListener("contextmenu", handleContextMenu)
     }
-  }, [mindMap, isPanMode, isRightDragging, throttledDragStart, throttledDragEnd])
+  }, [mindMap, isPanMode, isRightDragging, handleDragStart, handleDragEnd])
 
   return {
     isPanMode,
     isRightDragging,
     togglePanMode,
     // 计算按钮是否应该高亮：手掌模式或右键拖动中
-    isActive: isPanMode || isRightDragging
+    isActive: isPanMode || isRightDragging,
   }
 }

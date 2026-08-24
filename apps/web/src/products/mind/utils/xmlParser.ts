@@ -1,10 +1,10 @@
-import { logger } from '@zoeymind/logger'
+import { logger } from "@zoeymind/logger"
 
 /**
  * XML 解析工具
  * 使用 fast-xml-parser 库实现高效的 XML 解析
  */
-import { XMLParser, XMLBuilder, XMLValidator } from 'fast-xml-parser'
+import { XMLParser, XMLBuilder, XMLValidator } from "fast-xml-parser"
 
 /**
  * XML 解析选项
@@ -70,14 +70,14 @@ export interface XmlParserOptions {
  */
 const defaultOptions: XmlParserOptions = {
   ignoreAttributes: false,
-  attributeNamePrefix: '@',
+  attributeNamePrefix: "@",
   parseAttributeValue: true,
   parseTagValue: true,
   preserveOrder: false,
-  commentPropName: '#comment',
+  commentPropName: "#comment",
   ignoreNameSpace: false,
   allowBooleanAttributes: true,
-  cdataPropName: '#cdata'
+  cdataPropName: "#cdata",
 }
 
 /**
@@ -140,8 +140,8 @@ export const parseXmlContent = (xmlContent: string, options: XmlParserOptions = 
     // 解析 XML
     return parseXml(xmlContent, options)
   } catch (error) {
-    logger.error('解析 XML 内容失败:', error)
-    throw new Error(`解析 XML 内容失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    logger.error("解析 XML 内容失败:", error)
+    throw new Error(`解析 XML 内容失败: ${error instanceof Error ? error.message : "未知错误"}`)
   }
 }
 
@@ -160,18 +160,18 @@ export const parseXmlSource = async (
     let xmlContent: string
 
     // 根据源类型获取 XML 内容
-    if (typeof source === 'string') {
+    if (typeof source === "string") {
       xmlContent = source
     } else if (source instanceof File || source instanceof Blob) {
       xmlContent = await source.text()
     } else {
-      throw new Error('不支持的源类型')
+      throw new Error("不支持的源类型")
     }
 
     // 解析 XML 内容
     return parseXmlContent(xmlContent, options)
   } catch (error) {
-    logger.error('解析 XML 源失败:', error)
-    throw new Error(`解析 XML 源失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    logger.error("解析 XML 源失败:", error)
+    throw new Error(`解析 XML 源失败: ${error instanceof Error ? error.message : "未知错误"}`)
   }
 }

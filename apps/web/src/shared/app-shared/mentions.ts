@@ -12,10 +12,10 @@
  * 交给自定义 `span` component 渲染成可点击标签.
  */
 
-import { i18next } from '@zoeymind/i18n'
+import { i18next } from "@zoeymind/i18n"
 
 /** 消息里 @提及的通用样式类名 (供输入框 pill 复用) */
-export const mentionClassName = 'rounded bg-primary/15 text-primary text-m'
+export const mentionClassName = "rounded bg-primary/15 text-primary text-m"
 export const getMentionMessageClassName = () => mentionClassName
 
 /* ------------------------------------------------------------------ */
@@ -35,8 +35,7 @@ export const LEGACY_MENTION_SPAN_REGEX =
 export const CLASS_MENTION_SPAN_REGEX =
   /<span\s+class="([^"]*\bmention-tag\b[^"]*)"\s*>\s*([^<]+)\s*<\/span>/g
 
-export const ESCAPED_ZTDL_REGEX =
-  /\\([+\-~>=!]?)([MC]):([^\s:「」<>]+)\s*(?:「([^」]*)」)?/g
+export const ESCAPED_ZTDL_REGEX = /\\([+\-~>=!]?)([MC]):([^\s:「」<>]+)\s*(?:「([^」]*)」)?/g
 
 /* ------------------------------------------------------------------ */
 /* buildMentionHtml                                                    */
@@ -51,21 +50,21 @@ export const ESCAPED_ZTDL_REGEX =
 export const buildMentionHtml = (
   displayText: string,
   nodeId: string,
-  status: 'found' | 'notfound' | 'unrecognized' = 'found',
-  nodeType = '',
+  status: "found" | "notfound" | "unrecognized" = "found",
+  nodeType = "",
   priority?: number
 ): string => {
   const safeText = displayText
     .trim()
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-  const safeId = nodeId.trim().replace(/"/g, '&quot;')
-  const classes = ['mention-tag', `nid-${safeId}`, `ztdl-${status}`]
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+  const safeId = nodeId.trim().replace(/"/g, "&quot;")
+  const classes = ["mention-tag", `nid-${safeId}`, `ztdl-${status}`]
   if (nodeType) classes.push(`ztdl-${nodeType}`)
   if (priority && priority >= 1 && priority <= 3) classes.push(`ztdl-p${priority}`)
-  return `<span class="${classes.join(' ')}">${safeText}</span>`
+  return `<span class="${classes.join(" ")}">${safeText}</span>`
 }
 
 /** 从 span className 提回 node id (支持任意非空 id, 与 SessionIdMapper 一致) */
@@ -103,57 +102,49 @@ export interface MentionProcessorOptions {
  * 把 ZTDL `M:id「name」` / `C:id「name」` 转成 mention-tag <span>.
  * 类似 markdown 图片: id 有效 -> 蓝可点击, id 无效 -> 灰不可点击.
  */
-export function processMentions(
-  content: string,
-  options: MentionProcessorOptions = {}
-): string {
+export function processMentions(content: string, options: MentionProcessorOptions = {}): string {
   const { resolveShortId = id => id, findNode, nodes } = options
 
   const lookup =
-    findNode ??
-    (nodes
-      ? (id: string) => nodes.find(n => n.data?.uid === id) ?? null
-      : undefined)
+    findNode ?? (nodes ? (id: string) => nodes.find(n => n.data?.uid === id) ?? null : undefined)
 
   return content.replace(
     ZTDL_MENTION_REGEX,
-    (_match, prefix = '', nodeType = '', rawId = '', rawName = '') => {
+    (_match, prefix = "", nodeType = "", rawId = "", rawName = "") => {
       if (!rawId) return _match
 
       const resolvedId = resolveShortId(rawId)
       const node = lookup?.(resolvedId) ?? null
       const typeLabel =
-        nodeType === 'M'
-          ? i18next.t('common.mentionModule')
-          : i18next.t('common.mentionCase')
+        nodeType === "M" ? i18next.t("common.mentionModule") : i18next.t("common.mentionCase")
 
       if (node) {
-        const nodeText = (node.data?.text || '').replace(/\[P\d\]/g, '').trim()
+        const nodeText = (node.data?.text || "").replace(/\[P\d\]/g, "").trim()
         const displayText = nodeText || rawName || `${typeLabel}(${rawId})`
         const fullUid = node.data?.uid || resolvedId
 
         let priority: number | undefined
-        if (nodeType === 'C') {
+        if (nodeType === "C") {
           const icons: string[] = node.data?.icon || []
-          const priorityIcon = icons.find((i: string) => i.startsWith('priority_'))
+          const priorityIcon = icons.find((i: string) => i.startsWith("priority_"))
           if (priorityIcon) {
-            const p = parseInt(priorityIcon.replace('priority_', ''), 10)
+            const p = parseInt(priorityIcon.replace("priority_", ""), 10)
             if (p >= 1 && p <= 3) priority = p
           }
         }
 
         // 末尾空格避免 markdown 把紧邻字符并进 span
-        return `${prefix}${buildMentionHtml(displayText, fullUid, 'found', nodeType, priority)} `
+        return `${prefix}${buildMentionHtml(displayText, fullUid, "found", nodeType, priority)} `
       }
 
       // 节点找不到 -> 灰色
-      const trimmedName = (rawName as string)?.trim() || ''
+      const trimmedName = (rawName as string)?.trim() || ""
       let priority: number | undefined
       const priorityMatch = trimmedName.match(/^\[P([1-3])\]/)
       if (priorityMatch) priority = parseInt(priorityMatch[1], 10)
-      const nameWithoutPriority = trimmedName.replace(/^\[P[1-3]\]/, '').trim()
+      const nameWithoutPriority = trimmedName.replace(/^\[P[1-3]\]/, "").trim()
       const displayText = nameWithoutPriority || `${typeLabel}(${rawId})`
-      return `${prefix}${buildMentionHtml(displayText, resolvedId, 'unrecognized', nodeType, priority)} `
+      return `${prefix}${buildMentionHtml(displayText, resolvedId, "unrecognized", nodeType, priority)} `
     }
   )
 }
@@ -161,7 +152,7 @@ export function processMentions(
 /** 编辑器输出 `@[name](id)` -> ZTDL `M:id「name」` (发送前预处理 UserMessage) */
 export function convertAtMentionToZTDL(content: string): string {
   return content.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, id) => {
-    if (id === '' || id === undefined) return `@${text}`
+    if (id === "" || id === undefined) return `@${text}`
     return `M:${id}「${text}」`
   })
 }
@@ -173,9 +164,9 @@ export function convertAtMentionToZTDL(content: string): string {
  */
 export function stripMentionsForCodeBlock(content: string): string {
   return content
-    .replace(/<span\s+class="[^"]*\bmention-tag\b[^"]*"[^>]*>([^<]+)<\/span>/g, '$1')
+    .replace(/<span\s+class="[^"]*\bmention-tag\b[^"]*"[^>]*>([^<]+)<\/span>/g, "$1")
     .replace(
       /([+\-~>=!]?)\s*[MC]:[^\s:「」<>]+(?:\s*「([^」]*)」)?/g,
-      (_match, prefix, name) => prefix + (name || '')
+      (_match, prefix, name) => prefix + (name || "")
     )
 }

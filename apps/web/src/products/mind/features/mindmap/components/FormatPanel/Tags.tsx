@@ -1,10 +1,10 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { FC, useEffect } from 'react'
-import { useTranslation } from '@zoeymind/i18n'
-import { nodeIconList } from 'simple-mind-map/src/svg/icons'
-import { useIconManager } from '@/products/mind/features/mindmap/components/hooks/useIconManager'
-import { useProjectMindMapStore as useMindMapStore } from '@/products/mind/editor-session'
-import { PanelLayout } from './PanelLayout'
+import { useEffect } from "react"
+import type { FC } from "react"
+import { useTranslation } from "@zoeymind/i18n"
+import { nodeIconList } from "simple-mind-map/src/svg/icons"
+import { useIconManager } from "@/products/mind/features/mindmap/components/hooks/useIconManager"
+import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import { PanelLayout } from "./PanelLayout"
 
 interface TagsProps {
   isActive: boolean
@@ -40,21 +40,21 @@ export const Tags: FC<TagsProps> = ({ isActive }) => {
     }
 
     // 监听节点选择变化
-    mindMap.on('node_active', handleNodeChange)
-    mindMap.on('node_click', handleNodeChange)
+    mindMap.on("node_active", handleNodeChange)
+    mindMap.on("node_click", handleNodeChange)
 
     return () => {
-      mindMap.off('node_active', handleNodeChange)
-      mindMap.off('node_click', handleNodeChange)
+      mindMap.off("node_active", handleNodeChange)
+      mindMap.off("node_click", handleNodeChange)
     }
   }, [mindMap])
 
   // 获取所有图标类型
   const iconGroups: IconGroup[] = [
-    { type: 'priority', label: t('mindmap.formatPanel.tags.groupPriority') },
-    { type: 'sign', label: t('mindmap.formatPanel.tags.groupSign') },
-    { type: 'progress', label: t('mindmap.formatPanel.tags.groupProgress') },
-    { type: 'expression', label: t('mindmap.formatPanel.tags.groupExpression') }
+    { type: "priority", label: t("mindmap.formatPanel.tags.groupPriority") },
+    { type: "sign", label: t("mindmap.formatPanel.tags.groupSign") },
+    { type: "progress", label: t("mindmap.formatPanel.tags.groupProgress") },
+    { type: "expression", label: t("mindmap.formatPanel.tags.groupExpression") },
   ]
 
   // 处理图标点击
@@ -70,7 +70,7 @@ export const Tags: FC<TagsProps> = ({ isActive }) => {
       (item: { type: string }) => item.type === type
     ) as IconListItem
     const iconData = iconList?.list.find(icon => icon.name === name)
-    const iconSvg = iconData?.icon || ''
+    const iconSvg = iconData?.icon || ""
 
     // 使用统一的图标操作处理
     const result = handleIconOperation(type, name, iconSvg)
@@ -87,7 +87,7 @@ export const Tags: FC<TagsProps> = ({ isActive }) => {
 
   return (
     <PanelLayout
-      title={t('mindmap.formatPanel.tags.panelTitle')}
+      title={t("mindmap.formatPanel.tags.panelTitle")}
       isActive={isActive}
       className="p-4"
     >
@@ -110,13 +110,13 @@ export const Tags: FC<TagsProps> = ({ isActive }) => {
                       type="button"
                       key={icon.name}
                       className={`size-6 rounded-full flex items-center justify-center hover:bg-muted hover:scale-110 transition-all duration-200 ease-in-out cursor-pointer ${
-                        isActive ? 'bg-muted ring-2 ring-primary' : ''
+                        isActive ? "bg-muted ring-2 ring-primary" : ""
                       }`}
                       onClick={() => handleIconClick(group.type, icon.name)}
                       dangerouslySetInnerHTML={{ __html: icon.icon }}
-                      title={t('mindmap.formatPanel.tags.iconTooltip', {
+                      title={t("mindmap.formatPanel.tags.iconTooltip", {
                         group: group.label,
-                        name: icon.name
+                        name: icon.name,
                       })}
                     />
                   )

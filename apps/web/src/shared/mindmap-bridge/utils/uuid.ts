@@ -1,1 +1,1 @@
-export { createUUID, generateUUID } from '@/shared/app-shared'
+export { createUUID, generateUUID } from "@/shared/app-shared"

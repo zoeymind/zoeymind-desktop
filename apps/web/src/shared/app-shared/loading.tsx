@@ -15,52 +15,8 @@
  * `LoadingProvider` 保留为 no-op 透传, 让 App.tsx 无需改 import 顺序.
  */
 import type { ReactNode } from "react"
-import { create } from "zustand"
 
-interface LoadingState {
-  loading: boolean
-  tip: string | null
-  progress: number
-  showLoading: (tip?: string) => void
-  hideLoading: () => void
-  updateProgress: (progress: number) => void
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useLoadingStore = create<LoadingState>()(set => ({
-  loading: false,
-  tip: null,
-  progress: 0,
-  showLoading: tip => set({ loading: true, tip: tip ?? null, progress: 0 }),
-  hideLoading: () => set({ loading: false, tip: null, progress: 0 }),
-  updateProgress: progress => set({ progress: Math.max(0, Math.min(100, progress)) }),
-}))
-
-interface UseLoadingResult {
-  loading: boolean
-  isLoading: boolean
-  tip: string | null
-  progress: number
-  showLoading: (tip?: string) => void
-  hideLoading: () => void
-  updateProgress: (progress: number) => void
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useLoading(): UseLoadingResult {
-  const loading = useLoadingStore(s => s.loading)
-  const tip = useLoadingStore(s => s.tip)
-  const progress = useLoadingStore(s => s.progress)
-  const showLoading = useLoadingStore(s => s.showLoading)
-  const hideLoading = useLoadingStore(s => s.hideLoading)
-  const updateProgress = useLoadingStore(s => s.updateProgress)
-  return { loading, isLoading: loading, tip, progress, showLoading, hideLoading, updateProgress }
-}
-
-/**
- * 兼容旧引用: 桌面端 loading 状态已迁移到 zustand store, 不再需要 Provider,
- * 但保留组件避免既有 import 报错.
- */
+/** Compatibility provider; loading state lives in the Zustand store. */
 export function LoadingProvider({ children }: { children: ReactNode }) {
   return <>{children}</>
 }

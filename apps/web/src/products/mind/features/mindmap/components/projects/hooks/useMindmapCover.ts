@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy project card util, dormant
 /**
  * 拉思维导图封面图 (base64 data URL).
  *
@@ -7,7 +6,7 @@
  *
  * 长 staleTime 让同一 mindmapId 的多处 useQuery 走同一份缓存, 避免高频请求.
  */
-import { trpc } from '@/shared/app-shared'
+import { trpc } from "@/shared/app-shared"
 
 export function useMindmapCover(mindmapId: string, enabled = true) {
   const q = trpc.files.getMindmapCover.useQuery(
@@ -16,7 +15,7 @@ export function useMindmapCover(mindmapId: string, enabled = true) {
       enabled,
       retry: false,
       staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000
+      gcTime: 10 * 60 * 1000,
     }
   )
   const dataUrl = q.data?.success && q.data.url ? q.data.url : null

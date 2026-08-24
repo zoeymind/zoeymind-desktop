@@ -10,12 +10,9 @@
  * 现在: EditorShell 挂 `<SaveFlowProvider>` 里一次 useSaveFlow, 其它人
  * `useSaveFlowContext()` 拿同一个句柄.
  */
-import { createContext, useContext, type ReactNode } from 'react'
-import { useSaveFlow } from './save-flow'
-
-type SaveFlow = ReturnType<typeof useSaveFlow>
-
-const SaveFlowContext = createContext<SaveFlow | null>(null)
+import { type ReactNode } from "react"
+import { useSaveFlow } from "./save-flow"
+import { SaveFlowContext } from "./save-flow-hooks"
 
 interface Props {
   projectId: string | null
@@ -25,19 +22,4 @@ interface Props {
 export function SaveFlowProvider({ projectId, children }: Props): React.JSX.Element {
   const flow = useSaveFlow(projectId)
   return <SaveFlowContext.Provider value={flow}>{children}</SaveFlowContext.Provider>
-}
-
-export function useSaveFlowContext(): SaveFlow {
-  const ctx = useContext(SaveFlowContext)
-  if (!ctx) {
-    throw new Error('useSaveFlowContext must be used inside <SaveFlowProvider>')
-  }
-  return ctx
-}
-
-/** 允许在 Provider 之外读: 无 provider 时回退为独立 useSaveFlow(id). */
-export function useOptionalSaveFlow(fallbackProjectId: string | null): SaveFlow {
-  const ctx = useContext(SaveFlowContext)
-  const fallback = useSaveFlow(ctx ? null : fallbackProjectId)
-  return ctx ?? fallback
 }

@@ -9,7 +9,7 @@ interface CommentStoreState {
 const STATE: CommentStoreState = {
   commentsByNode: {},
   syncFromHook: () => undefined,
-  clear: () => undefined
+  clear: () => undefined,
 }
 
 export function useCommentStore<T = CommentStoreState>(selector?: (s: CommentStoreState) => T): T {

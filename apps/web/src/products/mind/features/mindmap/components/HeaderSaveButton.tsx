@@ -13,7 +13,7 @@ import { Loader2, Save } from "lucide-react"
 import { Button } from "@zoeymind/ui"
 import { saveWithToast, useSaveFlowContext, pendingProjects } from "@/shared/native"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
-import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/project-context"
 import { useTabs } from "@/shared/tabs/store"
 
 export function HeaderSaveButton(): React.JSX.Element {

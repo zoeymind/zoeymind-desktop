@@ -46,7 +46,7 @@ import {
   type StreamChatHandle,
 } from "@/shared/native"
 import { toast } from "@/shared/app-shared"
-import { useProjectContext } from "@/products/mind/features/mindmap/contexts/ProjectContext"
+import { useProjectContext } from "@/products/mind/features/mindmap/contexts/project-context"
 
 interface DesktopAIPanelProps {
   isActive?: boolean
@@ -84,20 +84,16 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
   useEffect(() => {
     void chatRepo.listConversations(workspaceId ?? null).then(rows => {
       setConversations(rows)
-      if (rows.length > 0 && !currentConvId) {
-        setCurrentConvId(rows[0].id)
-      }
+      setCurrentConvId(current => current ?? rows[0]?.id ?? null)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId])
 
   // Load messages of current conversation
   useEffect(() => {
-    if (!currentConvId) {
-      setMessages([])
-      return
-    }
-    void chatRepo.listMessages(currentConvId).then(setMessages)
+    const request = currentConvId
+      ? chatRepo.listMessages(currentConvId)
+      : Promise.resolve([] as ChatMessageRow[])
+    void request.then(setMessages)
   }, [currentConvId])
 
   // Model list
@@ -120,13 +116,13 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
 
   // Restore last selected model, fall back to first
   useEffect(() => {
-    if (modelOptions.length === 0) {
-      setModelKey(null)
-      return
-    }
-    const saved = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_MODEL_KEY) : null
-    const found = saved && modelOptions.find(o => o.key === saved)
-    setModelKey(found ? found.key : modelOptions[0].key)
+    const frame = requestAnimationFrame(() => {
+      const saved =
+        typeof localStorage !== "undefined" ? localStorage.getItem(LAST_MODEL_KEY) : null
+      const found = saved && modelOptions.find(option => option.key === saved)
+      setModelKey(found ? found.key : (modelOptions[0]?.key ?? null))
+    })
+    return () => cancelAnimationFrame(frame)
   }, [modelOptions])
 
   useEffect(() => {
@@ -234,7 +230,7 @@ export function DesktopAIPanel({ isActive }: DesktopAIPanelProps): ReactElement 
       setStreaming(null)
       setSending(false)
     }
-  }, [currentConvId, currentModel, ensureConversation, input, messages, workspaceId])
+  }, [currentModel, ensureConversation, input, messages])
 
   const stopStreaming = useCallback(async () => {
     const handle = streamHandleRef.current

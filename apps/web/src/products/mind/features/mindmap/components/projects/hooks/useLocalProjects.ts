@@ -1,15 +1,10 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment -- legacy hook API retains product type gaps during desktop migration
-// @ts-nocheck
-/**
- * useCloudProjects —— 桌面端本地版：由 SqlProjectRepo 驱动，让 CloudProjectList 直接渲染本地导图列表。
- * 保留原产品版本的 API 表面（projects / loading / renameProject / deleteProject / toggleFavorite ...），
- * 组件级 JSX 完全不改。
- */
+/** Desktop project-list operations backed by SqlProjectRepo. */
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { logger } from "@zoeymind/logger"
 import { i18next } from "@zoeymind/i18n"
 import { toast } from "@/shared/app-shared"
 import { defaultMindmapData } from "@zoeymind/shared"
+import type { MindMapNodeTree } from "simple-mind-map"
 import { useTabs } from "@/shared/tabs/store"
 import { projectSessionRegistry } from "@/products/mind/editor-session"
 import {
@@ -22,59 +17,15 @@ import {
   unregisterProject,
   type ProjectRow,
 } from "@/shared/native"
+import { toLocalProject } from "../project-model"
+import type { LocalProject } from "../project-model"
 
-export interface CloudProjectWithStats {
-  id: string
-  name: string
-  path: string
-  updatedAt: string
-  createdAt: string
-  workspaceId: null
-  folderId: string | null
-  isFavorited: boolean
-  isOwner: true
-  isArchived: boolean
-  exists: boolean
-  metadata: { starred: boolean; tags: string[] }
-  stats: { nodeCount: number; size: number }
-  nodeCount: number
-  size: number
-}
+export type { LocalProject } from "../project-model"
 
-/** '/a/b/foo.zmind' -> 'foo' | '' -> 'Untitled' */
-function fileBasenameNoExt(p: string): string {
-  if (!p) return "Untitled"
-  const last = p.split(/[\\/]/).pop() ?? ""
-  return last.replace(/\.zmind$/i, "") || "Untitled"
-}
-
-function toCloud(row: ProjectRow): CloudProjectWithStats {
-  return {
-    id: row.id,
-    // 名字权威源: 文件名 (foo.zmind -> foo), 忽略 DB row.name 可能残留的老值.
-    name: fileBasenameNoExt(row.path),
-    path: row.path,
-    updatedAt: new Date(row.updatedAt).toISOString(),
-    createdAt: new Date(row.createdAt).toISOString(),
-    workspaceId: null,
-    folderId: row.folderId,
-    isFavorited: row.isStarred,
-    isOwner: true,
-    isArchived: row.isArchived,
-    exists: row.exists,
-    metadata: { starred: row.isStarred, tags: row.tags },
-    stats: { nodeCount: row.nodeCount, size: row.size },
-    nodeCount: row.nodeCount,
-    size: row.size,
-  }
-}
-
-interface UseCloudProjectsOptions {
+interface UseLocalProjectsOptions {
   searchText?: string
   sortType?: "recent" | "created" | "name" | "starred"
   folderId?: string
-  workspaceId?: string
-  owner?: "me" | "all"
   onProjectsChanged?: () => void
 }
 
@@ -84,7 +35,7 @@ export function openPendingProject(title: string, tree: MindMapNodeTree): string
   return tempId
 }
 
-export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
+export function useLocalProjects(opts: UseLocalProjectsOptions = {}) {
   const { searchText = "", sortType = "recent", folderId, onProjectsChanged } = opts
   const [rows, setRows] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,8 +53,6 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
   const bumpCount = useProjectsEvents(s => s.bumpCount)
   useEffect(() => {
     let mounted = true
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh state accompanies the external repository read
-    setLoading(true)
     listProjects()
       .then(list => {
         if (mounted) setRows(list)
@@ -118,22 +67,20 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
   }, [bumpCount])
 
   const projects = useMemo(() => {
-    let items = rows.map(toCloud)
-    if (folderId) items = items.filter(p => p.folderId === folderId)
+    let items = rows.map(toLocalProject)
+    if (folderId) items = items.filter(project => project.folderId === folderId)
     if (searchText) {
-      const q = searchText.toLowerCase()
-      items = items.filter(p => p.name.toLowerCase().includes(q))
+      const query = searchText.toLowerCase()
+      items = items.filter(project => project.name.toLowerCase().includes(query))
     }
-    items.sort((a, b) => {
+    items.sort((left, right) => {
       if (sortType === "starred") {
-        const diff = (b.isFavorited ? 1 : 0) - (a.isFavorited ? 1 : 0)
-        if (diff !== 0) return diff
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        const starredOrder = Number(right.isStarred) - Number(left.isStarred)
+        if (starredOrder !== 0) return starredOrder
       }
-      if (sortType === "created")
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      if (sortType === "name") return a.name.localeCompare(b.name)
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      if (sortType === "created") return right.createdAt.getTime() - left.createdAt.getTime()
+      if (sortType === "name") return left.name.localeCompare(right.name)
+      return right.updatedAt.getTime() - left.updatedAt.getTime()
     })
     return items
   }, [rows, folderId, searchText, sortType])
@@ -156,7 +103,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
   )
 
   const renameProject = useCallback(
-    async (project: CloudProjectWithStats, newName: string) => {
+    async (project: LocalProject, newName: string) => {
       const renamed = await renameProjectFile(project.id, newName)
       notifyProjectRenamed({ id: project.id, ...renamed })
       useTabs.getState().renameProjectTabs(project.id, renamed.name)
@@ -167,7 +114,7 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
   )
 
   const deleteProject = useCallback(
-    async (project: CloudProjectWithStats) => {
+    async (project: LocalProject) => {
       const openSession = projectSessionRegistry.get(project.id)
       if (openSession) {
         throw new Error(
@@ -184,15 +131,14 @@ export function useCloudProjects(opts: UseCloudProjectsOptions = {}) {
   )
 
   const toggleFavorite = useCallback(
-    async (project: CloudProjectWithStats) => {
-      await setStarred(project.id, !project.isFavorited)
+    async (project: LocalProject) => {
+      await setStarred(project.id, !project.isStarred)
       await refreshProjects()
     },
     [refreshProjects]
   )
 
   return {
-    isAuthenticated: true,
     projects,
     loading,
     creating,

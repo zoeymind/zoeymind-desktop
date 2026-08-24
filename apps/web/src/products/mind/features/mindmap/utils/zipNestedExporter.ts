@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import { logger } from "@zoeymind/logger"
 
 /**
@@ -152,22 +151,6 @@ export class ZipNestedExporter {
       .replace(/[<>:"/\\|?*]/g, "") // 移除Windows不允许的字符
       .replace(/\s+/g, "_") // 空格替换为下划线
       .trim()
-  }
-
-  /**
-   * 下载ZIP文件
-   * @param content ZIP文件内容
-   * @param fileName 文件名
-   */
-  private downloadZip(content: Blob, fileName: string): void {
-    const url = URL.createObjectURL(content)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = fileName
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
   }
 }
 

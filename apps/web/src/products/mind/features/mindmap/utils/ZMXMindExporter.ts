@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import JSZip from "jszip"
 import { logger } from "@zoeymind/logger"
 import type { default as MindMap, MindMapNodeTree } from "simple-mind-map"
@@ -51,11 +50,11 @@ declare global {
 /**
  * 节点类型枚举
  */
-enum NodeType {
-  MODULE = "sign_2", // 模块节点（通过 sign_2 图标标识）
-  TEST_CASE = "priority", // 测试用例节点（通过 priority_* 图标标识）
-  STEP = "no_icon", // 步骤节点
-}
+const NodeType = {
+  MODULE: "sign_2",
+  TEST_CASE: "priority",
+  STEP: "no_icon",
+} as const
 
 /**
  * 解析后的测试用例数据结构
@@ -159,7 +158,7 @@ export class ZMXMindExporter {
    * @param node 节点数据
    * @returns 节点类型
    */
-  private identifyNodeType(node: MindMapNodeTree): NodeType {
+  private identifyNodeType(node: MindMapNodeTree): (typeof NodeType)[keyof typeof NodeType] {
     const icons = node.data.icon || []
     if (icons.includes("sign_2")) return NodeType.MODULE
     if (icons.some((icon: string) => icon.startsWith("priority_"))) return NodeType.TEST_CASE
@@ -520,16 +519,5 @@ export class ZMXMindExporter {
       result.children = this.transformChildrenToZMFormat(node.children)
     }
     return [result]
-  }
-
-  private downloadBlob(blob: Blob, fileName: string): void {
-    const link = document.createElement("a")
-    link.href = URL.createObjectURL(blob)
-    link.download = `${fileName}.xmind`
-    link.style.display = "none"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(link.href)
   }
 }

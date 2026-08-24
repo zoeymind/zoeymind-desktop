@@ -1,6 +1,6 @@
 /** 权限 store —— 桌面端本地文件恒可编辑。 */
 
-export type MindmapRole = 'OWNER' | 'EDITOR' | 'VIEWER'
+export type MindmapRole = "OWNER" | "EDITOR" | "VIEWER"
 
 interface PermissionState {
   role: MindmapRole
@@ -11,11 +11,11 @@ interface PermissionState {
 }
 
 const STATE: PermissionState = {
-  role: 'OWNER',
+  role: "OWNER",
   isOwner: true,
   canEdit: true,
   hasPermission: true,
-  checkCompleted: true
+  checkCompleted: true,
 }
 
 export function usePermissionStore<T = PermissionState>(selector?: (s: PermissionState) => T): T {

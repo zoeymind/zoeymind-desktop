@@ -1,9 +1,7 @@
-// @ts-nocheck — cloud/collab-heavy legacy; runtime behavior gated by no-op shims
 import { logger } from "@zoeymind/logger"
 import { useState, useRef, useEffect } from "react"
 import { PENDING_IMPORT_STORAGE_PREFIX } from "@/products/mind/features/mindmap/components/projects/hooks/useCreateProject"
 import { toast } from "@/shared/app-shared"
-import { mindmapDB } from "@/products/mind/features/mindmap/utils/storage/mindmapDB"
 import { parseXMindFile } from "@/products/mind/features/mindmap/utils/xmindParser"
 import { parseZMXmindFile } from "@/products/mind/features/mindmap/utils/ZMXMindImporter"
 import { parseMarkdownFile } from "@/products/mind/features/mindmap/utils/markdownParser"
@@ -17,35 +15,6 @@ import {
   exportMindMapToFile,
   isExportFormat,
 } from "@/products/mind/features/mindmap/utils/fileFormats"
-
-// 类型转换函数：将xmindParser的MindMapNodeTree转换为mindmapDB的MindMapNodeTree
-const convertMindMapNodeTreeForDB = (data: MindMapNodeTree): MindMapNodeTree => {
-  if (!data || !data.data) return data
-
-  const convertNode = (node: MindMapNodeTree): MindMapNodeTree => {
-    const converted: MindMapNodeTree = {
-      data: {
-        ...node.data,
-        // 将boolean类型的richText转换为string类型
-        richText:
-          typeof node.data.richText === "boolean"
-            ? node.data.richText
-              ? "true"
-              : undefined
-            : node.data.richText,
-      },
-      children: [],
-    }
-
-    if (node.children && Array.isArray(node.children)) {
-      converted.children = node.children.map((child: MindMapNodeTree) => convertNode(child))
-    }
-
-    return converted
-  }
-
-  return convertNode(data)
-}
 
 interface UseCanvasDataProps {
   mindMap: MindMap | null
@@ -306,19 +275,13 @@ export function useCanvasData({
 
               // 重要：导入到节点后，也需要保存整个思维导图数据
               try {
-                const currentMapData = mindMap.getData()
-                if (onSave) {
-                  await onSave()
-                } else {
-                  const convertedData = convertMindMapNodeTreeForDB(currentMapData)
-                  await mindmapDB.save(convertedData, workspaceId)
-                }
+                await onSave?.()
                 logger.info("[useCanvasData] 导入到节点后的数据已保存")
 
                 toast({
                   title: i18next.t("mindmap.canvas.importSuccessTitle"),
                   description: i18next.t("mindmap.canvas.importSuccessToNode", {
-                    name: parentNode.nodeData.data.text || parentNode.uid,
+                    name: collapsedSheetData.data.text || parentNodeId,
                   }),
                 })
 
@@ -367,15 +330,8 @@ export function useCanvasData({
               mindMap.execCommand("UNEXPAND_ALL", false, dataToSet.data.uid)
             }, 0)
           }
-
-          // 重要：保存导入的数据
           try {
-            if (onSave) {
-              await onSave()
-            } else {
-              const convertedData = convertMindMapNodeTreeForDB(dataToSet)
-              await mindmapDB.save(convertedData, workspaceId)
-            }
+            await onSave?.()
             logger.info("[useCanvasData] 覆盖导入的数据已保存")
           } catch (error) {
             logger.error("[useCanvasData] 保存导入数据到数据库失败:", error)
@@ -448,8 +404,7 @@ export function useCanvasData({
         return false
       }
 
-      await mindmapDB.clear(workspaceId)
-      logger.info("思维导图数据已清除")
+      await onSave?.()
 
       mindMap.setData(defaultData)
       mindMap.render()

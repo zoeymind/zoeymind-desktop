@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import React from "react"
 import { X } from "lucide-react"
 import { useTranslation } from "@zoeymind/i18n"

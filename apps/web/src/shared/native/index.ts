@@ -26,7 +26,8 @@ export * from "./mcp-spawn"
 export * from "./window-close-coordinator"
 export * from "./save-flow"
 export { saveWithToast } from "./save-with-toast"
-export { SaveFlowProvider, useSaveFlowContext, useOptionalSaveFlow } from "./save-flow-context"
+export { SaveFlowProvider } from "./save-flow-context"
+export { useSaveFlowContext, useOptionalSaveFlow } from "./save-flow-hooks"
 export {
   useProjectsEvents,
   bumpProjects,

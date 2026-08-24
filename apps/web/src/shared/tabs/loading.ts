@@ -10,7 +10,7 @@
  *   - useStorageManager 初次 sync() 完成 -> setLoading(id, false)
  *   - closeTab -> clear(id)
  */
-import { create } from 'zustand'
+import { create } from "zustand"
 
 interface TabLoadingState {
   loading: Record<string, boolean>
@@ -31,5 +31,5 @@ export const useTabLoading = create<TabLoadingState>()(set => ({
       const next = { ...state.loading }
       delete next[tabId]
       return { loading: next }
-    })
+    }),
 }))

@@ -1,10 +1,9 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
-import { useEffect, useRef } from 'react'
-import type { default as MindMap } from 'simple-mind-map'
-import { MAX_NODE_COUNT } from '@zoeymind/shared'
-import { useToast } from '@/shared/app-shared'
-import { useTranslation } from '@zoeymind/i18n'
-import { logger } from '@zoeymind/logger'
+import { useEffect, useRef } from "react"
+import type { default as MindMap } from "simple-mind-map"
+import { MAX_NODE_COUNT } from "@zoeymind/shared"
+import { useToast } from "@/shared/app-shared"
+import { useTranslation } from "@zoeymind/i18n"
+import { logger } from "@zoeymind/logger"
 
 /**
  * 监听 simple-mind-map 的 node_limit_exceeded 事件，弹出 toast 提示
@@ -28,19 +27,19 @@ export function useNodeLimitGuard(mindMap: MindMap | null) {
       logger.warn(`节点数量已达上限: ${data.currentCount}/${data.maxCount}`)
 
       toast({
-        title: t('mindmap.toast.nodeLimitTitle'),
-        description: t('mindmap.toast.nodeLimitDesc', {
+        title: t("mindmap.toast.nodeLimitTitle"),
+        description: t("mindmap.toast.nodeLimitDesc", {
           current: data.currentCount,
-          max: MAX_NODE_COUNT
+          max: MAX_NODE_COUNT,
         }),
-        variant: 'destructive'
+        variant: "destructive",
       })
     }
 
-    mindMap.on('node_limit_exceeded', handleNodeLimitExceeded)
+    mindMap.on("node_limit_exceeded", handleNodeLimitExceeded)
 
     return () => {
-      mindMap.off('node_limit_exceeded', handleNodeLimitExceeded)
+      mindMap.off("node_limit_exceeded", handleNodeLimitExceeded)
     }
   }, [mindMap, toast, t])
 }

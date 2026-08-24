@@ -1,5 +1,5 @@
-import { ConfirmDialog } from '@zoeymind/ui'
-import { useTranslation } from '@zoeymind/i18n'
+import { ConfirmDialog } from "@zoeymind/ui"
+import { useTranslation } from "@zoeymind/i18n"
 
 interface DeleteDialogProps {
   open: boolean
@@ -20,17 +20,17 @@ export const DeleteDialog = ({
   description,
   onConfirm,
   loading = false,
-  destructiveText
+  destructiveText,
 }: DeleteDialogProps) => {
   const { t } = useTranslation()
   return (
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={title ?? t('projects.dialogs.deleteTitle', { itemName })}
-      description={description ?? t('projects.dialogs.deleteDescription')}
-      confirmText={destructiveText ?? t('common.delete')}
-      cancelText={t('common.cancel')}
+      title={title ?? t("projects.dialogs.deleteTitle", { itemName })}
+      description={description ?? t("projects.dialogs.deleteDescription")}
+      confirmText={destructiveText ?? t("common.delete")}
+      cancelText={t("common.cancel")}
       variant="destructive"
       onConfirm={onConfirm}
       loading={loading}

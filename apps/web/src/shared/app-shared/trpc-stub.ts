@@ -65,7 +65,7 @@ const QUERY_SINGLETON: QueryResult = Object.freeze({
   isError: false,
   error: null,
   refetch: NOOP_ASYNC,
-  status: 'idle'
+  status: "idle",
 }) as QueryResult
 
 const MUTATION_SINGLETON: MutationResult = Object.freeze({
@@ -76,7 +76,7 @@ const MUTATION_SINGLETON: MutationResult = Object.freeze({
   isError: false,
   error: null,
   reset: NOOP,
-  status: 'idle'
+  status: "idle",
 }) as MutationResult
 
 function queryResult(): QueryResult {
@@ -90,7 +90,7 @@ function mutationResult(): MutationResult {
 const LEAF_QUERY: Record<string, true> = {
   useQuery: true,
   useInfiniteQuery: true,
-  useSuspenseQuery: true
+  useSuspenseQuery: true,
 }
 const LEAF_MUTATION: Record<string, true> = { useMutation: true }
 const NOOP_ASYNC_METHODS: Record<string, true> = {
@@ -99,33 +99,36 @@ const NOOP_ASYNC_METHODS: Record<string, true> = {
   setData: true,
   cancel: true,
   query: true,
-  mutate: true
+  mutate: true,
 }
 
 function nestedProxy(): TrpcLike {
   const proxied = new Proxy(() => undefined, {
     get(_target, prop): unknown {
-      if (typeof prop === 'symbol') return undefined
+      if (typeof prop === "symbol") return undefined
       if (LEAF_QUERY[prop]) return () => queryResult()
       if (LEAF_MUTATION[prop]) return () => mutationResult()
-      if (prop === 'useSubscription') return () => ({ data: undefined, status: 'idle' })
+      if (prop === "useSubscription") return () => ({ data: undefined, status: "idle" })
       if (NOOP_ASYNC_METHODS[prop]) return NOOP_ASYNC
       return nestedProxy()
     },
     apply(): unknown {
       return nestedProxy()
-    }
+    },
   })
   return proxied as unknown as TrpcLike
 }
 
-export const trpc = new Proxy({}, {
-  get(_target, prop): unknown {
-    if (prop === 'useUtils') return nestedProxy
-    if (typeof prop === 'symbol') return undefined
-    return nestedProxy()
+export const trpc = new Proxy(
+  {},
+  {
+    get(_target, prop): unknown {
+      if (prop === "useUtils") return nestedProxy
+      if (typeof prop === "symbol") return undefined
+      return nestedProxy()
+    },
   }
-}) as unknown as TrpcLike
+) as unknown as TrpcLike
 
 export const trpcClient = nestedProxy()
 

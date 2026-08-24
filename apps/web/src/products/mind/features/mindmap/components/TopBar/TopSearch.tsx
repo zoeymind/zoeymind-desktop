@@ -65,34 +65,26 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
 
   // 当组件激活时自动聚焦搜索框并设置初始文本
   useEffect(() => {
-    if (!isActive) {
-      // 组件关闭时清理状态
-      setSearchText("")
-      setHasSearched(false)
-      setSearchResults([])
-      setCurrentIndex(0)
-      if (mindMap?.search) {
-        mindMap.search.endSearch()
-      }
-      return
-    }
-    if (!searchInputRef.current) return
-
-    // 设置初始文本
-    if (initialText) {
-      setSearchText(initialText)
-      setHasSearched(true)
-    }
-
-    // 延迟聚焦，确保动画完成
-    const timer = setTimeout(() => {
-      searchInputRef.current?.focus()
-      // 如果有初始文本，选中所有文本
-      if (initialText) {
-        searchInputRef.current?.select()
-      }
-    }, 200)
-    return () => clearTimeout(timer)
+    const timer = window.setTimeout(
+      () => {
+        if (!isActive) {
+          setSearchText("")
+          setHasSearched(false)
+          setSearchResults([])
+          setCurrentIndex(0)
+          getSearchPlugin(mindMap)?.endSearch()
+          return
+        }
+        if (initialText) {
+          setSearchText(initialText)
+          setHasSearched(true)
+        }
+        searchInputRef.current?.focus()
+        if (initialText) searchInputRef.current?.select()
+      },
+      isActive ? 200 : 0
+    )
+    return () => window.clearTimeout(timer)
   }, [isActive, initialText, mindMap])
 
   // 获取节点路径
@@ -145,8 +137,6 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
     const searchPlugin = getSearchPlugin(mindMap)
     if (!searchPlugin || !searchText || !mindMap) return []
 
-    mindMap.opt.isOnlySearchCurrentRenderNodes = false
-
     searchPlugin.search(searchText)
     const matchList = searchPlugin.matchNodeList || []
 
@@ -177,20 +167,17 @@ export const TopSearch: FC<TopSearchProps> = ({ isActive, onClose, initialText =
 
   // 使用 useEffect 监听搜索文本变化
   useEffect(() => {
-    if (searchText) {
-      // 使用我们自己的搜索逻辑来获取和显示结果
-      // 这样可以避免与 simple-mind-map 内部搜索状态的冲突
-      const results = getAllMatchedNodes()
-      setSearchResults(results)
-      setCurrentIndex(0)
-    } else {
-      // 清空搜索
-      if (mindMap?.search) {
-        mindMap.search.endSearch()
+    const frame = requestAnimationFrame(() => {
+      if (searchText) {
+        setSearchResults(getAllMatchedNodes())
+        setCurrentIndex(0)
+      } else {
+        getSearchPlugin(mindMap)?.endSearch()
+        setCurrentIndex(0)
+        setSearchResults([])
       }
-      setCurrentIndex(0)
-      setSearchResults([])
-    }
+    })
+    return () => cancelAnimationFrame(frame)
   }, [searchText, mindMap, getAllMatchedNodes])
 
   // 处理清除

@@ -7,21 +7,21 @@
  */
 
 export interface FlagsSnapshot {
-  'ai-agent': boolean
-  'ai-gateway': boolean
+  "ai-agent": boolean
+  "ai-gateway": boolean
   sso: boolean
-  'multi-tenancy': boolean
-  'audit-export': boolean
-  'ui-auto': boolean
+  "multi-tenancy": boolean
+  "audit-export": boolean
+  "ui-auto": boolean
 }
 
 const DESKTOP_FLAGS: FlagsSnapshot = {
-  'ai-agent': true,
-  'ai-gateway': false,
+  "ai-agent": true,
+  "ai-gateway": false,
   sso: false,
-  'multi-tenancy': false,
-  'audit-export': false,
-  'ui-auto': false
+  "multi-tenancy": false,
+  "audit-export": false,
+  "ui-auto": false,
 }
 
 export function useFlags(): FlagsSnapshot {

@@ -31,7 +31,8 @@ export function useFolders() {
   }, [])
 
   useEffect(() => {
-    void load()
+    const frame = requestAnimationFrame(() => void load())
+    return () => cancelAnimationFrame(frame)
   }, [load])
 
   const createFolder = useCallback(

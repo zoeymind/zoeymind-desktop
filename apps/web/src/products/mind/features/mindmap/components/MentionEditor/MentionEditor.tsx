@@ -1,4 +1,3 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 /**
  * MentionEditor - 基于 Lexical + lexical-beautiful-mentions 的通用 @mention 输入框。
  *
@@ -10,36 +9,36 @@
  * 触发符固定为 @；建议来源、菜单项渲染、pill 样式、键盘行为均可配置。
  */
 
-import React, { forwardRef, useCallback, useMemo, useRef } from 'react'
-import { User } from 'lucide-react'
+import React, { forwardRef, useCallback, useMemo, useRef } from "react"
+import { User } from "lucide-react"
 import {
   $getRoot,
   $createParagraphNode,
   COMMAND_PRIORITY_LOW,
   KEY_ENTER_COMMAND,
-  type EditorState
-} from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
-import { ContentEditable } from '@lexical/react/LexicalContentEditable'
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
-import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
-import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+  type EditorState,
+} from "lexical"
+import { LexicalComposer } from "@lexical/react/LexicalComposer"
+import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin"
+import { ContentEditable } from "@lexical/react/LexicalContentEditable"
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary"
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin"
+import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin"
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
 import {
   BeautifulMentionNode,
   BeautifulMentionsPlugin,
   type BeautifulMentionsItem,
   type BeautifulMentionsMenuProps,
-  type BeautifulMentionsMenuItemProps
-} from 'lexical-beautiful-mentions'
-import { cn } from '@/shared/app-shared'
+  type BeautifulMentionsMenuItemProps,
+} from "lexical-beautiful-mentions"
+import { cn } from "@/shared/app-shared"
 import {
   MENTION_TRIGGER,
   MENTION_DATA_ID_KEY,
   $createNodesFromMarkup,
-  $serializeToMarkup
-} from '@/products/mind/features/mindmap/utils/lexical-mentions'
+  $serializeToMarkup,
+} from "@/products/mind/features/mindmap/utils/lexical-mentions"
 
 /** 建议项：value 为显示名，id 为被提及实体 id，其余为可选展示数据（如头像） */
 export interface MentionEditorSuggestion {
@@ -76,30 +75,35 @@ export interface MentionEditorProps {
 }
 
 /** 建议菜单容器：浮在输入框上方/下方，复用 popover token */
-const MentionMenu = forwardRef<HTMLUListElement, BeautifulMentionsMenuProps>(
-  ({ loading: _loading, ...props }, ref) => (
+const MentionMenu = forwardRef<HTMLUListElement, BeautifulMentionsMenuProps>((props, ref) => {
+  const { loading, ...menuProps } = props
+  void loading
+  return (
     <ul
       ref={ref}
       className="absolute bottom-full left-0 z-[100] mb-1.5 max-h-[240px] min-w-[180px] max-w-[280px] overflow-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
-      {...props}
+      {...menuProps}
     />
   )
-)
-MentionMenu.displayName = 'MentionMenu'
+})
+MentionMenu.displayName = "MentionMenu"
 
 /** 创建菜单项组件：showAvatar 决定显示头像还是无图标 */
 function createMentionMenuItem(showAvatar: boolean) {
   const Item = forwardRef<HTMLLIElement, BeautifulMentionsMenuItemProps>(
-    ({ selected, item, itemValue: _itemValue, label: _label, ...props }, ref) => {
+    ({ selected, item, ...props }, ref) => {
+      const { itemValue, label, ...itemProps } = props
+      void itemValue
+      void label
       const avatar = item.data?.avatar
       return (
         <li
           ref={ref}
           className={cn(
-            'flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-xs transition-colors last:border-b-0',
-            selected && 'bg-muted'
+            "flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-xs transition-colors last:border-b-0",
+            selected && "bg-muted"
           )}
-          {...props}
+          {...itemProps}
         >
           {showAvatar &&
             (avatar ? (
@@ -118,13 +122,13 @@ function createMentionMenuItem(showAvatar: boolean) {
       )
     }
   )
-  Item.displayName = 'MentionMenuItem'
+  Item.displayName = "MentionMenuItem"
   return Item
 }
 
 /** 在 EditorState 上读取序列化标记 */
 function $readEditorMarkup(state: EditorState): string {
-  let result = ''
+  let result = ""
   state.read(() => {
     result = $serializeToMarkup()
   })
@@ -137,23 +141,17 @@ function $readEditorMarkup(state: EditorState): string {
  */
 const ControlledValuePlugin: React.FC<{ value: string }> = ({ value }) => {
   const [editor] = useLexicalComposerContext()
-  const lastSyncedRef = useRef<string | null>(null)
-
-  if (lastSyncedRef.current === null) {
-    lastSyncedRef.current = value
-  } else if (lastSyncedRef.current !== value) {
+  React.useEffect(() => {
     const current = $readEditorMarkup(editor.getEditorState())
-    if (current !== value) {
-      editor.update(() => {
-        const root = $getRoot()
-        root.clear()
-        const paragraph = $createParagraphNode()
-        paragraph.append(...$createNodesFromMarkup(value))
-        root.append(paragraph)
-      })
-    }
-    lastSyncedRef.current = value
-  }
+    if (current === value) return
+    editor.update(() => {
+      const root = $getRoot()
+      root.clear()
+      const paragraph = $createParagraphNode()
+      paragraph.append(...$createNodesFromMarkup(value))
+      root.append(paragraph)
+    })
+  }, [editor, value])
 
   return null
 }
@@ -202,7 +200,7 @@ const EditablePlugin: React.FC<{ disabled: boolean }> = ({ disabled }) => {
     // 用 rAF 等 setEditable 的 DOM 更新落地后再聚焦，避免同步时序把焦点丢掉。
     if (wasDisabled && !disabled) {
       const rafId = requestAnimationFrame(() => {
-        editor.focus(undefined, { defaultSelection: 'rootEnd' })
+        editor.focus(undefined, { defaultSelection: "rootEnd" })
       })
       return () => cancelAnimationFrame(rafId)
     }
@@ -226,20 +224,23 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
       pillClassName,
       onPasteMedia,
       autoFocus = false,
-      className
+      className,
     },
     ref
   ) => {
+    const [initialValue] = React.useState(value)
+    const [initialDisabled] = React.useState(disabled)
+    const [initialPillClassName] = React.useState(pillClassName)
     const initialConfig = useMemo(
       () => ({
-        namespace: 'mention-editor',
+        namespace: "mention-editor",
         theme: {
           beautifulMentions: {
-            '@': pillClassName ?? 'rounded bg-primary/15 text-primary px-0.5'
-          }
+            "@": initialPillClassName ?? "rounded bg-primary/15 text-primary px-0.5",
+          },
         },
         nodes: [BeautifulMentionNode],
-        editable: !disabled,
+        editable: !initialDisabled,
         onError: (error: Error) => {
           throw error
         },
@@ -247,16 +248,14 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
           const root = $getRoot()
           if (root.getFirstChild() === null) {
             const paragraph = $createParagraphNode()
-            if (value) {
-              paragraph.append(...$createNodesFromMarkup(value))
+            if (initialValue) {
+              paragraph.append(...$createNodesFromMarkup(initialValue))
             }
             root.append(paragraph)
           }
-        }
+        },
       }),
-      // 仅挂载时构建一次；后续 value 由 ControlledValuePlugin 同步
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      []
+      [initialDisabled, initialPillClassName, initialValue]
     )
 
     const MenuItem = useMemo(() => createMentionMenuItem(showAvatar), [showAvatar])
@@ -264,10 +263,10 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
     const handleSearch = useCallback(
       (_trigger: string, query?: string | null): Promise<BeautifulMentionsItem[]> => {
         onMentionTrigger?.()
-        const items: BeautifulMentionsItem[] = onSearch(query ?? '').map(s => ({
+        const items: BeautifulMentionsItem[] = onSearch(query ?? "").map(s => ({
           value: s.value,
           [MENTION_DATA_ID_KEY]: s.id,
-          avatar: s.avatar ?? null
+          avatar: s.avatar ?? null,
         }))
         return Promise.resolve(items)
       },
@@ -288,7 +287,7 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
         const files: File[] = []
         for (let i = 0; i < items.length; i++) {
           const item = items[i]
-          if (item.kind === 'file') {
+          if (item.kind === "file") {
             const file = item.getAsFile()
             if (file) files.push(file)
           }
@@ -303,7 +302,7 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
     return (
       <div
         ref={ref}
-        className={cn('relative', compact ? 'text-xs' : 'text-sm')}
+        className={cn("relative", compact ? "text-xs" : "text-sm")}
         onKeyDown={e => e.stopPropagation()}
         onCopy={e => e.stopPropagation()}
         onPaste={e => e.stopPropagation()}
@@ -315,9 +314,9 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
               contentEditable={
                 <ContentEditable
                   className={cn(
-                    'max-h-[100px] w-full resize-none overflow-auto outline-none',
-                    compact ? 'min-h-[20px] py-[3px]' : 'min-h-[24px] py-[5px]',
-                    !disabled && 'cursor-text',
+                    "max-h-[100px] w-full resize-none overflow-auto outline-none",
+                    compact ? "min-h-[20px] py-[3px]" : "min-h-[24px] py-[5px]",
+                    !disabled && "cursor-text",
                     className
                   )}
                   onKeyDown={onKeyDown}
@@ -328,8 +327,8 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
               placeholder={
                 <div
                   className={cn(
-                    'pointer-events-none absolute left-0 text-muted-foreground/60',
-                    compact ? 'top-[3px]' : 'top-[5px]'
+                    "pointer-events-none absolute left-0 text-muted-foreground/60",
+                    compact ? "top-[3px]" : "top-[5px]"
                   )}
                 >
                   {placeholder}
@@ -357,4 +356,4 @@ export const MentionEditor = forwardRef<HTMLDivElement, MentionEditorProps>(
     )
   }
 )
-MentionEditor.displayName = 'MentionEditor'
+MentionEditor.displayName = "MentionEditor"

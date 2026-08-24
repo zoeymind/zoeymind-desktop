@@ -1,18 +1,18 @@
-import React from 'react'
-import { useForm } from 'react-hook-form'
-import { logger } from '@zoeymind/logger'
-import { useTranslation } from '@zoeymind/i18n'
+import React from "react"
+import { useForm } from "react-hook-form"
+import { logger } from "@zoeymind/logger"
+import { useTranslation } from "@zoeymind/i18n"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@zoeymind/ui'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@zoeymind/ui'
-import { Input } from '@zoeymind/ui'
-import { Button } from '@zoeymind/ui'
+  DialogTitle,
+} from "@zoeymind/ui"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@zoeymind/ui"
+import { Input } from "@zoeymind/ui"
+import { Button } from "@zoeymind/ui"
 
 interface RenameDialogProps {
   open: boolean
@@ -35,30 +35,30 @@ export const RenameDialog: React.FC<RenameDialogProps> = ({
   title,
   description,
   onConfirm,
-  loading = false
+  loading = false,
 }) => {
   const { t } = useTranslation()
-  const dialogTitle = title ?? t('projects.dialogs.renameTitle')
-  const dialogDescription = description ?? t('projects.dialogs.renameDescription')
+  const dialogTitle = title ?? t("projects.dialogs.renameTitle")
+  const dialogDescription = description ?? t("projects.dialogs.renameDescription")
   const form = useForm<FormData>({
     defaultValues: {
-      name: currentName
-    }
+      name: currentName,
+    },
   })
 
   // 当弹框打开时重置表单
   React.useEffect(() => {
     if (open) {
-      form.setValue('name', currentName)
+      form.setValue("name", currentName)
       form.clearErrors()
     }
   }, [open, currentName, form])
 
   const handleSubmit = async (data: FormData) => {
     if (!data.name.trim()) {
-      form.setError('name', {
-        type: 'required',
-        message: t('projects.dialogs.nameRequired')
+      form.setError("name", {
+        type: "required",
+        message: t("projects.dialogs.nameRequired"),
       })
       return
     }
@@ -68,7 +68,7 @@ export const RenameDialog: React.FC<RenameDialogProps> = ({
       onOpenChange(false)
     } catch (error) {
       // 错误处理由父组件负责
-      logger.error('重命名失败:', error)
+      logger.error("重命名失败:", error)
     }
   }
 
@@ -86,10 +86,10 @@ export const RenameDialog: React.FC<RenameDialogProps> = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('projects.dialogs.nameLabel')}</FormLabel>
+                  <FormLabel>{t("projects.dialogs.nameLabel")}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder={t('projects.dialogs.namePlaceholder')}
+                      placeholder={t("projects.dialogs.namePlaceholder")}
                       data-testid="rename-input"
                       {...field}
                       disabled={loading}
@@ -106,10 +106,10 @@ export const RenameDialog: React.FC<RenameDialogProps> = ({
                 onClick={() => onOpenChange(false)}
                 disabled={loading}
               >
-                {t('common.cancel')}
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={loading} data-testid="rename-submit">
-                {loading ? t('projects.dialogs.processing') : t('common.confirm')}
+                {loading ? t("projects.dialogs.processing") : t("common.confirm")}
               </Button>
             </DialogFooter>
           </form>

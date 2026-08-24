@@ -85,6 +85,22 @@ interface SaveFlowState {
   createdAt: number
   renderer: PreviewRenderer | null
 }
+export interface SaveFlow {
+  isDirty: boolean
+  savePhase: SavePhase | null
+  markDirty: () => void
+  conflict: FileConflictError | null
+  registerBundleSource: (source: BundleSource, fingerprint?: string) => void
+  registerPreviewRenderer: (renderer: PreviewRenderer | null) => void
+  registerSaveParticipant: (participant: SaveParticipant) => () => void
+  save: () => Promise<void>
+  saveAs: (path: string) => Promise<void>
+  flushRecovery: () => Promise<void>
+  discardAndClose: () => Promise<void>
+  overwrite: () => Promise<void>
+  reloadFromDisk: () => Promise<void>
+  saveCopy: () => Promise<void>
+}
 
 /**
  * Fingerprint 只跟树, 不跟 view: view (画布缩放/平移) 是纯表现层, 用户右键拖动
@@ -111,7 +127,7 @@ function nowBundle(source: BundleSource, createdAt: number): ZMindBundle {
   }
 }
 
-export function useSaveFlow(projectId: string | null) {
+export function useSaveFlow(projectId: string | null): SaveFlow {
   const setDirty = useMindMapStore(s => s.setDirty)
   const isDirty = useMindMapStore(s => s.isDirty)
   const [conflict, setConflict] = useState<FileConflictError | null>(null)

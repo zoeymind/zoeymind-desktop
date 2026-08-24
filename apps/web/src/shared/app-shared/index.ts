@@ -82,12 +82,14 @@ export function formatDuration(ms: number): string {
 }
 
 // ── 2. 主题预设 + 语言切换 ──────────────────────────
-export { ThemePresetProvider, useThemePreset } from "./ThemePresetProvider"
+export { ThemePresetProvider } from "./ThemePresetProvider"
+export { useThemePreset } from "./theme-preset-context"
 export { ThemeMenu } from "./ThemeMenu"
 export { LanguageSwitcher } from "./LanguageSwitcher"
 
 // ── 3. Loading Provider ──────────────────────────
-export { LoadingProvider, useLoading, useLoadingStore } from "./loading"
+export { LoadingProvider } from "./loading"
+export { useLoading, useLoadingStore } from "./loading-state"
 export { AppVersionStatus } from "./AppVersionStatus"
 export { useAppVersion } from "./app-version-store"
 export { useSettingsDialog, type SettingsSectionId } from "./settings-dialog-store"

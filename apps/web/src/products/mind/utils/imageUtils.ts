@@ -1,4 +1,4 @@
-import { logger } from '@zoeymind/logger'
+import { logger } from "@zoeymind/logger"
 
 /**
  * 图片处理工具函数
@@ -23,13 +23,13 @@ export async function compressImage(
   }
 
   // 如果不是图片文件，直接返回
-  if (!file.type.startsWith('image/')) {
+  if (!file.type.startsWith("image/")) {
     return file
   }
 
   return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
     const img = new Image()
 
     img.onload = () => {
@@ -46,7 +46,7 @@ export async function compressImage(
         canvas.height = height
 
         if (!ctx) {
-          reject(new Error('无法获取canvas context'))
+          reject(new Error("无法获取canvas context"))
           return
         }
 
@@ -63,7 +63,7 @@ export async function compressImage(
     }
 
     img.onerror = () => {
-      reject(new Error('图片加载失败'))
+      reject(new Error("图片加载失败"))
     }
 
     // 创建图片URL
@@ -88,7 +88,7 @@ function calculateCompressedSize(
 
   return {
     width: Math.floor(originalWidth * finalRatio),
-    height: Math.floor(originalHeight * finalRatio)
+    height: Math.floor(originalHeight * finalRatio),
   }
 }
 
@@ -112,7 +112,7 @@ async function compressWithQuality(
     })
 
     if (!blob) {
-      throw new Error('图片压缩失败')
+      throw new Error("图片压缩失败")
     }
 
     // 如果压缩后的大小符合要求，返回结果
@@ -132,9 +132,9 @@ async function compressWithQuality(
   canvas.width = Math.floor(currentWidth * scaleRatio)
   canvas.height = Math.floor(currentHeight * scaleRatio)
 
-  const ctx = canvas.getContext('2d')
+  const ctx = canvas.getContext("2d")
   if (!ctx) {
-    throw new Error('无法获取canvas context')
+    throw new Error("无法获取canvas context")
   }
 
   // 重新绘制更小的图片
@@ -158,7 +158,7 @@ async function compressWithQuality(
       }
     }
 
-    img.onerror = () => reject(new Error('图片重新加载失败'))
+    img.onerror = () => reject(new Error("图片重新加载失败"))
     img.src = canvas.toDataURL(fileType, minQuality)
   })
 }

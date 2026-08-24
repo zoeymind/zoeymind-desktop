@@ -17,11 +17,11 @@ export interface LocalUser {
 }
 
 const LOCAL_USER: LocalUser = {
-  id: 'local',
-  name: '',
-  email: '',
-  avatar: '',
-  image: null
+  id: "local",
+  name: "",
+  email: "",
+  avatar: "",
+  image: null,
 }
 
 interface UseCurrentUserResult {

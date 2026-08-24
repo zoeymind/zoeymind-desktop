@@ -1,12 +1,8 @@
-// @ts-nocheck — desktop mirror of cloud module
-import { logger } from '@zoeymind/logger'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { logger } from "@zoeymind/logger"
+import { useState, useEffect, useCallback, useRef } from "react"
 
-import { NodeManager } from '@/products/mind/features/mindmap/components/managers/NodeManager'
-import type { default as MindMap, MindMapNodeTree, MindMapNode } from 'simple-mind-map'
-import { trpcClient } from '@/shared/app-shared'
-import { useProjectContext } from '@/products/mind/features/mindmap/contexts/ProjectContext'
-import { usePermissionStore } from '@/products/mind/features/mindmap/stores/permission-store'
+import { NodeManager } from "@/products/mind/features/mindmap/components/managers/NodeManager"
+import type { default as MindMap, MindMapNodeTree, MindMapNode } from "simple-mind-map"
 
 /** 思维导图模块建议项（@mention 列表用）：id 为节点 uid，display 为模块名 */
 export interface ModuleSuggestion {
@@ -58,7 +54,7 @@ const resolveNodeData = (
   if (candidate.nodeData?.data) {
     return candidate.nodeData.data
   }
-  if (typeof candidate.getData === 'function') {
+  if (typeof candidate.getData === "function") {
     const data = candidate.getData()
     if (data) {
       return data
@@ -85,13 +81,7 @@ export const useMindMapModules = (
   const [moduleList, setModuleList] = useState<ModuleSuggestion[]>([])
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [testCaseStats, setTestCaseStats] = useState({ total: 0, p1: 0, p2: 0, p3: 0 })
-  const { canEdit } = usePermissionStore()
-  const canEditRef = useRef(canEdit)
-  const pendingRefreshRef = useRef<NodeJS.Timeout | null>(null)
-
-  useEffect(() => {
-    canEditRef.current = canEdit
-  }, [canEdit])
+  const pendingRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const requestRefresh = useCallback((delay: number = 200) => {
     if (pendingRefreshRef.current) {
@@ -162,7 +152,7 @@ export const useMindMapModules = (
 
         return foundNode ?? null
       } catch (error) {
-        logger.error('获取节点数据失败:', error)
+        logger.error("获取节点数据失败:", error)
         return null
       }
     },
@@ -183,7 +173,7 @@ export const useMindMapModules = (
       }
 
       let apiMessage = text
-      let mentionContent = ''
+      let mentionContent = ""
       const processedNodeIds = new Set<string>()
 
       const buildModuleJson = (
@@ -207,26 +197,26 @@ export const useMindMapModules = (
             if (
               childData.icon &&
               Array.isArray(childData.icon) &&
-              childData.icon.some((icon: string) => icon.startsWith('priority_'))
+              childData.icon.some((icon: string) => icon.startsWith("priority_"))
             ) {
               const steps =
                 child.children?.map(step => {
                   const stepData = resolveNodeData(step)
-                  return stepData?.text ?? ''
+                  return stepData?.text ?? ""
                 }) || []
-              let caseText = childData.text || ''
+              let caseText = childData.text || ""
               const priorityMatch = childData.icon?.find((icon: string) =>
-                icon.startsWith('priority_')
+                icon.startsWith("priority_")
               )
               if (priorityMatch) {
-                const priority = priorityMatch.replace('priority_', '')
+                const priority = priorityMatch.replace("priority_", "")
                 caseText = `[P${priority}]${caseText}`
               }
               testcases.push({ case: caseText, steps })
             } else if (
               childData.icon &&
               Array.isArray(childData.icon) &&
-              childData.icon.includes('sign_2')
+              childData.icon.includes("sign_2")
             ) {
               const childJson = buildModuleJson(child)
               if (childJson) {
@@ -238,9 +228,9 @@ export const useMindMapModules = (
 
         return {
           moduleName: nodeData.text,
-          id: nodeData.uid || (mindMapNode as MindMapNodeLike).uid || '',
+          id: nodeData.uid || (mindMapNode as MindMapNodeLike).uid || "",
           testcases,
-          children
+          children,
         }
       }
 
@@ -268,7 +258,7 @@ export const useMindMapModules = (
 
       return {
         displayMessage: text,
-        apiMessage
+        apiMessage,
       }
     },
     [mindMap, getNodeData]
@@ -282,40 +272,48 @@ export const useMindMapModules = (
       testCases: TestCase[]
     ): Promise<boolean> => {
       if (!mindMap || !moduleId || !testCases.length) {
-        logger.error('添加测试用例失败: 缺少必要参数')
+        logger.error("添加测试用例失败: 缺少必要参数")
         return false
       }
 
       try {
         await new Promise<void>((resolve, reject) => {
-          mindMap.execCommand('GO_TARGET_NODE', moduleId, () => {
+          mindMap.execCommand("GO_TARGET_NODE", moduleId, () => {
             resolve()
           })
-          setTimeout(() => reject(new Error('展开节点超时')), 5000)
+          setTimeout(() => reject(new Error("展开节点超时")), 5000)
         })
 
         const targetNode = mindMap.renderer.findNodeByUid(moduleId)
         if (!targetNode) {
-          throw new Error('未找到目标节点')
+          throw new Error("未找到目标节点")
         }
 
         const childrenData = testCases.map(testCase => ({
           data: {
             text: testCase.case,
-            icon: [`priority_${testCase.priority || 1}`]
+            icon: [`priority_${testCase.priority || 1}`],
           },
           children: (testCase.steps || []).map(step => ({
             data: { text: step },
-            children: []
-          }))
+            children: [],
+          })),
         }))
 
-        if (type === 'addModule') {
+        if (type === "addModule") {
           const moduleData = {
             text: name,
-            icon: ['sign_2']
+            icon: ["sign_2"],
           }
-          mindMap.renderer.insertChildNode(false, [targetNode], moduleData, childrenData)
+          const renderer = mindMap.renderer as unknown as {
+            insertChildNode(
+              openEdit: boolean,
+              targetNodes: (typeof targetNode)[],
+              data: typeof moduleData,
+              children: typeof childrenData
+            ): void
+          }
+          renderer.insertChildNode(false, [targetNode], moduleData, childrenData)
         } else {
           mindMap.renderer.insertMultiChildNode([targetNode], childrenData)
         }
@@ -323,7 +321,7 @@ export const useMindMapModules = (
         refreshModules()
         return true
       } catch (error) {
-        logger.error('添加测试用例失败:', error)
+        logger.error("添加测试用例失败:", error)
         return false
       }
     },
@@ -332,79 +330,34 @@ export const useMindMapModules = (
 
   const getTestCasesCount = useCallback(() => testCaseStats, [testCaseStats])
 
-  const reportTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const { workspaceId, cloudMode } = useProjectContext()
-
   useEffect(() => {
-    if (!mindMap) {
-      setTestCaseStats({ total: 0, p1: 0, p2: 0, p3: 0 })
-      return
-    }
-
-    const rawData = mindMap.getData()
-    if (!rawData) {
-      setTestCaseStats({ total: 0, p1: 0, p2: 0, p3: 0 })
-      return
-    }
-
-    let total = 0
-    let p1 = 0
-    let p2 = 0
-    let p3 = 0
-
-    const traverseDataTree = (node: MindMapNodeTree) => {
-      if (!node) return
-
-      const nodeData = node.data
-      if (
-        nodeData?.icon &&
-        Array.isArray(nodeData.icon) &&
-        nodeData.icon.some((icon: string) => icon.startsWith('priority_'))
-      ) {
-        total++
-
-        const priorityIcon = nodeData.icon.find(icon => icon.startsWith('priority_'))
+    const frame = requestAnimationFrame(() => {
+      const rawData = mindMap?.getData()
+      if (!rawData) {
+        setTestCaseStats({ total: 0, p1: 0, p2: 0, p3: 0 })
+        return
+      }
+      let total = 0
+      let p1 = 0
+      let p2 = 0
+      let p3 = 0
+      const traverseDataTree = (node: MindMapNodeTree) => {
+        const icons = Array.isArray(node.data?.icon) ? node.data.icon : []
+        const priorityIcon = icons.find(icon => icon.startsWith("priority_"))
         if (priorityIcon) {
-          const priority = priorityIcon.replace('priority_', '')
-          if (priority === '1') p1++
-          else if (priority === '2') p2++
-          else if (priority === '3') p3++
+          total += 1
+          const priority = priorityIcon.replace("priority_", "")
+          if (priority === "1") p1 += 1
+          else if (priority === "2") p2 += 1
+          else if (priority === "3") p3 += 1
         }
+        node.children?.forEach(traverseDataTree)
       }
-
-      node.children?.forEach(child => traverseDataTree(child))
-    }
-
-    traverseDataTree(rawData)
-
-    setTestCaseStats({ total, p1, p2, p3 })
-
-    if (cloudMode && workspaceId && canEdit) {
-      if (reportTimeoutRef.current) {
-        clearTimeout(reportTimeoutRef.current)
-      }
-
-      reportTimeoutRef.current = setTimeout(async () => {
-        if (!canEditRef.current) {
-          return
-        }
-        try {
-          await trpcClient.mindmap.update.mutate({
-            mindmapId: workspaceId,
-            nodeCount: total
-          })
-        } catch (error) {
-          logger.error('上报测试用例数量失败:', error)
-        }
-      }, 3000)
-    }
-
-    return () => {
-      if (reportTimeoutRef.current) {
-        clearTimeout(reportTimeoutRef.current)
-      }
-    }
-  }, [mindMap, refreshTrigger, cloudMode, workspaceId, canEdit])
+      traverseDataTree(rawData)
+      setTestCaseStats({ total, p1, p2, p3 })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [mindMap, refreshTrigger])
 
   useEffect(() => {
     if (!mindMap) return
@@ -414,7 +367,7 @@ export const useMindMapModules = (
         const rawData = mindMap.getData()
 
         if (!rawData) {
-          logger.warn('无法获取思维导图原始数据')
+          logger.warn("无法获取思维导图原始数据")
           setModuleList(prev => (prev.length === 0 ? prev : []))
           return
         }
@@ -426,10 +379,10 @@ export const useMindMapModules = (
 
           const nodeData = resolveNodeData(node)
           if (nodeData && nodeData.icon && Array.isArray(nodeData.icon)) {
-            if (nodeData.icon.includes('sign_2')) {
+            if (nodeData.icon.includes("sign_2")) {
               result.push({
-                id: nodeData.uid || '',
-                display: nodeData.text || '未命名模块'
+                id: nodeData.uid || "",
+                display: nodeData.text || "未命名模块",
               })
             }
           }
@@ -454,7 +407,7 @@ export const useMindMapModules = (
           return result
         })
       } catch (error) {
-        logger.error('提取模块列表失败:', error)
+        logger.error("提取模块列表失败:", error)
         setModuleList(prev => (prev.length === 0 ? prev : []))
       }
     }
@@ -469,16 +422,16 @@ export const useMindMapModules = (
       requestRefresh()
     }
 
-    mindMap.on('data_change', handleDataChange)
-    mindMap.on('set_data', handleDataChange)
-    mindMap.on('afterExecCommand', handleDataChange)
+    mindMap.on("data_change", handleDataChange)
+    mindMap.on("set_data", handleDataChange)
+    mindMap.on("afterExecCommand", handleDataChange)
 
     requestRefresh(0)
 
     return () => {
-      mindMap.off('data_change', handleDataChange)
-      mindMap.off('set_data', handleDataChange)
-      mindMap.off('afterExecCommand', handleDataChange)
+      mindMap.off("data_change", handleDataChange)
+      mindMap.off("set_data", handleDataChange)
+      mindMap.off("afterExecCommand", handleDataChange)
     }
   }, [mindMap, requestRefresh])
 
@@ -488,6 +441,6 @@ export const useMindMapModules = (
     addTestCases,
     getNodeData,
     getMentionedNodesData,
-    getTestCasesCount
+    getTestCasesCount,
   }
 }

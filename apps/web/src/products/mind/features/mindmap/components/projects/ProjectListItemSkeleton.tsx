@@ -1,4 +1,4 @@
-import { Skeleton } from '@zoeymind/ui'
+import { Skeleton } from "@zoeymind/ui"
 
 /**
  * 项目列表项骨架屏组件

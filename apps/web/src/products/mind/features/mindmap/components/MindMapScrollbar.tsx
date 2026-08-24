@@ -1,8 +1,8 @@
-// @ts-nocheck — cloud/collab type debt; runtime gated by no-op shims
 import { useEffect, useRef, useState } from "react"
 import { cn } from "@/shared/app-shared"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { animate, type AnimationPlaybackControls } from "motion"
+import type MindMap from "simple-mind-map"
 import {
   decayVelocity,
   getDecayDisplacement,
@@ -20,6 +20,15 @@ interface ScrollbarData {
     left: number
     width: number
   }
+}
+interface ScrollbarController {
+  setScrollBarWrapSize(width: number, height: number): void
+  calculationScrollbar(): ScrollbarData
+  updateMindMapView(type: "vertical" | "horizontal", offset: number): void
+}
+
+function getScrollbar(mindMap: MindMap | null): ScrollbarController | null {
+  return mindMap?.scrollbar ? (mindMap.scrollbar as unknown as ScrollbarController) : null
 }
 
 interface MindMapScrollbarProps {
@@ -49,12 +58,13 @@ export function MindMapScrollbar({ className }: MindMapScrollbarProps) {
   const updateScrollbarOffset = (type: "vertical" | "horizontal", offset: number): number => {
     const data = scrollbarDataRef.current
     const track = type === "vertical" ? verticalTrackRef.current : horizontalTrackRef.current
-    if (!mindMap?.scrollbar || !data || !track) return offset
+    const scrollbar = getScrollbar(mindMap)
+    if (!scrollbar || !data || !track) return offset
     const thumbPercent = type === "vertical" ? data.vertical.height : data.horizontal.width
     const trackLength = type === "vertical" ? track.clientHeight : track.clientWidth
     const maxOffset = Math.max(0, trackLength * (1 - thumbPercent / 100))
     const clamped = Math.max(0, Math.min(maxOffset, offset))
-    mindMap.scrollbar.updateMindMapView(type, clamped)
+    scrollbar.updateMindMapView(type, clamped)
     return clamped
   }
 
@@ -67,9 +77,9 @@ export function MindMapScrollbar({ className }: MindMapScrollbarProps) {
       return
     }
     const track = type === "vertical" ? verticalTrackRef.current : horizontalTrackRef.current
-    if (!track || !mindMap.scrollbar) return
-    const currentData = mindMap.scrollbar.calculationScrollbar()
-    scrollbarDataRef.current = currentData
+    const scrollbar = getScrollbar(mindMap)
+    if (!track || !scrollbar) return
+    const currentData = scrollbar.calculationScrollbar()
     let currentOffset =
       ((type === "vertical" ? currentData.vertical.top : currentData.horizontal.left) / 100) *
       (type === "vertical" ? track.clientHeight : track.clientWidth)
@@ -145,14 +155,15 @@ export function MindMapScrollbar({ className }: MindMapScrollbarProps) {
 
   // 点击轨道空白时按原生滚动条语义翻一页，不直接跳到点击坐标。
   const handleScrollbarClick = (e: React.MouseEvent, type: "vertical" | "horizontal") => {
-    if (!mindMap?.scrollbar || !scrollbarData) return
+    const scrollbar = getScrollbar(mindMap)
+    if (!mindMap || !scrollbar || !scrollbarData) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const vertical = type === "vertical"
-    const trackLength = vertical ? rect.height : rect.width
-    const clickOffset = vertical ? e.clientY - rect.top : e.clientX - rect.left
-    const data = vertical ? scrollbarData.vertical : scrollbarData.horizontal
-    const startPercent = vertical ? data.top : data.left
-    const sizePercent = vertical ? data.height : data.width
+    const trackLength = type === "vertical" ? rect.height : rect.width
+    const clickOffset = type === "vertical" ? e.clientY - rect.top : e.clientX - rect.left
+    const startPercent =
+      type === "vertical" ? scrollbarData.vertical.top : scrollbarData.horizontal.left
+    const sizePercent =
+      type === "vertical" ? scrollbarData.vertical.height : scrollbarData.horizontal.width
     const currentOffset = (startPercent / 100) * trackLength
     const targetOffset = getScrollbarPageTarget(trackLength, startPercent, sizePercent, clickOffset)
     if (targetOffset === currentOffset) return
@@ -161,7 +172,7 @@ export function MindMapScrollbar({ className }: MindMapScrollbarProps) {
     stopKineticMotion()
     trackAnimationRef.current?.stop()
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      mindMap.scrollbar.updateMindMapView(type, targetOffset)
+      scrollbar.updateMindMapView(type, targetOffset)
       return
     }
     trackAnimationRef.current = animate(currentOffset, targetOffset, {
@@ -171,7 +182,7 @@ export function MindMapScrollbar({ className }: MindMapScrollbarProps) {
       restDelta: 0.5,
       restSpeed: 8,
       onUpdate: value => {
-        mindMap.scrollbar?.updateMindMapView(type, value)
+        scrollbar.updateMindMapView(type, value)
       },
       onComplete: () => {
         trackAnimationRef.current = null
