@@ -35,7 +35,15 @@ export declare const copyNodeTree: (
 export declare const imgToDataUrl: (src: any, returnBlob?: boolean) => Promise<unknown>
 export declare const parseDataUrl: (data: any) => any
 export declare const downloadFile: (file: any, fileName: any) => void
-export declare const throttle: (fn: any, time?: number, ctx?: any) => (...args: any[]) => void
+export interface CancelableThrottledFunction<Args extends unknown[] = unknown[]> {
+  (...args: Args): void
+  cancel(): void
+}
+export declare const throttle: <Args extends unknown[]>(
+  fn: (...args: Args) => unknown,
+  time?: number,
+  ctx?: unknown
+) => CancelableThrottledFunction<Args>
 export declare const debounce: (fn: any, wait?: number, ctx?: any) => (...args: any[]) => void
 export declare const asyncRun: (taskList: any, callback?: () => void) => void
 export declare const degToRad: (deg: any) => number

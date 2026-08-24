@@ -241,16 +241,20 @@ export const downloadFile = (file, fileName) => {
 }
 //  节流函数
 export const throttle = (fn, time = 300, ctx?) => {
-  let timer = null
-  return (...args) => {
-    if (timer) {
-      return
-    }
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const throttled = (...args) => {
+    if (timer) return
     timer = setTimeout(() => {
-      fn.call(ctx, ...args)
       timer = null
+      fn.call(ctx, ...args)
     }, time)
   }
+  throttled.cancel = () => {
+    if (!timer) return
+    clearTimeout(timer)
+    timer = null
+  }
+  return throttled
 }
 // 防抖函数
 export const debounce = (fn, wait = 300, ctx?) => {

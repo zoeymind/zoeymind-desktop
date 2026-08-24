@@ -27,6 +27,11 @@ interface ScrollbarData {
   vertical: { top: number; height: number }
   horizontal: { left: number; width: number }
 }
+interface CancelableHandler {
+  (...args: unknown[]): void
+  cancel(): void
+}
+
 
 // 滚动条插件
 class Scrollbar {
@@ -40,6 +45,7 @@ class Scrollbar {
   private isMousedown: boolean
   private mousedownPos: { x: number; y: number }
   private mousedownScrollbarPos: number
+  private scheduledUpdateScrollbar!: CancelableHandler
 
   //  构造函数
   constructor(opt: { mindMap: MindMapInstance }) {
@@ -73,22 +79,22 @@ class Scrollbar {
   bindEvent(): void {
     this.onMousemove = this.onMousemove.bind(this)
     this.onMouseup = this.onMouseup.bind(this)
-    this.updateScrollbar = this.updateScrollbar.bind(this)
-    this.updateScrollbar = throttle(this.updateScrollbar, 16, this)
+    this.scheduledUpdateScrollbar = throttle(this.updateScrollbar.bind(this), 16, this)
     this.mindMap.on('mousemove', this.onMousemove)
     this.mindMap.on('mouseup', this.onMouseup)
-    this.mindMap.on('node_tree_render_end', this.updateScrollbar)
-    this.mindMap.on('view_data_change', this.updateScrollbar)
-    this.mindMap.on('resize', this.updateScrollbar)
+    this.mindMap.on('node_tree_render_end', this.scheduledUpdateScrollbar)
+    this.mindMap.on('view_data_change', this.scheduledUpdateScrollbar)
+    this.mindMap.on('resize', this.scheduledUpdateScrollbar)
   }
 
   // 解绑事件
   unBindEvent(): void {
+    this.scheduledUpdateScrollbar.cancel()
     this.mindMap.off('mousemove', this.onMousemove)
     this.mindMap.off('mouseup', this.onMouseup)
-    this.mindMap.off('node_tree_render_end', this.updateScrollbar)
-    this.mindMap.off('view_data_change', this.updateScrollbar)
-    this.mindMap.off('resize', this.updateScrollbar)
+    this.mindMap.off('node_tree_render_end', this.scheduledUpdateScrollbar)
+    this.mindMap.off('view_data_change', this.scheduledUpdateScrollbar)
+    this.mindMap.off('resize', this.scheduledUpdateScrollbar)
   }
 
   // 渲染后、数据改变需要更新滚动条
