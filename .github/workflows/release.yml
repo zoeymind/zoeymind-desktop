@@ -203,7 +203,7 @@ jobs:
       - name: Write release version override
         shell: bash
         run: |
-          node -e 'require("node:fs").writeFileSync("src-tauri/tauri.release.conf.json", JSON.stringify({version: process.env.RELEASE_VERSION}))'
+          node -e 'require("node:fs").writeFileSync("src-tauri/tauri.release.conf.json", JSON.stringify({version: process.env.RELEASE_VERSION, bundle: {macOS: {signingIdentity: "-"}}}))'
 
       - name: Require updater signing configuration
         shell: bash
@@ -213,6 +213,13 @@ jobs:
 
       - name: Build installers
         run: pnpm tauri build --bundles ${{ matrix.bundles }} --config src-tauri/tauri.release.conf.json
+      - name: Verify macOS bundle signature
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app="src-tauri/target/release/bundle/macos/ZoeyMind.app"
+          test -d "$app" || { echo "macOS app bundle not found: $app" >&2; exit 1; }
+          codesign --verify --deep --strict --verbose=2 "$app"
 
       - name: Store installers
         uses: actions/upload-artifact@v4
