@@ -76,7 +76,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         {models.map(model => (
           <DropdownMenuItem
             key={model.id}
-            onSelect={() => setSelectedModel(model.id)}
+            onClick={() => setSelectedModel(model.id)}
             className={cn(
               "justify-between gap-2 px-2 py-1 text-xs",
               model.id === selectedModel && "bg-accent"

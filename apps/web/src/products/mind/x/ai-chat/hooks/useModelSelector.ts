@@ -49,7 +49,7 @@ export function configuredAIModels(cfg: ModelsConfig | null): AIModel[] {
     if (!hasCredentials) return []
     return [
       {
-        id: model.name,
+        id: model.id,
         configId: model.id,
         name: model.alias,
         description: model.name,
