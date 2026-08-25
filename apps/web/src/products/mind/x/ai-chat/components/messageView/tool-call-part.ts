@@ -3,7 +3,7 @@ export interface ToolCallPart {
   toolName?: string
   toolCallId?: string
   input?: Record<string, unknown>
-  output?: Record<string, unknown>
+  output?: unknown
   state?: "input-streaming" | "input-available" | "output-available" | "output-error"
   errorText?: string
 }

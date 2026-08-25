@@ -17,6 +17,9 @@ vi.mock("@zoeymind/i18n", () => ({
         "mindmap.aiChat.message.mcpRunning": "Running",
         "mindmap.aiChat.message.mcpCompleted": "Completed",
         "mindmap.aiChat.message.mcpFailed": "Failed",
+        "mindmap.aiChat.message.questionAnsweredCount": "Answered 2 questions",
+        "mindmap.aiChat.message.questionSkipped": "Skipped",
+        "mindmap.aiChat.message.questionNoAnswer": "No answer",
       })[key] ?? key,
   }),
 }))
@@ -148,6 +151,70 @@ describe("ToolCallCard active disclosure", () => {
 
     expect(view.container.textContent).toContain("mindmap.aiChat.message.aborted")
     expect(view.container.textContent).not.toContain("mindmap.aiChat.message.executing")
+  })
+})
+
+describe("answered question card", () => {
+  it("shows submitted answers in a collapsed disclosure card", () => {
+    const view = render(
+      <ToolCallCard
+        part={{
+          type: "tool-question",
+          toolCallId: "question-answered",
+          state: "output-available",
+          input: {
+            questions: [
+              { question: "Which environment?" },
+              { question: "Which browsers?", multiple: true },
+            ],
+          },
+          output: JSON.stringify({ success: true, data: [["Staging"], ["Chrome", "Safari"]] }),
+        }}
+      />
+    )
+
+    expect(view.container.textContent).toContain("Answered")
+    expect(view.container.textContent).not.toContain("Which environment?")
+    const trigger = view.getByRole("button", { expanded: false })
+    fireEvent.click(trigger)
+    expect(view.container.textContent).toContain("Which environment?")
+    expect(view.container.textContent).toContain("Staging")
+    expect(view.container.textContent).toContain("Chrome、Safari")
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+  })
+
+  it("shows a skipped question as a static card", () => {
+    const view = render(
+      <ToolCallCard
+        part={{
+          type: "tool-question",
+          toolCallId: "question-skipped",
+          state: "output-available",
+          input: { questions: [{ question: "Continue?" }] },
+          output: { success: true, skipped: true },
+        }}
+      />
+    )
+
+    expect(view.container.textContent).toContain("Skipped")
+    expect(view.container.textContent).not.toContain("Continue?")
+    expect(view.queryByRole("button")?.hasAttribute("disabled")).toBe(true)
+  })
+
+  it("rejects invalid serialized question results instead of rendering a legacy row", () => {
+    expect(() =>
+      render(
+        <ToolCallCard
+          part={{
+            type: "tool-question",
+            toolCallId: "question-invalid",
+            state: "output-available",
+            input: { questions: [{ question: "Continue?" }] },
+            output: "not-json",
+          }}
+        />
+      )
+    ).toThrow("Question result contains invalid JSON")
   })
 })
 

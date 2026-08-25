@@ -20,6 +20,8 @@ import { useTranslation } from "@zoeymind/i18n"
 import { countTokensInValue } from "../../../ai-chat/utils/tokenCounter"
 import { TOOL_EXECUTION_INTERRUPTED } from "../../../ai-chat/utils/pendingToolCalls"
 import { MCPToolCallCard } from "./MCPToolCallCard"
+import { AnsweredQuestionCard } from "./AnsweredQuestionCard"
+import { readQuestionResult } from "../../tools/ui-handlers/questionResult"
 import { toolNameFromPart, type ToolCallPart } from "./tool-call-part"
 import { ToolCallDetail, ToolCallRow, type ToolCallRowTone } from "./ToolCallRow"
 
@@ -93,6 +95,11 @@ const toolIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 interface ToolCallCardProps {
   part: ToolCallPart
 }
+function outputSuccess(output: unknown): boolean | undefined {
+  if (typeof output !== "object" || output === null) return undefined
+  const success = Reflect.get(output, "success")
+  return typeof success === "boolean" ? success : undefined
+}
 
 const GenericToolCallCardImpl: React.FC<ToolCallCardProps> = ({ part }) => {
   const { t } = useTranslation()
@@ -104,8 +111,9 @@ const GenericToolCallCardImpl: React.FC<ToolCallCardProps> = ({ part }) => {
   const failed = part.state === "output-error"
   const interrupted = failed && part.errorText === TOOL_EXECUTION_INTERRUPTED
   const complete = part.state === "output-available"
-  const succeeded = complete && part.output?.success === true
-  const outputFailed = complete && part.output?.success === false
+  const success = outputSuccess(part.output)
+  const succeeded = complete && success === true
+  const outputFailed = complete && success === false
   const streamingTokens = inputStreaming ? estimateStreamingTokens(part.input) : 0
   const streamStalled = useStreamingStalled(inputStreaming, streamingTokens)
   const tokenCount = useMemo(() => {
@@ -230,6 +238,9 @@ function ToolDetailBlock({ label, value }: { label: string; value: BoundedDetail
 
 const ToolCallCardImpl: React.FC<ToolCallCardProps> = ({ part }) => {
   const toolName = toolNameFromPart(part)
+  if (toolName === "question" && part.state === "output-available") {
+    return <AnsweredQuestionCard result={readQuestionResult(part.input, part.output)} />
+  }
   return toolName.startsWith("mcp_") ? (
     <MCPToolCallCard part={part} toolName={toolName} />
   ) : (

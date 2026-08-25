@@ -37,6 +37,19 @@ interface QuestionSkipResponse {
 
 type QuestionOutput = QuestionResponse | QuestionSkipResponse
 
+const QUESTION_RESULT_INSTRUCTION =
+  "The application has already rendered the user's answers in a dedicated card. Do not repeat, summarize, acknowledge, or list the questions or answers in assistant text. Continue directly with the task that required these answers."
+
+export function serializeQuestionOutput(output: QuestionOutput): string {
+  return JSON.stringify({
+    ...output,
+    ui: {
+      answersRendered: true,
+      instruction: QUESTION_RESULT_INSTRUCTION,
+    },
+  })
+}
+
 export function useQuestionToolUI(): void {
   // render 闭包用 useCallback 让 ToolUIRegistry 内部的 ref 转发是稳定的
   const render = useCallback(
@@ -64,6 +77,7 @@ export function useQuestionToolUI(): void {
     // 缺 questions 直接走 dispatcher 默认错误路径；历史坏数据不能拖垮 Chat 树。
     shouldRender: input => readQuestions(input).length > 0,
     skipResponse: () => ({ success: true, skipped: true }),
+    serializeOutput: serializeQuestionOutput,
     render,
   })
 }
