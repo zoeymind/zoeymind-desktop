@@ -32,7 +32,6 @@ function pack(packageDirectory) {
 try {
   const cliTarball = pack(join(root, "apps/cli"));
   const mcpTarball = pack(join(root, "apps/mcp"));
-  const project = join(temporary, "consumer");
   run("npm", ["init", "-y"], temporary);
   run(
     "npm",
@@ -67,7 +66,16 @@ try {
   const cliRun = spawnSync(
     process.execPath,
     [join(temporary, "node_modules/@zoeymind/cli/dist/index.js"), "projects"],
-    { encoding: "utf8" },
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        APPDATA: temporary,
+        HOME: temporary,
+        LOCALAPPDATA: temporary,
+        XDG_DATA_HOME: temporary,
+      },
+    },
   );
   const cliOutput = `${cliRun.stdout}${cliRun.stderr}`;
   if (cliRun.status === 0 || !cliOutput.includes("unavailable"))
