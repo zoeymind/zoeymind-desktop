@@ -60,6 +60,7 @@ jobs:
       tag-name: ${{ steps.release.outputs.tag-name }}
       version: ${{ steps.release.outputs.version }}
       sha: ${{ steps.release.outputs.sha }}
+      release-id: ${{ steps.release.outputs.release-id }}
     steps:
       - name: Resolve version, commit, and create draft release
         id: release
@@ -116,6 +117,7 @@ jobs:
             echo "tag-name=$tag"
             echo "version=$version"
             echo "sha=$sha"
+            echo "release-id=$release_id"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -228,6 +230,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag-name }}
+      RELEASE_ID: ${{ needs.prepare.outputs.release-id }}
     steps:
       - name: Checkout release commit
         uses: actions/checkout@v4
@@ -279,13 +282,17 @@ jobs:
       - name: Upload immutable release assets
         run: |
           find release-assets -maxdepth 1 -type f ! -name latest.json -print0 \
-            | xargs -0 gh release upload "$RELEASE_TAG" --clobber --repo "${{ github.repository }}"
+            | xargs -0 bash scripts/upload-release-assets.sh "$RELEASE_ID"
 
       - name: Upload updater manifest last
-        run: gh release upload "$RELEASE_TAG" ./release-assets/latest.json --clobber --repo "${{ github.repository }}"
+        run: bash scripts/upload-release-assets.sh "$RELEASE_ID" ./release-assets/latest.json
 
       - name: Publish release
-        run: gh release edit "$RELEASE_TAG" --draft=false --latest --repo "${{ github.repository }}"
+        run: |
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+            --method PATCH \
+            -F draft=false \
+            -f make_latest=true >/dev/null
 
   recover:
     name: Publish existing build artifacts
@@ -298,6 +305,16 @@ jobs:
     steps:
       - name: Checkout recovery tooling
         uses: actions/checkout@v4
+      - name: Resolve draft release
+        id: release
+        run: |
+          release_id="$(gh api "repos/${{ github.repository }}/releases?per_page=100" \
+            --jq 'map(select(.tag_name == env.RELEASE_TAG and .draft == true))[0].id // empty')"
+          if [[ -z "$release_id" ]]; then
+            echo "draft release not found: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          echo "release-id=$release_id" >> "$GITHUB_OUTPUT"
       - name: Download successful installers
         env:
           GH_TOKEN: ${{ github.token }}
@@ -353,12 +370,22 @@ jobs:
           sha256sum ./* > SHA256SUMS.txt
 
       - name: Upload immutable release assets
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release-id }}
         run: |
           find release-assets -maxdepth 1 -type f ! -name latest.json -print0 \
-            | xargs -0 gh release upload "$RELEASE_TAG" --clobber --repo "${{ github.repository }}"
+            | xargs -0 bash scripts/upload-release-assets.sh "$RELEASE_ID"
 
       - name: Upload updater manifest last
-        run: gh release upload "$RELEASE_TAG" ./release-assets/latest.json --clobber --repo "${{ github.repository }}"
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release-id }}
+        run: bash scripts/upload-release-assets.sh "$RELEASE_ID" ./release-assets/latest.json
 
       - name: Publish release
-        run: gh release edit "$RELEASE_TAG" --draft=false --latest --repo "${{ github.repository }}"
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release-id }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+            --method PATCH \
+            -F draft=false \
+            -f make_latest=true >/dev/null
