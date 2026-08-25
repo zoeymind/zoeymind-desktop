@@ -8,9 +8,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { ChevronDown } from "lucide-react"
-import ReactMarkdown from "react-markdown"
-import type { Components } from "react-markdown"
-import remarkGfm from "remark-gfm"
+import { ChatMarkdown } from "./ChatMarkdown"
 import { useTranslation } from "@zoeymind/i18n"
 
 function extractReasoningHeading(text: string): string | undefined {
@@ -30,43 +28,6 @@ function extractReasoningHeading(text: string): string | undefined {
   if (headings.length > 0) return headings[headings.length - 1]
 
   return undefined
-}
-
-const mdComponents: Components = {
-  p: ({ children }) => <p className="my-0.5">{children}</p>,
-  code: ({ className, children, ...props }) => {
-    const isBlock = /language-(\w+)/.test(className || "")
-    if (isBlock) {
-      return (
-        <pre className="my-1 p-1.5 rounded bg-muted overflow-x-auto">
-          <code className="font-mono text-[10px]" {...props}>
-            {children}
-          </code>
-        </pre>
-      )
-    }
-    return (
-      <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]" {...props}>
-        {children}
-      </code>
-    )
-  },
-  pre: ({ children }) => <>{children}</>,
-  ul: ({ children }) => <ul className="my-0.5 list-disc pl-4">{children}</ul>,
-  ol: ({ children }) => <ol className="my-0.5 list-decimal pl-4">{children}</ol>,
-  li: ({ children }) => <li className="my-0">{children}</li>,
-  blockquote: ({ children }) => (
-    <blockquote className="my-1 border-l-2 border-muted-foreground/20 pl-2">{children}</blockquote>
-  ),
-  table: ({ children }) => (
-    <div className="my-1 overflow-x-auto">
-      <table className="border-collapse text-[10px]">{children}</table>
-    </div>
-  ),
-  th: ({ children }) => (
-    <th className="border border-muted px-1.5 py-0.5 text-left font-medium">{children}</th>
-  ),
-  td: ({ children }) => <td className="border border-muted px-1.5 py-0.5">{children}</td>,
 }
 
 interface ThinkingIndicatorProps {
@@ -138,9 +99,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
               ref={contentRef}
               className="text-[11px] text-muted-foreground/60 pl-4 mt-1 max-h-[200px] overflow-y-auto leading-relaxed border-l border-muted-foreground/10"
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                {text}
-              </ReactMarkdown>
+              <ChatMarkdown content={text} isStreaming={isStreaming} />
             </div>
           </motion.div>
         )}

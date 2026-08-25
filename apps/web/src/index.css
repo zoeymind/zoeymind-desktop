@@ -6,6 +6,11 @@
 @source "../../../packages/ui/src";
 @source "../../../packages/simple-mind-map/src";
 @source "../src";
+@source "../node_modules/streamdown/dist/*.js";
+@source "../node_modules/@streamdown/code/dist/*.js";
+@source "../node_modules/@streamdown/cjk/dist/*.js";
+@source "../node_modules/@streamdown/math/dist/*.js";
+@source "../node_modules/@streamdown/mermaid/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -52,6 +57,7 @@
 }
 
 :root {
+  --app-titlebar-height: 2.5rem;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -132,6 +138,44 @@
   --canvas-scrollbar: color-mix(in oklab, var(--foreground) 10%, transparent);
   --canvas-scrollbar-hover: color-mix(in oklab, var(--foreground) 18%, transparent);
   --canvas-scrollbar-active: color-mix(in oklab, var(--foreground) 26%, transparent);
+}
+
+[data-chat-markdown] :is(p, li, blockquote) {
+  line-height: 1.35;
+}
+
+[data-chat-markdown] :is(p, ul, ol, blockquote) {
+  margin-block: 0.25rem;
+}
+
+[data-chat-markdown] :is(h1, h2, h3, h4, h5, h6) {
+  margin-block: 0.5rem 0.25rem;
+  line-height: 1.2;
+}
+
+[data-chat-markdown] [data-streamdown="list-item"] {
+  margin-block: 0;
+  padding-block: 0.125rem;
+}
+
+[data-streamdown="table-fullscreen"],
+[data-streamdown="mermaid-fullscreen"] {
+  top: var(--app-titlebar-height);
+  z-index: 110;
+}
+
+[data-streamdown="mermaid-fullscreen"] [data-streamdown="mermaid-block"],
+[data-streamdown="mermaid-fullscreen"] [data-streamdown="mermaid-block"] > div {
+  width: 100%;
+  height: 100%;
+}
+
+[data-streamdown="mermaid-fullscreen"] svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 /* transitions.dev accordion: grid-template-rows 0fr → 1fr gives a clean height animation

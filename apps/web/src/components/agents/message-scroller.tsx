@@ -17,39 +17,6 @@ import { cn } from "@/lib/utils"
 
 const PREVIEW_TITLE_LENGTH = 56
 const PREVIEW_DESCRIPTION_LENGTH = 88
-const WHEEL_DECAY_TIME_MS = 420
-const MIN_WHEEL_SPEED = 12
-const WHEEL_VELOCITY_FACTOR = 5.5
-
-function isTrackpadWheelStream(delta: number, elapsedMs: number) {
-  return elapsedMs < 30 && Math.abs(delta) < 24
-}
-
-function decayWheelVelocity(velocity: number, elapsedMs: number) {
-  return velocity * Math.exp(-elapsedMs / WHEEL_DECAY_TIME_MS)
-}
-
-function nestedScrollerCanConsume(
-  target: EventTarget | null,
-  viewport: HTMLElement,
-  delta: number
-) {
-  let element = target instanceof HTMLElement ? target : null
-  while (element && element !== viewport) {
-    const style = window.getComputedStyle(element)
-    const scrollable =
-      (style.overflowY === "auto" || style.overflowY === "scroll") &&
-      element.scrollHeight > element.clientHeight
-    if (scrollable) {
-      const maxScrollTop = element.scrollHeight - element.clientHeight
-      if ((delta < 0 && element.scrollTop > 0) || (delta > 0 && element.scrollTop < maxScrollTop)) {
-        return true
-      }
-    }
-    element = element.parentElement
-  }
-  return false
-}
 
 function truncateMessageText(text: string, limit: number) {
   if (text.length <= limit) return text
@@ -151,9 +118,6 @@ export function MessageScroller({
   const scrollTimerRef = useRef<number | undefined>(undefined)
   const frameRef = useRef<number | undefined>(undefined)
   const railFrameRef = useRef<number | undefined>(undefined)
-  const kineticFrameRef = useRef<number | undefined>(undefined)
-  const lastWheelTimeRef = useRef<number | null>(null)
-  const wheelVelocityRef = useRef(0)
   const railIdRef = useRef(new WeakMap<HTMLElement, string>())
   const railIdCounterRef = useRef(0)
   const railTargetsRef = useRef(new Map<string, HTMLElement>())
@@ -317,81 +281,6 @@ export function MessageScroller({
     programmaticScrollRef.current = false
   }, [])
 
-  const stopKineticScroll = useCallback(() => {
-    if (kineticFrameRef.current) cancelAnimationFrame(kineticFrameRef.current)
-    kineticFrameRef.current = undefined
-    wheelVelocityRef.current = 0
-  }, [])
-
-  const startKineticScroll = useCallback(
-    (initialVelocity: number) => {
-      if (kineticFrameRef.current) cancelAnimationFrame(kineticFrameRef.current)
-      const viewport = viewportRef.current
-      if (!viewport || reduce || Math.abs(initialVelocity) < MIN_WHEEL_SPEED) return
-
-      let velocity = initialVelocity
-      let previousTime = performance.now()
-      const advance = (time: number) => {
-        const elapsed = Math.min(32, Math.max(1, time - previousTime))
-        previousTime = time
-        const nextVelocity = decayWheelVelocity(velocity, elapsed)
-        const displacement = ((velocity + nextVelocity) / 2) * (elapsed / 1_000)
-        velocity = nextVelocity
-        wheelVelocityRef.current = velocity
-
-        const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
-        const requested = viewport.scrollTop + displacement
-        const next = Math.max(0, Math.min(maxScrollTop, requested))
-        viewport.scrollTop = next
-        if (next === requested && Math.abs(velocity) >= MIN_WHEEL_SPEED) {
-          kineticFrameRef.current = requestAnimationFrame(advance)
-        } else {
-          kineticFrameRef.current = undefined
-          wheelVelocityRef.current = 0
-        }
-      }
-      kineticFrameRef.current = requestAnimationFrame(advance)
-    },
-    [reduce]
-  )
-
-  const handleKineticWheel = useCallback(
-    (event: WheelEvent) => {
-      const viewport = viewportRef.current
-      if (!viewport) return
-      const modeScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1
-      const delta = event.deltaY * modeScale
-      if (delta === 0 || reduce || nestedScrollerCanConsume(event.target, viewport, delta)) return
-
-      leaveLiveEdge()
-      const previousWheelTime = lastWheelTimeRef.current
-      const now = performance.now()
-      const elapsed =
-        previousWheelTime === null ? Number.POSITIVE_INFINITY : now - previousWheelTime
-      lastWheelTimeRef.current = now
-      if (
-        (previousWheelTime === null && Math.abs(delta) < 24) ||
-        isTrackpadWheelStream(delta, elapsed)
-      ) {
-        stopKineticScroll()
-        return
-      }
-
-      event.preventDefault()
-      const normalizedDelta = Math.abs(delta) < 40 ? Math.sign(delta) * 40 : delta
-      const velocity = wheelVelocityRef.current * 0.45 + normalizedDelta * WHEEL_VELOCITY_FACTOR
-      startKineticScroll(velocity)
-    },
-    [leaveLiveEdge, reduce, startKineticScroll, stopKineticScroll]
-  )
-
-  useEffect(() => {
-    const viewport = viewportRef.current
-    if (!viewport) return
-    viewport.addEventListener("wheel", handleKineticWheel, { passive: false })
-    return () => viewport.removeEventListener("wheel", handleKineticWheel)
-  }, [handleKineticWheel])
-
   useLayoutEffect(() => {
     followingRef.current = followOutput
     if (!followOutput) return
@@ -453,7 +342,6 @@ export function MessageScroller({
       if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current)
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
       if (railFrameRef.current) cancelAnimationFrame(railFrameRef.current)
-      if (kineticFrameRef.current) cancelAnimationFrame(kineticFrameRef.current)
     },
     []
   )

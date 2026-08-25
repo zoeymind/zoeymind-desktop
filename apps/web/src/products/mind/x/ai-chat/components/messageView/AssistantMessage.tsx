@@ -4,8 +4,7 @@
 
 import React, { useMemo, useCallback, useState } from "react"
 import type { UIMessage } from "@ai-sdk/react"
-import type { Components } from "react-markdown"
-import { MemoizedMarkdown } from "./MemoizedMarkdown"
+import { ChatMarkdown } from "./ChatMarkdown"
 import { useAIChatV2Store } from "../../../ai-chat/stores/useAIChatV2Store"
 import { ToolCallCard } from "./ToolCallCard"
 import { ThinkingIndicator } from "./ThinkingIndicator"
@@ -13,11 +12,9 @@ import { ErrorCard } from "./ErrorCard"
 import { classifyChatError } from "../../../ai-chat/utils/errorHandler"
 import { CollapsibleSteps } from "./CollapsibleSteps"
 import { CompactSummaryCard } from "./CompactSummaryCard"
-import { cn } from "@/shared/app-shared"
 import { FileText, FolderOpen, Ban } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@zoeymind/ui"
 import { Spinner } from "@zoeymind/ui"
-import { CodeBlock } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
 import type {
   RetrieverResource,
@@ -57,124 +54,6 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   const abortedMessageId = useAIChatV2Store(s => s.abortedMessageId)
   const isAborted = abortedMessageId === message.id
   const [selectedResource, setSelectedResource] = useState<RetrieverResource | null>(null)
-
-  // 删除了 resolveShortId，现在由 mentions-processor 内部处理
-
-  const markdownComponents: Components = useMemo(
-    () => ({
-      p({ children }) {
-        const content = Array.isArray(children) ? children.join("") : String(children || "")
-        if (content.includes('<span class="mention-tag')) {
-          return <p className="my-1" dangerouslySetInnerHTML={{ __html: content }} />
-        }
-        return <p className="my-1">{children}</p>
-      },
-      code({ className, children, ...props }) {
-        const match = /language-(\w+)(?::(.+))?/.exec(className || "")
-        const isInline = !match
-        if (isInline) {
-          let content = Array.isArray(children) ? children.join("") : String(children || "")
-          // ✅ 解码 HTML 实体（无论是否有 mention）
-          content = content.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
-          // 检查是否包含多行内容
-          const hasNewlines = content.includes("\n")
-          return (
-            <code
-              className={cn(
-                "rounded bg-muted px-1 py-0.5 font-mono text-[11px]",
-                hasNewlines ? "whitespace-pre block" : ""
-              )}
-              {...props}
-            >
-              {content}
-            </code>
-          )
-        }
-        const language = match?.[1] || "text"
-        const contentRaw = Array.isArray(children) ? children.join("") : String(children || "")
-
-        return (
-          <CodeBlock
-            code={contentRaw.replace(/<[^>]+>/g, "").replace(/\n$/, "")}
-            language={language}
-            className="my-2"
-          />
-        )
-      },
-      pre({ children }) {
-        return <>{children}</>
-      },
-      table({ children }) {
-        return (
-          <div className="my-2 overflow-x-auto">
-            <table className="w-full border-collapse text-xs">{children}</table>
-          </div>
-        )
-      },
-      th({ children }) {
-        const content = Array.isArray(children) ? children.join("") : String(children || "")
-        if (content.includes('<span class="mention-tag')) {
-          return (
-            <th
-              className="border border-muted px-2 py-1 text-left font-medium"
-              dangerouslySetInnerHTML={{ __html: content }}
-            />
-          )
-        }
-        return <th className="border border-muted px-2 py-1 text-left font-medium">{children}</th>
-      },
-      td({ children }) {
-        const content = Array.isArray(children) ? children.join("") : String(children || "")
-        // ✅ 如果内容包含 HTML 标签（mention），使用 dangerouslySetInnerHTML
-        if (content.includes('<span class="mention-tag')) {
-          return (
-            <td
-              className="border border-muted px-2 py-1 align-top"
-              dangerouslySetInnerHTML={{ __html: content }}
-            />
-          )
-        }
-        return <td className="border border-muted px-2 py-1 align-top">{children}</td>
-      },
-      ul({ children }) {
-        return <ul className="my-1 list-disc pl-4 text-xs">{children}</ul>
-      },
-      ol({ children }) {
-        return <ol className="my-1 list-decimal pl-4 text-xs">{children}</ol>
-      },
-      li({ children }) {
-        const content = Array.isArray(children) ? children.join("") : String(children || "")
-        if (content.includes('<span class="mention-tag')) {
-          return <li className="text-xs" dangerouslySetInnerHTML={{ __html: content }} />
-        }
-        return <li className="text-xs">{children}</li>
-      },
-      blockquote({ children }) {
-        return (
-          <blockquote className="my-2 border-l-2 border-primary/40 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {children}
-          </blockquote>
-        )
-      },
-      a({ children, href }) {
-        const safeHref = href || "#"
-        return (
-          <a
-            href={safeHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:text-primary hover:underline"
-          >
-            {children}
-          </a>
-        )
-      },
-      span({ className, children }) {
-        return <span className={className}>{children}</span>
-      },
-    }),
-    []
-  )
 
   // ---- 分离 parts ----
   type IndexedToolPart = { part: ToolCallPart; index: number }
@@ -255,16 +134,16 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   const modelName = resolveModelDisplayName(messageMeta?.modelId, models)
 
   const renderTextPart = useCallback(
-    (part: GenericMessagePart, key: number | string) => {
+    (part: GenericMessagePart, key: number | string, isStreaming = false) => {
       const textContent = typeof part.text === "string" ? part.text : String(part.text || "")
       if (!textContent.trim()) return null
       return (
         <div key={key}>
-          <MemoizedMarkdown text={textContent} components={markdownComponents} />
+          <ChatMarkdown content={textContent} isStreaming={isStreaming} />
         </div>
       )
     },
-    [markdownComponents]
+    []
   )
 
   const lastActivePartIndex = useMemo(() => {
@@ -310,14 +189,19 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
         )
       }
       if (genericPart.type === "text") {
-        return renderTextPart(genericPart, isLastActive ? `last-${partIndex}` : partIndex)
+        const isStreamingText = isProcessing && isLast && partIndex === lastActivePartIndex
+        return renderTextPart(
+          genericPart,
+          isLastActive ? `last-${partIndex}` : partIndex,
+          isStreamingText
+        )
       }
       if (isToolCallPart(part)) {
         return <ToolCallCard key={partIndex} part={part} />
       }
       return null
     },
-    [isProcessing, isLast, message.parts, renderTextPart]
+    [isProcessing, isLast, lastActivePartIndex, message.parts, renderTextPart]
   )
 
   // 压缩摘要消息: 单独渲染成一个紧凑卡片, 不走正常的 message 渲染

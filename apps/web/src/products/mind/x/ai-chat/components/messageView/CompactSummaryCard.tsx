@@ -8,8 +8,7 @@ import { useState } from "react"
 import { ChevronDown, ChevronRight, Package } from "lucide-react"
 import { useTranslation } from "@zoeymind/i18n"
 import { cn } from "@/shared/app-shared"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
+import { ChatMarkdown } from "./ChatMarkdown"
 
 interface CompactSummaryCardProps {
   /** 完整摘要文本 (含 COMPACTION_HEADER 前缀 + 8 章节 markdown) */
@@ -64,7 +63,7 @@ export function CompactSummaryCard({ text, compactedCount, modelId }: CompactSum
                 "prose-strong:text-xs prose-code:text-[10px]"
               )}
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+              <ChatMarkdown content={body} />
             </div>
             {modelId && (
               <div className="mt-2 pt-2 border-t border-border/50 text-[10px] text-muted-foreground">
