@@ -1,16 +1,4 @@
-/**
- * AI Chat 错误处理工具
- *
- * 与后端 (apps/api/src/handlers/openai-stream.ts) 约定: 错误**只**两种 code,
- * 全部上游/网络/分类细节由后端归并, 前端只做 i18n 渲染.
- *
- *   - INSUFFICIENT_QUOTA  额度不足 → 不可重试, 引导充值
- *   - REQUEST_FAILED      其它失败 → 可重试
- *
- * 后端 onError 把 vercel APICallError / streamText 错误压成上述 code 字符串写入流
- * (或 400/500 响应 body 的 { error: <code> })`. 前端不再尝试 unwrap 原始 message,
- * 因为那会泄露内部 AI 服务链路信息.
- */
+/** AI Chat 错误的分类、序列化与消息插入。 */
 
 import type { UIMessage } from "@ai-sdk/react"
 import { logger } from "@zoeymind/logger"
@@ -18,6 +6,59 @@ import { logger } from "@zoeymind/logger"
 export type ChatErrorCode =
   "INSUFFICIENT_QUOTA" | "CONTEXT_OVERFLOW" | "REQUEST_FAILED" | "CLIENT_RUNTIME_ERROR"
 
+export interface ChatErrorDetails {
+  code: ChatErrorCode
+  message?: string
+}
+
+interface ProviderRequestError {
+  message?: unknown
+}
+
+const REDACTED = "[REDACTED]"
+
+function sanitizeText(raw: string): string {
+  return raw
+    .replace(/(authorization\s*:\s*)(?:bearer\s+)?[^\r\n,;}]+/gi, `$1${REDACTED}`)
+    .replace(
+      /(["']?(?:key|api[-_]?key|token|cookie|secret|password)["']?\s*[:=]\s*)(["']?)[^\s,;}]+\2/gi,
+      `$1$2${REDACTED}$2`
+    )
+    .replace(
+      /([?&](?:key|api[-_]?key|authorization|token|cookie|secret|password)=)[^&#\s]*/gi,
+      `$1${REDACTED}`
+    )
+}
+export function serializeChatError(error: unknown): string {
+  const candidate: ProviderRequestError = {}
+  if (error && typeof error === "object" && "message" in error) candidate.message = error.message
+  const details: ChatErrorDetails = {
+    code: normalizeChatError(error),
+    ...(typeof candidate.message === "string" && { message: sanitizeText(candidate.message) }),
+  }
+  return JSON.stringify(details)
+}
+
+export function parseChatError(error: unknown): ChatErrorDetails {
+  const raw =
+    error instanceof Error ? error.message : typeof error === "string" ? error : String(error)
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (parsed && typeof parsed === "object" && "code" in parsed) {
+      const code = parsed.code
+      if (typeof code === "string" && isKnownCode(code)) {
+        const message = "message" in parsed ? parsed.message : undefined
+        return {
+          code: code as ChatErrorCode,
+          ...(typeof message === "string" && { message }),
+        }
+      }
+    }
+  } catch {
+    // Legacy error code or non-JSON provider message.
+  }
+  return { code: classifyChatError(raw) }
+}
 interface GenericPart {
   type: string
   toolName?: string
@@ -31,31 +72,41 @@ const KNOWN_CODES: readonly string[] = [
   "CLIENT_RUNTIME_ERROR",
 ]
 
-/**
- * 解析后端返回的错误码. 后端要么直接给字符串 (流模式), 要么 wrap 成 JSON
- * `{ error: 'INSUFFICIENT_QUOTA' }` (4xx/5xx response). 不在白名单内的都归为
- * REQUEST_FAILED — 因为前端无权读原始 message.
- */
+/** Classifies legacy codes and serialized provider error summaries. */
 export function classifyChatError(error: Error | string | unknown): ChatErrorCode {
   const raw =
     error instanceof Error ? error.message : typeof error === "string" ? error : String(error)
   const trimmed = raw.trim()
-
-  // 直接字符串 (后端 onError 返回值)
   if (isKnownCode(trimmed)) return trimmed as ChatErrorCode
 
-  // JSON 形式 `{ error: '...' }`
+  const parsed = parseSerializedError(trimmed)
+  if (parsed) return parsed
+
+  // Legacy JSON form `{ error: "..." }`.
   try {
     const json = JSON.parse(trimmed) as unknown
     if (json && typeof json === "object" && "error" in json) {
-      const val = (json as { error: unknown }).error
+      const val = json.error
       if (typeof val === "string" && isKnownCode(val)) return val as ChatErrorCode
     }
   } catch {
-    // 不是 JSON, 走兜底
+    // Not JSON; use the generic fallback.
   }
 
   return "REQUEST_FAILED"
+}
+
+function parseSerializedError(raw: string): ChatErrorCode | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (parsed && typeof parsed === "object" && "code" in parsed) {
+      const code = parsed.code
+      if (typeof code === "string" && isKnownCode(code)) return code as ChatErrorCode
+    }
+  } catch {
+    return null
+  }
+  return null
 }
 
 function isKnownCode(s: string): boolean {
@@ -125,16 +176,13 @@ export function hasErrorPart(message: UIMessage): boolean {
   )
 }
 
-/**
- * 在消息流尾部追加一个 error part. errorText 永远是 ChatErrorCode 字符串,
- * 渲染层 (ErrorCard) 拿到后做 i18n 翻译.
- */
+/** 在消息流尾部追加一个脱敏的错误摘要。 */
 export function addErrorToMessages(
   messages: UIMessage[],
   error: Error | string,
   setMessages: (messages: UIMessage[]) => void
 ): void {
-  const code = classifyChatError(error)
+  const serialized = error instanceof Error ? error.message : error
 
   if (messages.length === 0) {
     logger.warn("[errorHandler] 没有消息, 无法添加错误")
@@ -150,7 +198,7 @@ export function addErrorToMessages(
     }
     const updated = {
       ...lastMessage,
-      parts: [...(lastMessage.parts || []), { type: "error", errorText: code } as unknown],
+      parts: [...(lastMessage.parts || []), { type: "error", errorText: serialized } as unknown],
     }
     setMessages([...messages.slice(0, -1), updated] as UIMessage[])
     return
@@ -160,7 +208,7 @@ export function addErrorToMessages(
     const errorMsg = {
       id: `error-${Date.now()}`,
       role: "assistant" as const,
-      parts: [{ type: "error", errorText: code }],
+      parts: [{ type: "error", errorText: serialized }],
     }
     setMessages([...messages, errorMsg] as UIMessage[])
   }

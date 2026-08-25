@@ -1,45 +1,34 @@
-/**
- * ErrorCard - 错误信息展示卡片.
- *
- * 只渲染两种状态 (与后端约定的 code):
- *   - INSUFFICIENT_QUOTA: 额度不足 → 只展示文案 (无 CTA)
- *   - REQUEST_FAILED:     其它失败 → "重试" CTA (恢复输入回输入框)
- *
- * 故意不展示任何原始 message / responseBody / request id —— 避免泄露内部 AI 服务链路.
- * 真要排查问题, admin 看后端 logger.error 的完整记录.
- */
+/** Expandable AI error summary. */
 
 import React, { useState } from "react"
 import { AlertCircle, ChevronDown, RefreshCcw } from "lucide-react"
 import { useTranslation } from "@zoeymind/i18n"
 import { Button, Collapsible, CollapsibleContent, CollapsibleTrigger, cn } from "@zoeymind/ui"
 import { useAIChatV2Store } from "../../../ai-chat/stores/useAIChatV2Store"
-import type { ChatErrorCode } from "../../../ai-chat/utils/errorHandler"
+import type { ChatErrorDetails } from "../../../ai-chat/utils/errorHandler"
 
 interface ErrorCardProps {
-  code: ChatErrorCode
+  error: ChatErrorDetails
   isLast?: boolean
 }
 
-export const ErrorCard: React.FC<ErrorCardProps> = ({ code, isLast = false }) => {
+export const ErrorCard: React.FC<ErrorCardProps> = ({ error, isLast = false }) => {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(true)
   const lastSentInput = useAIChatV2Store(s => s.lastSentInput)
-  const isQuota = code === "INSUFFICIENT_QUOTA"
-  const isOverflow = code === "CONTEXT_OVERFLOW"
+  const isQuota = error.code === "INSUFFICIENT_QUOTA"
+  const isOverflow = error.code === "CONTEXT_OVERFLOW"
   const translationKey = isQuota
     ? "insufficientQuota"
     : isOverflow
       ? "contextOverflow"
       : "requestFailed"
   const title = t(`mindmap.aiChat.error.${translationKey}.title`)
-  const body = t(`mindmap.aiChat.error.${translationKey}.body`)
+  const body = error.message ?? t(`mindmap.aiChat.error.${translationKey}.body`)
 
-  const handleRetry = () => {
-    const s = useAIChatV2Store.getState()
-    if (s.lastSentInput) {
-      s.restoreInput()
-    }
+  const handleRestoreInput = () => {
+    const store = useAIChatV2Store.getState()
+    if (store.lastSentInput) store.restoreInput()
   }
 
   return (
@@ -48,12 +37,9 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ code, isLast = false }) =>
         <span className="size-1.5 shrink-0 rounded-full bg-destructive" />
         <AlertCircle className="size-3 shrink-0 text-destructive" />
         <span className="truncate text-xs text-destructive">{title}</span>
-        <span className="ml-auto text-[10px] text-destructive/60">
-          {t("mindmap.aiChat.message.errorLabel")}
-        </span>
         <ChevronDown
           className={cn(
-            "size-3 shrink-0 text-muted-foreground/40 transition-transform",
+            "ml-auto size-3 shrink-0 text-muted-foreground/40 transition-transform",
             isExpanded && "rotate-180"
           )}
         />
@@ -67,7 +53,7 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ code, isLast = false }) =>
               type="button"
               variant="ghost"
               size="xs"
-              onClick={handleRetry}
+              onClick={handleRestoreInput}
               className="mb-1 h-6 px-1.5 text-primary"
             >
               <RefreshCcw className="size-3" />

@@ -4,6 +4,8 @@ import {
   hasErrorPart,
   isClientRuntimeError,
   normalizeChatError,
+  parseChatError,
+  serializeChatError,
 } from "./errorHandler"
 
 describe("context overflow errors", () => {
@@ -51,5 +53,22 @@ describe("context overflow errors", () => {
     expect(isClientRuntimeError(error)).toBe(true)
     expect(isClientRuntimeError("CLIENT_RUNTIME_ERROR")).toBe(true)
     expect(isClientRuntimeError(new Error("connection reset"))).toBe(false)
+  })
+})
+
+describe("provider error summaries", () => {
+  it("preserves a redacted provider message", () => {
+    const serialized = serializeChatError({
+      message:
+        "Provider request failed; Authorization: Bearer bearer-secret; https://generativelanguage.googleapis.com/v1beta/models?key=gemini-secret",
+    })
+
+    expect(parseChatError(serialized)).toEqual({
+      code: "REQUEST_FAILED",
+      message:
+        "Provider request failed; Authorization: [REDACTED]; https://generativelanguage.googleapis.com/v1beta/models?key=[REDACTED]",
+    })
+    expect(serialized).not.toContain("bearer-secret")
+    expect(serialized).not.toContain("gemini-secret")
   })
 })

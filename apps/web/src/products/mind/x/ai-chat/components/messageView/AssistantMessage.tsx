@@ -9,7 +9,7 @@ import { useAIChatV2Store } from "../../../ai-chat/stores/useAIChatV2Store"
 import { ToolCallCard } from "./ToolCallCard"
 import { ThinkingIndicator } from "./ThinkingIndicator"
 import { ErrorCard } from "./ErrorCard"
-import { classifyChatError } from "../../../ai-chat/utils/errorHandler"
+import { parseChatError } from "../../../ai-chat/utils/errorHandler"
 import { CollapsibleSteps } from "./CollapsibleSteps"
 import { CompactSummaryCard } from "./CompactSummaryCard"
 import { FileText, FolderOpen, Ban } from "lucide-react"
@@ -171,9 +171,7 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
 
       if (isError) {
         const raw = genericPart.errorText || genericPart.error || ""
-        return (
-          <ErrorCard key={`error-${partIndex}`} code={classifyChatError(raw)} isLast={isLast} />
-        )
+        return <ErrorCard key={`error-${partIndex}`} error={parseChatError(raw)} isLast={isLast} />
       }
 
       if (isReasoningPart(part)) {

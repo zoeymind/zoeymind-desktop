@@ -22,7 +22,7 @@ import { mcpManager } from "../../mcp-client"
 import { contextCompactor } from "../compaction/ContextCompactor"
 import { buildSystemPrompt } from "../prompts/system-prompt"
 import { useAIChatV2Store } from "../stores/useAIChatV2Store"
-import { normalizeChatError } from "../utils/errorHandler"
+import { serializeChatError } from "../utils/errorHandler"
 import { extractLatestUserText, getRecentMessageIds, recallForQuery } from "../memory/recall"
 import { getMindmapContextEnabled } from "./useUserPrompt"
 import { describeRuntimeTools } from "./runtime-tools"
@@ -148,10 +148,10 @@ export function useChatTransport() {
   )
 }
 
-function errorResponse(code: string): Response {
+function errorResponse(errorText: string): Response {
   return createUIMessageStreamResponse({
     stream: createUIMessageStream({
-      execute: ({ writer }) => writer.write({ type: "error", errorText: code }),
+      execute: ({ writer }) => writer.write({ type: "error", errorText }),
     }),
   })
 }
@@ -218,11 +218,11 @@ export async function runLocalStream(
           }
         }
       },
-      onError: normalizeChatError,
+      onError: serializeChatError,
     })
   } catch (error) {
     if (signal?.aborted) clearPreparedTurn(input.attemptKey)
     if (input.force) clearPreparedTurn(input.attemptKey)
-    return errorResponse(input.force ? "CONTEXT_OVERFLOW" : normalizeChatError(error))
+    return errorResponse(input.force ? "CONTEXT_OVERFLOW" : serializeChatError(error))
   }
 }
