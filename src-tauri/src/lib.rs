@@ -15,6 +15,7 @@ mod atomic_file;
 mod chat_stream;
 mod document_portal;
 mod http_stream;
+mod mcp_process;
 mod log_config;
 use chat_stream::AbortMap;
 use http_stream::HttpAbortMap;
@@ -353,6 +354,7 @@ pub fn run() {
     .manage(HttpAbortMap::default())
     .manage(PendingOpenFiles::default())
     .manage(document_portal::DocumentPortalBrokerState::default())
+    .manage(mcp_process::McpProcessState::default())
     // Single-instance: OS 双击 .zmind (macOS: fileAssociations 转 open event;
     // Windows/Linux: argv). 第二次启动时把路径 emit 到前端 'zm:open-file' 事件,
     // 由 useTabs.openTab 命中已有 tab 就激活, 否则新开.
@@ -396,7 +398,11 @@ pub fn run() {
       chat_stream::chat_stream_abort,
       http_stream::http_stream_start,
       http_stream::http_stream_abort,
-      document_portal::document_portal_respond
+      document_portal::document_portal_respond,
+      mcp_process::mcp_config_open,
+      mcp_process::mcp_process_spawn,
+      mcp_process::mcp_process_write,
+      mcp_process::mcp_process_kill
     ])
     .setup(|app| {
       document_portal::initialize(app.handle(), &app.state::<document_portal::DocumentPortalBrokerState>())?;

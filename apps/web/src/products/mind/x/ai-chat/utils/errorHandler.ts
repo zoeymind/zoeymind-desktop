@@ -20,6 +20,7 @@ export type ChatErrorCode =
 
 interface GenericPart {
   type: string
+  toolName?: string
   errorText?: string
 }
 
@@ -116,7 +117,10 @@ export function hasErrorPart(message: UIMessage): boolean {
   return (
     message.parts?.some(part => {
       const generic = part as GenericPart
-      return generic.type === "error" || !!generic.errorText
+      const isTool =
+        generic.type.startsWith("tool-") ||
+        (generic.type === "dynamic-tool" && typeof generic.toolName === "string")
+      return !isTool && (generic.type === "error" || !!generic.errorText)
     }) ?? false
   )
 }

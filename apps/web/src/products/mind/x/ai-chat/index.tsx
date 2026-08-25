@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { McpServerItem, AiToolListResult } from "../lib/api-types"
+import type { AiToolListResult } from "../lib/api-types"
 import { ChevronDown, Plus, History, Settings, X } from "lucide-react"
 import {
   Badge,
@@ -38,7 +38,6 @@ import { useAIChatRuntime } from "./context/ai-chat-runtime"
 import { useMCPStore } from "../useMCPStore"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
 import { cn, useSettingsDialog } from "@/shared/app-shared"
-import { trpc } from "../lib/trpc"
 import { useTranslation } from "@zoeymind/i18n"
 import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useUserPrompt"
 import { useQuestionToolUI } from "./tools/ui-handlers/QuestionToolUI"
@@ -47,7 +46,6 @@ import { useUIStore } from "@/products/mind/stores"
 import zoeyLogoLightUrl from "@/assets/logo.svg"
 import zoeyLogoDarkUrl from "@/assets/logo-dark.svg"
 
-const EMPTY_MCP_SERVERS: McpServerItem[] = []
 interface AIchatV2Props {
   isActive?: boolean
 }
@@ -106,12 +104,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const toolsData = useMemo<AiToolListResult>(() => ({ tools: LOCAL_AI_TOOLS }), [])
   const toolsLoading = false
 
-  // ✅ 获取 MCP 工具列表
-  const { isLoading: mcpToolsLoading } = useMCPTools({ enabled: !!isActive })
-  // 桌面端 stub 返回 data=undefined; 用 module-level singleton 兜底防 destructure
-  // 默认值每次生成新 [] 触发 useEffect loop (Maximum update depth exceeded).
-  const { data: mcpServersData } = trpc.mcp.list.useQuery<McpServerItem[]>()
-  const mcpServers = mcpServersData ?? EMPTY_MCP_SERVERS
+  const { servers: mcpServers, isLoading: mcpToolsLoading } = useMCPTools()
   const mcpServerStatus = useMCPStore(state => state.serverStatus)
 
   useQuestionToolUI()
@@ -317,14 +310,12 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
                       <EmptyDescription>
                         {t("mindmap.aiChat.core.detectingConnection")}
                       </EmptyDescription>
-                    ) : mcpServers.filter(server => !server.disabled).length > 0 ? (
+                    ) : mcpServers.filter(server => server.disabled !== true).length > 0 ? (
                       <div className="flex flex-wrap justify-center gap-1.5">
                         {mcpServers
-                          .filter(server => !server.disabled)
+                          .filter(server => server.disabled !== true)
                           .map(server => {
-                            const connected = server.preset
-                              ? true
-                              : mcpServerStatus[server.id]?.connected === true
+                            const connected = mcpServerStatus[server.id]?.connected === true
                             return (
                               <Badge
                                 key={server.id}

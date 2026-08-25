@@ -11,7 +11,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
-import type { ToolCallPart } from "./ToolCallCard"
+import type { ToolCallPart } from "./tool-call-part"
 import { formatElapsedMs } from "../../../ai-chat/utils/duration"
 
 interface StepsSummaryBarProps {

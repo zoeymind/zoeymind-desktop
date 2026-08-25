@@ -34,6 +34,7 @@ import { useCallback, useEffect, useState } from "react"
 import logoLightUrl from "@/assets/logo.svg?url"
 import logoDarkUrl from "@/assets/logo-dark.svg?url"
 import { invoke } from "@tauri-apps/api/core"
+import { MCPRuntime } from "@/products/mind/x/MCPRuntime"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -106,6 +107,7 @@ function InnerApp() {
       <RecoveryDialog />
       <WindowCloseDialog />
       <FileAssociationsListener onInitialFilesOpened={handleInitialFilesOpened} />
+      <MCPRuntime />
       <Loading
         show={loading}
         tip={tip ?? t("common.loading", "加载中...")}

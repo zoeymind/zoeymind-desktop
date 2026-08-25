@@ -1,164 +1,248 @@
-/**
- * MCP 客户端管理服务
- *
- * 通过后端代理访问 MCP 服务器
- */
-
-import { trpcClient } from "./lib/trpc"
-import type { McpTestResult } from "./lib/api-types"
+import { createMCPClient, type MCPClient, type MCPTransport } from "@ai-sdk/mcp"
 import { logger } from "@zoeymind/logger"
-
-export interface MCPServerConfig {
-  url: string
-  headers?: Record<string, string>
-  disabled?: boolean
-}
+import {
+  listConfiguredMcpServers,
+  setMcpServerDisabled,
+  type NamedMcpServer,
+  type NamedStdioMcpServer,
+} from "@/shared/native/mcp-config"
+import { TauriStdioMcpTransport } from "@/shared/native/tauri-mcp-transport"
+import { nativeFetch } from "@/shared/native/native-fetch"
+import { useMCPStore } from "./useMCPStore"
 
 export interface MCPToolInfo {
   name: string
   description?: string
-  inputSchema?: unknown
 }
-
-export type MCPToolDefinition = Record<string, MCPToolInfo>
 
 export interface MCPTestResult {
   success: boolean
   toolCount?: number
-  tools?: Array<{ name: string; description?: string }>
+  tools?: MCPToolInfo[]
   error?: string
 }
 
-export class MCPClientManager {
-  /**
-   * 测试服务器连接
-   */
-  async testConnection(config: { name: string } & MCPServerConfig): Promise<MCPTestResult> {
-    if (!config.url) {
-      return {
+type McpToolSet = Awaited<ReturnType<MCPClient["tools"]>>
+
+export interface MCPRuntimeSnapshot {
+  servers: NamedMcpServer[]
+  tools: McpToolSet
+}
+
+function transportFor(server: NamedMcpServer):
+  | MCPTransport
+  | {
+      type: "http" | "sse"
+      url: string
+      headers?: Record<string, string>
+      fetch?: typeof fetch
+    } {
+  if (server.kind === "stdio") {
+    return new TauriStdioMcpTransport(server as NamedStdioMcpServer)
+  }
+  if (!("url" in server) || typeof server.url !== "string") {
+    throw new Error(`MCP server ${server.name} is missing its URL`)
+  }
+  return {
+    type: server.kind,
+    url: server.url,
+    headers: server.headers,
+    fetch: nativeFetch,
+  }
+}
+
+function namespacedToolName(serverName: string, toolName: string): string {
+  const safeServer = serverName.replace(/[^a-zA-Z0-9_-]/g, "_")
+  const safeTool = toolName.replace(/[^a-zA-Z0-9_-]/g, "_")
+  return `mcp_${safeServer}_${safeTool}`
+}
+
+async function describe(client: MCPClient): Promise<MCPToolInfo[]> {
+  const result = await client.listTools()
+  return result.tools.map(tool => ({ name: tool.name, description: tool.description }))
+}
+
+function updateStatus(server: NamedMcpServer, result: MCPTestResult): void {
+  useMCPStore.getState().updateServerStatus(server.id, {
+    connected: result.success,
+    toolCount: result.toolCount,
+    tools: result.tools,
+    error: result.error,
+    lastChecked: new Date().toISOString(),
+  })
+}
+
+async function connect(server: NamedMcpServer): Promise<MCPClient> {
+  return createMCPClient({
+    name: `zoeymind-${server.name}`,
+    transport: transportFor(server),
+    onUncaughtError: error => {
+      logger.error(`[mcp:${server.name}] uncaught error`, { error })
+      updateStatus(server, {
         success: false,
-        error: `MCP 服务器 "${config.name}" 缺少 URL`,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    },
+  })
+}
+
+export class MCPClientManager {
+  private clients = new Map<string, MCPClient>()
+  private snapshot: MCPRuntimeSnapshot | null = null
+  private initialization: Promise<MCPRuntimeSnapshot> | null = null
+
+  async listServers(): Promise<NamedMcpServer[]> {
+    return this.snapshot?.servers ?? listConfiguredMcpServers()
+  }
+
+  getSnapshot(): MCPRuntimeSnapshot | null {
+    return this.snapshot
+  }
+
+  initialize(): Promise<MCPRuntimeSnapshot> {
+    if (this.snapshot) return Promise.resolve(this.snapshot)
+    if (this.initialization) return this.initialization
+    useMCPStore.getState().setInitializing(true)
+    this.initialization = this.connectConfiguredServers()
+      .then(snapshot => {
+        useMCPStore.getState().setRuntime(snapshot.servers)
+        return snapshot
+      })
+      .finally(() => {
+        this.initialization = null
+        useMCPStore.getState().setInitializing(false)
+      })
+    return this.initialization
+  }
+
+  async refresh(): Promise<MCPRuntimeSnapshot> {
+    useMCPStore.getState().setInitializing(true)
+    await this.close(false)
+    useMCPStore.getState().clearAllStatus()
+    return this.initialize()
+  }
+
+  async testConnection(server: NamedMcpServer): Promise<MCPTestResult> {
+    const existing = this.clients.get(server.id)
+    if (existing) {
+      try {
+        const tools = await describe(existing)
+        const result = { success: true, toolCount: tools.length, tools }
+        updateStatus(server, result)
+        return result
+      } catch (error) {
+        const result = {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        }
+        updateStatus(server, result)
+        return result
       }
     }
-
+    let client: MCPClient | null = null
     try {
-      const result = await trpcClient.mcp.testConnection.mutate<McpTestResult>({
-        url: config.url,
-        headers: config.headers,
-      })
-
-      return result
+      client = await connect(server)
+      const tools = await describe(client)
+      return { success: true, toolCount: tools.length, tools }
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Failed to test connection",
-      }
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    } finally {
+      await client?.close().catch(() => undefined)
     }
   }
 
-  /**
-   * 获取服务器的工具列表
-   */
-  async getServerTools(config: { name: string } & MCPServerConfig): Promise<MCPToolDefinition> {
-    if (!config.url) {
-      logger.warn(`MCP server "${config.name}" has no URL, skip loading tools`)
-      return {}
+  async loadTools(): Promise<McpToolSet> {
+    return (await this.initialize()).tools
+  }
+
+  async setServerEnabled(serverName: string, enabled: boolean): Promise<void> {
+    await setMcpServerDisabled(serverName, !enabled)
+    const servers = await listConfiguredMcpServers()
+    const server = servers.find(candidate => candidate.name === serverName)
+    if (!server) throw new Error(`MCP server ${serverName} is not configured`)
+
+    const existing = this.clients.get(server.id)
+    if (existing) {
+      this.clients.delete(server.id)
+      await existing.close()
     }
 
-    try {
-      const result = await trpcClient.mcp.testConnection.mutate<McpTestResult>({
-        url: config.url!,
-        headers: config.headers,
-      })
-
-      // 解析响应
-      let tools: MCPToolDefinition = {}
-      const toolsList: Array<{ name?: string; description?: string }> =
-        result.success && "tools" in result && Array.isArray(result.tools) ? result.tools : []
-
-      if (toolsList.length > 0) {
-        tools = toolsList.reduce(
-          (acc: MCPToolDefinition, tool: { name?: string; description?: string }) => {
-            if (tool?.name) {
-              acc[tool.name] = {
-                name: tool.name,
-                description: tool.description || "",
-              }
-            }
-            return acc
-          },
-          {} as MCPToolDefinition
-        )
+    const entries = Object.entries(this.snapshot?.tools ?? {}).filter(
+      ([name]) => !name.startsWith(`${namespacedToolName(server.name, "")}`)
+    )
+    if (enabled) {
+      try {
+        entries.push(...(await this.connectServer(server)))
+      } catch (error) {
+        updateStatus(server, {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        })
       }
+    }
+    this.snapshot = {
+      servers,
+      tools: Object.fromEntries(entries) as McpToolSet,
+    }
+    if (!enabled) useMCPStore.getState().clearServerStatus(server.id)
+    useMCPStore.getState().setRuntime(servers)
+  }
 
-      return tools
+  async close(publish = true): Promise<void> {
+    const clients = [...this.clients.values()]
+    this.clients.clear()
+    this.snapshot = null
+    await Promise.allSettled(clients.map(client => client.close()))
+    if (publish) useMCPStore.getState().setRuntime([])
+  }
+
+  private async connectServer(
+    server: NamedMcpServer
+  ): Promise<Array<[string, McpToolSet[string]]>> {
+    const client = await connect(server)
+    this.clients.set(server.id, client)
+    try {
+      const [serverTools, displayTools] = await Promise.all([client.tools(), describe(client)])
+      updateStatus(server, {
+        success: true,
+        toolCount: displayTools.length,
+        tools: displayTools,
+      })
+      return Object.entries(serverTools).map(([name, tool]) => [
+        namespacedToolName(server.name, name),
+        tool,
+      ])
     } catch (error) {
-      logger.error(`Failed to get tools from server "${config.name}":`, { error })
+      this.clients.delete(server.id)
+      await client.close().catch(() => undefined)
       throw error
     }
   }
 
-  /**
-   * 获取工具的详细信息
-   */
-  async getToolDetails(config: { name: string } & MCPServerConfig) {
-    const tools = await this.getServerTools(config)
+  private async connectConfiguredServers(): Promise<MCPRuntimeSnapshot> {
+    const servers = await listConfiguredMcpServers()
+    const entries: Array<[string, McpToolSet[string]]> = []
 
-    return Object.entries(tools).map(([name, tool]) => ({
-      name,
-      description: tool.description || "",
-      inputSchema: tool.inputSchema,
-    }))
-  }
-
-  /**
-   * 清除服务器缓存
-   */
-  clearServerCache(config: { name: string } & MCPServerConfig) {
-    void config
-  }
-
-  /**
-   * 关闭所有连接
-   */
-  async closeAll() {
-    return
-  }
-
-  /**
-   * 批量获取多个服务器的工具
-   */
-  async getMultipleServersTools(configs: Array<{ name: string } & MCPServerConfig>) {
-    const results = await Promise.allSettled(
-      configs.map(async config => {
+    await Promise.all(
+      servers.map(async server => {
+        if (server.disabled === true) return
         try {
-          if (!config.url) {
-            return {
-              serverName: config.name,
-              error: "Missing URL",
-              success: false,
-            }
-          }
-
-          const tools = await this.getServerTools(config)
-          return {
-            serverName: config.name,
-            tools,
-            success: true,
-          }
-        } catch (error: unknown) {
-          return {
-            serverName: config.name,
-            error: error instanceof Error ? error.message : "Unknown error",
+          entries.push(...(await this.connectServer(server)))
+        } catch (error) {
+          updateStatus(server, {
             success: false,
-          }
+            error: error instanceof Error ? error.message : String(error),
+          })
         }
       })
     )
 
-    return results
+    this.snapshot = {
+      servers,
+      tools: Object.fromEntries(entries) as McpToolSet,
+    }
+    return this.snapshot
   }
 }
 
-// 单例实例
 export const mcpManager = new MCPClientManager()

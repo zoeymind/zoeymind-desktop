@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { classifyChatError, isClientRuntimeError, normalizeChatError } from "./errorHandler"
+import {
+  classifyChatError,
+  hasErrorPart,
+  isClientRuntimeError,
+  normalizeChatError,
+} from "./errorHandler"
 
 describe("context overflow errors", () => {
   it("prefers structured provider codes", () => {
@@ -19,6 +24,24 @@ describe("context overflow errors", () => {
     expect(normalizeChatError(new Error("connection reset"))).toBe("REQUEST_FAILED")
   })
 
+  it("does not classify a dynamic MCP tool error as a whole-chat error", () => {
+    expect(
+      hasErrorPart({
+        id: "assistant-mcp-error",
+        role: "assistant",
+        parts: [
+          {
+            type: "dynamic-tool",
+            toolName: "mcp_context7_query_docs",
+            toolCallId: "call-mcp-error",
+            state: "output-error",
+            input: { query: "React" },
+            errorText: "MCP server returned 500",
+          },
+        ],
+      })
+    ).toBe(false)
+  })
   it("does not classify React runtime invariants as provider failures", () => {
     const error = new Error(
       "Maximum update depth exceeded. This can happen when a component repeatedly calls setState"

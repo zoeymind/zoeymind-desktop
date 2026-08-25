@@ -9,7 +9,7 @@ import React, { useState, useCallback } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { GlowCard } from "./GlowCard"
 import { StepsSummaryBar } from "./StepsSummaryBar"
-import type { ToolCallPart } from "./ToolCallCard"
+import type { ToolCallPart } from "./tool-call-part"
 
 interface IndexedToolPart {
   part: ToolCallPart

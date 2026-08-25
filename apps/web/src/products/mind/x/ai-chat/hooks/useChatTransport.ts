@@ -5,6 +5,7 @@ import {
   createUIMessageStreamResponse,
   pruneMessages,
   streamText,
+  stepCountIs,
   type ToolSet,
   type UIMessage,
 } from "ai"
@@ -17,12 +18,14 @@ import {
   resolveDefaultChatModel,
 } from "@/shared/native"
 import { getAgentTools } from "../agent-tools"
+import { mcpManager } from "../../mcp-client"
 import { contextCompactor } from "../compaction/ContextCompactor"
 import { buildSystemPrompt } from "../prompts/system-prompt"
 import { useAIChatV2Store } from "../stores/useAIChatV2Store"
 import { normalizeChatError } from "../utils/errorHandler"
 import { extractLatestUserText, getRecentMessageIds, recallForQuery } from "../memory/recall"
 import { getMindmapContextEnabled } from "./useUserPrompt"
+import { describeRuntimeTools } from "./runtime-tools"
 
 interface PreparedTurn {
   userPrompt: string | undefined
@@ -171,7 +174,8 @@ export async function runLocalStream(
     const resolved = input.requestedModelId
       ? resolveChatModel(config, input.requestedModelId)
       : resolveDefaultChatModel(config)
-    const tools = getAgentTools() as ToolSet
+    const mcpTools = await mcpManager.loadTools()
+    const tools: ToolSet = { ...getAgentTools(), ...mcpTools }
     const compacted = await contextCompactor.prepare({
       conversationId: input.conversationId,
       transcript: input.transcript,
@@ -189,11 +193,12 @@ export async function runLocalStream(
     const result = streamText({
       model: createLanguageModel(resolved.provider, resolved.entry),
       tools,
-      system: input.systemContent,
+      system: `${input.systemContent}\n\n---\n\n${describeRuntimeTools(tools)}`,
       messages: modelMessages,
       abortSignal: signal,
       maxRetries: 2,
       maxOutputTokens: resolved.entry.maxOutputTokens,
+      stopWhen: stepCountIs(8),
     })
     return result.toUIMessageStreamResponse({
       originalMessages: input.transcript,

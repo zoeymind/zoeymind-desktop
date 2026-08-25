@@ -7,7 +7,7 @@ import type { UIMessage } from "@ai-sdk/react"
 import type { Components } from "react-markdown"
 import { MemoizedMarkdown } from "./MemoizedMarkdown"
 import { useAIChatV2Store } from "../../../ai-chat/stores/useAIChatV2Store"
-import { ToolCallCard, type ToolCallPart } from "./ToolCallCard"
+import { ToolCallCard } from "./ToolCallCard"
 import { ThinkingIndicator } from "./ThinkingIndicator"
 import { ErrorCard } from "./ErrorCard"
 import { classifyChatError } from "../../../ai-chat/utils/errorHandler"
@@ -27,6 +27,7 @@ import type {
 import type { AIModel } from "../../../ai-chat/hooks/useModelSelector"
 import { resolveModelDisplayName } from "../../../ai-chat/utils/modelDisplayName"
 import { formatElapsedMs } from "../../../ai-chat/utils/duration"
+import { isToolCallPart, type ToolCallPart } from "./tool-call-part"
 
 interface ReasoningPart {
   type: "reasoning"
@@ -39,11 +40,6 @@ function isReasoningPart(part: unknown): part is ReasoningPart {
   return p.type === "reasoning" && typeof p.text === "string"
 }
 
-function isToolCallPart(part: unknown): part is ToolCallPart {
-  if (typeof part !== "object" || part === null) return false
-  const p = part as { type?: unknown }
-  return typeof p.type === "string" && p.type.startsWith("tool-")
-}
 interface AssistantMessageProps {
   message: UIMessage
   isLast?: boolean
@@ -208,8 +204,7 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
 
     message.parts.forEach((part, index) => {
       const genericPart = part as GenericMessagePart
-      const isToolType =
-        typeof genericPart.type === "string" && genericPart.type.startsWith("tool-")
+      const isToolType = isToolCallPart(part)
 
       if (!isToolType && (genericPart.type === "error" || genericPart.errorText)) {
         errors.push({ part: genericPart, index })
@@ -275,9 +270,10 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   const lastActivePartIndex = useMemo(() => {
     if (!message.parts) return -1
     for (let i = message.parts.length - 1; i >= 0; i--) {
-      const part = message.parts[i] as GenericMessagePart
-      const isToolType = typeof part.type === "string" && part.type.startsWith("tool-")
-      if (part.type === "error" || part.errorText) return i
+      const part = message.parts[i]
+      const genericPart = part as GenericMessagePart
+      const isToolType = isToolCallPart(part)
+      if (!isToolType && (genericPart.type === "error" || genericPart.errorText)) return i
       if (part.type === "text") {
         const text = typeof part.text === "string" ? part.text : String(part.text || "")
         if (text.trim()) return i
@@ -291,8 +287,7 @@ const AssistantMessageImpl: React.FC<AssistantMessageProps> = ({
   const renderPart = useCallback(
     (part: unknown, partIndex: number, isLastActive = false) => {
       const genericPart = part as GenericMessagePart
-      const isToolType =
-        typeof genericPart.type === "string" && genericPart.type.startsWith("tool-")
+      const isToolType = isToolCallPart(part)
       const isError = !isToolType && (genericPart.type === "error" || genericPart.errorText)
 
       if (isError) {

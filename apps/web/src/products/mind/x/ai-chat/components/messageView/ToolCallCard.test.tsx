@@ -12,6 +12,11 @@ vi.mock("@zoeymind/i18n", () => ({
         "mindmap.aiChat.message.executingTool": "正在执行工具",
         "mindmap.aiChat.message.toolStreamGenerating": "正在生成编辑内容",
         "mindmap.aiChat.message.toolStreamStalled": "等待模型继续输出",
+        "mindmap.aiChat.message.mcpServer": "MCP server",
+        "mindmap.aiChat.message.mcpTool": "Tool",
+        "mindmap.aiChat.message.mcpRunning": "Running",
+        "mindmap.aiChat.message.mcpCompleted": "Completed",
+        "mindmap.aiChat.message.mcpFailed": "Failed",
       })[key] ?? key,
   }),
 }))
@@ -143,5 +148,68 @@ describe("ToolCallCard active disclosure", () => {
 
     expect(view.container.textContent).toContain("mindmap.aiChat.message.aborted")
     expect(view.container.textContent).not.toContain("mindmap.aiChat.message.executing")
+  })
+})
+
+describe("MCP tool call card", () => {
+  it("shows the server, tool, status, input, and output", () => {
+    const view = render(
+      <ToolCallCard
+        part={{
+          type: "tool-mcp_context7_resolve_library_id",
+          toolCallId: "call-mcp-1",
+          state: "output-available",
+          input: { libraryName: "React" },
+          output: { libraryId: "/facebook/react" },
+        }}
+      />
+    )
+
+    expect(view.container.textContent).toContain("MCP")
+    expect(view.container.textContent).toContain("context7")
+    expect(view.container.textContent).toContain("resolve library id")
+    expect(view.container.textContent).toContain("Completed")
+
+    fireEvent.click(view.getByRole("button", { expanded: false }))
+    expect(view.container.textContent).toContain("React")
+    expect(view.container.textContent).toContain("/facebook/react")
+  })
+
+  it("renders AI SDK dynamic MCP tool parts", () => {
+    const view = render(
+      <ToolCallCard
+        part={{
+          type: "dynamic-tool",
+          toolName: "mcp_shoogle_search_registry_items",
+          toolCallId: "call-mcp-dynamic",
+          state: "input-available",
+          input: { query: "button" },
+        }}
+      />
+    )
+
+    expect(view.container.textContent).toContain("shoogle")
+    expect(view.container.textContent).toContain("search registry items")
+    expect(view.container.textContent).toContain("Running")
+  })
+
+  it("keeps dynamic MCP execution errors inside the tool card", () => {
+    const view = render(
+      <ToolCallCard
+        part={{
+          type: "dynamic-tool",
+          toolName: "mcp_context7_query_docs",
+          toolCallId: "call-mcp-error",
+          state: "output-error",
+          input: { query: "React" },
+          errorText: "MCP server returned 500",
+        }}
+      />
+    )
+
+    fireEvent.click(view.container.querySelector("button")!)
+    expect(view.container.textContent).toContain("Failed")
+    expect(view.container.textContent).toContain("MCP server returned 500")
+    expect(view.container.textContent).not.toContain("AI request failed")
   })
 })

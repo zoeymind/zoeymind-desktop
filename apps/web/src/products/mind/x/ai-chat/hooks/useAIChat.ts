@@ -52,7 +52,11 @@ function hasToolPart(message: unknown): boolean {
     Array.isArray(parts) &&
     parts.some(part => {
       if (!part || typeof part !== "object" || !("type" in part)) return false
-      return typeof part.type === "string" && part.type.startsWith("tool-")
+      const candidate = part as { type?: unknown; toolName?: unknown }
+      return (
+        (typeof candidate.type === "string" && candidate.type.startsWith("tool-")) ||
+        (candidate.type === "dynamic-tool" && typeof candidate.toolName === "string")
+      )
     })
   )
 }

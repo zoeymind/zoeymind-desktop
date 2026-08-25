@@ -4,6 +4,7 @@ import type { UIMessage } from "@ai-sdk/react"
 export const TOOL_EXECUTION_INTERRUPTED = "TOOL_EXECUTION_INTERRUPTED"
 interface ToolPartLike {
   type?: unknown
+  toolName?: unknown
   state?: unknown
   errorText?: unknown
 }
@@ -21,11 +22,10 @@ export function pendingToolCallIds(message: UIMessage): string[] {
 export function isPendingToolPart(part: unknown): boolean {
   if (!part || typeof part !== "object") return false
   const candidate = part as ToolPartLike
-  return (
-    typeof candidate.type === "string" &&
-    candidate.type.startsWith("tool-") &&
-    (candidate.state === "input-streaming" || candidate.state === "input-available")
-  )
+  const isTool =
+    (typeof candidate.type === "string" && candidate.type.startsWith("tool-")) ||
+    (candidate.type === "dynamic-tool" && typeof candidate.toolName === "string")
+  return isTool && (candidate.state === "input-streaming" || candidate.state === "input-available")
 }
 
 export function hasPendingToolCalls(messages: readonly UIMessage[]): boolean {
