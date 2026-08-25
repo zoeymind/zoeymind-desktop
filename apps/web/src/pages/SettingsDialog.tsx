@@ -47,9 +47,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Separator,
   SettingsShell,
   cn,
+  useTheme,
 } from "@zoeymind/ui"
 import { AppVersionStatus, toast, createUUID, useSettingsDialog } from "@/shared/app-shared"
 import {
@@ -70,6 +70,8 @@ import {
 } from "./settings-preference-sections"
 import { AIAgentSettingsSection, SettingsSectionCard } from "./settings-ai-agent-sections"
 import { MCPTab } from "@/products/mind/x/ai-chat/settings/MCPTab"
+import brandLogoLightUrl from "@/assets/logo.svg?url"
+import brandLogoDarkUrl from "@/assets/logo-dark.svg?url"
 
 const PROVIDER_KIND_OPTIONS: Array<{ value: ProviderKind; label: string }> = [
   { value: "openai", label: "OpenAI" },
@@ -780,46 +782,57 @@ function ModelEditor({
 
 function AboutSection() {
   const { t } = useTranslation()
+  const { resolvedTheme } = useTheme()
+  const brandLogoUrl = resolvedTheme === "dark" ? brandLogoDarkUrl : brandLogoLightUrl
+
   return (
     <div className="space-y-8">
-      <section className="space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-balance text-base font-semibold">ZoeyMind Desktop</h2>
-          <p className="text-sm text-muted-foreground">{t("settings.productDescription")}</p>
+      <section className="space-y-6" aria-labelledby="about-product-title">
+        <div className="flex flex-col items-center gap-3 py-2 text-center">
+          <img src={brandLogoUrl} alt="" className="size-20 object-contain" />
+          <h2
+            id="about-product-title"
+            className="text-balance text-xl font-semibold tracking-tight"
+          >
+            ZoeyMind Desktop
+          </h2>
         </div>
 
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{t("settings.githubSupport")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("settings.githubSupportDescription")}
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => void openGitHubSupport()}>
-              <Star fill="currentColor" />
-              {t("settings.githubSupportAction")}
-            </Button>
-          </div>
-        </div>
+        <Button className="w-full" onClick={() => void openGitHubSupport()}>
+          <Star fill="currentColor" />
+          {t("settings.githubSupportAction")}
+        </Button>
 
-        <div className="rounded-lg border p-4">
+        <div className="border-y py-4">
           <AppVersionStatus variant="detail" />
         </div>
-
-        <div className="divide-y text-sm">
-          <div className="flex items-center justify-between gap-6 py-3">
-            <span className="text-muted-foreground">{t("settings.firstSaveDefaultDirectory")}</span>
-            <code className="text-xs">&lt;Documents&gt;/ZoeyMind</code>
-          </div>
-          <div className="flex items-center justify-between gap-6 py-3">
-            <span className="text-muted-foreground">{t("settings.modelsConfigFile")}</span>
-            <code className="text-xs">&lt;appData&gt;/models.json</code>
-          </div>
-        </div>
       </section>
-      <Separator />
-      <LogSettingsSection />
+
+      <section className="space-y-4" aria-labelledby="about-diagnostics-title">
+        <div className="space-y-1">
+          <h2 id="about-diagnostics-title" className="text-sm font-semibold">
+            {t("settings.diagnostics")}
+          </h2>
+          <p className="text-sm text-muted-foreground">{t("settings.diagnosticsDescription")}</p>
+        </div>
+        <div className="divide-y border-y">
+          <AboutPathRow
+            label={t("settings.firstSaveDefaultDirectory")}
+            path="<Documents>/ZoeyMind"
+          />
+          <AboutPathRow label={t("settings.modelsConfigFile")} path="<appData>/models.json" />
+        </div>
+        <LogSettingsSection />
+      </section>
+    </div>
+  )
+}
+
+function AboutPathRow({ label, path }: { label: string; path: string }) {
+  return (
+    <div className="space-y-1 py-3">
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <code className="block break-all text-xs text-foreground">{path}</code>
     </div>
   )
 }

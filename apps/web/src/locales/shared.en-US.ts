@@ -20,11 +20,10 @@ export default {
     models: "Models",
     about: "About",
     githubSupport: "Support ZoeyMind",
-    productDescription: "A local functional test-case editor for QA teams",
     firstSaveDefaultDirectory: "Default directory for first save",
     modelsConfigFile: "Model configuration",
-    githubSupportDescription:
-      "If ZoeyMind helps you, star the repo on GitHub so more QA folks can find it.",
+    diagnostics: "Diagnostics",
+    diagnosticsDescription: "Local file locations and runtime logs.",
     githubSupportAction: "Star on GitHub",
     window: {
       title: "Window",

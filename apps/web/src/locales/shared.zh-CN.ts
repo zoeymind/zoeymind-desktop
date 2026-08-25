@@ -20,11 +20,10 @@ export default {
     models: "模型",
     about: "关于",
     githubSupport: "支持 ZoeyMind",
-    productDescription: "面向测试人员的本地功能测试用例编辑器",
     firstSaveDefaultDirectory: "首次保存默认目录",
     modelsConfigFile: "模型配置文件",
-    githubSupportDescription:
-      "如果 ZoeyMind 对你有帮助，欢迎去 GitHub 点个 Star，让更多测试同行找到它。",
+    diagnostics: "诊断信息",
+    diagnosticsDescription: "本地文件位置与运行日志。",
     githubSupportAction: "去 GitHub Star",
     window: {
       title: "窗口",
