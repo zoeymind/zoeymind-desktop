@@ -23,7 +23,6 @@ import { MessageView } from "./components/messageView"
 import { InputView } from "./components/inputView"
 import { ActivePromptsIndicator } from "./components/ActivePromptsIndicator"
 import { ChatHistoryPanel } from "./components/historyView/ChatHistoryPanel"
-import { AIChatSettingsDialog } from "./components/inputView/AIChatSettingsDialog"
 import { LOCAL_AI_TOOLS } from "./local-tools"
 import { PromptManagerModal } from "./components/PromptManager/PromptManagerModal"
 import { usePromptsQuery } from "./hooks/usePrompts"
@@ -37,9 +36,8 @@ import { useAIChatV2Store } from "./stores/useAIChatV2Store"
 import { useAIChatRuntime } from "./context/ai-chat-runtime"
 import { useMCPStore } from "../useMCPStore"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
-import { cn, useSettingsDialog } from "@/shared/app-shared"
+import { cn } from "@/shared/app-shared"
 import { useTranslation } from "@zoeymind/i18n"
-import { getMindmapContextEnabled, setMindmapContextEnabled } from "./hooks/useUserPrompt"
 import { useQuestionToolUI } from "./tools/ui-handlers/QuestionToolUI"
 import { useDocumentEditApprovalToolUI } from "./tools/ui-handlers/useDocumentEditApprovalToolUI"
 import { useUIStore } from "@/products/mind/stores"
@@ -80,10 +78,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const createNewConversation = useAIChatV2Store(s => s.createNewConversation)
   const loadConversation = useAIChatV2Store(s => s.loadConversation)
   const setMergedUserPrompt = useAIChatV2Store(s => s.setMergedUserPrompt)
-  const showSettings = useAIChatV2Store(s => s.showSettings)
-  const setShowSettings = useAIChatV2Store(s => s.setShowSettings)
-
-  const openAISettings = useSettingsDialog(state => state.openSettings)
   // 本地提示词库 (sqlite prompts 表). 启用的指令拼进 mergedUserPrompt,
   // 作为 system prompt 前置发给模型.
   const { data: myPromptsData } = usePromptsQuery()
@@ -109,11 +103,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
 
   useQuestionToolUI()
   useDocumentEditApprovalToolUI()
-
-  const [mindmapContextEnabled, setMindmapContextEnabledState] = useState(() => {
-    if (typeof window === "undefined") return true
-    return getMindmapContextEnabled()
-  })
 
   useEffect(() => {
     if (status === "streaming" || status === "submitted") return
@@ -172,16 +161,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
             onClick={handleOpenPromptManager}
             title={t("mindmap.aiChat.core.promptLibrary")}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowSettings(true)}
-            className="rounded-full"
-            title={t("mindmap.aiChat.input.caseReviewSettings")}
-          >
-            <Settings className="size-4 text-muted-foreground" />
-          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -255,15 +234,9 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
               </EmptyMedia>
               <EmptyTitle>{t("mindmap.aiChat.core.aiNotConfigured")}</EmptyTitle>
               <EmptyDescription className="max-w-[320px]">
-                {t("mindmap.aiChat.core.notConfiguredMember")}
+                {t("mindmap.aiChat.core.notConfiguredOpenTitlebarSettings")}
               </EmptyDescription>
             </EmptyHeader>
-            <EmptyContent>
-              <Button onClick={() => openAISettings("ai")}>
-                <Settings data-icon="inline-start" />
-                {t("mindmap.aiChat.core.configureAI")}
-              </Button>
-            </EmptyContent>
           </Empty>
         ) : messages.length === 0 ? (
           <Empty className="h-full rounded-none border-0">
@@ -387,15 +360,6 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
         />
       </div>
       <PromptManagerModal isOpen={showPromptManager} onClose={() => setShowPromptManager(false)} />
-      <AIChatSettingsDialog
-        open={showSettings}
-        onOpenChange={setShowSettings}
-        mindmapContextEnabled={mindmapContextEnabled}
-        onMindmapContextEnabledChange={enabled => {
-          setMindmapContextEnabled(enabled)
-          setMindmapContextEnabledState(enabled)
-        }}
-      />
     </div>
   )
 

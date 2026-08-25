@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { Loader2, PanelLeft } from "lucide-react"
 import { MindMapCanvas } from "@/products/mind/features/mindmap/components/MindMapCanvas"
 import { ProjectListPage } from "@/products/mind/features/mindmap/pages/ProjectsPage"
-import { TestCaseRulesPage } from "@/products/mind/features/mindmap/pages/TestCaseRulesPage"
+import { HelpPage, type HelpPageId } from "@/products/mind/features/mindmap/pages/HelpPage"
 import {
   ProjectsSidebar,
   type ProjectView,
@@ -81,16 +81,16 @@ function HomePane({ visible }: { visible: boolean }) {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [searchText, setSearchText] = useState("")
-  const [rulesOpen, setRulesOpen] = useState(false)
+  const [helpPage, setHelpPage] = useState<HelpPageId | null>(null)
 
   const handleViewChange = useCallback((next: ProjectView) => {
-    setRulesOpen(false)
+    setHelpPage(null)
     setActiveView(next)
     setActiveFolderId(null)
   }, [])
 
   const handleSelectFolder = useCallback((id: string) => {
-    setRulesOpen(false)
+    setHelpPage(null)
     setActiveView("folder")
     setActiveFolderId(id)
   }, [])
@@ -106,8 +106,8 @@ function HomePane({ visible }: { visible: boolean }) {
         activeFolderId={activeFolderId}
         onViewChange={handleViewChange}
         onSelectFolder={handleSelectFolder}
-        rulesOpen={rulesOpen}
-        onOpenRules={() => setRulesOpen(true)}
+        helpPage={helpPage}
+        onOpenHelp={setHelpPage}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(v => !v)}
       />
@@ -121,8 +121,8 @@ function HomePane({ visible }: { visible: boolean }) {
         </button>
       )}
       <div className="flex min-h-0 min-w-0 flex-1">
-        {rulesOpen ? (
-          <TestCaseRulesPage onClose={() => setRulesOpen(false)} />
+        {helpPage ? (
+          <HelpPage page={helpPage} onClose={() => setHelpPage(null)} />
         ) : (
           <ProjectListPage
             view={activeView}

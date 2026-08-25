@@ -21,9 +21,12 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Server,
   Settings2,
+  Sparkles,
   Star,
   Trash2,
+  Workflow,
 } from "lucide-react"
 import {
   Button,
@@ -44,6 +47,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   SettingsShell,
   cn,
 } from "@zoeymind/ui"
@@ -59,7 +63,13 @@ import {
   type ModelEntry,
   type ProviderKind,
 } from "@/shared/native"
-import { PreferencesSettingsSection } from "./settings-preference-sections"
+import {
+  EditorSettingsSection,
+  LogSettingsSection,
+  PreferencesSettingsSection,
+} from "./settings-preference-sections"
+import { AIAgentSettingsSection, SettingsSectionCard } from "./settings-ai-agent-sections"
+import { MCPTab } from "@/products/mind/x/ai-chat/settings/MCPTab"
 
 const PROVIDER_KIND_OPTIONS: Array<{ value: ProviderKind; label: string }> = [
   { value: "openai", label: "OpenAI" },
@@ -72,7 +82,7 @@ const PROVIDER_KIND_OPTIONS: Array<{ value: ProviderKind; label: string }> = [
 const kindLabel = (k: ProviderKind): string =>
   PROVIDER_KIND_OPTIONS.find(o => o.value === k)?.label ?? k
 
-type SectionId = "preferences" | "ai" | "about"
+type SectionId = "preferences" | "editor" | "ai" | "agent" | "mcp" | "about"
 
 interface SettingsDialogProps {
   open: boolean
@@ -108,7 +118,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       title={t("settings.title")}
       items={[
         { id: "preferences", label: t("settings.preferences"), icon: Settings2 },
+        { id: "editor", label: t("settings.editor"), icon: Workflow },
         { id: "ai", label: t("settings.aiModels"), icon: Bot },
+        { id: "agent", label: t("settings.aiAgent"), icon: Sparkles },
+        { id: "mcp", label: t("settings.mcp"), icon: Server },
         { id: "about", label: t("settings.about"), icon: Info },
       ]}
       activeId={active}
@@ -116,6 +129,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       contentClassName={active === "ai" ? "overflow-hidden p-0" : undefined}
     >
       {active === "preferences" && <PreferencesSettingsSection />}
+      {active === "editor" && <EditorSettingsSection />}
       {active === "ai" && cfg && (
         <AIModelsSection
           cfg={cfg}
@@ -123,6 +137,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           cacheVersion={cacheVersion}
           onFetch={bumpCache}
         />
+      )}
+      {active === "agent" && <AIAgentSettingsSection />}
+      {active === "mcp" && (
+        <SettingsSectionCard
+          title={t("mindmap.aiChat.input.tabMcp")}
+          description={t("mindmap.aiChat.settings.tab.configDescription")}
+        >
+          <MCPTab />
+        </SettingsSectionCard>
       )}
       {active === "about" && <AboutSection />}
     </SettingsShell>
@@ -758,42 +781,46 @@ function ModelEditor({
 function AboutSection() {
   const { t } = useTranslation()
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-base font-semibold text-balance">ZoeyMind Desktop</h2>
-        <p className="text-sm text-muted-foreground">本地思维导图编辑器</p>
-      </div>
+    <div className="space-y-8">
+      <section className="space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-balance text-base font-semibold">ZoeyMind Desktop</h2>
+          <p className="text-sm text-muted-foreground">{t("settings.productDescription")}</p>
+        </div>
 
-      <div className="rounded-lg border bg-muted/30 p-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-medium">{t("settings.githubSupport")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("settings.githubSupportDescription")}
-            </p>
+        <div className="rounded-lg border bg-muted/30 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{t("settings.githubSupport")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("settings.githubSupportDescription")}
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => void openGitHubSupport()}>
+              <Star fill="currentColor" />
+              {t("settings.githubSupportAction")}
+            </Button>
           </div>
-          <Button variant="outline" onClick={() => void openGitHubSupport()}>
-            <Star fill="currentColor" />
-            {t("settings.githubSupportAction")}
-          </Button>
         </div>
-      </div>
 
-      <div className="rounded-lg border p-4">
-        <AppVersionStatus variant="detail" />
-      </div>
+        <div className="rounded-lg border p-4">
+          <AppVersionStatus variant="detail" />
+        </div>
 
-      <div className="divide-y text-sm">
-        <div className="flex items-center justify-between gap-6 py-3">
-          <span className="text-muted-foreground">数据目录</span>
-          <code className="text-xs">~/Documents/ZoeyMind</code>
+        <div className="divide-y text-sm">
+          <div className="flex items-center justify-between gap-6 py-3">
+            <span className="text-muted-foreground">{t("settings.firstSaveDefaultDirectory")}</span>
+            <code className="text-xs">&lt;Documents&gt;/ZoeyMind</code>
+          </div>
+          <div className="flex items-center justify-between gap-6 py-3">
+            <span className="text-muted-foreground">{t("settings.modelsConfigFile")}</span>
+            <code className="text-xs">&lt;appData&gt;/models.json</code>
+          </div>
         </div>
-        <div className="flex items-center justify-between gap-6 py-3">
-          <span className="text-muted-foreground">配置文件</span>
-          <code className="text-xs">&lt;appData&gt;/models.json</code>
-        </div>
-      </div>
-    </section>
+      </section>
+      <Separator />
+      <LogSettingsSection />
+    </div>
   )
 }
 

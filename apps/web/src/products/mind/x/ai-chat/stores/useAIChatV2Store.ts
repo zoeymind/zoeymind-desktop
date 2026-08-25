@@ -69,9 +69,6 @@ interface AIchatV2State {
   // UI 状态
   showScrollToBottom: boolean
 
-  // 设置弹窗状态
-  showSettings: boolean
-
   // RAG 知识库选择状态
   selectedKnowledgeBaseIds: string[]
 
@@ -90,7 +87,6 @@ interface AIchatV2State {
   setShowHistory: (show: boolean) => void
   setConversations: (conversations: Conversation[]) => void
   setShowScrollToBottom: (show: boolean) => void
-  setShowSettings: (show: boolean) => void
   setSelectedKnowledgeBaseIds: (ids: string[]) => void
   setMergedUserPrompt: (prompt: string) => void
   restoreInput: () => void
@@ -121,7 +117,6 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   showHistory: false,
   conversations: [],
   showScrollToBottom: false,
-  showSettings: false,
   selectedKnowledgeBaseIds: [],
   abortedMessageId: null,
   interruptedToolCallIds: [],
@@ -174,12 +169,6 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
     const current = get()
     if (current.showScrollToBottom !== show) {
       set({ showScrollToBottom: show })
-    }
-  },
-  setShowSettings: show => {
-    const current = get()
-    if (current.showSettings !== show) {
-      set({ showSettings: show })
     }
   },
   setMergedUserPrompt: prompt => {

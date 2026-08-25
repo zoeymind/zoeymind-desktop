@@ -6,7 +6,7 @@
 
 import React from "react"
 import { useTranslation } from "@zoeymind/i18n"
-import { Sparkles, GripVertical, Plus, History, Settings } from "lucide-react"
+import { Sparkles, GripVertical, Plus, History } from "lucide-react"
 import { AIchatV2 } from "../ai-chat"
 import { ContextUsageIndicator } from "../ai-chat/components/ContextUsageIndicator"
 import { ChatHistoryPanel } from "../ai-chat/components/historyView/ChatHistoryPanel"
@@ -45,7 +45,6 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
   const totalTokenUsage = useAIChatV2Store(s => s.totalTokenUsage)
   const createNewConversation = useAIChatV2Store(s => s.createNewConversation)
   const loadConversation = useAIChatV2Store(s => s.loadConversation)
-  const setShowSettings = useAIChatV2Store(s => s.setShowSettings)
   const runtime = useAIChatRuntime()
   const isProcessing = runtime.status === "submitted" || runtime.status === "streaming"
   const { contextBudget } = useModelSelector()
@@ -109,14 +108,6 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
 
           {/* 操作按钮 */}
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setShowSettings(true)}
-              className="flex items-center justify-center size-6 rounded hover:bg-muted transition-colors"
-              title={t("mindmap.aiChat.input.caseReviewSettings")}
-            >
-              <Settings className="size-3 text-muted-foreground" />
-            </button>
             <button
               type="button"
               onClick={handleCreateNewConversation}

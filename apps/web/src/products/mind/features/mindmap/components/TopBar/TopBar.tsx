@@ -6,7 +6,6 @@ import { AlertTriangle, Flag } from "lucide-react"
 import { HeaderSaveButton } from "../HeaderSaveButton"
 import { TopMoreDropDown } from "./TopMoreDropDown"
 import { TopSearch } from "./TopSearch"
-import { ShortcutModal } from "./ShortcutModal"
 import { projectDB } from "@/shared/mindmap-bridge"
 import { useUIStore } from "@/products/mind/stores"
 import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
@@ -27,7 +26,6 @@ import { EditorSidebarTooltipContent } from "../EditorSidebarTooltipContent"
 import { useCanvasData } from "@/products/mind/features/mindmap/hooks/useCanvasData"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zoeymind/ui"
 import { useMindMapModules } from "@/products/mind/features/mindmap/hooks/useMindMapModules"
-import { SettingsModal } from "./SettingsModal"
 import { IMPORT_ACCEPT } from "@/products/mind/features/mindmap/utils/fileFormats"
 
 // 存储 key
@@ -49,8 +47,6 @@ export const TopBar: FC<TopBarProps> = () => {
   const { isSearchActive, searchInitialText, endSearch } = useUIStore()
   const [activeTab, setActiveTab] = useState<"menu" | "search" | null>(null)
   const effectiveActiveTab = isSearchActive ? "search" : activeTab
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
-  const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false)
 
   // 使用 useMindMapModules 获取模块列表
   const { moduleList, refreshModules } = useMindMapModules(mindMap)
@@ -104,15 +100,6 @@ export const TopBar: FC<TopBarProps> = () => {
       })
       .catch(error => logger.error("获取本地项目标题失败:", error))
   }, [workspaceId, setStoreTitle])
-
-  // 处理快捷键模态框
-  const handleShowShortcuts = () => {
-    setIsShortcutModalOpen(true)
-  }
-
-  const handleCloseShortcutModal = () => {
-    setIsShortcutModalOpen(false)
-  }
 
   // 处理搜索关闭
   const handleCloseSearch = () => {
@@ -181,8 +168,6 @@ export const TopBar: FC<TopBarProps> = () => {
                     isActive={effectiveActiveTab === "menu"}
                     cloudMode={false}
                     onShowSearch={() => setActiveTab("search")}
-                    onShowSettings={() => setIsSettingsModalOpen(true)}
-                    onShowShortcuts={handleShowShortcuts}
                     onClose={() => setActiveTab(null)}
                     onImport={() => {
                       setSelectedImportTargetNodeId(undefined)
@@ -207,12 +192,6 @@ export const TopBar: FC<TopBarProps> = () => {
           </FloatingToolbarGroup>
         </FloatingToolbar>
       </TooltipProvider>
-
-      {/* 设置模态框 */}
-      <SettingsModal open={isSettingsModalOpen} onOpenChange={setIsSettingsModalOpen} />
-
-      {/* 快捷键模态框 */}
-      <ShortcutModal isOpen={isShortcutModalOpen} onClose={handleCloseShortcutModal} />
 
       {/* 文件输入（隐藏） */}
       <input

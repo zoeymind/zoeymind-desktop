@@ -1,11 +1,29 @@
-/** Desktop project sidebar: local projects, favorites, folders, and test-case rules. */
-import { BookOpen, LayoutGrid, Star, PanelLeftClose } from "lucide-react"
-import { cn, Button } from "@zoeymind/ui"
+/** Desktop project sidebar: local projects, favorites, folders, and help. */
+import {
+  BookOpen,
+  ChevronRight,
+  CircleHelp,
+  Keyboard,
+  LayoutGrid,
+  Server,
+  Star,
+  PanelLeftClose,
+  Terminal,
+} from "lucide-react"
+import {
+  Button,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@zoeymind/ui"
 import { useTranslation } from "@zoeymind/i18n"
 import { NewProjectMenu } from "./NewProjectMenu"
 import { SidebarFolders } from "./SidebarFolders"
 import brandLogo from "@/assets/logo.svg?url"
 import { AppVersionStatus } from "@/shared/app-shared"
+import type { HelpPageId } from "@/products/mind/features/mindmap/pages/HelpPage"
 
 export type ProjectView = "all" | "favorited" | "folder"
 
@@ -15,8 +33,8 @@ interface ProjectsSidebarProps {
   onViewChange: (view: ProjectView) => void
   onSelectFolder: (id: string) => void
   onCreated?: () => void
-  rulesOpen: boolean
-  onOpenRules: () => void
+  helpPage: HelpPageId | null
+  onOpenHelp: (page: HelpPageId) => void
   collapsed: boolean
   onToggleCollapse: () => void
 }
@@ -33,8 +51,8 @@ export function ProjectsSidebar({
   onViewChange,
   onSelectFolder,
   onCreated,
-  rulesOpen,
-  onOpenRules,
+  helpPage,
+  onOpenHelp,
   collapsed,
   onToggleCollapse,
 }: ProjectsSidebarProps) {
@@ -101,25 +119,71 @@ export function ProjectsSidebar({
           />
         </nav>
         <div className="shrink-0 border-t border-border/50 px-2 py-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onOpenRules}
-            className={cn(
-              "h-9 w-full justify-start gap-2.5 rounded-md px-2.5 text-sm",
-              rulesOpen
-                ? "bg-accent font-medium text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50"
-            )}
-          >
-            <BookOpen className="size-4 shrink-0" aria-hidden="true" />
-            {t("projects.rules.entry")}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              nativeButton
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={cn(
+                    "h-9 w-full justify-start gap-2.5 rounded-md px-2.5 text-sm",
+                    helpPage
+                      ? "bg-accent font-medium text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50"
+                  )}
+                >
+                  <CircleHelp className="size-4 shrink-0" />
+                  {t("projects.help.entry")}
+                  <ChevronRight className="ml-auto size-3.5" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent side="right" align="end" className="w-52">
+              <HelpMenuItem
+                icon={BookOpen}
+                label={t("projects.rules.entry")}
+                onClick={() => onOpenHelp("rules")}
+              />
+              <HelpMenuItem
+                icon={Terminal}
+                label={t("projects.help.cli.entry")}
+                onClick={() => onOpenHelp("cli")}
+              />
+              <HelpMenuItem
+                icon={Server}
+                label={t("projects.help.mcp.entry")}
+                onClick={() => onOpenHelp("mcp")}
+              />
+              <HelpMenuItem
+                icon={Keyboard}
+                label={t("projects.help.shortcuts.entry")}
+                onClick={() => onOpenHelp("shortcuts")}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex shrink-0 items-center border-t border-border/50 px-2 py-1">
           <AppVersionStatus className="justify-start" />
         </div>
       </div>
     </aside>
+  )
+}
+
+function HelpMenuItem({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof BookOpen
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <DropdownMenuItem onClick={onClick} className="gap-2">
+      <Icon className="size-4" />
+      {label}
+    </DropdownMenuItem>
   )
 }

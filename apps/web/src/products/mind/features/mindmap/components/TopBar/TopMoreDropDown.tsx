@@ -6,7 +6,7 @@
  *   ─────
  *   保存 / 另存为
  *   ─────
- *   搜索 / 快捷键 / 设置 / 导入 ▸ / 导出 ▸ / 清空
+ *   搜索 / 导入 / 导出 / 清空
  */
 import { logger } from "@zoeymind/logger"
 import { type FC, useCallback } from "react"
@@ -17,11 +17,9 @@ import {
   FolderOpen,
   History,
   Import,
-  Keyboard,
   Save,
   SaveAll,
   Search,
-  Settings,
   Trash2,
   Upload,
 } from "lucide-react"
@@ -51,8 +49,6 @@ import { useRecentProjects } from "@/products/mind/features/mindmap/hooks/useRec
 interface TopMoreDropDownProps {
   isActive: boolean
   onShowSearch: () => void
-  onShowSettings: () => void
-  onShowShortcuts: () => void
   onClose: () => void
   onImport: () => void
   onClear: () => void
@@ -63,8 +59,6 @@ interface TopMoreDropDownProps {
 export const TopMoreDropDown: FC<TopMoreDropDownProps> = ({
   isActive,
   onShowSearch,
-  onShowSettings,
-  onShowShortcuts,
   onClose,
   onImport,
   onClear,
@@ -203,16 +197,6 @@ export const TopMoreDropDown: FC<TopMoreDropDownProps> = ({
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={() => {
-          onShowShortcuts()
-          onClose()
-        }}
-        className="flex items-center gap-2"
-      >
-        <Keyboard className="size-4" />
-        <span>{t("mindmap.topbar.more.shortcuts")}</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        onClick={() => {
           onImport()
           onClose()
         }}
@@ -220,16 +204,6 @@ export const TopMoreDropDown: FC<TopMoreDropDownProps> = ({
       >
         <Import className="size-4" />
         <span>{t("mindmap.topbar.more.import")}</span>
-      </DropdownMenuItem>
-      <DropdownMenuItem
-        onClick={() => {
-          onShowSettings()
-          onClose()
-        }}
-        className="flex items-center gap-2"
-      >
-        <Settings className="size-4" />
-        <span>{t("common.settings")}</span>
       </DropdownMenuItem>
 
       <DropdownMenuSub>

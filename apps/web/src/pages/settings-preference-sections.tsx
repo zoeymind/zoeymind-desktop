@@ -61,10 +61,7 @@ export function PreferencesSettingsSection() {
       <Separator />
       <ThemePresetSettingsSection />
       <Separator />
-      <EditorSettingsSection />
-      <Separator />
       <WindowSettingsSection />
-      <LogSettingsSection />
     </div>
   )
 }
@@ -332,7 +329,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
-function LogSettingsSection() {
+export function LogSettingsSection() {
   const { t } = useTranslation()
   const [info, setInfo] = useState<LogInfo | null>(null)
   const [busy, setBusy] = useState(false)
