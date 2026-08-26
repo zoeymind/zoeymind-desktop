@@ -2,12 +2,12 @@ import { deleteDB, openDB } from "idb"
 import type { UIMessage } from "ai"
 import { logger } from "@zoeymind/logger"
 import type {
-  ChatDBService,
+  SqliteChatStore,
   CompactionState,
   Conversation,
   MessageEmbedding,
   SqlAdapter,
-} from "./chatDB"
+} from "./sqliteChatStore"
 
 const LEGACY_DATABASE = "zoey-chat-v2"
 const MIGRATION_KEY = "indexeddb-chat-v1"
@@ -71,7 +71,10 @@ async function databaseExists(name: string): Promise<boolean> {
   return databases.some(database => database.name === name)
 }
 
-export async function importLegacyChatData(service: ChatDBService, sql: SqlAdapter): Promise<void> {
+export async function migrateIndexedDbToSqlite(
+  service: SqliteChatStore,
+  sql: SqlAdapter
+): Promise<void> {
   const marker = await sql.select<{ migration_key: string }>(
     "SELECT migration_key FROM chat_storage_migrations WHERE migration_key = $1",
     [MIGRATION_KEY]

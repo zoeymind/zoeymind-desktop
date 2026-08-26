@@ -48,11 +48,15 @@ export function resolveDefaultChatModel(cfg: ModelsConfig): {
   return { entry, provider }
 }
 
-export function resolveContextBudget(entry: ModelEntry): ResolvedContextBudget {
+export function resolveContextBudget(
+  entry: ModelEntry,
+  compactionThresholdPercent = 85
+): ResolvedContextBudget {
   const contextWindow = entry.maxContextTokens ?? 128_000
   const maxOutputTokens = entry.maxOutputTokens ?? 4_096
   const reserveTokens = Math.max(maxOutputTokens, Math.floor(contextWindow * 0.15))
-  const triggerTokens = Math.max(1, contextWindow - reserveTokens)
+  const normalizedThreshold = Math.min(95, Math.max(50, compactionThresholdPercent))
+  const triggerTokens = Math.max(1, Math.floor(contextWindow * (normalizedThreshold / 100)))
   const keepRecentTokens = Math.min(16_000, Math.max(4_000, Math.floor(contextWindow * 0.1)))
   return { contextWindow, maxOutputTokens, reserveTokens, triggerTokens, keepRecentTokens }
 }

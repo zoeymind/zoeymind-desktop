@@ -5,7 +5,7 @@ import {
   CompactionUnavailableError,
   type ContextCompactorDependencies,
 } from "./ContextCompactor"
-import type { CompactionState } from "../storage/chatDB"
+import type { CompactionState } from "../storage/sqliteChatStore"
 import type { ModelsConfig } from "@/shared/native"
 
 const config: ModelsConfig = {
@@ -49,7 +49,7 @@ function dependencies(options?: { fail?: boolean }) {
       if (options?.fail) throw new Error("summary failed")
       return "<thinking>hidden</thinking>## 1. 用户的总意图\n继续"
     },
-    now: () => 10,
+    now: vi.fn().mockReturnValueOnce(10).mockReturnValue(1_510),
     createId: () => "id",
   }
   return { deps, commit, getState: () => state }
@@ -69,6 +69,9 @@ describe("ContextCompactor", () => {
     expect(result.compacted).toBe(true)
     expect(result.messages[0].role).toBe("user")
     expect(result.state?.summary).not.toContain("thinking")
+    expect(result.state).toMatchObject({ durationMs: 1_500 })
+    expect(result.state?.tokensAfter).toBeGreaterThan(0)
+    expect(result.state?.tokensAfter).toBeLessThan(result.state?.tokensBefore ?? 0)
     expect(fixture.commit).toHaveBeenCalledWith(
       "conversation",
       expect.arrayContaining([

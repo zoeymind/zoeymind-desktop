@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { UIMessage } from "@ai-sdk/react"
 import { setModuleAIChatRuntime } from "../context/ai-chat-runtime"
-import { chatDB } from "../storage/chatDB"
+import { sqliteChatStore } from "../storage/sqliteChatStore"
 import { useAIChatV2Store } from "./useAIChatV2Store"
 
 const targetMessage: UIMessage = {
@@ -26,11 +26,11 @@ describe("AI chat resume resend", () => {
     const loadGate = new Promise<void>(resolve => {
       releaseLoad = resolve
     })
-    vi.spyOn(chatDB, "loadConversationState").mockImplementation(async () => {
+    vi.spyOn(sqliteChatStore, "loadConversationState").mockImplementation(async () => {
       await loadGate
       return { transcript: [targetMessage], compaction: null }
     })
-    vi.spyOn(chatDB, "truncateConversation").mockResolvedValue()
+    vi.spyOn(sqliteChatStore, "truncateConversation").mockResolvedValue()
 
     const sendMessage = vi.fn()
     const setMessages = vi.fn()

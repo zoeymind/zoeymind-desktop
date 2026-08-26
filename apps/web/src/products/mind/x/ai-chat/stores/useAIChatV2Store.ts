@@ -7,8 +7,8 @@
 import { create } from "zustand"
 import { logger } from "@zoeymind/logger"
 import type { Attachment, SendMessageParams, TokenUsage } from "../../ai-chat/types"
-import { chatDB } from "../../ai-chat/storage/chatDB"
-import type { Conversation } from "../../ai-chat/storage/chatDB"
+import { sqliteChatStore } from "../storage/sqliteChatStore"
+import type { Conversation } from "../storage/sqliteChatStore"
 import { getModuleAIChatRuntime } from "../../ai-chat/context/ai-chat-runtime"
 import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
 import { resetToolUI, restorePendingFromMessages } from "../../ai-chat/context/ToolUIRegistry"
@@ -189,7 +189,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       // 保存到当前会话
       if (current.currentConversationId) {
         try {
-          await chatDB.updateConversation(current.currentConversationId, {
+          await sqliteChatStore.updateConversation(current.currentConversationId, {
             selectedKnowledgeBaseIds: ids.length > 0 ? ids : undefined,
           })
         } catch (error) {
@@ -260,7 +260,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
         conversationId = get().currentConversationId
         // 创建新会话后，保存当前的知识库选择
         if (conversationId && selectedKnowledgeBaseIds.length > 0) {
-          await chatDB.updateConversation(conversationId, {
+          await sqliteChatStore.updateConversation(conversationId, {
             selectedKnowledgeBaseIds,
           })
         }
@@ -355,7 +355,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       let messageIndex = messages.findIndex(message => message.id === messageId)
 
       if (messageIndex === -1 && conversationId) {
-        const persisted = await chatDB.loadConversationState(conversationId)
+        const persisted = await sqliteChatStore.loadConversationState(conversationId)
         messages = persisted.transcript
         messageIndex = messages.findIndex(message => message.id === messageId)
       }
@@ -377,7 +377,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
         await get().createNewConversation(workspaceId)
         conversationId = get().currentConversationId
         if (conversationId && selectedKnowledgeBaseIds.length > 0) {
-          await chatDB.updateConversation(conversationId, {
+          await sqliteChatStore.updateConversation(conversationId, {
             selectedKnowledgeBaseIds,
           })
         }
@@ -387,8 +387,8 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       runtime.setMessages(baseMessages)
 
       if (conversationId) {
-        await chatDB.truncateConversation(conversationId, baseMessages)
-        const loaded = await chatDB.loadConversationState(conversationId)
+        await sqliteChatStore.truncateConversation(conversationId, baseMessages)
+        const loaded = await sqliteChatStore.loadConversationState(conversationId)
         useCompactionStore.getState().setCompaction(loaded.compaction)
       }
 
@@ -418,7 +418,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   // 创建新对话
   createNewConversation: async workspaceId => {
     try {
-      const newConv = await chatDB.createConversation(workspaceId)
+      const newConv = await sqliteChatStore.createConversation(workspaceId)
       useCompactionStore.getState().reset()
       set({
         currentConversationId: newConv.id,
@@ -439,8 +439,8 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   // 加载对话
   loadConversation: async conversationId => {
     try {
-      const { transcript, compaction } = await chatDB.loadConversationState(conversationId)
-      const conversation = await chatDB.getConversation(conversationId)
+      const { transcript, compaction } = await sqliteChatStore.loadConversationState(conversationId)
+      const conversation = await sqliteChatStore.getConversation(conversationId)
 
       const knowledgeBaseIds =
         conversation?.selectedKnowledgeBaseIds || conversation?.selectedRAGDataSources || []
@@ -470,11 +470,11 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   // 加载所有对话
   loadConversations: async workspaceId => {
     try {
-      const convs = await chatDB.getConversations(workspaceId)
+      const convs = await sqliteChatStore.getConversations(workspaceId)
       // 获取每条对话的消息数量
       const convsWithCounts = await Promise.all(
         convs.map(async conv => {
-          const messages = await chatDB.loadMessages(conv.id)
+          const messages = await sqliteChatStore.loadMessages(conv.id)
           return { ...conv, messageCount: messages.length }
         })
       )
@@ -487,7 +487,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   // 删除对话
   deleteConversation: async (conversationId, workspaceId) => {
     try {
-      await chatDB.deleteConversation(conversationId)
+      await sqliteChatStore.deleteConversation(conversationId)
 
       // 重新加载对话列表
       await get().loadConversations(workspaceId)

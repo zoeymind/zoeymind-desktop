@@ -7,7 +7,7 @@ import { useTranslation } from "@zoeymind/i18n"
 import { motion, AnimatePresence } from "motion/react"
 import { MessageSquare, Trash2, ChevronUp } from "lucide-react"
 import { logger } from "@zoeymind/logger"
-import { chatDB, type Conversation as DBConversation } from "../../../ai-chat/storage/chatDB"
+import { sqliteChatStore, type Conversation as DBConversation } from "../../storage/sqliteChatStore"
 import { formatRelativeTime } from "../../../ai-chat/utils/timeFormat"
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
 
@@ -48,11 +48,11 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
   const loadConversations = useCallback(async () => {
     try {
       setLoading(true)
-      const convs = await chatDB.getConversations(workspaceId)
+      const convs = await sqliteChatStore.getConversations(workspaceId)
       const conversationsWithCount = await Promise.all(
         convs.map(async conv => ({
           ...conv,
-          messageCount: (await chatDB.loadMessages(conv.id)).length,
+          messageCount: (await sqliteChatStore.loadMessages(conv.id)).length,
         }))
       )
       setConversations(conversationsWithCount)
@@ -140,7 +140,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
     setDeleteDialog(prev => ({ ...prev, loading: true }))
 
     try {
-      await chatDB.deleteConversation(deleteDialog.conversationId)
+      await sqliteChatStore.deleteConversation(deleteDialog.conversationId)
 
       // 重新加载对话列表
       await loadConversations()

@@ -17,14 +17,26 @@ interface CompactSummaryCardProps {
   compactedCount?: number
   /** 压缩用的模型 id, 给用户看 */
   modelId?: string
+  tokensBefore?: number
+  tokensAfter?: number
+  durationMs?: number
 }
 
-export function CompactSummaryCard({ text, compactedCount, modelId }: CompactSummaryCardProps) {
+export function CompactSummaryCard({
+  text,
+  compactedCount,
+  modelId,
+  tokensBefore,
+  tokensAfter,
+  durationMs,
+}: CompactSummaryCardProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
 
   // 剥离 COMPACTION_HEADER 前缀 (📦 [...] ), 卡片自带 banner, 不需要重复
   const body = text.replace(/^📦\s*\[[^\]]+\]\s*\n+/, "").trim()
+
+  const durationSeconds = durationMs === undefined ? undefined : Math.max(0, durationMs / 1_000)
 
   return (
     <div className="relative group flex flex-col items-start w-full">
@@ -42,6 +54,23 @@ export function CompactSummaryCard({ text, compactedCount, modelId }: CompactSum
             {compactedCount !== undefined && (
               <span className="text-muted-foreground flex-shrink-0">
                 · {t("mindmap.aiChat.compaction.bannerCount", { count: compactedCount })}
+              </span>
+            )}
+            {tokensBefore !== undefined && tokensAfter !== undefined && (
+              <span className="text-muted-foreground flex-shrink-0 tabular-nums">
+                {"· "}
+                {t("mindmap.aiChat.compaction.tokenMetrics", {
+                  before: Math.round(tokensBefore).toLocaleString(),
+                  after: Math.round(tokensAfter).toLocaleString(),
+                })}
+              </span>
+            )}
+            {durationSeconds !== undefined && (
+              <span className="text-muted-foreground flex-shrink-0 tabular-nums">
+                {"· "}
+                {t("mindmap.aiChat.compaction.durationMetric", {
+                  seconds: durationSeconds.toFixed(1),
+                })}
               </span>
             )}
           </div>

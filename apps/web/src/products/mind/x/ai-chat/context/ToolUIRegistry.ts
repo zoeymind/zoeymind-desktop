@@ -221,7 +221,7 @@ export function resetToolUI(): void {
  * 从历史 messages 里扫"未答的 tool call", 重新入队到 pending 队列.
  *
  * 用途:
- *   - 用户刷新页面 / 重开 app → useChat 内存态丢, 但 messages 已经持久化到 chatDB
+ *   - 用户刷新页面 / 重开 app → useChat 内存态丢, 但 messages 已持久化到 SQLite chat store
  *   - 历史 messages 里如果有 input-available 但没 output 的 tool part, 说明用户
  *     还没回答 → 重新弹出 UI 让用户接着填
  *   - 内部去重 (tryEnqueue 会检查 toolCallId), 重复调用安全

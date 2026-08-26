@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useAIChatV2Store } from "../../ai-chat/stores/useAIChatV2Store"
-import { chatDB } from "../../ai-chat/storage/chatDB"
+import { sqliteChatStore } from "../storage/sqliteChatStore"
 import { logger } from "@zoeymind/logger"
 import type { UIMessage } from "@ai-sdk/react"
 import { indexer } from "../../ai-chat/memory/indexer"
@@ -34,7 +34,7 @@ export function useConversationLifecycle({
 
     const timer = setTimeout(async () => {
       try {
-        await chatDB.saveMessages(currentConversationId, messages)
+        await sqliteChatStore.saveMessages(currentConversationId, messages)
         // 增量索引 (indexer 自己去重 + 串行 + 没启用时跳过)
         for (const m of messages) {
           if ((m.metadata as { isCompactSummary?: boolean } | undefined)?.isCompactSummary) continue
@@ -54,7 +54,7 @@ export function useConversationLifecycle({
 
     const init = async () => {
       try {
-        const conversations = await chatDB.getConversations(workspaceId)
+        const conversations = await sqliteChatStore.getConversations(workspaceId)
         const store = useAIChatV2Store.getState()
 
         if (conversations.length > 0) {

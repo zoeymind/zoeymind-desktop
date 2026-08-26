@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai"
 import { execute, select, type Row } from "@/shared/native/db"
-import { importLegacyChatData } from "./legacyChatImport"
+import { migrateIndexedDbToSqlite } from "./indexedDbToSqliteMigration"
 
 export interface Conversation {
   id: string
@@ -35,6 +35,8 @@ export interface CompactionState {
   modelId: string
   compactedCount: number
   tokensBefore: number
+  tokensAfter?: number
+  durationMs?: number
 }
 
 interface ConversationRow extends Row {
@@ -97,14 +99,17 @@ function toConversation(row: ConversationRow): Conversation {
   }
 }
 
-export class ChatDBService {
+export class SqliteChatStore {
   private readyPromise: Promise<void> | null = null
   private readonly sql: SqlAdapter
-  private readonly importLegacy: (service: ChatDBService, sql: SqlAdapter) => Promise<void>
+  private readonly importLegacy: (service: SqliteChatStore, sql: SqlAdapter) => Promise<void>
 
   constructor(
     sql: SqlAdapter = defaultSql,
-    importLegacy: (service: ChatDBService, sql: SqlAdapter) => Promise<void> = importLegacyChatData
+    importLegacy: (
+      service: SqliteChatStore,
+      sql: SqlAdapter
+    ) => Promise<void> = migrateIndexedDbToSqlite
   ) {
     this.sql = sql
     this.importLegacy = importLegacy
@@ -366,7 +371,6 @@ export class ChatDBService {
     )
     for (const embedding of embeddings) await this.putMessageEmbeddingDirect(embedding, false)
   }
-
   private async getConversationDirect(conversationId: string): Promise<Conversation | undefined> {
     const rows = await this.sql.select<ConversationRow>(
       `SELECT c.*, s.workspace_id, s.selected_knowledge_base_ids_json, s.snapshot_json
@@ -376,7 +380,6 @@ export class ChatDBService {
     )
     return rows[0] ? toConversation(rows[0]) : undefined
   }
-
   private async ensureRuntimeState(conversationId: string, now: number): Promise<void> {
     await this.sql.execute(
       `INSERT INTO chat_runtime_state (conversation_id, workspace_id, transcript_json, updated_at)
@@ -409,4 +412,4 @@ export class ChatDBService {
   }
 }
 
-export const chatDB = new ChatDBService()
+export const sqliteChatStore = new SqliteChatStore()

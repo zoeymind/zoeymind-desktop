@@ -7,7 +7,7 @@
  * 嵌入是已归一化的 (embedder 里 normalize: true), 所以余弦相似度 = 点积.
  */
 
-import { chatDB, type MessageEmbedding } from "../storage/chatDB"
+import { sqliteChatStore, type MessageEmbedding } from "../storage/sqliteChatStore"
 
 export interface MemoryHit {
   /** 命中分数, 已归一化向量的点积 ∈ [-1, 1] */
@@ -29,7 +29,7 @@ export async function searchSimilar(
   excludeMessageIds: Set<string>,
   scoreThreshold = 0.45
 ): Promise<MemoryHit[]> {
-  const all = await chatDB.getAllMessageEmbeddings()
+  const all = await sqliteChatStore.getAllMessageEmbeddings()
   if (all.length === 0) return []
 
   const dim = query.length

@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { embedder, type EmbedderStatus } from "./embedder"
 import { indexer, type BackfillState } from "./indexer"
-import { chatDB } from "../storage/chatDB"
+import { sqliteChatStore } from "../storage/sqliteChatStore"
 import {
   getMemoryEnabled,
   setMemoryEnabled,
@@ -70,7 +70,7 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
       void embedder.load().then(() => {
         // 模型恢复后, 顺手再次回填一下 (indexer 自己 去重 + 不阻塞)
         if (embedder.getStatus().kind === "ready") {
-          void chatDB.getAllMessagesAcrossConversations().then(msgs => {
+          void sqliteChatStore.getAllMessagesAcrossConversations().then(msgs => {
             void indexer.backfill(msgs)
           })
         }
@@ -85,8 +85,8 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
 
   const refreshStats = useCallback(async () => {
     const [ids, bytes] = await Promise.all([
-      chatDB.getIndexedMessageIds(),
-      chatDB.estimateEmbeddingsBytes(),
+      sqliteChatStore.getIndexedMessageIds(),
+      sqliteChatStore.estimateEmbeddingsBytes(),
     ])
     setStats({ indexedCount: ids.size, storageBytes: bytes })
   }, [])
@@ -107,7 +107,7 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
       }
       // 加载完成后, 异步回填所有已存历史 (不 await, indexer 内部 subscribe 上报进度)
       if (embedder.getStatus().kind === "ready") {
-        void chatDB.getAllMessagesAcrossConversations().then(msgs => {
+        void sqliteChatStore.getAllMessagesAcrossConversations().then(msgs => {
           void indexer.backfill(msgs)
         })
       }
@@ -129,7 +129,7 @@ export function useMemoryStatus(): UseMemoryStatusReturn {
     setModelSourceState(getMirrorHost())
   }, [])
   const clearAll = useCallback(async () => {
-    await chatDB.clearAllEmbeddings()
+    await sqliteChatStore.clearAllEmbeddings()
     await refreshStats()
   }, [refreshStats])
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { UserMessage } from "./UserMessage"
 import { AssistantMessage } from "./AssistantMessage"
 import { CompactSummaryCard } from "./CompactSummaryCard"
+import { CompactionStatusDivider } from "./CompactionStatusDivider"
 import { useCompactionStore } from "../../compaction/useCompactionStore"
 import { logger } from "@zoeymind/logger"
 import { useAIChatRuntime } from "../../../ai-chat/context/ai-chat-runtime"
@@ -39,6 +40,7 @@ export const MessageView: React.FC<MessageViewProps> = ({
   const abortedMessageId = useAIChatV2Store(state => state.abortedMessageId)
   const isProcessing = isChatProcessing(status, messages, abortedMessageId)
   const compaction = useCompactionStore(state => state.compaction)
+  const compactionPhase = useCompactionStore(state => state.phase)
   const [displayCount, setDisplayCount] = useState(MESSAGES_PER_PAGE)
 
   const containerRef = useRef<HTMLElement>(null)
@@ -162,11 +164,15 @@ export const MessageView: React.FC<MessageViewProps> = ({
                 text={compaction.summary}
                 compactedCount={compaction.compactedCount}
                 modelId={resolveModelDisplayName(compaction.modelId, models)}
+                tokensBefore={compaction.tokensBefore}
+                tokensAfter={compaction.tokensAfter}
+                durationMs={compaction.durationMs}
               />
             )}
           </div>
         )
       })}
+      {compactionPhase === "pending" && <CompactionStatusDivider />}
       {/* 等待 spinner (官方判定, docs/research/ai-sdk-chat-streaming.md §4.1):
             - submitted: assistant 消息还没 push 到 messages, 直接显示
             - streaming 但 last assistant 尚无可渲染内容 (含空 text part 瞬态): 显示

@@ -10,7 +10,7 @@
 
 import { embedder } from "./embedder"
 import { toStoredVector } from "./vectorStore"
-import { chatDB, type MessageEmbedding } from "../storage/chatDB"
+import { sqliteChatStore, type MessageEmbedding } from "../storage/sqliteChatStore"
 import { getMemoryEnabled } from "./settings"
 import { logger } from "@zoeymind/logger"
 import type { UIMessage } from "@ai-sdk/react"
@@ -58,7 +58,7 @@ class Indexer {
     if (!getMemoryEnabled()) return
     if (messages.length === 0) return
 
-    const indexed = await chatDB.getIndexedMessageIds()
+    const indexed = await sqliteChatStore.getIndexedMessageIds()
     const pending = messages.filter(m => !indexed.has(m.id))
     if (pending.length === 0) return
 
@@ -95,7 +95,7 @@ class Indexer {
     if (!text.trim()) return
 
     // 跳过已索引
-    const existing = await chatDB.getIndexedMessageIds()
+    const existing = await sqliteChatStore.getIndexedMessageIds()
     if (existing.has(task.message.id)) return
 
     // 确保模型 ready
@@ -115,7 +115,7 @@ class Indexer {
       embedding: toStoredVector(vec),
       timestamp: Date.now(),
     }
-    await chatDB.putMessageEmbedding(entry)
+    await sqliteChatStore.putMessageEmbedding(entry)
   }
 
   private emit(): void {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { UIMessage } from "ai"
-import { ChatDBService, type CompactionState, type SqlAdapter } from "./chatDB"
-import { mergeLegacyTranscript } from "./legacyChatImport"
+import { SqliteChatStore, type CompactionState, type SqlAdapter } from "./sqliteChatStore"
+import { mergeLegacyTranscript } from "./indexedDbToSqliteMigration"
 
 const messages: UIMessage[] = [
   { id: "u1", role: "user", parts: [{ type: "text", text: "one" }] },
@@ -94,18 +94,18 @@ class MemorySql implements SqlAdapter {
   }
 }
 
-function service(sql: MemorySql): ChatDBService {
-  return new ChatDBService(sql, async () => undefined)
+function store(sql: MemorySql): SqliteChatStore {
+  return new SqliteChatStore(sql, async () => undefined)
 }
 
-async function seeded(): Promise<{ db: ChatDBService; sql: MemorySql }> {
+async function seeded(): Promise<{ db: SqliteChatStore; sql: MemorySql }> {
   const sql = new MemorySql()
-  const db = service(sql)
+  const db = store(sql)
   await db.createConversation("workspace", "conversation")
   return { db, sql }
 }
 
-describe("ChatDB SQLite compaction persistence", () => {
+describe("SQLite chat store compaction persistence", () => {
   it("atomically stores state while preserving every transcript row", async () => {
     const { db } = await seeded()
     await db.commitCompaction("conversation", messages, state())

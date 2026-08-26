@@ -7,7 +7,7 @@ import {
   selectCompactionCut,
   serializeForSummary,
 } from "./ContextCompactor"
-import type { CompactionState } from "../storage/chatDB"
+import type { CompactionState } from "../storage/sqliteChatStore"
 
 const message = (id: string, role: "user" | "assistant", text: string): UIMessage => ({
   id,
@@ -22,23 +22,29 @@ describe("compaction handoff prompt", () => {
 })
 
 describe("context budget", () => {
-  it("reserves output capacity and clamps the recent tail", () => {
-    expect(
-      resolveContextBudget({
-        id: "m",
-        providerId: "p",
-        name: "m",
-        alias: "m",
-        maxContextTokens: 32_000,
-        maxOutputTokens: 2_000,
-      })
-    ).toEqual({
+  const entry = {
+    id: "m",
+    providerId: "p",
+    name: "m",
+    alias: "m",
+    maxContextTokens: 32_000,
+    maxOutputTokens: 2_000,
+  }
+
+  it("uses the configured context occupancy threshold", () => {
+    expect(resolveContextBudget(entry, 90)).toEqual({
       contextWindow: 32_000,
       maxOutputTokens: 2_000,
       reserveTokens: 4_800,
-      triggerTokens: 27_200,
+      triggerTokens: 28_800,
       keepRecentTokens: 4_000,
     })
+  })
+
+  it("defaults to 85 percent and clamps unsafe values", () => {
+    expect(resolveContextBudget(entry).triggerTokens).toBe(27_200)
+    expect(resolveContextBudget(entry, 100).triggerTokens).toBe(30_400)
+    expect(resolveContextBudget(entry, 1).triggerTokens).toBe(16_000)
   })
 })
 

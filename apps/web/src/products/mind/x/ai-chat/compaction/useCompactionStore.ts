@@ -4,7 +4,7 @@
  */
 
 import { create } from "zustand"
-import type { CompactionState as PersistedCompactionState } from "../storage/chatDB"
+import type { CompactionState as PersistedCompactionState } from "../storage/sqliteChatStore"
 
 export type CompactionPhase = "idle" | "pending" | "done" | "error"
 

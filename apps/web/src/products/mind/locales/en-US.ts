@@ -173,7 +173,16 @@ export default {
         modelHint: "Summarized by {{model}}",
         pendingHint: "Compacting history to free up context…",
         doneHint: "Auto-compacted {{count}} earlier messages",
-        willTriggerHint: "Context near limit; will auto-compact before the next request",
+        willTriggerHint: "Will compact before the next request at {{value}}%",
+        settingsTitle: "Context compaction",
+        settingsDescription: "Control when AI chat history is automatically compacted.",
+        thresholdLabel: "Compact threshold",
+        thresholdHint:
+          "Compact before sending the next message once context usage reaches this value.",
+        thresholdDisplay: "Compact threshold: {{value}}%",
+        loadingStatus: "Compacting",
+        tokenMetrics: "{{before}} → {{after}} tokens",
+        durationMetric: "{{seconds}}s",
       },
       memory: {
         enableLabel: "Long-term memory",

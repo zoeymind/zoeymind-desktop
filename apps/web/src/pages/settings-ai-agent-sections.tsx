@@ -12,6 +12,7 @@ import {
   FieldGroup,
   FieldLabel,
   Switch,
+  Slider,
 } from "@zoeymind/ui"
 import { useTranslation } from "@zoeymind/i18n"
 import { LOCAL_AI_TOOLS } from "@/products/mind/x/ai-chat/local-tools"
@@ -21,6 +22,10 @@ import {
   getMindmapContextEnabled,
   setMindmapContextEnabled,
 } from "@/products/mind/x/ai-chat/hooks/useUserPrompt"
+import {
+  setCompactionThresholdPercent,
+  useCompactionThresholdPercent,
+} from "@/products/mind/x/ai-chat/compaction/settings"
 
 export function AIAgentSettingsSection() {
   const { t } = useTranslation()
@@ -29,10 +34,16 @@ export function AIAgentSettingsSection() {
   )
   const { enabled: editApprovalEnabled, setEnabled: setEditApprovalEnabled } =
     useDocumentEditApprovalSetting()
+  const compactionThreshold = useCompactionThresholdPercent()
 
   const updateMindmapContext = (enabled: boolean) => {
     setMindmapContextEnabled(enabled)
     setMindmapContextEnabledState(enabled)
+  }
+
+  const updateCompactionThreshold = (value: number | readonly number[]) => {
+    const threshold = Array.isArray(value) ? value[0] : value
+    if (threshold !== undefined) setCompactionThresholdPercent(threshold)
   }
 
   return (
@@ -54,6 +65,32 @@ export function AIAgentSettingsSection() {
             onCheckedChange={setEditApprovalEnabled}
           />
         </FieldGroup>
+      </SectionCard>
+
+      <SectionCard
+        title={t("mindmap.aiChat.compaction.settingsTitle")}
+        description={t("mindmap.aiChat.compaction.settingsDescription")}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <FieldLabel htmlFor="compaction-threshold">
+              {t("mindmap.aiChat.compaction.thresholdLabel")}
+            </FieldLabel>
+            <span className="font-mono text-sm tabular-nums text-foreground">
+              {compactionThreshold}%
+            </span>
+          </div>
+          <Slider
+            id="compaction-threshold"
+            aria-label={t("mindmap.aiChat.compaction.thresholdLabel")}
+            value={[compactionThreshold]}
+            onValueChange={updateCompactionThreshold}
+            min={50}
+            max={95}
+            step={1}
+          />
+          <FieldDescription>{t("mindmap.aiChat.compaction.thresholdHint")}</FieldDescription>
+        </div>
       </SectionCard>
 
       <SectionCard

@@ -17,9 +17,10 @@ import {
   type ModelsConfig,
   type ResolvedContextBudget,
 } from "@/shared/native"
-import { chatDB, type CompactionState } from "../storage/chatDB"
+import { sqliteChatStore, type CompactionState } from "../storage/sqliteChatStore"
 import { countTokens } from "../utils/tokenCounter"
 import { useCompactionStore } from "./useCompactionStore"
+import { getCompactionThresholdPercent } from "./settings"
 
 export const COMPACTION_HEADER =
   "📦 [对话历史已自动压缩 — 以下是工作交接备忘, 不是新的用户请求]\n\n"
@@ -251,9 +252,9 @@ async function defaultGenerateSummary(input: {
 
 const defaultDependencies: ContextCompactorDependencies = {
   loadConfig: loadModelsConfig,
-  loadState: conversationId => chatDB.loadConversationState(conversationId),
+  loadState: conversationId => sqliteChatStore.loadConversationState(conversationId),
   commit: (conversationId, transcript, state) =>
-    chatDB.commitCompaction(conversationId, transcript, state),
+    sqliteChatStore.commitCompaction(conversationId, transcript, state),
   generateSummary: defaultGenerateSummary,
   now: Date.now,
   createId: () => crypto.randomUUID(),
@@ -290,7 +291,7 @@ export class ContextCompactor {
     try {
       const config = await this.dependencies.loadConfig()
       const { entry, provider } = resolveChatModel(config, input.requestedModelId)
-      const budget = resolveContextBudget(entry)
+      const budget = resolveContextBudget(entry, getCompactionThresholdPercent())
       const converted = await convertToModelMessages(previousProjection)
       const pruned = pruneMessages({
         messages: converted,
@@ -355,6 +356,7 @@ export class ContextCompactor {
       useCompactionStore.getState().setPhase("idle")
       return { messages: previousProjection, state, compacted: false }
     }
+    const startedAt = this.dependencies.now()
     const newPrefix = input.transcript.slice(previousBoundary + 1, cut + 1)
     const prompt = `${state ? ITERATIVE_PROMPT : FIRST_SUMMARY_PROMPT}\n\n${
       state ? `<prior-summary>\n${state.summary}\n</prior-summary>\n\n` : ""
@@ -378,7 +380,15 @@ export class ContextCompactor {
       modelId: entry.id,
       compactedCount: cut + 1,
       tokensBefore: occupancy,
+      durationMs: Math.max(0, now - startedAt),
     }
+    const compactedProjection = buildActiveProjection(input.transcript, nextState)
+    const compactedMessages = pruneMessages({
+      messages: await convertToModelMessages(compactedProjection),
+      reasoning: "before-last-message",
+      emptyMessages: "remove",
+    })
+    nextState.tokensAfter = estimateSerializedRequest(input.system, compactedMessages, input.tools)
     await this.dependencies.commit(input.conversationId, input.transcript, nextState)
     useCompactionStore.getState().setCompaction(nextState)
     return {
