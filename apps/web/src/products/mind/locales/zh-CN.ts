@@ -102,6 +102,10 @@ export default {
           description: "确定要删除该对话记录吗？此操作不可撤销。",
           title: "删除对话",
         },
+        tabs: {
+          currentProject: "当前项目",
+          allConversations: "全部会话",
+        },
         empty: {
           hint: "开始新的对话吧",
           title: "暂无聊天记录",

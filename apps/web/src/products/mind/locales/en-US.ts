@@ -104,6 +104,10 @@ export default {
             "Are you sure you want to delete this conversation? This action cannot be undone.",
           title: "Delete conversation",
         },
+        tabs: {
+          currentProject: "Current project",
+          allConversations: "All conversations",
+        },
         empty: {
           hint: "Start a new conversation",
           title: "No chat history",

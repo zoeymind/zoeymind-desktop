@@ -7,6 +7,7 @@ import { useTranslation } from "@zoeymind/i18n"
 import { motion, AnimatePresence } from "motion/react"
 import { MessageSquare, Trash2, ChevronUp } from "lucide-react"
 import { logger } from "@zoeymind/logger"
+import { Tabs, TabsList, TabsTrigger } from "@zoeymind/ui"
 import { sqliteChatStore, type Conversation as DBConversation } from "../../storage/sqliteChatStore"
 import { formatRelativeTime } from "../../../ai-chat/utils/timeFormat"
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
@@ -14,6 +15,8 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog"
 interface Conversation extends DBConversation {
   messageCount: number
 }
+
+type ConversationScope = "project" | "all"
 
 interface ChatHistoryPanelProps {
   isOpen: boolean
@@ -32,6 +35,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [scope, setScope] = useState<ConversationScope>("project")
   const [loading, setLoading] = useState(true)
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean
@@ -48,7 +52,10 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
   const loadConversations = useCallback(async () => {
     try {
       setLoading(true)
-      const convs = await sqliteChatStore.getConversations(workspaceId)
+      const convs =
+        scope === "project"
+          ? await sqliteChatStore.getConversations(workspaceId)
+          : await sqliteChatStore.getAllConversations()
       const conversationsWithCount = await Promise.all(
         convs.map(async conv => ({
           ...conv,
@@ -61,7 +68,7 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
     } finally {
       setLoading(false)
     }
-  }, [workspaceId])
+  }, [scope, workspaceId])
   useEffect(() => {
     if (!isOpen) return
     const frame = requestAnimationFrame(() => void loadConversations())
@@ -188,6 +195,20 @@ export const ChatHistoryPanel: React.FC<ChatHistoryPanelProps> = ({
           >
             {/* 内容 */}
             <div className="relative">
+              <Tabs
+                value={scope}
+                onValueChange={value => setScope(value as ConversationScope)}
+                className="gap-0 border-b border-border px-2 py-1.5"
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="project" className="text-xs">
+                    {t("mindmap.aiChat.history.tabs.currentProject")}
+                  </TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs">
+                    {t("mindmap.aiChat.history.tabs.allConversations")}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
               <div className="h-60 overflow-y-auto">
                 {loading ? (
                   <div className="p-3 text-center">

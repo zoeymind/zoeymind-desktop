@@ -153,6 +153,16 @@ export class SqliteChatStore {
     return rows.map(toConversation)
   }
 
+  async getAllConversations(): Promise<Conversation[]> {
+    await this.ready()
+    const rows = await this.sql.select<ConversationRow>(
+      `SELECT c.*, s.workspace_id, s.selected_knowledge_base_ids_json, s.snapshot_json
+       FROM chat_conversations c LEFT JOIN chat_runtime_state s ON s.conversation_id = c.id
+       ORDER BY c.updated_at DESC`
+    )
+    return rows.map(toConversation)
+  }
+
   async getConversation(conversationId: string): Promise<Conversation | undefined> {
     await this.ready()
     return this.getConversationDirect(conversationId)
