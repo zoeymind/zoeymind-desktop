@@ -1080,12 +1080,27 @@ export default {
       installation: "Installation",
       desktopRequirement:
         "Keep ZoeyMind Desktop running and open the project you want to query or edit. Desktop manages the port and access token automatically.",
+      forAgent: {
+        title: "For Agent",
+        description:
+          "Copy the complete block to a local Agent so it performs installation, configuration, Doctor checks, and a read-only acceptance check.",
+        copy: "Copy for Agent",
+        copied: "Copied",
+        copyFailed: "Copy failed; select manually",
+      },
+      agent: {
+        entry: "Agent setup",
+        title: "Agent setup",
+        description:
+          "Have Claude Code, Codex, or OpenCode install the CLI, MCP server, and ZoeyMind Skill, then complete an end-to-end Doctor check.",
+      },
       cli: {
         entry: "Command-line CLI",
         title: "Command-line CLI",
         description:
           "Use scripts or a terminal to list and activate projects, then work with the currently open test-case document.",
         commandsTitle: "Common commands",
+        doctor: "Check Node.js, the Desktop Broker, and a read-only query of the active document",
         projects: "List projects visible to Desktop and their status",
         query: "Query the current mind map outline, subtree, or search results",
         edit: "Apply an atomic Tree Hashline Patch to the current document",
@@ -1097,6 +1112,13 @@ export default {
           "Expose ZoeyMind Desktop to Claude Code, OMP, Codex, and other Agents that support stdio MCP.",
         configTitle: "Host configuration",
         toolsTitle: "Available tools",
+      },
+      skills: {
+        entry: "Agent Skills",
+        title: "Agent Skills",
+        description:
+          "Give Agents the ZoeyMind tool workflow, anchored editing protocol, and functional test-case writing rules.",
+        hint: "The Skill supplies on-demand instructions; CLI/MCP executes operations, and Doctor proves the connection and active document are readable.",
       },
       shortcuts: {
         entry: "Shortcuts and editing",

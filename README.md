@@ -72,6 +72,7 @@ ZoeyMind Desktop 是一款面向测试人员的**功能测试用例编辑器**�
 
 - [`@zoeymind/cli`](https://www.npmjs.com/package/@zoeymind/cli)：命令 `zoeymind`，脚本/本地工具驱动 Desktop；
 - [`@zoeymind/mcp`](https://www.npmjs.com/package/@zoeymind/mcp)：stdio MCP server，把 Desktop 暴露给 Claude Code / OMP / Codex / OpenCode；
+- [`skills/zoeymind`](./skills/zoeymind/SKILL.md)：开放 Agent Skill，提供查询、锚点编辑和功能测试用例规则；
 - Desktop 启动后即可使用；通信走 authenticated loopback，每次启动生成新 token，不监听公网端口；
 - CLI/MCP 可直接查询和编辑当前已打开的测试用例文档。
 
@@ -88,20 +89,23 @@ ZoeyMind Desktop 是一款面向测试人员的**功能测试用例编辑器**�
 # 前往 GitHub Releases 下载对应平台安装包
 # https://github.com/zoeymind/zoeymind-desktop/releases/latest
 
-# 命令行 / MCP（按需）
-npm install -g @zoeymind/cli
-npm install -g @zoeymind/mcp
+# CLI / MCP（按需）
+npm install --global @zoeymind/cli@latest @zoeymind/mcp@latest
+
+# Agent Skill（Claude Code / Codex / OpenCode / OMP）
+npx --yes skills add zoeymind/zoeymind-desktop --skill zoeymind --global --agent <claude-code|codex|opencode|universal> --yes
 ```
 
-MCP Host 配置：
+MCP Host 使用本地 stdio 命令 `zoeymind-mcp`，server key 统一为 `zoeymind`。各 Host 使用自己的官方配置入口；应用内「帮助 → Agent 一键接入」提供可直接复制给 Agent 的完整安装、配置和验收提示词。
 
-```json
-{
-  "mcpServers": {
-    "zoeymind": { "command": "zoeymind-mcp" }
-  }
-}
+安装后运行只读 Doctor：
+
+```bash
+zoeymind doctor --json
+zoeymind-mcp doctor --json
 ```
+
+Doctor 会验证 Node 版本、MCP stdio 工具发现、Desktop Broker 和当前活动文档的只读大纲查询；`fail` 未修复前不算安装完成。
 
 **首次运行**：ZoeyMind 未购买 Apple / Microsoft 代码签名证书，OS 会问一次是否放行。
 

@@ -1,9 +1,6 @@
 name: npm Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
   workflow_dispatch:
 
 concurrency:
@@ -56,18 +53,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Verify version consistency
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          expected="${REF_NAME#v}"
-          cli_version="$(node -p "require('./apps/cli/package.json').version")"
-          mcp_version="$(node -p "require('./apps/mcp/package.json').version")"
-          if [[ "$cli_version" != "$expected" || "$mcp_version" != "$expected" ]]; then
-            echo "tag $REF_NAME does not match CLI ($cli_version) / MCP ($mcp_version) versions" >&2
-            exit 1
-          fi
       - run: pnpm build:packages
       - name: Publish with npm trusted publishing
         env:

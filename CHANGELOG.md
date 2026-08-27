@@ -1,6 +1,16 @@
 # Changelog
 
-This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. Both packages are released together from this repository.
+This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. Both packages are published from this repository and may version independently.
+
+## Unreleased
+
+## 0.4.0 - 2026-08-27
+
+### Added
+
+- Read-only `doctor --json` flows for both `zoeymind` and `zoeymind-mcp`, covering Desktop Broker access, active-document reads, and real MCP stdio tool discovery.
+- Open Agent Skill under `skills/zoeymind` with tool workflow, anchored editing, troubleshooting, and functional test-case rules.
+- Copyable For Agent onboarding for Claude Code, Codex, OpenCode, and OMP in Desktop Help.
 
 ## 0.3.0 - 2026-08-22
 
@@ -14,7 +24,7 @@ This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. B
 
 ## Versioning policy
 
-- Package versions follow SemVer and are kept identical for coordinated releases.
+- Package versions follow SemVer and may advance independently. Consumers using `@latest` receive each package's newest release.
 - A breaking CLI argument, MCP tool/schema, structured error, or Broker protocol change requires a major package version.
 - Additive optional fields and new non-breaking behavior require a minor version.
 - Fixes that preserve public contracts require a patch version.

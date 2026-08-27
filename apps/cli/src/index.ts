@@ -3,6 +3,7 @@ import {
   requestDocumentPortal,
   type DocumentPortalTool,
 } from "@zoeymind-desktop/document-portal-client/node";
+import { formatCliDoctorReport, runCliDoctor } from "./doctor.js";
 
 export { requestDocumentPortal };
 
@@ -22,9 +23,19 @@ function parseInput(tool: DocumentPortalTool, args: string[]): unknown {
 
 export async function main(args = process.argv.slice(2)): Promise<void> {
   const [tool, ...toolArgs] = args;
+  if (tool === "doctor") {
+    const report = await runCliDoctor();
+    process.stdout.write(
+      toolArgs.includes("--json")
+        ? `${JSON.stringify(report)}\n`
+        : `${formatCliDoctorReport(report)}\n`,
+    );
+    if (!report.ok) process.exitCode = 1;
+    return;
+  }
   if (tool === "--help" || tool === "-h") {
     process.stdout.write(
-      "Usage: zoeymind <projects|activate_project|query_current_mindmap|edit_current_mindmap> [json]\n",
+      "Usage: zoeymind <doctor|projects|activate_project|query_current_mindmap|edit_current_mindmap> [json]\n",
     );
     return;
   }
@@ -35,7 +46,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
     tool !== "edit_current_mindmap"
   )
     throw new Error(
-      "Usage: zoeymind <projects|activate_project|query_current_mindmap|edit_current_mindmap> [json]",
+      "Usage: zoeymind <doctor|projects|activate_project|query_current_mindmap|edit_current_mindmap> [json]",
     );
   process.stdout.write(
     `${JSON.stringify(await requestDocumentPortal(tool, parseInput(tool, toolArgs)))}\n`,

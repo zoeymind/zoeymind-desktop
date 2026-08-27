@@ -72,6 +72,7 @@ ZoeyMind Desktop is a **functional test-case editor** for QA engineers. It organ
 
 - [`@zoeymind/cli`](https://www.npmjs.com/package/@zoeymind/cli): command `zoeymind`, drive Desktop from scripts or local tools;
 - [`@zoeymind/mcp`](https://www.npmjs.com/package/@zoeymind/mcp): stdio MCP server that exposes Desktop to Claude Code / OMP / Codex / OpenCode;
+- [`skills/zoeymind`](./skills/zoeymind/SKILL.md): open Agent Skill with query, anchored-editing, and functional test-case guidance;
 - Disabled by default; enable in Preferences, with destructive-edit permission gated separately;
 - Communicates over authenticated loopback; a fresh token per launch; no public ports.
 
@@ -89,19 +90,22 @@ ZoeyMind Desktop is a **functional test-case editor** for QA engineers. It organ
 # https://github.com/zoeymind/zoeymind-desktop/releases/latest
 
 # CLI / MCP (optional)
-npm install -g @zoeymind/cli
-npm install -g @zoeymind/mcp
+npm install --global @zoeymind/cli@latest @zoeymind/mcp@latest
+
+# Agent Skill (Claude Code / Codex / OpenCode / OMP)
+npx --yes skills add zoeymind/zoeymind-desktop --skill zoeymind --global --agent <claude-code|codex|opencode|universal> --yes
 ```
 
-MCP host config:
+MCP hosts launch the local stdio command `zoeymind-mcp` under the server key `zoeymind`. Configure it through each host's native interface. In Desktop, **Help → Agent setup** provides one complete prompt an Agent can execute to install, configure, and verify everything.
 
-```json
-{
-  "mcpServers": {
-    "zoeymind": { "command": "zoeymind-mcp" }
-  }
-}
+Run the read-only Doctors after installation:
+
+```bash
+zoeymind doctor --json
+zoeymind-mcp doctor --json
 ```
+
+Doctor verifies Node.js, MCP stdio tool discovery, the authenticated Desktop Broker, and a read-only outline query against the active document. Any unresolved `fail` means setup is incomplete.
 
 **First run**: ZoeyMind does not carry an Apple / Microsoft code-signing certificate, so the OS asks you once to allow it.
 

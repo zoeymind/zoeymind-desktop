@@ -8,29 +8,43 @@ ZoeyMind Desktop 的本地 stdio MCP Adapter，让支持标准本地 stdio serve
 ## Installation
 
 ```bash
-npm install --global @zoeymind/mcp
+npm install --global @zoeymind/mcp@latest
+zoeymind-mcp doctor --json
 ```
 
-安装后提供：
+安装后提供 stdio executable `zoeymind-mcp`。MCP server key 统一为 `zoeymind`。
 
-```text
-zoeymind-mcp
+使用 Host 的原生入口配置：
+
+```bash
+# Claude Code
+claude mcp add --scope user zoeymind -- zoeymind-mcp
+
+# Codex
+codex mcp add zoeymind -- zoeymind-mcp
 ```
 
-标准 stdio Host 配置：
+OpenCode 在用户配置的 `mcp` object 中安全合并：
 
 ```json
 {
-  "mcpServers": {
+  "mcp": {
     "zoeymind": {
-      "command": "zoeymind-mcp",
-      "args": []
+      "type": "local",
+      "command": ["zoeymind-mcp"],
+      "enabled": true
     }
   }
 }
 ```
 
-公共名称保持简短：npm package 是 `@zoeymind/mcp`，executable 是 `zoeymind-mcp`，MCP server key 推荐使用 `zoeymind`。`Document Portal` 只作为内部架构名。
+Agent 使用时同时安装官方 Skill：
+
+```bash
+npx --yes skills add zoeymind/zoeymind-desktop --skill zoeymind --global --agent <claude-code|codex|opencode|universal> --yes
+```
+
+Skill 提供工具流程、锚点编辑协议和功能测试用例规则；MCP 提供实际执行能力。
 
 ## 前提
 
@@ -40,7 +54,8 @@ zoeymind-mcp
 
 用户不需要配置端口、token 或 descriptor 路径。
 
-已自动验证 MCP SDK child process 握手和工具调用。OMP 已验证配置发现；Claude Code 与 Codex 的真实账户验收被外部账户限制阻断，因此这里只提供标准协议配置，不宣称特定 Host 已完成端到端验收。
+MCP SDK child-process handshake and tool calls are covered by automated tests. Host-specific discovery must be verified in a fresh Host session after installation; a written config alone is not completion evidence.
+`zoeymind-mcp doctor --json` 使用真实 stdio child process 验证四个工具的发现，再通过 MCP 调用 Desktop Broker，并对活动文档执行只读 outline 查询。`fail` 未修复前不算配置完成。
 
 ## Tools
 
@@ -130,7 +145,7 @@ The test suite spawns compiled `dist/index.js` over real stdio and clean-install
 - Node.js 22 or newer;
 - Broker protocol version 1; unknown descriptor versions fail closed as unavailable;
 - descriptor path derivation is contract-tested for macOS, Windows, and Linux; installer-level OS acceptance follows the Desktop release matrix;
-- MCP SDK stdio child-process interoperability and OMP configuration discovery are verified;
+- MCP SDK stdio child-process interoperability is verified; Host configuration discovery remains an installation-time acceptance check;
 - Desktop 启动后即提供 authenticated loopback Broker；
 - `edit_current_mindmap` 与读取、项目控制使用相同的本机 token 授权；
 - `preview: true` 只计算影响，不提交文档；

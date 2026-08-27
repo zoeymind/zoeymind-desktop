@@ -1,11 +1,13 @@
 /** Desktop project sidebar: local projects, favorites, folders, and help. */
 import {
   BookOpen,
+  Bot,
   ChevronRight,
   CircleHelp,
   Keyboard,
   LayoutGrid,
   Server,
+  Sparkles,
   Star,
   PanelLeftClose,
   Terminal,
@@ -146,6 +148,11 @@ export function ProjectsSidebar({
                 onClick={() => onOpenHelp("rules")}
               />
               <HelpMenuItem
+                icon={Bot}
+                label={t("projects.help.agent.entry")}
+                onClick={() => onOpenHelp("agent")}
+              />
+              <HelpMenuItem
                 icon={Terminal}
                 label={t("projects.help.cli.entry")}
                 onClick={() => onOpenHelp("cli")}
@@ -154,6 +161,11 @@ export function ProjectsSidebar({
                 icon={Server}
                 label={t("projects.help.mcp.entry")}
                 onClick={() => onOpenHelp("mcp")}
+              />
+              <HelpMenuItem
+                icon={Sparkles}
+                label={t("projects.help.skills.entry")}
+                onClick={() => onOpenHelp("skills")}
               />
               <HelpMenuItem
                 icon={Keyboard}

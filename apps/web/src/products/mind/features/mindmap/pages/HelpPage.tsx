@@ -1,10 +1,21 @@
-import type { ReactNode } from "react"
-import { BookOpen, Code2, Keyboard, Server, Terminal, X } from "lucide-react"
+import { useState, type ReactNode } from "react"
+import {
+  BookOpen,
+  Bot,
+  Check,
+  Code2,
+  Copy,
+  Keyboard,
+  Server,
+  Sparkles,
+  Terminal,
+  X,
+} from "lucide-react"
 import { Button, Separator } from "@zoeymind/ui"
 import { useTranslation } from "@zoeymind/i18n"
 import { TestCaseRulesPage } from "./TestCaseRulesPage"
-
-export type HelpPageId = "rules" | "cli" | "mcp" | "shortcuts"
+import { agentOnboardingPrompt, type AgentOnboardingTarget } from "./agent-onboarding"
+export type HelpPageId = "rules" | "agent" | "cli" | "mcp" | "skills" | "shortcuts"
 
 interface HelpPageProps {
   page: HelpPageId
@@ -23,8 +34,10 @@ const SHORTCUTS = [
 
 export function HelpPage({ page, onClose }: HelpPageProps) {
   if (page === "rules") return <TestCaseRulesPage onClose={onClose} />
+  if (page === "agent") return <AgentHelpPage onClose={onClose} />
   if (page === "cli") return <CliHelpPage onClose={onClose} />
   if (page === "mcp") return <McpHelpPage onClose={onClose} />
+  if (page === "skills") return <SkillsHelpPage onClose={onClose} />
   return <ShortcutsHelpPage onClose={onClose} />
 }
 
@@ -90,6 +103,63 @@ function CodeBlock({ children }: { children: string }) {
     </pre>
   )
 }
+function ForAgentBlock({ target }: { target: AgentOnboardingTarget }) {
+  const { t } = useTranslation()
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
+  const prompt = agentOnboardingPrompt(target)
+
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt)
+      setCopyState("copied")
+    } catch {
+      setCopyState("failed")
+    }
+  }
+
+  return (
+    <HelpSection title={t("projects.help.forAgent.title")}>
+      <div className="flex items-center justify-between gap-4 border-b px-5 py-3">
+        <p className="text-pretty text-sm leading-6 text-muted-foreground">
+          {t("projects.help.forAgent.description")}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 shrink-0 transition-transform active:scale-[0.96]"
+          onClick={() => void copyPrompt()}
+        >
+          {copyState === "copied" ? <Check /> : <Copy />}
+          {t(
+            copyState === "copied"
+              ? "projects.help.forAgent.copied"
+              : copyState === "failed"
+                ? "projects.help.forAgent.copyFailed"
+                : "projects.help.forAgent.copy"
+          )}
+        </Button>
+      </div>
+      <CodeBlock>{prompt}</CodeBlock>
+    </HelpSection>
+  )
+}
+
+function AgentHelpPage({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <HelpLayout
+      icon={<Bot className="size-5" />}
+      title={t("projects.help.agent.title")}
+      description={t("projects.help.agent.description")}
+      onClose={onClose}
+    >
+      <ForAgentBlock target="all" />
+      <p className="text-pretty text-sm leading-6 text-muted-foreground">
+        {t("projects.help.desktopRequirement")}
+      </p>
+    </HelpLayout>
+  )
+}
 
 function CliHelpPage({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
@@ -103,7 +173,10 @@ function CliHelpPage({ onClose }: { onClose: () => void }) {
       <HelpSection title={t("projects.help.installation")}>
         <CodeBlock>{"npm install --global @zoeymind/cli\nzoeymind --help"}</CodeBlock>
       </HelpSection>
+      <ForAgentBlock target="cli" />
       <HelpSection title={t("projects.help.cli.commandsTitle")}>
+        <CommandRow command="zoeymind doctor --json" description={t("projects.help.cli.doctor")} />
+        <Separator />
         <CommandRow command="zoeymind projects" description={t("projects.help.cli.projects")} />
         <Separator />
         <CommandRow
@@ -142,6 +215,7 @@ function McpHelpPage({ onClose }: { onClose: () => void }) {
           {'{\n  "mcpServers": {\n    "zoeymind": { "command": "zoeymind-mcp" }\n  }\n}'}
         </CodeBlock>
       </HelpSection>
+      <ForAgentBlock target="mcp" />
       <HelpSection title={t("projects.help.mcp.toolsTitle")}>
         <div className="divide-y px-5">
           {["projects", "activate_project", "query_current_mindmap", "edit_current_mindmap"].map(
@@ -156,6 +230,29 @@ function McpHelpPage({ onClose }: { onClose: () => void }) {
       </HelpSection>
       <p className="text-pretty text-sm leading-6 text-muted-foreground">
         {t("projects.help.desktopRequirement")}
+      </p>
+    </HelpLayout>
+  )
+}
+function SkillsHelpPage({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <HelpLayout
+      icon={<Sparkles className="size-5" />}
+      title={t("projects.help.skills.title")}
+      description={t("projects.help.skills.description")}
+      onClose={onClose}
+    >
+      <HelpSection title={t("projects.help.installation")}>
+        <CodeBlock>
+          {
+            "npx --yes skills add zoeymind/zoeymind-desktop --skill zoeymind --global --agent <claude-code|codex|opencode|universal> --yes"
+          }
+        </CodeBlock>
+      </HelpSection>
+      <ForAgentBlock target="skills" />
+      <p className="text-pretty text-sm leading-6 text-muted-foreground">
+        {t("projects.help.skills.hint")}
       </p>
     </HelpLayout>
   )

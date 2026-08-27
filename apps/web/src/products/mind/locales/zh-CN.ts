@@ -1049,11 +1049,25 @@ export default {
       installation: "安装",
       desktopRequirement:
         "使用前请保持 ZoeyMind Desktop 运行，并打开需要查询或编辑的项目。端口和访问令牌由 Desktop 自动管理。",
+      forAgent: {
+        title: "For Agent",
+        description: "复制整段内容给本地 Agent，由它完成安装、配置、Doctor 检查和只读验收。",
+        copy: "复制给 Agent",
+        copied: "已复制",
+        copyFailed: "复制失败，请手动选择",
+      },
+      agent: {
+        entry: "Agent 一键接入",
+        title: "Agent 一键接入",
+        description:
+          "让 Claude Code、Codex 或 OpenCode 安装 CLI、MCP 与 ZoeyMind Skill，并完成端到端 Doctor 检查。",
+      },
       cli: {
         entry: "命令行 CLI",
         title: "命令行 CLI",
         description: "通过脚本或终端查询项目、激活项目，并操作当前打开的测试用例文档。",
         commandsTitle: "常用命令",
+        doctor: "检查 Node、Desktop Broker 和当前活动文档的只读查询",
         projects: "列出 Desktop 可见的项目和状态",
         query: "查询当前思维导图的大纲、子树或搜索结果",
         edit: "使用 Tree Hashline Patch 原子编辑当前文档",
@@ -1065,6 +1079,12 @@ export default {
           "将 ZoeyMind Desktop 暴露给 Claude Code、OMP、Codex 等支持 stdio MCP 的 Agent。",
         configTitle: "Host 配置",
         toolsTitle: "可用工具",
+      },
+      skills: {
+        entry: "Agent Skills",
+        title: "Agent Skills",
+        description: "为 Agent 提供 ZoeyMind 工具流程、锚点编辑协议和功能测试用例编写规则。",
+        hint: "Skill 按需加载说明；CLI/MCP 负责执行，Doctor 负责证明连接和当前文档可读。",
       },
       shortcuts: {
         entry: "快捷键与编辑操作",

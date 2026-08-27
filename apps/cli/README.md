@@ -8,14 +8,22 @@ ZoeyMind Desktop 的本地命令行客户端。
 ## Installation and command
 
 ```bash
-npm install --global @zoeymind/cli
+npm install --global @zoeymind/cli@latest
 zoeymind --help
+zoeymind doctor --json
 
 # Reproducible one-off invocation without a global install
-npx --yes --package @zoeymind/cli@0.1.0 zoeymind projects
+npx --yes --package @zoeymind/cli@latest zoeymind projects
 ```
 
 公共命令固定为 `zoeymind`。`Document Portal`、Broker 和 document identity 是内部架构术语，不进入用户命令名。
+Agent 使用时同时安装官方 Skill：
+
+```bash
+npx --yes skills add zoeymind/zoeymind-desktop --skill zoeymind --global --agent <claude-code|codex|opencode|universal> --yes
+```
+
+Skill 提供查询、Tree Hashline Patch、冲突处理和功能测试用例规则；CLI 提供实际执行能力。
 
 ## 当前开发方式
 
@@ -58,6 +66,7 @@ zoeymind CLI
 ```
 
 CLI 每次请求读取 Desktop 创建的本地 descriptor；用户不配置端口和 token。Desktop 未运行、没有打开文档或文档未 ready 时，CLI 返回结构化错误。
+`zoeymind doctor --json` 会执行只读检查：Node.js 版本、authenticated Desktop Broker，以及活动文档的 outline 查询。没有活动 ready 文档时返回 `warn`；连接或查询失败返回 `fail` 和修复信息。
 
 ## 诊断与恢复
 

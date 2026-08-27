@@ -26,12 +26,19 @@ describe("ProjectsSidebar help", () => {
     )
 
     fireEvent.click(view.getByText("projects.help.entry"))
+    fireEvent.click(view.getByText("projects.help.agent.entry"))
+    expect(onOpenHelp).toHaveBeenLastCalledWith("agent")
+
+    fireEvent.click(view.getByText("projects.help.entry"))
     fireEvent.click(view.getByText("projects.help.cli.entry"))
     expect(onOpenHelp).toHaveBeenLastCalledWith("cli")
 
     fireEvent.click(view.getByText("projects.help.entry"))
     fireEvent.click(view.getByText("projects.help.mcp.entry"))
     expect(onOpenHelp).toHaveBeenLastCalledWith("mcp")
+    fireEvent.click(view.getByText("projects.help.entry"))
+    fireEvent.click(view.getByText("projects.help.skills.entry"))
+    expect(onOpenHelp).toHaveBeenLastCalledWith("skills")
 
     fireEvent.click(view.getByText("projects.help.entry"))
     fireEvent.click(view.getByText("projects.help.shortcuts.entry"))
