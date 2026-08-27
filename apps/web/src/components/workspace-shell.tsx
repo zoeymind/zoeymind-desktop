@@ -25,7 +25,10 @@ import {
   useProjectSessionStore,
 } from "@/products/mind/editor-session"
 import { reconcileEditorPaneOrder } from "@/products/mind/editor-session/editor-pane-order"
-import { getPanePresentationClass } from "@/products/mind/editor-session/editor-pane-presentation"
+import {
+  getPanePresentationClass,
+  shouldMountEditorPane,
+} from "@/products/mind/editor-session/editor-pane-presentation"
 import { useInitialWorkspaceLoading } from "@/components/initial-workspace-loading"
 
 export function WorkspaceShell() {
@@ -139,7 +142,7 @@ function HomePane({ visible }: { visible: boolean }) {
 }
 
 function EditorPane({ tab, visible }: { tab: OpenTab; visible: boolean }) {
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(() => shouldMountEditorPane(visible))
 
   useEffect(() => {
     if (!visible || mounted) return

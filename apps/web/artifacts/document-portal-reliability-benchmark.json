@@ -23,8 +23,8 @@
     "paginationCompleteness": 1,
     "conflictRejection": 1,
     "atomicBatchEdit": 1,
-    "tokenEstimate": 97332,
-    "elapsedMs": 3335.907291
+    "tokenEstimate": 102787,
+    "elapsedMs": 42091.544958000006
   },
   "outcomes": {
     "passed": true,
@@ -46,15 +46,15 @@
       {
         "id": "default-read",
         "operation": "read",
-        "elapsedMs": 4.405750000000012,
+        "elapsedMs": 3.454666999999972,
         "outcome": "passed",
-        "tokenEstimate": 1052,
+        "tokenEstimate": 2571,
         "detail": "default context is bounded and truncated"
       },
       {
         "id": "cross-module-search-1733",
         "operation": "search",
-        "elapsedMs": 26.477708000000007,
+        "elapsedMs": 57.084041999999954,
         "outcome": "passed",
         "tokenEstimate": 53,
         "detail": "known cross-module case-title target"
@@ -62,7 +62,7 @@
       {
         "id": "cross-module-search-1",
         "operation": "search",
-        "elapsedMs": 10.598584000000017,
+        "elapsedMs": 21.831999999999994,
         "outcome": "passed",
         "tokenEstimate": 53,
         "detail": "known cross-module case-title target"
@@ -70,7 +70,7 @@
       {
         "id": "cross-module-search-2900",
         "operation": "search",
-        "elapsedMs": 5.309125000000051,
+        "elapsedMs": 11.097375000000056,
         "outcome": "passed",
         "tokenEstimate": 53,
         "detail": "known cross-module case-title target"
@@ -78,31 +78,31 @@
       {
         "id": "target-read-1733",
         "operation": "read",
-        "elapsedMs": 0.3288329999999746,
+        "elapsedMs": 1.1032089999999926,
         "outcome": "passed",
-        "tokenEstimate": 98,
+        "tokenEstimate": 113,
         "detail": "target subtree reaches the searched case"
       },
       {
         "id": "target-read-1",
         "operation": "read",
-        "elapsedMs": 0.14145800000000008,
+        "elapsedMs": 0.455332999999996,
         "outcome": "passed",
-        "tokenEstimate": 98,
+        "tokenEstimate": 113,
         "detail": "target subtree reaches the searched case"
       },
       {
         "id": "target-read-2900",
         "operation": "read",
-        "elapsedMs": 0.05366699999996172,
+        "elapsedMs": 0.1844580000000633,
         "outcome": "passed",
-        "tokenEstimate": 98,
+        "tokenEstimate": 113,
         "detail": "target subtree reaches the searched case"
       },
       {
         "id": "pagination",
         "operation": "search",
-        "elapsedMs": 50.73233299999998,
+        "elapsedMs": 546.3098329999999,
         "outcome": "passed",
         "tokenEstimate": 84001,
         "detail": "pagination returns every cross-module case without treating one page as the document"
@@ -110,55 +110,55 @@
       {
         "id": "edit-read-module-1",
         "operation": "read",
-        "elapsedMs": 0.8943749999999682,
+        "elapsedMs": 2.2722089999999753,
         "outcome": "passed",
-        "tokenEstimate": 3658,
+        "tokenEstimate": 3673,
         "detail": "module slice supplies edit anchors"
       },
       {
         "id": "edit-read-module-3",
         "operation": "read",
-        "elapsedMs": 0.5079170000000204,
+        "elapsedMs": 1.525291000000152,
         "outcome": "passed",
-        "tokenEstimate": 3658,
+        "tokenEstimate": 3673,
         "detail": "module slice supplies edit anchors"
       },
       {
         "id": "edit-read-module-5",
         "operation": "read",
-        "elapsedMs": 0.314625000000035,
+        "elapsedMs": 0.9115830000000642,
         "outcome": "passed",
-        "tokenEstimate": 3658,
+        "tokenEstimate": 3673,
         "detail": "module slice supplies edit anchors"
       },
       {
         "id": "atomic-batch-edit-module-1",
         "operation": "edit",
-        "elapsedMs": 1252.8649999999998,
+        "elapsedMs": 16059.246540999999,
         "outcome": "passed",
-        "tokenEstimate": 284,
+        "tokenEstimate": 1566,
         "detail": "first-attempt atomic two-subtree replacement"
       },
       {
         "id": "atomic-batch-edit-module-3",
         "operation": "edit",
-        "elapsedMs": 1574.618625,
+        "elapsedMs": 20222.014667000003,
         "outcome": "passed",
-        "tokenEstimate": 284,
+        "tokenEstimate": 1566,
         "detail": "first-attempt atomic two-subtree replacement"
       },
       {
         "id": "atomic-batch-edit-module-5",
         "operation": "edit",
-        "elapsedMs": 1879.425,
+        "elapsedMs": 24111.421917,
         "outcome": "passed",
-        "tokenEstimate": 284,
+        "tokenEstimate": 1566,
         "detail": "first-attempt atomic two-subtree replacement"
       },
       {
         "id": "invalid-patch",
         "operation": "edit",
-        "elapsedMs": 336.46858299999985,
+        "elapsedMs": 4017.4486249999973,
         "outcome": "failed",
         "tokenEstimate": 0,
         "failurePhase": "validation",
@@ -168,27 +168,27 @@
       {
         "id": "anchor-conflict-module-9",
         "operation": "edit",
-        "elapsedMs": 347.00562500000024,
+        "elapsedMs": 2338.649792,
         "outcome": "failed",
         "tokenEstimate": 0,
         "failurePhase": "anchor",
         "expectedSafetyRejection": true,
-        "detail": "concurrent anchor conflict must reject: Document changed since this line was read"
+        "detail": "concurrent anchor conflict must reject: The anchored node changed; query the affected area again and retry"
       },
       {
         "id": "anchor-conflict-module-10",
         "operation": "edit",
-        "elapsedMs": 669.1551249999998,
+        "elapsedMs": 5468.640249999997,
         "outcome": "failed",
         "tokenEstimate": 0,
         "failurePhase": "anchor",
         "expectedSafetyRejection": true,
-        "detail": "concurrent anchor conflict must reject: Document changed since this line was read"
+        "detail": "concurrent anchor conflict must reject: The anchored node changed; query the affected area again and retry"
       },
       {
         "id": "live-engine-failure",
         "operation": "edit",
-        "elapsedMs": 338.990084,
+        "elapsedMs": 7721.716042,
         "outcome": "failed",
         "tokenEstimate": 0,
         "failurePhase": "application",

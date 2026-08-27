@@ -4,6 +4,20 @@ This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. B
 
 ## Unreleased
 
+## 0.5.0 - 2026-08-28
+
+### Added
+
+- Add exact project filters and structured case/priority counts to CLI and MCP read results without changing Broker protocol compatibility.
+- Add precise `set_node`, `delete`, `move`, `append_cases`, and scoped `replace_text` operations with exact-count conflict protection and compact receipts.
+- Document root-relative paths and reusable search `readPath` values; tolerate extra Agent context and normalize only executable fields at the Broker seam.
+- Let configured Agents act directly from user intent; reserve Doctor for installation acceptance and failure diagnosis.
+
+### Fixed
+
+- Ensure the installed `zoeymind` executable always dispatches commands when invoked through npm's global or local bin symlink.
+- Remove obsolete External automation switch instructions; Desktop now starts its authenticated local Broker automatically.
+
 ## 0.4.0 - 2026-08-27
 
 ### Added

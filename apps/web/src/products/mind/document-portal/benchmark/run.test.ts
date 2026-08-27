@@ -60,6 +60,44 @@ describe("Portal reliability benchmark", () => {
     ).toMatchObject({ expectedProductFailure: true })
   }, 30_000)
 
+  it("keeps precise intent receipts compact and scoped transforms isolated", async () => {
+    const { portal, root } = createBenchmarkPortalFixture()
+    const read = portal.read({
+      documentId: "portal-reliability",
+      view: "subtree",
+      path: ["Module 01"],
+      maxLines: 400,
+    })
+
+    const result = await portal.edit({
+      documentId: "portal-reliability",
+      anchorTag: read.anchorTag,
+      operations: [
+        {
+          op: "replace_text",
+          within: 1,
+          fields: ["precondition"],
+          find: "Ready",
+          replace: "Prepared",
+          expect: 100,
+        },
+      ],
+    })
+
+    expect(result.effects).toEqual([{ operation: 0, nodes: 100, matches: 100 }])
+    expect(result.view).toBeUndefined()
+    expect(root.children[0]?.children.every(node => node.data.text.endsWith("Prepared"))).toBe(true)
+    expect(root.children[1]?.children.every(node => node.data.text.endsWith("Ready"))).toBe(true)
+    const compact = {
+      success: true,
+      revision: result.revision,
+      phase: result.phase,
+      effects: result.effects,
+      diagnostics: result.diagnostics,
+    }
+    expect(Math.ceil(JSON.stringify(compact).length / 4)).toBeLessThanOrEqual(128)
+  })
+
   it("detects an unintended non-target live-tree mutation", () => {
     const { root } = createBenchmarkPortalFixture()
     const before = fingerprintLiveDocument(root)

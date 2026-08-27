@@ -74,7 +74,8 @@ export async function dispatchDocumentPortalBrokerRequest(
         success: true,
         ...(await approveCurrentDocumentEdit(
           preview.confirmationToken,
-          input.returnView as { view?: "outline" | "subtree"; maxLines?: number } | undefined
+          input.returnView as
+            { view?: "outline" | "subtree"; path?: string[]; maxLines?: number } | undefined
         )),
       }
     }

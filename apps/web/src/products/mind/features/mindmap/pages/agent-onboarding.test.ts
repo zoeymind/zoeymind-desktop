@@ -20,6 +20,8 @@ describe("ZoeyMind For Agent onboarding prompt", () => {
     expect(prompt).toContain("zoeymind-mcp doctor --json")
     expect(prompt).toContain("one read-only outline query")
     expect(prompt).toContain("Do not claim MCP tools are available")
+    expect(prompt).toContain("authenticated loopback Broker starts automatically")
+    expect(prompt).not.toContain("External automation enabled")
   })
 
   it("keeps CLI setup independent from MCP configuration", () => {

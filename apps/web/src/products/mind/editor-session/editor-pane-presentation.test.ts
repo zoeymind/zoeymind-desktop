@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getPanePresentationClass } from "./editor-pane-presentation"
+import { getPanePresentationClass, shouldMountEditorPane } from "./editor-pane-presentation"
 
 describe("editor pane presentation", () => {
   it("hides inactive panes with subtree compositing rather than inherited visibility", () => {
@@ -17,5 +17,13 @@ describe("editor pane presentation", () => {
 
   it("preserves pane-specific layout classes", () => {
     expect(getPanePresentationClass(true, "flex bg-background")).toContain("flex bg-background")
+  })
+
+  it("mounts an initially active pane synchronously", () => {
+    expect(shouldMountEditorPane(true)).toBe(true)
+  })
+
+  it("defers a hidden pane until it becomes active", () => {
+    expect(shouldMountEditorPane(false)).toBe(false)
   })
 })

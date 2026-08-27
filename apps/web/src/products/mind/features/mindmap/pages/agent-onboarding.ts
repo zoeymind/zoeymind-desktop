@@ -36,7 +36,7 @@ export function agentOnboardingPrompt(target: AgentOnboardingTarget): string {
    Preserve an existing correct entry; repair only the ZoeyMind entry when it points elsewhere.`
       : "No MCP configuration is required for this target."
   }
-5. ZoeyMind Desktop must be running with Preferences → External automation enabled. A project should be open and ready. Do not start, stop, or restart Desktop yourself; ask the user if either prerequisite is missing.
+5. ZoeyMind Desktop must be running; its authenticated loopback Broker starts automatically. A project should be open and ready. Do not start, stop, or restart Desktop yourself; ask the user to open Desktop or a project when either prerequisite is missing.
 6. Run these diagnostics and inspect every check:
    ${doctorCommands.length > 0 ? doctorCommands.join("\n   ") : "If @zoeymind/cli or @zoeymind/mcp is already installed, run its doctor; otherwise verify the installed skill with `npx --yes skills list --global --agent <detected-agent>`."}
 7. Verify the host configuration and installed skill:

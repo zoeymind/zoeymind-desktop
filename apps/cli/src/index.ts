@@ -52,14 +52,3 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
     `${JSON.stringify(await requestDocumentPortal(tool, parseInput(tool, toolArgs)))}\n`,
   );
 }
-
-if (
-  process.argv[1]?.endsWith("index.ts") ||
-  process.argv[1]?.endsWith("index.js")
-)
-  void main().catch((error) => {
-    process.stderr.write(
-      `${error instanceof Error ? error.message : "Document Portal request failed"}\n`,
-    );
-    process.exitCode = 1;
-  });

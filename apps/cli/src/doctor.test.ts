@@ -44,14 +44,14 @@ describe("ZoeyMind CLI doctor", () => {
 
   it("fails with a repairable Desktop error", async () => {
     const report = await runCliDoctor(async () => {
-      throw new Error("Enable External automation in Desktop.");
+      throw new Error("Open or reopen Desktop and retry.");
     }, "22.12.0");
 
     expect(report.ok).toBe(false);
     expect(report.checks.at(-1)).toMatchObject({
       id: "desktop-broker",
       status: "fail",
-      message: "Enable External automation in Desktop.",
+      message: "Open or reopen Desktop and retry.",
     });
   });
 

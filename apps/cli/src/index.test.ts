@@ -10,18 +10,16 @@ describe("Document Portal CLI", () => {
     ).rejects.toThrow("missing");
   });
   it.each([
-    "projects",
-    "activate_project",
-    "query_current_mindmap",
-    "edit_current_mindmap",
-  ] as const)("forwards %s without Portal logic", async (tool) => {
+    ["projects", { action: "list" }],
+    ["activate_project", { projectId: "live" }],
+    ["query_current_mindmap", { mode: "outline" }],
+    ["edit_current_mindmap", { anchorTag: "A", patch: "PUT 1.=1:\n+Done" }],
+  ] as const)("forwards %s without Portal logic", async (tool, input) => {
     const fetchMock = vi.fn(
       async () =>
         new Response(JSON.stringify({ success: true }), { status: 200 }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const input =
-      tool === "projects" ? { action: "list" } : { projectId: "live" };
     await requestDocumentPortal(tool, input, async () => ({
       version: 1,
       pid: 1,

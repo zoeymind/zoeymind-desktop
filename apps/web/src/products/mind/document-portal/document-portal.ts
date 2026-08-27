@@ -69,15 +69,37 @@ export interface DocumentSearchResult {
   nextCursor?: string
   truncated: boolean
 }
+export type DocumentTransformField = "caseTitle" | "precondition" | "operation" | "expected"
+
+export type DocumentIntentOperation =
+  | { op: "append_cases"; to: number; tree: string }
+  | {
+      op: "replace_text"
+      within: number
+      fields: DocumentTransformField[]
+      find: string
+      replace: string
+      expect: number
+    }
+  | { op: "set_node"; at: number; value: string }
+  | { op: "delete"; at: number }
+  | {
+      op: "move"
+      at: number
+      to: number
+      position: "before" | "after" | "last-child"
+    }
 
 export interface DocumentEditRequest {
   documentId: string
   anchorTag?: string
   patch?: string
+  operations?: DocumentIntentOperation[]
   preview?: boolean
   confirmationToken?: string
   returnView?: {
     view?: DocumentReadView
+    path?: string[]
     maxLines?: number
   }
 }
@@ -109,6 +131,14 @@ export interface DocumentEditDiagnostic {
   line?: number
   repairPatchHint?: string
 }
+export interface DocumentEditEffect {
+  operation: number
+  nodes?: number
+  cases?: number
+  matches?: number
+  removed?: number
+}
+
 export interface DocumentEditResult {
   documentId: string
   revision: number
@@ -117,6 +147,7 @@ export interface DocumentEditResult {
   changeSummary: DocumentEditPreview
   confirmationToken?: string
   view?: DocumentReadResult
+  effects?: DocumentEditEffect[]
   diagnostics: DocumentEditDiagnostic[]
 }
 
@@ -136,6 +167,7 @@ export const DOCUMENT_PORTAL_ERROR_CODE = {
   INVALID_SEARCH_LIMIT: "INVALID_DOCUMENT_SEARCH_LIMIT",
   INVALID_SEARCH_CURSOR: "INVALID_DOCUMENT_SEARCH_CURSOR",
   INVALID_EDIT_PATCH: "INVALID_DOCUMENT_EDIT_PATCH",
+  TRANSFORM_COUNT_MISMATCH: "DOCUMENT_TRANSFORM_COUNT_MISMATCH",
   PREVIEW_REQUIRED: "DOCUMENT_PREVIEW_REQUIRED",
   EDIT_CONFLICT: "DOCUMENT_EDIT_CONFLICT",
   ANCHOR_EXPIRED: "DOCUMENT_ANCHOR_EXPIRED",

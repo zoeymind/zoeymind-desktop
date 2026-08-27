@@ -69,12 +69,12 @@ describe("ZoeyMind MCP doctor", () => {
     });
   });
 
-  it("fails with the Broker repair message when Desktop automation is unavailable", async () => {
+  it("fails with the Broker repair message when Desktop is unavailable", async () => {
     const report = await inspectDoctorClient(
       doctorClient({
         success: false,
         errorCode: "APP_UNAVAILABLE",
-        error: "Enable External automation in Desktop.",
+        error: "Open or reopen Desktop and retry.",
       }),
       "22.12.0",
     );
@@ -83,7 +83,7 @@ describe("ZoeyMind MCP doctor", () => {
     expect(report.checks.at(-1)).toMatchObject({
       id: "desktop-broker",
       status: "fail",
-      message: "Enable External automation in Desktop.",
+      message: "Open or reopen Desktop and retry.",
     });
   });
 

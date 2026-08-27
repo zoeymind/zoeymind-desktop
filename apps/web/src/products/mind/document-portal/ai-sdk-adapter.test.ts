@@ -180,6 +180,26 @@ describe("built-in current-document adapter", () => {
     expect(
       CurrentDocumentEditToolInputSchema.safeParse({
         anchorTag: "a1",
+        operations: [{ op: "set_node", at: 2, value: "# 模块" }],
+      }).success
+    ).toBe(true)
+    expect(
+      CurrentDocumentEditToolInputSchema.safeParse({
+        anchorTag: "a1",
+        patch: "PUT 1.=1:\n+next",
+        operations: [{ op: "delete", at: 2 }],
+      }).success
+    ).toBe(false)
+    expect(
+      CurrentDocumentEditToolInputSchema.safeParse({
+        anchorTag: "a1",
+        patch: "PUT 1.=1:\n+next",
+        returnView: { view: "subtree", path: ["订单", "退款"] },
+      }).success
+    ).toBe(true)
+    expect(
+      CurrentDocumentEditToolInputSchema.safeParse({
+        anchorTag: "a1",
         patch: "CUT 1:",
         confirmationToken: "model-must-not-see-this",
       }).success
@@ -222,15 +242,18 @@ describe("built-in current-document adapter", () => {
     expect(prompt).toContain("不要推断完整数量或内容")
   })
 
-  it("teaches the canonical Tree Hashline grammar and rejects competing edit formats", () => {
+  it("teaches structured operations first and keeps Hashline only for complex tree edits", () => {
     const prompt = buildSystemPrompt()
-    expect(prompt).toContain("PUT >13:")
-    expect(prompt).toContain("CUT 3:")
-    expect(prompt).toContain("MOVE 3 -> 8:")
-    expect(prompt).toContain("不要使用 Git Patch、自然语言 patch 或重叠操作")
+    expect(prompt).toContain('op: "set_node"')
+    expect(prompt).toContain('op: "delete"')
+    expect(prompt).toContain('op: "move"')
+    expect(prompt).toContain('op: "append_cases"')
+    expect(prompt).toContain('op: "replace_text"')
+    expect(prompt).toContain("legacy Tree Hashline")
+    expect(prompt).toContain("不要同时传")
   })
 
-  it("returns not-ready instead of falling back while the active tab is mounting", () => {
+  it("returns a not-ready error when the active document is still loading", () => {
     const registry = createProjectSessionRegistry()
     const session = createProjectSessionStore("loading")
     registry.register(session)
@@ -296,16 +319,16 @@ describe("built-in current-document adapter", () => {
   it("describes a single current-mind-map workspace without implementation details", () => {
     const prompt = buildSystemPrompt()
     expect(prompt).toContain("`outline` 查看整体模块和用例标题；不包含步骤")
-    expect(prompt).toContain("只使用已读取视图中的行号")
+    expect(prompt).toContain("只使用同一查询视图中的行号")
     expect(prompt).not.toContain("documentId")
     expect(prompt).not.toContain("Portal")
     expect(prompt).not.toContain("UID")
     expect(prompt).not.toContain("Store")
   })
 
-  it("continues from edit-returned views instead of requiring another query", () => {
+  it("requests a return view only when complete post-edit content is needed", () => {
     const prompt = buildSystemPrompt()
-    expect(prompt).toContain("编辑成功后可直接使用返回的最新视图继续")
+    expect(prompt).toContain("只有确实需要完整后续内容时传")
     expect(prompt).not.toContain("每次编辑后重新读取")
   })
 
@@ -313,6 +336,6 @@ describe("built-in current-document adapter", () => {
     const prompt = buildSystemPrompt()
     expect(prompt).toContain("警告表示修改已保存")
     expect(prompt).toContain("`repairPatchHint`")
-    expect(prompt).toContain("不要重复提交成功的 patch")
+    expect(prompt).toContain("不要重复提交")
   })
 })

@@ -1,4 +1,5 @@
-export type TreePatchKind = "put" | "insert-before" | "insert-after" | "cut" | "move"
+export type TreePatchKind =
+  "put" | "insert-before" | "insert-after" | "append-child" | "cut" | "move"
 
 export interface ParsedTreeNode {
   uid?: string
@@ -13,6 +14,9 @@ export interface TreePatchOperation {
   end?: number
   destination?: number
   nodes?: ParsedTreeNode[]
+  destinationPosition?: "before" | "after" | "last-child"
+  targetUid?: string
+  destinationUid?: string
 }
 
 const OPERATION =
@@ -48,6 +52,17 @@ function parseTree(lines: string[]): ParsedTreeNode[] | null {
     stack.push({ depth, node: parsed.node })
   }
   return roots.length ? roots : null
+}
+export function parseProjectedTreeNode(value: string): ParsedTreeNode | null {
+  const parsed = parseNode(value)
+  return parsed?.depth === 0 ? parsed.node : null
+}
+
+export function parseIntentTree(value: string): ParsedTreeNode[] | null {
+  const lines = value.replace(/\r\n?/g, "\n").split("\n")
+  while (lines.at(-1) === "") lines.pop()
+  if (lines.length === 0 || lines.some(line => line.startsWith("+"))) return null
+  return parseTree(lines.map(line => `+${line}`))
 }
 
 const CANONICAL_EXAMPLE =
@@ -137,7 +152,12 @@ export function parseTreeHashlinePatch(patch: string): TreePatchOperation[] | nu
     const cut = match[5] !== undefined
     const move = match[7] !== undefined
     if (move) {
-      operations.push({ kind: "move", start: Number(match[7]), destination: Number(match[8]) })
+      operations.push({
+        kind: "move",
+        start: Number(match[7]),
+        destination: Number(match[8]),
+        destinationPosition: "last-child",
+      })
       index += 1
       continue
     }

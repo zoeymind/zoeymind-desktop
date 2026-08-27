@@ -93,19 +93,27 @@ projects → activate_project → query_current_mindmap → edit_current_mindmap
 
 项目已经处于正确活动状态时，可直接从 query 开始。内置 Agent 只有 query/edit/question。
 
-编辑采用带快照校验的树形 Hashline Patch：
+编辑采用同一事务内核上的两种带快照校验输入：常见精准操作优先使用结构化 `operations`；复杂树插入或完整子树替换使用 Tree Hashline `patch`。两种输入严格互斥。
+
+```json
+{
+  "anchorTag": "7C21",
+  "operations": [
+    {
+      "op": "set_node",
+      "at": 8,
+      "value": "等待超过 30 秒 & 系统主动查询退款结果并保持订单为退款处理中"
+    }
+  ]
+}
+```
 
 ```text
-[电商测试/订单/退款#7C21]
-
-PUT 8.=8:
-+      等待超过 30 秒 & 系统主动查询退款结果并保持订单为退款处理中
-
 PUT >8:
 +      查询成功 & 页面展示最终退款状态
 ```
 
-行号只属于当前局部读取结果。`ReadAnchorRegistry` 仅短期记录“Agent 看到的行号 → 真实节点 UID → 当时内容 hash”，不是文档副本、持久化快照或第二数据源。Portal 校验锚点后，将修改提交到唯一的实时 `ProjectSession`；同一文档串行执行，不同文档使用独立队列，并在一次事务内完成修改、undo、dirty、布局和实时画布更新。
+行号只属于当前局部读取结果。`ReadSnapshotRegistry` 短期保存 Agent 实际看到的 bounded projection、行号映射和文档 revision，不是文档副本、持久化快照或第二数据源。Portal 校验快照后，将修改提交到唯一的实时 `ProjectSession`；同一文档串行执行，不同文档使用独立队列，并在一次事务内完成修改、undo、dirty、布局和实时画布更新。
 
 ## 3. 最终架构
 
@@ -121,20 +129,20 @@ classDiagram
 
     class MindMapDocumentPortal {
       -ProjectSessionRegistry sessions
-      -ReadAnchorRegistry anchors
+      -ReadSnapshotRegistry snapshots
       -DocumentTaskQueue taskQueue
       -DocumentSearchIndex searchIndex
-      -TreePatchEngine patchEngine
+      -MutationCompiler compiler
       +listDocuments()
       +search(request)
       +read(request)
       +edit(request)
     }
 
-    class ReadAnchorRegistry {
-      +register(documentId, projection) ReadAnchorSet
+    class ReadSnapshotRegistry {
+      +register(documentId, projection, revision) ReadSnapshot
       +resolve(anchorTag, line) NodeUid
-      +validate(anchorTag) ValidationResult
+      +validate(anchorTag, liveTree) ValidationResult
       +expire(anchorTag)
     }
 
@@ -154,9 +162,9 @@ classDiagram
       +details(tree, nodeUid) Projection
     }
 
-    class TreePatchEngine {
-      +parse(patch) TreeOperation[]
-      +preview(document, operations) EditPreview
+    class MutationCompiler {
+      +compileOperations(intents) TreeOperation[]
+      +parseHashline(patch) TreeOperation[]
       +apply(document, operations) EditResult
     }
 
@@ -184,11 +192,11 @@ classDiagram
 
     DocumentPortal <|.. MindMapDocumentPortal
     MindMapDocumentPortal --> ProjectSessionRegistry
-    MindMapDocumentPortal --> ReadAnchorRegistry
+    MindMapDocumentPortal --> ReadSnapshotRegistry
     MindMapDocumentPortal --> DocumentTaskQueue
     MindMapDocumentPortal --> DocumentSearchIndex
     MindMapDocumentPortal --> TestDocumentProjector
-    MindMapDocumentPortal --> TreePatchEngine
+    MindMapDocumentPortal --> MutationCompiler
     AiSdkAdapter --> DocumentPortal
     TauriLocalBroker --> DocumentPortal
     CliAdapter --> TauriLocalBroker
@@ -204,7 +212,7 @@ sequenceDiagram
     participant Adapter as AI SDK / MCP / CLI Adapter
     participant Portal as DocumentPortal
     participant Index as DocumentSearchIndex
-    participant Anchors as ReadAnchorRegistry
+    participant Snapshots as ReadSnapshotRegistry
     participant Queue as DocumentTaskQueue
     participant Session as Unique Live ProjectSession
 
@@ -219,19 +227,19 @@ sequenceDiagram
     Adapter->>Adapter: resolve current ready documentId once
     Adapter->>Portal: read({ documentId, request })
     Portal->>Session: read current domain tree
-    Portal->>Anchors: register local line anchors
-    Anchors-->>Portal: lines + anchor tag
+    Portal->>Snapshots: register bounded projection and revision
+    Snapshots-->>Portal: lines + anchor tag
     Portal-->>Agent: Test Document read result
-    Agent->>Adapter: edit(anchorTag, patch)
+    Agent->>Adapter: edit(anchorTag, operations | patch)
     Adapter->>Adapter: resolve current ready documentId once
     Adapter->>Portal: edit({ documentId, request })
-    Portal->>Anchors: validate and resolve anchors
-    Anchors-->>Portal: node UID operations
+    Portal->>Snapshots: validate served targets and revision
+    Snapshots-->>Portal: validated mutation inputs
     Portal->>Queue: enqueue(documentId, transaction)
     Queue->>Session: mutate the unique live MindMap instance
     Session-->>Queue: changed tree + revision + UI update
     Queue-->>Portal: committed result
-    Portal-->>Agent: result + post-edit preview
+    Portal-->>Agent: compact receipt or requested bounded view
 ```
 
 ## 4. Adapter Interface
@@ -243,7 +251,7 @@ sequenceDiagram
 - `projects`：列出项目或创建临时草稿；
 - `activate_project`：打开或激活一个项目；
 - `query_current_mindmap`：使用 `outline`、`subtree` 或 `search` 查询当前导图；
-- `edit_current_mindmap`：接收 anchor tag、Tree Hashline Patch 和可选 return view。
+- `edit_current_mindmap`：接收 anchor tag、严格互斥的结构化 `operations` 或 Tree Hashline `patch`，以及可选 return view。
 
 ### 内置 Agent
 
@@ -263,7 +271,17 @@ question
 
 ### Edit
 
-Wire format：
+常见操作使用领域语义输入：
+
+```text
+set_node       精准修改一个节点
+delete         删除一个节点及其子树
+move           移动一个节点及其子树
+append_cases   向模块批量追加用例
+replace_text   在指定模块、字段和准确命中数量约束下批量替换
+```
+
+复杂结构操作保留 Tree Hashline：
 
 ```text
 PUT N.=N:       替换单个目标节点或子树
@@ -273,11 +291,7 @@ CUT N.=N:       删除单个目标节点或子树
 MOVE N -> M:    移动子树
 ```
 
-不同端点的 inclusive range 不受支持；多个目标必须拆成独立操作，不能使用 `PUT N.=M` 或 `CUT N.=M`（`N != M`）。
-
-Patch body 每行以 `+` 开始，两个空格表示一层树深度。`# 名称` 表示模块，`[P1]`/`[P2]`/`[P3]` 表示用例，`&` 分隔用例前置条件或步骤操作/预期。
-
-一个 patch 对一个文档原子执行并形成一个 undo entry。成功后返回 revision、diagnostics、新的 bounded view 和新 anchor；旧 anchor 随提交失效。结构和事务错误整体回滚，内容质量问题以 localized diagnostics 随已提交结果返回。
+两种输入都编译为同一个 mutation plan，共用快照校验、领域验证、节点上限、审批、串行事务、回滚和单个 undo entry。结构化操作默认返回 compact receipt；只有调用方明确提供 `returnView` 才返回新的 bounded view 和 anchor。破坏性操作仍需 preview token，结构和事务错误整体回滚，内容质量问题以 localized diagnostics 随已提交结果返回。
 
 ## 5. 大文档处理
 
@@ -287,8 +301,8 @@ Patch body 每行以 `+` 开始，两个空格表示一层树深度。`# 名称`
 flowchart LR
     A[Document Outline] --> B[Search Index]
     B --> C[Local Subtree Read]
-    C --> D[Snapshot Anchors]
-    D --> E[Tree Hashline Patch]
+    C --> D[Bounded Snapshot]
+    D --> E[Intent or Hashline Compiler]
     E --> F[Domain Tree Transaction]
 ```
 
@@ -307,10 +321,10 @@ flowchart LR
 `DocumentPortal.edit` 必须统一保证：
 
 1. Agent 不接触或提交内部节点 UID；
-2. 每次编辑绑定明确的 document 和 read anchor；
-3. 所有锚点必须来自 Agent 已读取的可见范围；
-4. 一个 Patch 对一个文档原子执行；
-5. 一个 Patch 形成一个 undo entry；
+2. 每次编辑绑定明确的 document 和 served snapshot；
+3. 所有行目标必须来自 Agent 已读取的可见范围；
+4. 一次 edit request 对一个文档原子执行；
+5. 一次 edit request 形成一个 undo entry；
 6. 修改成功后统一标记 dirty；
 7. 写操作按文档串行，不同文档拥有独立队列；
 8. 禁止形成树循环或移动到自身后代；
@@ -366,11 +380,10 @@ AI request
 
 ## 9. 实施结果
 
-- Portal 内核、bounded projection、structured search、read anchor、per-document queue 和 Tree Hashline Patch 已完成；
+- Portal 内核、bounded projection、structured search、served snapshot、per-document queue、structured operations 和 Tree Hashline fallback 已完成；
 - 内置 AI 已迁移到当前导图 query/edit/question，并移除模型可见 ZTDL 和重复 CRUD tools；
-- Tauri Local Broker、CLI 实时集成和 stdio MCP Adapter 已完成；
+- Tauri Local Broker、CLI 实时集成、stdio MCP Adapter、正式 npm package build 与发布自动化已完成；
 - 3000-case benchmark、真实 MindMap engine tests、live APP/Broker integration 和 Rust Broker tests 已建立；
-- npm CLI/MCP 的正式 package build、兼容矩阵、安全控制和发布自动化尚未完成，见仓库根 README。
 
 ## 10. 验收结果
 

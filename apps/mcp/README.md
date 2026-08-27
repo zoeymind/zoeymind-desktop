@@ -49,13 +49,13 @@ Skill 提供工具流程、锚点编辑协议和功能测试用例规则；MCP �
 ## 前提
 
 - ZoeyMind Desktop 正在运行；
-- 至少一个思维导图标签已打开并 ready；
-- 如果目标不是当前项目，Agent 先调用 `projects` 和 `activate_project`。
+- 编辑前应有一个 ready 的活动思维导图；若目标不是当前项目，Agent 可调用 `projects` 和 `activate_project`。
+
+已配置的 Agent 可以直接从用户意图调用目标 Tool。`zoeymind-mcp doctor --json` 用于安装验收或故障诊断，不是每次任务前的门禁。
 
 用户不需要配置端口、token 或 descriptor 路径。
 
-MCP SDK child-process handshake and tool calls are covered by automated tests. Host-specific discovery must be verified in a fresh Host session after installation; a written config alone is not completion evidence.
-`zoeymind-mcp doctor --json` 使用真实 stdio child process 验证四个工具的发现，再通过 MCP 调用 Desktop Broker，并对活动文档执行只读 outline 查询。`fail` 未修复前不算配置完成。
+MCP SDK child-process handshake and tool calls are covered by automated tests. Host-specific discovery must be verified in a fresh Host session after installation; a written config alone is not completion evidence. Doctor 使用真实 stdio child process 验证四个工具的发现，再通过 MCP 调用 Desktop Broker，并对活动文档执行只读 outline 查询。
 
 ## Tools
 
@@ -67,6 +67,8 @@ MCP SDK child-process handshake and tool calls are covered by automated tests. H
 | `edit_current_mindmap`  | destructive, non-idempotent | Apply an anchored Tree Hashline patch         |
 
 Tool annotations 是 MCP Client 的行为提示，不是授权机制。真正的授权和事务校验由 Desktop Broker 与 Portal 执行。
+
+`projects` list 可按精确 `projectId` / `title` 过滤。完整且未截断的 outline 返回结构化 `summary.caseCount` / `summary.priorityCounts`；search hit 的 `readPath` 可直接传给 subtree。MCP 接受额外 Agent 上下文，并在 Broker seam 自动忽略与当前 action/mode 无关的字段。
 
 ## How it works
 

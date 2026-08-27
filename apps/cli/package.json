@@ -1,10 +1,10 @@
 {
   "name": "@zoeymind/cli",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Command-line client for automating a running ZoeyMind Desktop app.",
   "type": "module",
   "bin": {
-    "zoeymind": "dist/index.js"
+    "zoeymind": "dist/bin.js"
   },
   "files": [
     "dist",

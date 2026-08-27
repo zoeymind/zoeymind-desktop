@@ -1570,4 +1570,226 @@ describe("DocumentPortal", () => {
     expect(result.view?.content).toContain("操作 & 预期")
     expect(result.view?.path).toEqual(["模块"])
   })
+
+  it("returns the requested local path after a cross-module edit", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module-a", text: "模块A", icon: ["sign_2"] },
+          children: [
+            { data: { uid: "case-a", text: "旧用例A", icon: ["priority_1"] }, children: [] },
+          ],
+        },
+        {
+          data: { uid: "module-b", text: "模块B", icon: ["sign_2"] },
+          children: [
+            { data: { uid: "case-b", text: "旧用例B", icon: ["priority_1"] }, children: [] },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "outline" })
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT >3:\n+[P2] 新用例A\n+  操作A & 预期A\nPUT >5:\n+[P2] 新用例B\n+  操作B & 预期B",
+      returnView: { view: "subtree", path: ["模块A"], maxLines: 20 },
+    })
+
+    expect(result.view).toMatchObject({
+      view: "subtree",
+      path: ["模块A"],
+      truncated: false,
+    })
+    expect(result.view?.content).toContain("新用例A")
+    expect(result.view?.content).not.toContain("新用例B")
+  })
+
+  it("falls back to the affected path when the preferred return path is absent", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [{ data: { uid: "case", text: "旧用例", icon: ["priority_1"] }, children: [] }],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "outline" })
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      patch: "PUT >3:\n+[P2] 新用例\n+  操作 & 预期",
+      returnView: { view: "subtree", path: ["不存在"], maxLines: 20 },
+    })
+
+    expect(result.view).toMatchObject({ path: ["模块"], truncated: false })
+    expect(result.view?.content).toContain("新用例")
+  })
+
+  it("applies precise set, move, and scoped replacement with compact receipts", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module-a", text: "模块A", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case-a", text: "旧版用例 & 旧版前置", icon: ["priority_1"] },
+              children: [{ data: { uid: "step-a", text: "旧版操作 & 旧版预期" }, children: [] }],
+            },
+            {
+              data: { uid: "case-b", text: "保留用例 & 保留前置", icon: ["priority_2"] },
+              children: [],
+            },
+          ],
+        },
+        {
+          data: { uid: "module-b", text: "模块B", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "sentinel", text: "旧版用例 & 旧版前置", icon: ["priority_1"] },
+              children: [],
+            },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      operations: [
+        { op: "set_node", at: 4, value: "旧版操作 & 新版预期" },
+        {
+          op: "replace_text",
+          within: 2,
+          fields: ["caseTitle", "precondition"],
+          find: "旧版",
+          replace: "新版",
+          expect: 2,
+        },
+        { op: "move", at: 5, to: 3, position: "before" },
+      ],
+    })
+
+    expect(result).toMatchObject({
+      phase: "committed",
+      effects: [
+        { operation: 0, nodes: 1 },
+        { operation: 1, nodes: 1, matches: 2 },
+        { operation: 2, nodes: 1 },
+      ],
+    })
+    expect(result).not.toHaveProperty("view")
+    expect(result.changeSummary).toEqual({ destructive: false, removedNodes: 0, affectedNodes: [] })
+    expect(root.children[0]?.children.map(node => node.data.uid)).toEqual(["case-b", "case-a"])
+    expect(root.children[0]?.children[1]?.data.text).toBe("新版用例 & 新版前置")
+    expect(root.children[0]?.children[1]?.children[0]?.data.text).toBe("旧版操作 & 新版预期")
+    expect(root.children[1]?.children[0]?.data.text).toBe("旧版用例 & 旧版前置")
+  })
+
+  it("deletes a stepped case from an unchanged outline and rejects destructive intent overlap", async () => {
+    const { portal, root, mindMap } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "用例 & 前置", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const overlapRead = portal.read({ documentId: "patches", view: "outline" })
+    await expect(
+      portal.edit({
+        documentId: "patches",
+        anchorTag: overlapRead.anchorTag,
+        operations: [
+          {
+            op: "replace_text",
+            within: 2,
+            fields: ["caseTitle"],
+            find: "用例",
+            replace: "新用例",
+            expect: 1,
+          },
+          { op: "delete", at: 2 },
+        ],
+        preview: true,
+      })
+    ).rejects.toMatchObject({ code: "INVALID_DOCUMENT_EDIT_PATCH" })
+    expect(mindMap.execCommand).not.toHaveBeenCalled()
+
+    const deleteRead = portal.read({ documentId: "patches", view: "outline" })
+    const preview = await portal.edit({
+      documentId: "patches",
+      anchorTag: deleteRead.anchorTag,
+      operations: [{ op: "delete", at: 3 }],
+      preview: true,
+    })
+    expect(preview).toMatchObject({ phase: "preview", changeSummary: { removedNodes: 2 } })
+    expect(preview.confirmationToken).toBeTypeOf("string")
+    await portal.edit({
+      documentId: "patches",
+      confirmationToken: preview.confirmationToken,
+    })
+    expect(root.children[0]?.children).toEqual([])
+  })
+
+  it("rejects transform count drift and stale delete subtrees without mutation", async () => {
+    const { portal, root, mindMap } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "旧版用例 & 前置", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const countRead = portal.read({ documentId: "patches", view: "subtree" })
+    await expect(
+      portal.edit({
+        documentId: "patches",
+        anchorTag: countRead.anchorTag,
+        operations: [
+          {
+            op: "replace_text",
+            within: 2,
+            fields: ["caseTitle"],
+            find: "旧版",
+            replace: "新版",
+            expect: 2,
+          },
+        ],
+      })
+    ).rejects.toMatchObject({ code: "DOCUMENT_TRANSFORM_COUNT_MISMATCH" })
+    expect(root.children[0]?.children[0]?.data.text).toBe("旧版用例 & 前置")
+
+    const deleteRead = portal.read({ documentId: "patches", view: "subtree" })
+    root.children[0]?.children[0]?.children.push({
+      data: { uid: "concurrent-step", text: "并发操作 & 并发预期" },
+      children: [],
+    })
+    await expect(
+      portal.edit({
+        documentId: "patches",
+        anchorTag: deleteRead.anchorTag,
+        operations: [{ op: "delete", at: 3 }],
+      })
+    ).rejects.toMatchObject({ code: "DOCUMENT_EDIT_CONFLICT" })
+    expect(mindMap.execCommand).not.toHaveBeenCalled()
+    expect(root.children[0]?.children).toHaveLength(1)
+  })
 })

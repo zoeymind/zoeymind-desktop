@@ -54,7 +54,7 @@ try {
     ),
   );
 
-  if (cliPackage.bin.zoeymind !== "dist/index.js")
+  if (cliPackage.bin.zoeymind !== "dist/bin.js")
     throw new Error("CLI bin contract changed");
   if (mcpPackage.bin["zoeymind-mcp"] !== "dist/index.js")
     throw new Error("MCP bin contract changed");
@@ -63,22 +63,24 @@ try {
   if (!readFileSync(mcpBin, "utf8").includes("node"))
     throw new Error("MCP executable link is missing");
 
-  const cliRun = spawnSync(
-    process.execPath,
-    [join(temporary, "node_modules/@zoeymind/cli/dist/index.js"), "projects"],
-    {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        APPDATA: temporary,
-        HOME: temporary,
-        LOCALAPPDATA: temporary,
-        XDG_DATA_HOME: temporary,
-      },
+  const cliRun = spawnSync(cliBin, ["doctor", "--json"], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      APPDATA: temporary,
+      HOME: temporary,
+      LOCALAPPDATA: temporary,
+      XDG_DATA_HOME: temporary,
     },
-  );
+  });
   const cliOutput = `${cliRun.stdout}${cliRun.stderr}`;
-  if (cliRun.status === 0 || !cliOutput.includes("unavailable"))
+  const cliReport = JSON.parse(cliRun.stdout);
+  if (
+    cliRun.status === 0 ||
+    cliReport.ok !== false ||
+    cliReport.checks?.find((check) => check.id === "desktop-broker")?.status !==
+      "fail"
+  )
     throw new Error(`Unexpected CLI packaged result: ${cliOutput}`);
 
   process.stdout.write(

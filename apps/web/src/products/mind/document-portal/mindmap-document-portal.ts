@@ -13,6 +13,9 @@ import {
   DocumentPortalError,
   type DocumentEditDiagnostic,
   type DocumentEditRequest,
+  type DocumentEditEffect,
+  type DocumentIntentOperation,
+  type DocumentTransformField,
   type DocumentEditResult,
   type DocumentPortal,
   type DocumentReadRequest,
@@ -25,6 +28,8 @@ import {
 import {
   countParsedNodes,
   explainInvalidTreeHashlinePatch,
+  parseIntentTree,
+  parseProjectedTreeNode,
   parseTreeHashlinePatch,
   type ParsedTreeNode,
   type TreePatchOperation,
@@ -36,11 +41,14 @@ const DEFAULT_SEARCH_LIMIT = 50
 
 const ANCHOR_TTL_MS = 5 * 60 * 1_000
 
-interface ReadAnchor {
+interface ReadSnapshot {
   documentId: string
-  uid: string
-  contentHash: string
+  mindMap: MindMap
   expiresAt: number
+  root: MindMapNodeTree
+  lines: Map<number, string>
+  revision: number
+  incompleteUids: Set<string>
 }
 
 interface LiveMindMapNode {
@@ -112,6 +120,313 @@ function findPlanNode(node: PlannedNode, uid: string): PlannedNode | null {
     if (found) return found
   }
   return null
+}
+function sameNodeData(left: MindMapNodeTree, right: MindMapNodeTree): boolean {
+  return JSON.stringify(left.data) === JSON.stringify(right.data)
+}
+
+function sameServedSubtree(
+  live: MindMapNodeTree,
+  snapshot: MindMapNodeTree,
+  incompleteUids: ReadonlySet<string>
+): boolean {
+  if (!sameNodeData(live, snapshot)) return false
+  const incomplete = incompleteUids.has(String(snapshot.data.uid))
+  if (
+    incomplete
+      ? live.children.length < snapshot.children.length
+      : live.children.length !== snapshot.children.length
+  )
+    return false
+  return snapshot.children.every((child, index) =>
+    sameServedSubtree(live.children[index]!, child, incompleteUids)
+  )
+}
+
+function containsIncompleteSnapshotNode(
+  node: MindMapNodeTree,
+  incompleteUids: ReadonlySet<string>
+): boolean {
+  return (
+    incompleteUids.has(String(node.data.uid)) ||
+    node.children.some(child => containsIncompleteSnapshotNode(child, incompleteUids))
+  )
+}
+
+function sameParentOrder(liveRoot: MindMapNodeTree, snapshot: ReadSnapshot, uid: string): boolean {
+  const liveParent = findDataNode(liveRoot, uid)?.parent
+  const snapshotParent = findDataNode(snapshot.root, uid)?.parent
+  if (!liveParent || !snapshotParent) return liveParent === snapshotParent
+  const liveOrder = liveParent.children.map(child => child.data.uid)
+  const snapshotOrder = snapshotParent.children.map(child => child.data.uid)
+  return (
+    liveParent.data.uid === snapshotParent.data.uid &&
+    (snapshot.incompleteUids.has(String(snapshotParent.data.uid))
+      ? snapshotOrder.every((childUid, index) => liveOrder[index] === childUid)
+      : JSON.stringify(liveOrder) === JSON.stringify(snapshotOrder))
+  )
+}
+
+function assertCurrentIntentTarget(
+  operation: DocumentIntentOperation,
+  liveRoot: MindMapNodeTree,
+  snapshot: ReadSnapshot,
+  target: PlannedNode,
+  destination: PlannedNode | undefined,
+  currentRevision: number
+): void {
+  const snapshotTarget = findDataNode(snapshot.root, target.uid)?.node
+  if (!snapshotTarget)
+    throw new DocumentPortalError(
+      DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+      "The anchored target is not present in its read snapshot"
+    )
+  if (
+    (operation.op === "delete" || operation.op === "move") &&
+    containsIncompleteSnapshotNode(snapshotTarget, snapshot.incompleteUids) &&
+    currentRevision !== snapshot.revision
+  )
+    throw new DocumentPortalError(
+      DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+      "The document changed after reading a hidden subtree; query the affected area again"
+    )
+  if (
+    !sameServedSubtree(target.data, snapshotTarget, snapshot.incompleteUids) ||
+    ((operation.op === "delete" || operation.op === "move") &&
+      !sameParentOrder(liveRoot, snapshot, target.uid))
+  )
+    throw new DocumentPortalError(
+      DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+      "The anchored target changed; query the affected area again and retry"
+    )
+  if (operation.op === "append_cases") {
+    if (snapshot.incompleteUids.has(target.uid))
+      throw new DocumentPortalError(
+        DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+        "Append requires a complete module view; query that module as a subtree and retry"
+      )
+  }
+  if (
+    operation.op === "replace_text" &&
+    (operation.fields.includes("operation") || operation.fields.includes("expected")) &&
+    snapshot.incompleteUids.has(target.uid)
+  )
+    throw new DocumentPortalError(
+      DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+      "Step-field replacement requires a complete module subtree"
+    )
+  if (operation.op !== "move" || !destination) return
+  const snapshotDestination = findDataNode(snapshot.root, destination.uid)?.node
+  const destinationCurrent =
+    snapshotDestination && sameNodeData(destination.data, snapshotDestination)
+  const placementCurrent =
+    operation.position === "last-child"
+      ? snapshotDestination &&
+        !snapshot.incompleteUids.has(destination.uid) &&
+        JSON.stringify(destination.data.children.map(child => child.data.uid)) ===
+          JSON.stringify(snapshotDestination.children.map(child => child.data.uid))
+      : sameParentOrder(liveRoot, snapshot, destination.uid)
+  if (!destinationCurrent || !placementCurrent)
+    throw new DocumentPortalError(
+      DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+      "The move destination changed; query the affected area again and retry"
+    )
+}
+
+function replaceLiteral(
+  value: string,
+  find: string,
+  replacement: string
+): { value: string; count: number } {
+  let count = 0
+  let offset = 0
+  let result = ""
+  while (true) {
+    const index = value.indexOf(find, offset)
+    if (index === -1) break
+    result += value.slice(offset, index) + replacement
+    offset = index + find.length
+    count += 1
+  }
+  return { value: count === 0 ? value : result + value.slice(offset), count }
+}
+
+function transformNodeText(
+  node: PlannedNode,
+  fields: ReadonlySet<DocumentTransformField>,
+  find: string,
+  replacement: string
+): { text: string; matches: number } {
+  if (getNodeType(node) === "module") return { text: node.text, matches: 0 }
+  const separator = node.text.indexOf("&")
+  if (separator === -1) return { text: node.text, matches: 0 }
+  const leftField = getNodeType(node) === "case" ? "caseTitle" : "operation"
+  const rightField = getNodeType(node) === "case" ? "precondition" : "expected"
+  const left = fields.has(leftField)
+    ? replaceLiteral(node.text.slice(0, separator), find, replacement)
+    : { value: node.text.slice(0, separator), count: 0 }
+  const right = fields.has(rightField)
+    ? replaceLiteral(node.text.slice(separator + 1), find, replacement)
+    : { value: node.text.slice(separator + 1), count: 0 }
+  return { text: `${left.value}&${right.value}`, matches: left.count + right.count }
+}
+
+function collectPlanNodes(root: PlannedNode): PlannedNode[] {
+  return [root, ...root.children.flatMap(collectPlanNodes)]
+}
+
+function sameNodeKind(node: PlannedNode, replacement: ParsedTreeNode): boolean {
+  const replacementType = replacement.icon?.includes("sign_2")
+    ? "module"
+    : replacement.icon?.some(icon => icon.startsWith("priority_"))
+      ? "case"
+      : "step"
+  return replacementType === getNodeType(node)
+}
+
+function compileIntentOperations(
+  intents: readonly DocumentIntentOperation[],
+  byLine: ReadonlyMap<number, PlannedNode>
+): { operations: TreePatchOperation[]; effects: DocumentEditEffect[] } {
+  const operations: TreePatchOperation[] = []
+  const effects: DocumentEditEffect[] = []
+  const claimed: Array<{
+    node: PlannedNode
+    operation: number
+    kind: "write" | "destructive" | "reference"
+  }> = []
+  const claim = (
+    node: PlannedNode,
+    operation: number,
+    kind: "write" | "destructive" | "reference" = "write"
+  ) => {
+    if (
+      claimed.some(existing => {
+        if (existing.operation === operation) return false
+        const destructive = existing.kind === "destructive" || kind === "destructive"
+        if (existing.node === node)
+          return destructive || (existing.kind !== "reference" && kind !== "reference")
+        return (
+          destructive && (isDescendant(existing.node, node) || isDescendant(node, existing.node))
+        )
+      })
+    )
+      throw new DocumentPortalError(
+        DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+        "Intent operations overlap on the same subtree"
+      )
+    claimed.push({ node, operation, kind })
+  }
+  intents.forEach((intent, index) => {
+    const target = byLine.get(
+      intent.op === "append_cases"
+        ? intent.to
+        : intent.op === "replace_text"
+          ? intent.within
+          : intent.at
+    )
+    if (!target)
+      throw new DocumentPortalError(
+        DOCUMENT_PORTAL_ERROR_CODE.ANCHOR_EXPIRED,
+        "Intent operation references a line outside the anchored view"
+      )
+    const servedUids = new Set(Array.from(byLine.values(), node => node.uid))
+    if (intent.op === "append_cases") {
+      if (getNodeType(target) !== "module")
+        throw new DocumentPortalError(
+          DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+          "append_cases target must be a module"
+        )
+      const nodes = parseIntentTree(intent.tree)
+      if (
+        !nodes ||
+        nodes.some(node => !(node.icon ?? []).some(icon => icon.startsWith("priority_")))
+      )
+        throw new DocumentPortalError(
+          DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+          "append_cases tree must contain only case roots with two-space-indented steps"
+        )
+      operations.push({ kind: "append-child", start: intent.to, nodes, targetUid: target.uid })
+      claim(target, index)
+      effects.push({ operation: index, nodes: countParsedNodes(nodes), cases: nodes.length })
+      return
+    }
+    if (intent.op === "replace_text") {
+      if (getNodeType(target) !== "module")
+        throw new DocumentPortalError(
+          DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+          "replace_text scope must be a module"
+        )
+      if (
+        !intent.find ||
+        intent.find.includes("&") ||
+        intent.find.includes("\n") ||
+        intent.replace.includes("&") ||
+        intent.replace.includes("\n")
+      )
+        throw new DocumentPortalError(
+          DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+          "replace_text find and replace must be single-field literal text"
+        )
+      const fields = new Set(intent.fields)
+      let matches = 0
+      let changed = 0
+      for (const node of collectPlanNodes(target).filter(node => servedUids.has(node.uid))) {
+        const transformed = transformNodeText(node, fields, intent.find, intent.replace)
+        matches += transformed.matches
+        if (transformed.matches === 0) continue
+        claim(node, index)
+        changed += 1
+        operations.push({
+          kind: "put",
+          start: intent.within,
+          targetUid: node.uid,
+          nodes: [{ text: transformed.text, icon: node.icon, children: [] }],
+        })
+      }
+      if (matches !== intent.expect)
+        throw new DocumentPortalError(
+          DOCUMENT_PORTAL_ERROR_CODE.TRANSFORM_COUNT_MISMATCH,
+          `replace_text expected ${intent.expect} occurrences but found ${matches}`
+        )
+      effects.push({ operation: index, nodes: changed, matches })
+      return
+    }
+    claim(target, index, intent.op === "delete" || intent.op === "move" ? "destructive" : "write")
+    if (intent.op === "set_node") {
+      const node = parseProjectedTreeNode(intent.value)
+      if (!node || !sameNodeKind(target, node))
+        throw new DocumentPortalError(
+          DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+          "set_node value must be one row of the target's existing node type"
+        )
+      operations.push({ kind: "put", start: intent.at, targetUid: target.uid, nodes: [node] })
+      effects.push({ operation: index, nodes: 1 })
+      return
+    }
+    if (intent.op === "delete") {
+      operations.push({ kind: "cut", start: intent.at, targetUid: target.uid })
+      effects.push({ operation: index, removed: countPlanNodes(target) })
+      return
+    }
+    const destination = byLine.get(intent.to)
+    if (!destination)
+      throw new DocumentPortalError(
+        DOCUMENT_PORTAL_ERROR_CODE.ANCHOR_EXPIRED,
+        "Move destination is outside the anchored view"
+      )
+    claim(destination, index, "reference")
+    operations.push({
+      kind: "move",
+      start: intent.at,
+      destination: intent.to,
+      destinationPosition: intent.position,
+      targetUid: target.uid,
+      destinationUid: destination.uid,
+    })
+    effects.push({ operation: index, nodes: countPlanNodes(target) })
+  })
+  return { operations, effects }
 }
 
 async function executeDataTreePatch(
@@ -438,6 +753,10 @@ function applyCompiledOperationsToData(
       else delete resolved.node.data.icon
       continue
     }
+    if (operation.kind === "append-child") {
+      resolved.node.children.push(...parsedNodesToData(operation.nodes!))
+      continue
+    }
     if (!resolved.parent) throw new Error("Patch operation requires a parent data node")
     const targetIndex = resolved.parent.children.indexOf(resolved.node)
     if (operation.kind === "put") {
@@ -455,11 +774,23 @@ function applyCompiledOperationsToData(
       const resolvedDestination = findDataNode(root, destination.uid)
       if (!resolvedDestination) throw new Error("Move destination is detached from the data tree")
       resolved.parent.children.splice(targetIndex, 1)
-      resolvedDestination.node.children.push(resolved.node)
+      if (operation.destinationPosition === "last-child") {
+        resolvedDestination.node.children.push(resolved.node)
+      } else {
+        if (!resolvedDestination.parent)
+          throw new Error("Sibling move destination requires a parent data node")
+        const destinationIndex = resolvedDestination.parent.children.indexOf(
+          resolvedDestination.node
+        )
+        resolvedDestination.parent.children.splice(
+          destinationIndex + (operation.destinationPosition === "after" ? 1 : 0),
+          0,
+          resolved.node
+        )
+      }
     }
   }
 }
-
 function getIcons(node: MindMapNodeTree): string[] {
   return Array.isArray(node.data.icon)
     ? node.data.icon.filter((icon): icon is string => typeof icon === "string")
@@ -570,14 +901,15 @@ export function createMindMapDocumentPortal(
       const state = useTabs.getState()
       return { tabs: state.tabs, activeId: state.activeId }
     })
-  const readAnchors = new Map<string, Map<number, ReadAnchor>>()
+  const readSnapshots = new Map<string, ReadSnapshot>()
   const documentQueues = new Map<string, Promise<void>>()
   const destructivePreviews = new Map<
     string,
     {
       documentId: string
       anchorTag: string
-      patch: string
+      patch?: string
+      operations?: DocumentIntentOperation[]
       fingerprint: string
       expiresAt: number
     }
@@ -596,44 +928,60 @@ export function createMindMapDocumentPortal(
     return next
   }
 
-  const registerReadAnchors = (
+  const registerReadSnapshot = (
     documentId: string,
+    mindMap: MindMap,
     root: MindMapNodeTree,
     request: DocumentReadRequest,
     maxLines: number
-  ) => {
-    const anchors = new Map<number, ReadAnchor>()
+  ): ReadSnapshot => {
+    const lines = new Map<number, string>()
+    const incompleteUids = new Set<string>()
     const selected = request.path?.length ? findByPath(root, request.path) : root
-    if (!selected) return anchors
-    const pending: Array<{ node: MindMapNodeTree; depth: number }> = [{ node: selected, depth: 0 }]
+    if (!selected) throw new Error("Read snapshot target is missing after successful projection")
     const expiresAt = Date.now() + ANCHOR_TTL_MS
+    const snapshotRoot: MindMapNodeTree = {
+      data: structuredClone(selected.data),
+      children: [],
+    }
+    const pending: Array<{
+      node: MindMapNodeTree
+      parent: MindMapNodeTree | null
+      clone?: MindMapNodeTree
+    }> = [{ node: selected, parent: null, clone: snapshotRoot }]
     let line = 0
     while (pending.length > 0 && line < maxLines) {
       const current = pending.pop()
       if (!current) break
-      if (
-        request.view === "subtree" ||
-        current.depth === 0 ||
-        isModule(current.node) ||
-        isCase(current.node)
-      ) {
-        line += 1
-        const uid = current.node.data.uid
-        if (typeof uid === "string")
-          anchors.set(line, {
-            documentId,
-            uid,
-            contentHash: contentHash(getText(current.node)),
-            expiresAt,
-          })
+      const clone = current.clone ?? {
+        data: structuredClone(current.node.data),
+        children: [],
       }
-      if (request.view === "outline" && isCase(current.node)) continue
+      if (current.parent) current.parent.children.push(clone)
+      line += 1
+      const uid = current.node.data.uid
+      if (typeof uid === "string") lines.set(line, uid)
+      if (request.view === "outline" && isCase(current.node)) {
+        if (current.node.children.length > 0 && typeof uid === "string") incompleteUids.add(uid)
+        continue
+      }
       for (let index = current.node.children.length - 1; index >= 0; index -= 1)
-        pending.push({ node: current.node.children[index], depth: current.depth + 1 })
+        pending.push({ node: current.node.children[index]!, parent: clone })
     }
-    return anchors
+    for (const item of pending) {
+      const parentUid = item.parent?.data.uid
+      if (typeof parentUid === "string") incompleteUids.add(parentUid)
+    }
+    return {
+      documentId,
+      mindMap,
+      expiresAt,
+      root: snapshotRoot,
+      lines,
+      revision: getDocumentRevision(mindMap),
+      incompleteUids,
+    }
   }
-
   const getReadyState = (documentId: string): ReadyDocumentState => {
     const { tabs } = getTabs()
     if (!tabs.some(tab => tab.id === documentId))
@@ -687,9 +1035,15 @@ export function createMindMapDocumentPortal(
           `Document path was not found: ${path.join(" / ")}`
         )
       const anchorTag = crypto.randomUUID()
-      readAnchors.set(
+      readSnapshots.set(
         anchorTag,
-        registerReadAnchors(request.documentId, root, { ...request, path }, maxLines)
+        registerReadSnapshot(
+          request.documentId,
+          state.mindMap,
+          root,
+          { ...request, path },
+          maxLines
+        )
       )
       return {
         documentId: request.documentId,
@@ -782,61 +1136,114 @@ export function createMindMapDocumentPortal(
               ...inputRequest,
               anchorTag: storedConfirmation.anchorTag,
               patch: storedConfirmation.patch,
+              operations: storedConfirmation.operations,
             }
           : inputRequest
-        if (!request.anchorTag || !request.patch)
-          throw new DocumentPortalError(
-            DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
-            "Document edits require anchorTag and patch"
-          )
-        const operations = parseTreeHashlinePatch(request.patch)
-        if (!operations)
-          throw new DocumentPortalError(
-            DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
-            explainInvalidTreeHashlinePatch(request.patch)
-          )
-        const rangedOperations = operations.filter(
-          operation => operation.end !== undefined && operation.end !== operation.start
+        const hasPatch = typeof request.patch === "string"
+        const hasIntents = request.operations !== undefined
+        if (
+          !request.anchorTag ||
+          hasPatch === hasIntents ||
+          (hasIntents && request.operations?.length === 0)
         )
-        const anchors = readAnchors.get(request.anchorTag)
+          throw new DocumentPortalError(
+            DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+            "Document edits require anchorTag and exactly one non-empty patch or operations array"
+          )
+        const snapshot = readSnapshots.get(request.anchorTag)
         const state = getReadyState(request.documentId)
         const mindMap = state.mindMap
+        if (
+          !snapshot ||
+          snapshot.documentId !== request.documentId ||
+          snapshot.mindMap !== mindMap ||
+          snapshot.expiresAt < Date.now()
+        )
+          throw new DocumentPortalError(
+            DOCUMENT_PORTAL_ERROR_CODE.ANCHOR_EXPIRED,
+            "Document edit anchor has expired; query the affected area again and retry"
+          )
         const rawData = mindMap.getData() as MindMapNodeTree | { root?: MindMapNodeTree }
         const rootData =
           "root" in rawData && rawData.root ? rawData.root : (rawData as MindMapNodeTree)
         const root = toPlan(rootData, null, mindMap)
         const byLine = new Map<number, PlannedNode>()
-        for (const operation of operations) {
-          for (const line of [operation.start, operation.end, operation.destination]) {
-            if (line === undefined) continue
-            const anchor = anchors?.get(line)
-            if (
-              !anchor ||
-              anchor.documentId !== request.documentId ||
-              anchor.expiresAt < Date.now()
+        for (const [line, uid] of snapshot.lines) {
+          const node = findPlanNode(root, uid)
+          if (node) byLine.set(line, node)
+        }
+        let effects: DocumentEditEffect[] = []
+        let operations: TreePatchOperation[]
+        if (request.operations) {
+          for (const intent of request.operations) {
+            const targetLine =
+              intent.op === "append_cases"
+                ? intent.to
+                : intent.op === "replace_text"
+                  ? intent.within
+                  : intent.at
+            const target = byLine.get(targetLine)
+            const destination = intent.op === "move" ? byLine.get(intent.to) : undefined
+            if (!target || (intent.op === "move" && !destination))
+              throw new DocumentPortalError(
+                DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+                "An anchored intent target no longer exists; query the affected area again and retry"
+              )
+            assertCurrentIntentTarget(
+              intent,
+              rootData,
+              snapshot,
+              target,
+              destination,
+              getDocumentRevision(mindMap)
             )
-              throw new DocumentPortalError(
-                DOCUMENT_PORTAL_ERROR_CODE.ANCHOR_EXPIRED,
-                "Document edit anchor has expired; query the affected area again and retry"
-              )
-            const node = findPlanNode(root, anchor.uid)
-            if (!node)
-              throw new DocumentPortalError(
-                DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
-                "The anchored node no longer exists; query the affected area again and retry"
-              )
-            if (contentHash(getText(node.data)) !== anchor.contentHash)
-              throw new DocumentPortalError(
-                DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
-                "The anchored node changed; query the affected area again and retry"
-              )
-            byLine.set(line, node)
+          }
+          const compiledIntents = compileIntentOperations(request.operations, byLine)
+          operations = compiledIntents.operations
+          effects = compiledIntents.effects
+        } else {
+          operations = parseTreeHashlinePatch(request.patch!) ?? []
+          if (operations.length === 0)
+            throw new DocumentPortalError(
+              DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+              explainInvalidTreeHashlinePatch(request.patch!)
+            )
+          for (const operation of operations) {
+            for (const line of [operation.start, operation.end, operation.destination]) {
+              if (line === undefined) continue
+              const node = byLine.get(line)
+              const snapshotUid = snapshot.lines.get(line)
+              const snapshotNode = snapshotUid
+                ? findDataNode(snapshot.root, snapshotUid)?.node
+                : undefined
+              if (!node || !snapshotNode)
+                throw new DocumentPortalError(
+                  DOCUMENT_PORTAL_ERROR_CODE.ANCHOR_EXPIRED,
+                  "Document edit anchor has expired; query the affected area again and retry"
+                )
+              if (!sameNodeData(node.data, snapshotNode))
+                throw new DocumentPortalError(
+                  DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+                  "The anchored node changed; query the affected area again and retry"
+                )
+            }
           }
         }
+        const rangedOperations = operations.filter(
+          operation => operation.end !== undefined && operation.end !== operation.start
+        )
         const compiled: CompiledOperation[] = operations.map(operation => ({
           operation,
-          target: byLine.get(operation.start)!,
-          ...(operation.destination ? { destination: byLine.get(operation.destination) } : {}),
+          target: operation.targetUid
+            ? findPlanNode(root, operation.targetUid)!
+            : byLine.get(operation.start)!,
+          ...(operation.destinationUid || operation.destination
+            ? {
+                destination: operation.destinationUid
+                  ? (findPlanNode(root, operation.destinationUid) ?? undefined)
+                  : byLine.get(operation.destination!),
+              }
+            : {}),
         }))
         const affectedUids = new Set<string>()
         for (const { operation } of compiled)
@@ -855,22 +1262,22 @@ export function createMindMapDocumentPortal(
             DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
             "Inclusive CUT ranges are not supported; cut the containing subtree or use separate CUT operations"
           )
+        const isStructuralPut = (operation: TreePatchOperation) =>
+          operation.kind === "put" &&
+          !(operation.nodes?.length === 1 && operation.nodes[0]?.children.length === 0)
         const destructiveTargets = compiled.flatMap(({ operation, target }) =>
-          isRootContentReplacement(operation, target) ? target.children : [target]
+          isRootContentReplacement(operation, target)
+            ? target.children
+            : operation.kind === "cut" || isStructuralPut(operation)
+              ? [target]
+              : []
         )
         const destructiveOperationTargets = compiled
-          .filter(({ operation, target }) => {
-            if (isAdditiveEmptyNodeCompletion(operation, target)) return false
-            return (
-              (operation.kind === "cut" || operation.kind === "put") &&
-              !(
-                target.parent === null &&
-                operation.kind === "put" &&
-                operation.nodes?.length === 1 &&
-                operation.nodes[0]?.children.length === 0
-              )
-            )
-          })
+          .filter(
+            ({ operation, target }) =>
+              !isAdditiveEmptyNodeCompletion(operation, target) &&
+              (operation.kind === "cut" || isStructuralPut(operation))
+          )
           .map(({ target }) => target)
         for (let outer = 0; outer < destructiveOperationTargets.length; outer += 1)
           for (let inner = outer + 1; inner < destructiveOperationTargets.length; inner += 1)
@@ -907,10 +1314,18 @@ export function createMindMapDocumentPortal(
               DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
               "Cannot move a subtree into itself"
             )
-          if (operation.kind === "move" && destination)
-            validateTreeChildren(destination, [
+          if (operation.kind === "move" && destination) {
+            const destinationParent =
+              operation.destinationPosition === "last-child" ? destination : destination.parent
+            if (!destinationParent)
+              throw new DocumentPortalError(
+                DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+                "Sibling move destination requires a parent"
+              )
+            validateTreeChildren(destinationParent, [
               { text: target.text, icon: target.icon, children: [] },
             ])
+          }
           if (operation.nodes) {
             const simpleTextReplacement =
               operation.kind === "put" &&
@@ -919,6 +1334,9 @@ export function createMindMapDocumentPortal(
             if (rootContentReplacement) {
               validateTreeChildren(target, operation.nodes[0]!.children)
               added += countParsedNodes(operation.nodes[0]!.children)
+            } else if (operation.kind === "append-child") {
+              validateTreeChildren(target, operation.nodes)
+              added += countParsedNodes(operation.nodes)
             } else if (!simpleTextReplacement) {
               const parent =
                 operation.kind === "insert-before" ||
@@ -969,6 +1387,7 @@ export function createMindMapDocumentPortal(
               documentId: request.documentId,
               anchorTag: request.anchorTag,
               patch: request.patch,
+              operations: request.operations,
               fingerprint,
               expiresAt: Date.now() + 5 * 60_000,
             })
@@ -979,6 +1398,7 @@ export function createMindMapDocumentPortal(
               phase: "preview",
               changeSummary: preview,
               confirmationToken,
+              effects,
               diagnostics: [],
             }
           }
@@ -988,6 +1408,7 @@ export function createMindMapDocumentPortal(
             dirty: state.dirty,
             phase: "preview",
             changeSummary: preview,
+            effects,
             diagnostics: [],
           }
         }
@@ -1039,22 +1460,38 @@ export function createMindMapDocumentPortal(
         await focusRenderedNodes(mindMap, postEditFocusUids(compiled))
         mindMap.command.commitHistoryNow()
         state.setDirty(true)
-        readAnchors.delete(request.anchorTag)
+        readSnapshots.delete(request.anchorTag)
         const committedData = mindMap.getData() as MindMapNodeTree | { root?: MindMapNodeTree }
         const committedRoot =
           "root" in committedData && committedData.root
             ? committedData.root
             : (committedData as MindMapNodeTree)
         const pendingDiagnostics = lintAffectedNodes(committedRoot, affectedUids)
-        const view = this.read({
-          documentId: request.documentId,
-          view: pendingDiagnostics.length > 0 ? "subtree" : (request.returnView?.view ?? "outline"),
-          path: postEditPath(compiled),
-          maxLines: request.returnView?.maxLines ?? DEFAULT_READ_MAX_LINES,
-        })
-        const viewAnchors = readAnchors.get(view.anchorTag)
+        const needsView =
+          request.operations === undefined ||
+          request.returnView !== undefined ||
+          pendingDiagnostics.length > 0
+        const preferredReturnPath =
+          pendingDiagnostics.length === 0 && request.returnView?.path !== undefined
+            ? normalizePublicPath(committedRoot, request.returnView.path)
+            : undefined
+        const returnPath =
+          preferredReturnPath !== undefined &&
+          (preferredReturnPath.length === 0 || findByPath(committedRoot, preferredReturnPath))
+            ? preferredReturnPath
+            : postEditPath(compiled)
+        const view = needsView
+          ? this.read({
+              documentId: request.documentId,
+              view:
+                pendingDiagnostics.length > 0 ? "subtree" : (request.returnView?.view ?? "outline"),
+              path: returnPath,
+              maxLines: request.returnView?.maxLines ?? DEFAULT_READ_MAX_LINES,
+            })
+          : undefined
+        const viewSnapshot = view ? readSnapshots.get(view.anchorTag) : undefined
         const lineByUid = new Map<string, number>()
-        for (const [line, anchor] of viewAnchors ?? []) lineByUid.set(anchor.uid, line)
+        for (const [line, uid] of viewSnapshot?.lines ?? []) lineByUid.set(uid, line)
         const diagnostics: DocumentEditDiagnostic[] = pendingDiagnostics.map(diagnostic => {
           const line = lineByUid.get(diagnostic.uid)
           const publicDiagnostic: Omit<DocumentEditDiagnostic, "line" | "repairPatchHint"> = {
@@ -1085,7 +1522,8 @@ export function createMindMapDocumentPortal(
           dirty: true,
           phase: "committed",
           changeSummary: preview,
-          view,
+          ...(effects.length ? { effects } : {}),
+          ...(view ? { view } : {}),
           diagnostics,
         }
       })

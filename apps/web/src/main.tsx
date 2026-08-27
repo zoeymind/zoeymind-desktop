@@ -23,7 +23,13 @@ import.meta.hot?.dispose(() => {
 
 if (import.meta.hot) {
   import.meta.hot.on("vite:beforeUpdate", ({ updates }) => {
-    if (updates.some(({ path }) => path.includes("/packages/simple-mind-map/src/"))) {
+    if (
+      updates.some(
+        ({ path }) =>
+          path.includes("/packages/simple-mind-map/src/") ||
+          path.includes("/products/mind/document-portal/")
+      )
+    ) {
       window.location.reload()
     }
   })

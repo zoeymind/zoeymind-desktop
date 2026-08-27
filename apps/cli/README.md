@@ -36,24 +36,28 @@ pnpm tauri:dev
 然后从 workspace 调用：
 
 ```bash
-pnpm --filter @zoeymind/cli exec tsx src/index.ts projects
+pnpm --filter @zoeymind/cli exec tsx src/bin.ts projects
 
-pnpm --filter @zoeymind/cli exec tsx src/index.ts \
+pnpm --filter @zoeymind/cli exec tsx src/bin.ts \
   query_current_mindmap \
   '{"mode":"outline","maxLines":200}'
 ```
 
 ## 操作
 
-| 操作                    | 输入                                | 作用                          |
-| ----------------------- | ----------------------------------- | ----------------------------- |
-| `projects`              | `{"action":"list"}`                 | 列出 Desktop 可见的项目和状态 |
-| `projects`              | `{"action":"create","title":"..."}` | 创建并打开临时草稿            |
-| `activate_project`      | `{"projectId":"..."}`               | 打开或激活项目                |
-| `query_current_mindmap` | outline/subtree/search request      | 查询当前 ready 的思维导图     |
-| `edit_current_mindmap`  | anchor + Tree Hashline patch        | 原子编辑当前思维导图          |
+| 操作                    | 输入                                                  | 作用                              |
+| ----------------------- | ----------------------------------------------------- | --------------------------------- |
+| `projects`              | `{"action":"list","projectId?":"...","title?":"..."}` | 列出或精确过滤 Desktop 可见的项目 |
+| `projects`              | `{"action":"create","title":"..."}`                   | 创建并打开临时草稿                |
+| `activate_project`      | `{"projectId":"..."}`                                 | 打开或激活项目                    |
+| `query_current_mindmap` | outline/subtree/search request                        | 查询当前 ready 的思维导图         |
+| `edit_current_mindmap`  | anchor + Tree Hashline patch                          | 原子编辑当前思维导图              |
 
 CLI 不直接读取或修改 `.zmind` 文件。它通过共享 Broker Client 调用正在运行的 Desktop，由 Desktop 内唯一的实时文档会话执行操作。
+
+完整且未截断的 outline 响应包含 `summary.caseCount` 与 `summary.priorityCounts`。Search 返回的 `readPath` 可原样用于 subtree 查询；路径以文档根节点为相对起点，也兼容包含根节点的写法。
+
+CLI 接受 Agent 附带的额外上下文，并在 Broker seam 只保留当前操作可执行的字段；无关字段不会阻断调用。
 
 ## 通信
 
@@ -70,9 +74,9 @@ CLI 每次请求读取 Desktop 创建的本地 descriptor；用户不配置端�
 
 ## 诊断与恢复
 
-- `APP_UNAVAILABLE`：启动 Desktop，在 Preferences 中启用外部自动化，然后重试；
+- `APP_UNAVAILABLE`：打开或重新打开 Desktop，等待应用就绪后重试；
 - Desktop 重启后旧 descriptor/token 失效：直接重试，CLI 会在下一次调用重新读取 descriptor；
-- descriptor 损坏或协议版本不兼容：关闭外部自动化再重新开启，让 Desktop 重新生成 descriptor；
+- descriptor 损坏或协议版本不兼容：重新打开 Desktop，让应用重新生成 descriptor；
 - CLI 不记录 token、descriptor 内容、文档内容或工具输入。Desktop 日志位置可在 Preferences → Logs 查看和打开。
 
 ## 开发与验证

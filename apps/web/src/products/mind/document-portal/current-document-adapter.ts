@@ -38,20 +38,59 @@ export const CurrentDocumentQueryToolInputSchema = z.discriminatedUnion("mode", 
     .strict(),
 ])
 
-export const CurrentDocumentEditToolInputSchema = z
+const positiveLine = z.number().int().positive()
+const intentOperation = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("append_cases"), to: positiveLine, tree: z.string().min(1) }).strict(),
+  z
+    .object({
+      op: z.literal("replace_text"),
+      within: positiveLine,
+      fields: z.array(z.enum(["caseTitle", "precondition", "operation", "expected"])).min(1),
+      find: z.string().min(1),
+      replace: z.string(),
+      expect: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z.object({ op: z.literal("set_node"), at: positiveLine, value: z.string().min(1) }).strict(),
+  z.object({ op: z.literal("delete"), at: positiveLine }).strict(),
+  z
+    .object({
+      op: z.literal("move"),
+      at: positiveLine,
+      to: positiveLine,
+      position: z.enum(["before", "after", "last-child"]),
+    })
+    .strict(),
+])
+const returnViewSchema = z
   .object({
-    anchorTag: z.string().min(1),
-    patch: z.string().min(1),
-    preview: z.boolean().optional(),
-    returnView: z
-      .object({
-        view: z.enum(["outline", "subtree"]).optional(),
-        maxLines: z.number().int().min(1).max(1_000).optional(),
-      })
-      .strict()
-      .optional(),
+    view: z.enum(["outline", "subtree"]).optional(),
+    path: z
+      .array(z.string().min(1))
+      .optional()
+      .describe("Preferred root-relative path for the fresh post-edit view."),
+    maxLines: z.number().int().min(1).max(1_000).optional(),
   })
-  .strict()
+  .passthrough()
+
+export const CurrentDocumentEditToolInputSchema = z.union([
+  z
+    .object({
+      anchorTag: z.string().min(1),
+      operations: z.array(intentOperation).min(1),
+      preview: z.boolean().optional(),
+      returnView: returnViewSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      anchorTag: z.string().min(1),
+      patch: z.string().min(1),
+      preview: z.boolean().optional(),
+      returnView: returnViewSchema.optional(),
+    })
+    .strict(),
+])
 
 export interface CurrentDocumentResolver {
   resolve: () => string
@@ -163,7 +202,7 @@ export function executeCurrentDocumentPortalTool(
 
 export function approveCurrentDocumentEdit(
   confirmationToken: string,
-  returnView: { view?: "outline" | "subtree"; maxLines?: number } | undefined,
+  returnView: { view?: "outline" | "subtree"; path?: string[]; maxLines?: number } | undefined,
   dependencies: CurrentDocumentPortalDependencies = {}
 ): ReturnType<DocumentPortal["edit"]> {
   const portal = dependencies.portal ?? mindMapDocumentPortal

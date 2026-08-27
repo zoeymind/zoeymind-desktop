@@ -60,7 +60,7 @@ export async function runCliDoctor(
       status: "fail",
       message:
         projectsContent.error ??
-        "ZoeyMind Desktop automation is unavailable. Start Desktop, enable External automation, and retry.",
+        "ZoeyMind Desktop automation is unavailable. Open or reopen Desktop, wait until it is ready, and retry.",
       details: projectsContent,
     });
     return { ok: false, checks };

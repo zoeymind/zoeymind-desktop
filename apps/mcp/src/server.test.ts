@@ -50,9 +50,12 @@ describe("ZoeyMind MCP external project interface", () => {
       type: "object",
       properties: {
         action: { enum: ["list", "create"] },
+        projectId: {
+          type: "string",
+          description: "For list: return only this exact projectId.",
+        },
         title: { type: "string" },
       },
-      required: ["action"],
     });
     expect(
       listed.tools.find((tool) => tool.name === "query_current_mindmap")
@@ -61,15 +64,28 @@ describe("ZoeyMind MCP external project interface", () => {
       type: "object",
       properties: {
         mode: { enum: ["outline", "subtree", "search"] },
-        path: { type: "array" },
-        maxLines: { type: "integer" },
-        query: { type: "string" },
+        path: {
+          type: "array",
+          description: "For outline/subtree: root-relative read path.",
+        },
+        maxLines: { type: "integer", maximum: 1000 },
+        query: { type: "string", description: "Required for search." },
         scope: { type: "array" },
         fields: { type: "array" },
         limit: { type: "integer" },
         cursor: { type: "string" },
       },
-      required: ["mode"],
+    });
+    expect(
+      listed.tools.find((tool) => tool.name === "edit_current_mindmap")
+        ?.inputSchema,
+    ).toMatchObject({
+      type: "object",
+      properties: {
+        anchorTag: { type: "string" },
+        operations: { type: "array", minItems: 1 },
+        patch: { type: "string" },
+      },
     });
 
     await connection.session.callTool({
@@ -88,6 +104,13 @@ describe("ZoeyMind MCP external project interface", () => {
       name: "edit_current_mindmap",
       arguments: { anchorTag: "A001", patch: "PUT 1.=1:\n+Done" },
     });
+    await connection.session.callTool({
+      name: "edit_current_mindmap",
+      arguments: {
+        anchorTag: "A002",
+        operations: [{ op: "delete", at: 3 }],
+      },
+    });
 
     expect(broker.calls).toEqual([
       { tool: "projects", input: { action: "list" } },
@@ -97,12 +120,16 @@ describe("ZoeyMind MCP external project interface", () => {
         tool: "edit_current_mindmap",
         input: { anchorTag: "A001", patch: "PUT 1.=1:\n+Done" },
       },
+      {
+        tool: "edit_current_mindmap",
+        input: { anchorTag: "A002", operations: [{ op: "delete", at: 3 }] },
+      },
     ]);
     await connection.session.close();
     await connection.server.close();
   });
 
-  it("keeps all public tool schemas strict at the adapter boundary", async () => {
+  it("rejects only requests that cannot execute and tolerates extra Agent context", async () => {
     const broker = fakeClient();
     const connection = await connect(broker);
     const invalidRequests = [
@@ -126,6 +153,47 @@ describe("ZoeyMind MCP external project interface", () => {
       );
     }
     expect(broker.calls).toEqual([]);
+
+    for (const request of [
+      {
+        name: "projects",
+        arguments: { action: "create", projectId: "ignored", title: "Draft" },
+      },
+      {
+        name: "query_current_mindmap",
+        arguments: { mode: "outline", query: "ignored", extra: true },
+      },
+      {
+        name: "query_current_mindmap",
+        arguments: { mode: "search", query: "case", path: ["ignored"] },
+      },
+      {
+        name: "edit_current_mindmap",
+        arguments: { anchorTag: "A", patch: "PUT 1.=1:\n+Done", extra: true },
+      },
+    ])
+      expect((await connection.session.callTool(request)).isError).not.toBe(
+        true,
+      );
+    expect(broker.calls).toEqual([
+      {
+        tool: "projects",
+        input: { action: "create", projectId: "ignored", title: "Draft" },
+      },
+      {
+        tool: "query_current_mindmap",
+        input: { mode: "outline", query: "ignored" },
+      },
+      {
+        tool: "query_current_mindmap",
+        input: { mode: "search", query: "case", path: ["ignored"] },
+      },
+      {
+        tool: "edit_current_mindmap",
+        input: { anchorTag: "A", patch: "PUT 1.=1:\n+Done" },
+      },
+    ]);
+
     await connection.session.close();
     await connection.server.close();
   });
