@@ -65,7 +65,8 @@ export const UnifiedAIPanel: React.FC<UnifiedAIPanelProps> = ({ isActive }) => {
 
   const handleSelectConversation = async (conversationId: string) => {
     try {
-      await loadConversation(conversationId)
+      if (!runtime.workspaceId) return
+      await loadConversation(conversationId, runtime.workspaceId)
       setShowHistory(false)
     } catch (error) {
       logger.error("UnifiedAIPanel: 选择对话失败", error)

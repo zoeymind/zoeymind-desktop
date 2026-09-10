@@ -143,7 +143,8 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   }
 
   const handleSelectConversation = async (conversationId: string) => {
-    await loadConversation(conversationId)
+    if (!runtime.workspaceId) return
+    await loadConversation(conversationId, runtime.workspaceId)
     setShowHistory(false)
   }
 

@@ -137,7 +137,7 @@ interface AIchatV2State {
     provider?: string
   ) => Promise<boolean>
   createNewConversation: (workspaceId: string) => Promise<void>
-  loadConversation: (conversationId: string) => Promise<void>
+  loadConversation: (conversationId: string, targetWorkspaceId?: string) => Promise<void>
   loadConversations: (workspaceId: string) => Promise<void>
   deleteConversation: (conversationId: string, workspaceId: string) => Promise<void>
   clearInput: () => void
@@ -540,12 +540,12 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   },
 
   // 加载对话
-  loadConversation: async conversationId => {
+  loadConversation: async (conversationId, targetWorkspaceId) => {
     const transition = ++conversationRequest
     try {
       const conversation = await sqliteChatStore.getConversation(conversationId)
       if (!conversation) return
-      const { workspaceId } = conversation
+      const workspaceId = targetWorkspaceId ?? conversation.workspaceId
       if (!claimConversationTransition(workspaceId, transition)) return
       const { transcript, compaction } = await sqliteChatStore.loadConversationState(conversationId)
       const runtime = getModuleAIChatRuntime(workspaceId)
