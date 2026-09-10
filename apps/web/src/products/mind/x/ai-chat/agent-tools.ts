@@ -23,7 +23,7 @@ export function getAgentTools() {
     }),
     edit_current_mindmap: tool({
       description:
-        "Edit the user's currently open mind map using anchorTag and line numbers from the current view. The result includes a fresh bounded view and anchorTag for immediate follow-up edits; query again only when the next target is outside that view, truncated, or conflicted.",
+        "Atomically edit the open mind map from an anchored view. Prefer structured operations: set_node changes only the node itself and preserves children; insert_subtree/replace_subtree handle module trees; append_cases accepts cases only. Results are compact by default—request returnView only when follow-up needs content. Stale, overlapping, or invalid batches reject without mutation.",
       inputSchema: CurrentDocumentEditToolInputSchema,
     }),
     question: tool({

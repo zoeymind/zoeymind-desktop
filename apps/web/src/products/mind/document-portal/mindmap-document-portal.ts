@@ -190,8 +190,27 @@ function assertCurrentIntentTarget(
       DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
       "The document changed after reading a hidden subtree; query the affected area again"
     )
+  const targetOwnDataCurrent = sameNodeData(target.data, snapshotTarget)
+  const targetSubtreeCurrent = sameServedSubtree(
+    target.data,
+    snapshotTarget,
+    snapshot.incompleteUids
+  )
+  const requiresSubtree =
+    operation.op === "delete" ||
+    operation.op === "move" ||
+    operation.op === "replace_subtree" ||
+    operation.op === "append_cases" ||
+    operation.op === "replace_text" ||
+    (operation.op === "insert_subtree" && operation.position === "last-child")
+  const siblingPlacementCurrent =
+    operation.op !== "insert_subtree" ||
+    operation.position === "last-child" ||
+    sameParentOrder(liveRoot, snapshot, target.uid)
   if (
-    !sameServedSubtree(target.data, snapshotTarget, snapshot.incompleteUids) ||
+    !targetOwnDataCurrent ||
+    (requiresSubtree && !targetSubtreeCurrent) ||
+    !siblingPlacementCurrent ||
     ((operation.op === "delete" || operation.op === "move") &&
       !sameParentOrder(liveRoot, snapshot, target.uid))
   )
@@ -199,13 +218,17 @@ function assertCurrentIntentTarget(
       DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
       "The anchored target changed; query the affected area again and retry"
     )
-  if (operation.op === "append_cases") {
-    if (snapshot.incompleteUids.has(target.uid))
-      throw new DocumentPortalError(
-        DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
-        "Append requires a complete module view; query that module as a subtree and retry"
-      )
-  }
+  if (
+    (operation.op === "replace_subtree" &&
+      containsIncompleteSnapshotNode(snapshotTarget, snapshot.incompleteUids)) ||
+    ((operation.op === "append_cases" ||
+      (operation.op === "insert_subtree" && operation.position === "last-child")) &&
+      snapshot.incompleteUids.has(target.uid))
+  )
+    throw new DocumentPortalError(
+      DOCUMENT_PORTAL_ERROR_CODE.EDIT_CONFLICT,
+      "This structural edit requires a complete subtree view; query the target with mode: subtree and retry"
+    )
   if (
     operation.op === "replace_text" &&
     (operation.fields.includes("operation") || operation.fields.includes("expected")) &&
@@ -343,7 +366,7 @@ function compileIntentOperations(
       if (getNodeType(target) !== "module")
         throw new DocumentPortalError(
           DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
-          "append_cases target must be a module"
+          "append_cases accepts case trees only and targets a module; use insert_subtree to insert module trees"
         )
       const nodes = parseIntentTree(intent.tree)
       if (
@@ -352,11 +375,43 @@ function compileIntentOperations(
       )
         throw new DocumentPortalError(
           DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
-          "append_cases tree must contain only case roots with two-space-indented steps"
+          "append_cases tree must contain only case roots with two-space-indented steps; use insert_subtree for modules"
         )
       operations.push({ kind: "append-child", start: intent.to, nodes, targetUid: target.uid })
-      claim(target, index)
+      claim(target, index, "children")
       effects.push({ operation: index, nodes: countParsedNodes(nodes), cases: nodes.length })
+      return
+    }
+    if (intent.op === "insert_subtree" || intent.op === "replace_subtree") {
+      const nodes = parseIntentTree(intent.tree)
+      if (!nodes)
+        throw new DocumentPortalError(
+          DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+          `${intent.op} tree must be a non-empty projected tree with two spaces per depth`
+        )
+      if (intent.op === "replace_subtree") {
+        if (nodes.length !== 1 || !sameNodeKind(target, nodes[0]!))
+          throw new DocumentPortalError(
+            DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
+            "replace_subtree tree must have exactly one root of the target's existing node type"
+          )
+        operations.push({ kind: "replace-subtree", start: intent.at, nodes, targetUid: target.uid })
+        claim(target, index, "destructive")
+      } else {
+        operations.push({
+          kind:
+            intent.position === "last-child"
+              ? "append-child"
+              : intent.position === "before"
+                ? "insert-before"
+                : "insert-after",
+          start: intent.at,
+          nodes,
+          targetUid: target.uid,
+        })
+        claim(target, index, intent.position === "last-child" ? "children" : "reference")
+      }
+      effects.push({ operation: index, nodes: countParsedNodes(nodes) })
       return
     }
     if (intent.op === "replace_text") {
@@ -560,7 +615,7 @@ function postEditPath(compiled: readonly CompiledOperation[]): string[] {
 function isRootContentReplacement(operation: TreePatchOperation, target: PlannedNode): boolean {
   const replacement = operation.nodes
   return (
-    operation.kind === "put" &&
+    (operation.kind === "put" || operation.kind === "replace-subtree") &&
     target.parent === null &&
     replacement?.length === 1 &&
     !replacement[0]?.icon?.length
@@ -778,7 +833,7 @@ function applyCompiledOperationsToData(
     }
     if (!resolved.parent) throw new Error("Patch operation requires a parent data node")
     const targetIndex = resolved.parent.children.indexOf(resolved.node)
-    if (operation.kind === "put") {
+    if (operation.kind === "put" || operation.kind === "replace-subtree") {
       const replacement = parsedNodesToData(operation.nodes!)
       replacement[0]!.data.uid = target.uid
       resolved.parent.children.splice(targetIndex, 1, ...replacement)
@@ -1282,8 +1337,9 @@ export function createMindMapDocumentPortal(
             "Inclusive CUT ranges are not supported; cut the containing subtree or use separate CUT operations"
           )
         const isStructuralPut = (operation: TreePatchOperation) =>
-          operation.kind === "put" &&
-          !(operation.nodes?.length === 1 && operation.nodes[0]?.children.length === 0)
+          operation.kind === "replace-subtree" ||
+          (operation.kind === "put" &&
+            !(operation.nodes?.length === 1 && operation.nodes[0]?.children.length === 0))
         const destructiveTargets = compiled.flatMap(({ operation, target }) =>
           isRootContentReplacement(operation, target)
             ? target.children
@@ -1317,7 +1373,10 @@ export function createMindMapDocumentPortal(
         for (const { operation, target, destination } of compiled) {
           const rootContentReplacement = isRootContentReplacement(operation, target)
           if (
-            (operation.kind === "cut" || operation.kind === "move" || operation.kind === "put") &&
+            (operation.kind === "cut" ||
+              operation.kind === "move" ||
+              operation.kind === "put" ||
+              operation.kind === "replace-subtree") &&
             target === root &&
             !rootContentReplacement
           )
@@ -1360,7 +1419,8 @@ export function createMindMapDocumentPortal(
               const parent =
                 operation.kind === "insert-before" ||
                 operation.kind === "insert-after" ||
-                operation.kind === "put"
+                operation.kind === "put" ||
+                operation.kind === "replace-subtree"
                   ? target.parent
                   : null
               if (!parent)
@@ -1376,6 +1436,8 @@ export function createMindMapDocumentPortal(
             removed += target.children.reduce((count, child) => count + countPlanNodes(child), 0)
           else if (
             operation.kind === "cut" ||
+            (operation.kind === "replace-subtree" &&
+              !isAdditiveEmptyNodeCompletion(operation, target)) ||
             (operation.kind === "put" &&
               !(operation.nodes?.length === 1 && operation.nodes[0]?.children.length === 0) &&
               !isAdditiveEmptyNodeCompletion(operation, target))

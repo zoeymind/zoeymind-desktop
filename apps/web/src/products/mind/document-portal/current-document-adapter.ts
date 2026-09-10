@@ -43,6 +43,17 @@ const intentOperation = z.discriminatedUnion("op", [
   z.object({ op: z.literal("append_cases"), to: positiveLine, tree: z.string().min(1) }).strict(),
   z
     .object({
+      op: z.literal("insert_subtree"),
+      at: positiveLine,
+      position: z.enum(["before", "after", "last-child"]),
+      tree: z.string().min(1),
+    })
+    .strict(),
+  z
+    .object({ op: z.literal("replace_subtree"), at: positiveLine, tree: z.string().min(1) })
+    .strict(),
+  z
+    .object({
       op: z.literal("replace_text"),
       within: positiveLine,
       fields: z.array(z.enum(["caseTitle", "precondition", "operation", "expected"])).min(1),

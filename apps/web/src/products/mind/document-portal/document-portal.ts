@@ -89,6 +89,13 @@ export type DocumentIntentOperation =
       to: number
       position: "before" | "after" | "last-child"
     }
+  | {
+      op: "insert_subtree"
+      at: number
+      position: "before" | "after" | "last-child"
+      tree: string
+    }
+  | { op: "replace_subtree"; at: number; tree: string }
 
 export interface DocumentEditRequest {
   documentId: string

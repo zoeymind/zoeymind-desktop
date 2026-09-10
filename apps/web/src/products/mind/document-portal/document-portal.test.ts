@@ -1874,4 +1874,116 @@ describe("DocumentPortal", () => {
     expect(root.data.text).toBe("最终文档")
     expect(root.children.map(node => node.data.uid)).toEqual(["keep"])
   })
+  it("atomically renames the root, deletes disjoint sibling modules, and inserts a module tree", async () => {
+    const module = (uid: string, text: string) => ({
+      data: { uid, text, icon: ["sign_2"] },
+      children: [1, 2, 3, 4, 5, 6].map(index => ({
+        data: { uid: `${uid}-case-${index}`, text: `用例${index} & 前置`, icon: ["priority_1"] },
+        children: [],
+      })),
+    })
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "旧标题" },
+      children: [0, 1, 2, 3].map(index => module(`module-${index}`, `模块${index}`)),
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    const operations = [
+      { op: "set_node" as const, at: 1, value: "朋友圈评论区域" },
+      ...[2, 9, 16, 23].map(at => ({ op: "delete" as const, at })),
+      {
+        op: "insert_subtree" as const,
+        at: 1,
+        position: "last-child" as const,
+        tree: "# 评论区域通用行为\n  # 评论按钮\n  # 评论列表\n  # 展开评论按钮",
+      },
+    ]
+    const preview = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      operations,
+      preview: true,
+    })
+    expect(preview.changeSummary).toMatchObject({ destructive: true, removedNodes: 28 })
+    await portal.edit({ documentId: "patches", confirmationToken: preview.confirmationToken })
+
+    expect(root.data.text).toBe("朋友圈评论区域")
+    expect(root.children.map(node => node.data.text)).toEqual(["评论区域通用行为"])
+    expect(root.children[0]?.children.map(node => node.data.text)).toEqual([
+      "评论按钮",
+      "评论列表",
+      "展开评论按钮",
+    ])
+  })
+
+  it("keeps set_node children and inserts or replaces root and sibling subtrees", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "旧标题" },
+      children: [
+        {
+          data: { uid: "a", text: "模块A", icon: ["sign_2"] },
+          children: [
+            { data: { uid: "a-child", text: "旧子模块", icon: ["sign_2"] }, children: [] },
+          ],
+        },
+        { data: { uid: "b", text: "模块B", icon: ["sign_2"] }, children: [] },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      operations: [
+        { op: "set_node", at: 1, value: "新标题" },
+        { op: "insert_subtree", at: 2, position: "after", tree: "# 插入模块" },
+      ],
+    })
+    expect(root.children.map(node => node.data.text)).toEqual(["模块A", "插入模块", "模块B"])
+
+    const secondRead = portal.read({ documentId: "patches", view: "subtree" })
+    const preview = await portal.edit({
+      documentId: "patches",
+      anchorTag: secondRead.anchorTag,
+      operations: [{ op: "replace_subtree", at: 2, tree: "# 替换模块" }],
+      preview: true,
+    })
+    expect(preview.changeSummary).toMatchObject({ destructive: true, removedNodes: 2 })
+    await portal.edit({ documentId: "patches", confirmationToken: preview.confirmationToken })
+    expect(root.data.text).toBe("新标题")
+    expect(root.children[0]?.data.text).toBe("替换模块")
+    expect(root.children[0]?.children).toEqual([])
+  })
+
+  it.each(["outline", "truncated"] as const)(
+    "rejects replacement with omitted descendants in %s view",
+    async kind => {
+      const { portal, mindMap } = registerLivePortal({
+        data: { uid: "root", text: "文档" },
+        children: [
+          {
+            data: { uid: "module", text: "模块", icon: ["sign_2"] },
+            children: [
+              {
+                data: { uid: "case", text: "用例 & 前置", icon: ["priority_1"] },
+                children: [{ data: { uid: "step", text: "未读取操作 & 预期" }, children: [] }],
+              },
+            ],
+          },
+        ],
+      })
+      const before = portal.read({
+        documentId: "patches",
+        view: kind === "outline" ? "outline" : "subtree",
+        ...(kind === "truncated" ? { maxLines: 3 } : {}),
+      })
+      await expect(
+        portal.edit({
+          documentId: "patches",
+          anchorTag: before.anchorTag,
+          operations: [{ op: "replace_subtree", at: 2, tree: "# 新模块" }],
+          preview: true,
+        })
+      ).rejects.toMatchObject({ code: "DOCUMENT_EDIT_CONFLICT" })
+      expect(mindMap.execCommand).not.toHaveBeenCalled()
+    }
+  )
 })

@@ -21,7 +21,7 @@ export const LOCAL_AI_TOOLS: LocalAIToolInfo[] = [
   {
     name: "edit_current_mindmap",
     label: "编辑当前思维导图",
-    description: "使用 Tree Hashline patch 编辑当前已激活的思维导图。",
+    description: "使用锚定的结构化操作原子编辑当前已激活的思维导图。",
   },
   { name: "question", label: "向用户提问", description: "向用户发起结构化澄清问题。" },
 ]

@@ -76,15 +76,17 @@ Use structured operations for common edits:
 
 Available operations:
 
-- `set_node`: replace one node's projected row while preserving its type and children.
+- `set_node`: change only one node's own projected row while preserving its type and children. The document root is an untyped row; modules use `#`, cases use `[P1-3]`, and steps are plain rows.
 - `delete`: remove one node and its subtree.
 - `move`: move one subtree `before`, `after`, or as the `last-child` of another visible node.
-- `append_cases`: append case roots and their two-space-indented steps to a module.
+- `insert_subtree`: insert a module or other valid tree `before`/`after` a sibling or as `last-child`. Use this for module skeletons.
+- `replace_subtree`: replace one complete subtree after reading an untruncated subtree view.
+- `append_cases`: append case roots and their two-space-indented steps to a module. It accepts cases only; use `insert_subtree` for modules.
 - `replace_text`: replace literal text only within one module and selected `fields`; set `expect` to the exact occurrence count.
 
-Structured edits return a compact receipt by default. Add `returnView` only when the next action requires complete post-edit content. A count mismatch, stale target, or overlapping operation rejects the whole request without mutation.
+Structured edits return a compact receipt by default. Add `returnView` only when the next action requires post-edit content. A count mismatch, stale target, or overlapping operation rejects the whole request without mutation.
 
-Use Tree Hashline `patch` only for complex sibling insertion or complete subtree replacement:
+Use Tree Hashline `patch` only for compatibility; use `insert_subtree` and `replace_subtree` for new structured edits:
 
 ```text
 PUT N.=N:       replace one target node or subtree

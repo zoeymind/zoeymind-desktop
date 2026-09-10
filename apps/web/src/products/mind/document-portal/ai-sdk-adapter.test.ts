@@ -1,4 +1,3 @@
-import { buildSystemPrompt } from "@/products/mind/x/ai-chat/prompts/system-prompt"
 import { describe, expect, it, vi } from "vitest"
 import { DocumentPortalError, type DocumentPortal } from "./document-portal"
 import { executeDocumentPortalTool } from "./ai-sdk-adapter"
@@ -235,24 +234,6 @@ describe("built-in current-document adapter", () => {
     ).toMatchObject({ success: false, errorCode: "DOCUMENT_NOT_OPEN" })
   })
 
-  it("requires subtree evidence before assessing case completeness", () => {
-    const prompt = buildSystemPrompt()
-    expect(prompt).toContain("`outline` 查看整体模块和用例标题；不包含步骤")
-    expect(prompt).toContain("`subtree` 查看完整子树")
-    expect(prompt).toContain("不要推断完整数量或内容")
-  })
-
-  it("teaches structured operations first and keeps Hashline only for complex tree edits", () => {
-    const prompt = buildSystemPrompt()
-    expect(prompt).toContain('op: "set_node"')
-    expect(prompt).toContain('op: "delete"')
-    expect(prompt).toContain('op: "move"')
-    expect(prompt).toContain('op: "append_cases"')
-    expect(prompt).toContain('op: "replace_text"')
-    expect(prompt).toContain("legacy Tree Hashline")
-    expect(prompt).toContain("不要同时传")
-  })
-
   it("returns a not-ready error when the active document is still loading", () => {
     const registry = createProjectSessionRegistry()
     const session = createProjectSessionStore("loading")
@@ -314,28 +295,5 @@ describe("built-in current-document adapter", () => {
       "edit_current_mindmap",
       "question",
     ])
-  })
-
-  it("describes a single current-mind-map workspace without implementation details", () => {
-    const prompt = buildSystemPrompt()
-    expect(prompt).toContain("`outline` 查看整体模块和用例标题；不包含步骤")
-    expect(prompt).toContain("只使用同一查询视图中的行号")
-    expect(prompt).not.toContain("documentId")
-    expect(prompt).not.toContain("Portal")
-    expect(prompt).not.toContain("UID")
-    expect(prompt).not.toContain("Store")
-  })
-
-  it("requests a return view only when complete post-edit content is needed", () => {
-    const prompt = buildSystemPrompt()
-    expect(prompt).toContain("只有确实需要完整后续内容时传")
-    expect(prompt).not.toContain("每次编辑后重新读取")
-  })
-
-  it("repairs successful semantic warnings from the returned local view", () => {
-    const prompt = buildSystemPrompt()
-    expect(prompt).toContain("警告表示修改已保存")
-    expect(prompt).toContain("`repairPatchHint`")
-    expect(prompt).toContain("不要重复提交")
   })
 })

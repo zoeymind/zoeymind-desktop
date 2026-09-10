@@ -112,6 +112,17 @@ const intentOperation = z.discriminatedUnion("op", [
     tree: z.string().min(1),
   }),
   z.object({
+    op: z.literal("insert_subtree"),
+    at: positiveLine,
+    position: z.enum(["before", "after", "last-child"]),
+    tree: z.string().min(1),
+  }),
+  z.object({
+    op: z.literal("replace_subtree"),
+    at: positiveLine,
+    tree: z.string().min(1),
+  }),
+  z.object({
     op: z.literal("replace_text"),
     within: positiveLine,
     fields: z
@@ -249,7 +260,7 @@ export function createDocumentPortalServer(
     {
       title: "Edit the current ZoeyMind mind map",
       description:
-        "Use operations for precise set/delete/move, scoped literal replacement, and appending generated test cases. Query first and use its latest anchorTag plus line numbers. operations and legacy Tree Hashline patch are mutually exclusive. Successful operations return a compact receipt unless returnView is requested.",
+        "Use anchored structured operations for own-node set, subtree insert/replace/delete/move, scoped literal replacement, and case-only append. Module skeletons use insert_subtree, not append_cases. operations and legacy Tree Hashline patch are mutually exclusive. Successful operations return a compact receipt unless returnView is requested; stale or overlapping batches reject atomically.",
       inputSchema: editInput,
       outputSchema,
       annotations: {
