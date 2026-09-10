@@ -1792,4 +1792,86 @@ describe("DocumentPortal", () => {
     expect(mindMap.execCommand).not.toHaveBeenCalled()
     expect(root.children[0]?.children).toHaveLength(1)
   })
+  it("changes case priority without discarding its existing steps", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            {
+              data: { uid: "case", text: "用例 & 前置", icon: ["priority_1"] },
+              children: [{ data: { uid: "step", text: "操作 & 预期" }, children: [] }],
+            },
+          ],
+        },
+      ],
+    })
+    const before = portal.read({ documentId: "patches", view: "subtree" })
+    await portal.edit({
+      documentId: "patches",
+      anchorTag: before.anchorTag,
+      operations: [{ op: "set_node", at: 3, value: "[P2] 用例 & 前置" }],
+    })
+    const after = portal.read({ documentId: "patches", view: "subtree" })
+    expect(after.content).toContain("[P2] 用例 & 前置")
+    expect(after.content).toContain("操作 & 预期")
+  })
+
+  it("reports operation indices and location for true subtree overlap", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [
+        {
+          data: { uid: "module", text: "模块", icon: ["sign_2"] },
+          children: [
+            { data: { uid: "case", text: "用例 & 前置", icon: ["priority_1"] }, children: [] },
+          ],
+        },
+      ],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    await expect(
+      portal.edit({
+        documentId: "patches",
+        anchorTag: read.anchorTag,
+        operations: [
+          { op: "delete", at: 2 },
+          { op: "set_node", at: 3, value: "[P1] 新用例 & 前置" },
+        ],
+        preview: true,
+      })
+    ).rejects.toThrow('Intent operations 0 and 1 overlap at ["模块","用例 & 前置"]')
+  })
+
+  it("preserves root descendants and combines parent rename with child deletion", async () => {
+    const { portal, root } = registerLivePortal({
+      data: { uid: "root", text: "原文档" },
+      children: [
+        { data: { uid: "keep", text: "保留模块", icon: ["sign_2"] }, children: [] },
+        { data: { uid: "remove", text: "删除模块", icon: ["sign_2"] }, children: [] },
+      ],
+    })
+    const initial = portal.read({ documentId: "patches", view: "subtree" })
+    const renamed = await portal.edit({
+      documentId: "patches",
+      anchorTag: initial.anchorTag,
+      operations: [{ op: "set_node", at: 1, value: "新文档" }],
+    })
+    expect(renamed.phase).toBe("committed")
+    expect(root.children.map(node => node.data.uid)).toEqual(["keep", "remove"])
+    const next = portal.read({ documentId: "patches", view: "subtree" })
+    const preview = await portal.edit({
+      documentId: "patches",
+      anchorTag: next.anchorTag,
+      operations: [
+        { op: "set_node", at: 1, value: "最终文档" },
+        { op: "delete", at: 3 },
+      ],
+      preview: true,
+    })
+    await portal.edit({ documentId: "patches", confirmationToken: preview.confirmationToken })
+    expect(root.data.text).toBe("最终文档")
+    expect(root.children.map(node => node.data.uid)).toEqual(["keep"])
+  })
 })

@@ -1,5 +1,5 @@
 export type TreePatchKind =
-  "put" | "insert-before" | "insert-after" | "append-child" | "cut" | "move"
+  "put" | "set-node" | "insert-before" | "insert-after" | "append-child" | "cut" | "move"
 
 export interface ParsedTreeNode {
   uid?: string

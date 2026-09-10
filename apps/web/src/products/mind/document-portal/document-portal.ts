@@ -104,7 +104,7 @@ export interface DocumentEditRequest {
   }
 }
 
-export type DocumentNodeType = "module" | "case" | "step"
+export type DocumentNodeType = "root" | "module" | "case" | "step"
 
 export interface DocumentEditAffectedNode {
   path: string[]

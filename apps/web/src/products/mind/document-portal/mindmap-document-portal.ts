@@ -275,13 +275,18 @@ function collectPlanNodes(root: PlannedNode): PlannedNode[] {
   return [root, ...root.children.flatMap(collectPlanNodes)]
 }
 
-function sameNodeKind(node: PlannedNode, replacement: ParsedTreeNode): boolean {
-  const replacementType = replacement.icon?.includes("sign_2")
+function getParsedNodeType(replacement: ParsedTreeNode): "module" | "case" | "step" {
+  return replacement.icon?.includes("sign_2")
     ? "module"
     : replacement.icon?.some(icon => icon.startsWith("priority_"))
       ? "case"
       : "step"
-  return replacementType === getNodeType(node)
+}
+
+function sameNodeKind(node: PlannedNode, replacement: ParsedTreeNode): boolean {
+  return node.parent === null
+    ? !replacement.icon?.length
+    : getParsedNodeType(replacement) === getNodeType(node)
 }
 
 function compileIntentOperations(
@@ -293,27 +298,30 @@ function compileIntentOperations(
   const claimed: Array<{
     node: PlannedNode
     operation: number
-    kind: "write" | "destructive" | "reference"
+    kind: "own" | "children" | "destructive" | "reference"
   }> = []
   const claim = (
     node: PlannedNode,
     operation: number,
-    kind: "write" | "destructive" | "reference" = "write"
+    kind: "own" | "children" | "destructive" | "reference" = "own"
   ) => {
-    if (
-      claimed.some(existing => {
-        if (existing.operation === operation) return false
-        const destructive = existing.kind === "destructive" || kind === "destructive"
-        if (existing.node === node)
-          return destructive || (existing.kind !== "reference" && kind !== "reference")
-        return (
-          destructive && (isDescendant(existing.node, node) || isDescendant(node, existing.node))
-        )
-      })
-    )
+    const conflict = claimed.find(existing => {
+      if (existing.operation === operation) return false
+      if (existing.node === node) {
+        if (existing.kind === "reference" && kind === "reference") return false
+        if (existing.kind === "destructive" || kind === "destructive") return true
+        if (existing.kind === "reference" || kind === "reference") return false
+        return existing.kind === kind
+      }
+      return (
+        (existing.kind === "destructive" && isDescendant(node, existing.node)) ||
+        (kind === "destructive" && isDescendant(existing.node, node))
+      )
+    })
+    if (conflict)
       throw new DocumentPortalError(
         DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
-        "Intent operations overlap on the same subtree"
+        `Intent operations ${conflict.operation} and ${operation} overlap at ${JSON.stringify(getPublicPath(node))}`
       )
     claimed.push({ node, operation, kind })
   }
@@ -392,15 +400,15 @@ function compileIntentOperations(
       effects.push({ operation: index, nodes: changed, matches })
       return
     }
-    claim(target, index, intent.op === "delete" || intent.op === "move" ? "destructive" : "write")
+    claim(target, index, intent.op === "delete" || intent.op === "move" ? "destructive" : "own")
     if (intent.op === "set_node") {
       const node = parseProjectedTreeNode(intent.value)
       if (!node || !sameNodeKind(target, node))
         throw new DocumentPortalError(
           DOCUMENT_PORTAL_ERROR_CODE.INVALID_EDIT_PATCH,
-          "set_node value must be one row of the target's existing node type"
+          "set_node value must be one row of the target's existing node type; document roots are untyped, while modules use # and cases use [P1-3]"
         )
-      operations.push({ kind: "put", start: intent.at, targetUid: target.uid, nodes: [node] })
+      operations.push({ kind: "set-node", start: intent.at, targetUid: target.uid, nodes: [node] })
       effects.push({ operation: index, nodes: 1 })
       return
     }
@@ -489,7 +497,11 @@ function postEditFocusUids(compiled: readonly CompiledOperation[]): string[] {
       for (const child of operation.nodes?.[0]?.children ?? []) if (child.uid) uids.push(child.uid)
     } else if (operation.kind === "insert-before" || operation.kind === "insert-after") {
       for (const node of operation.nodes ?? []) if (node.uid) uids.push(node.uid)
-    } else if (operation.kind === "move" || operation.kind === "put") {
+    } else if (
+      operation.kind === "move" ||
+      operation.kind === "put" ||
+      operation.kind === "set-node"
+    ) {
       uids.push(target.uid)
       if (operation.kind === "put")
         for (const node of operation.nodes?.slice(1) ?? []) if (node.uid) uids.push(node.uid)
@@ -555,7 +567,8 @@ function isRootContentReplacement(operation: TreePatchOperation, target: Planned
   )
 }
 
-function getNodeType(node: PlannedNode): "module" | "case" | "step" {
+function getNodeType(node: PlannedNode): "root" | "module" | "case" | "step" {
+  if (node.parent === null) return "root"
   if (node.icon.includes("sign_2")) return "module"
   return node.icon.some(icon => icon.startsWith("priority_")) ? "case" : "step"
 }
@@ -572,7 +585,7 @@ function collectAffectedNodes(
   depth: number,
   affectedNodes: Array<{
     path: string[]
-    type: "module" | "case" | "step"
+    type: "root" | "module" | "case" | "step"
     text: string
     depth: number
     count: number
@@ -741,6 +754,12 @@ function applyCompiledOperationsToData(
       const replacement = operation.nodes![0]!
       resolved.node.data.text = replacement.text
       resolved.node.children = parsedNodesToData(replacement.children)
+      continue
+    }
+    if (operation.kind === "set-node") {
+      resolved.node.data.text = operation.nodes![0]!.text
+      const replacementIcon = operation.nodes![0]!.icon
+      if (replacementIcon) resolved.node.data.icon = [...replacementIcon]
       continue
     }
     if (
@@ -1328,7 +1347,7 @@ export function createMindMapDocumentPortal(
           }
           if (operation.nodes) {
             const simpleTextReplacement =
-              operation.kind === "put" &&
+              (operation.kind === "put" || operation.kind === "set-node") &&
               operation.nodes.length === 1 &&
               operation.nodes[0]?.children.length === 0
             if (rootContentReplacement) {
@@ -1372,7 +1391,7 @@ export function createMindMapDocumentPortal(
           )
         const affectedNodes: Array<{
           path: string[]
-          type: "module" | "case" | "step"
+          type: "root" | "module" | "case" | "step"
           text: string
           depth: number
           count: number
