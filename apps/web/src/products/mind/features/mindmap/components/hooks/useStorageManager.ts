@@ -62,7 +62,8 @@ export function useStorageManager(): UseStorageManagerResult {
       return { savedData: pending.tree, savedViewData: pending.view ?? null }
     }
     try {
-      const row = await getProject(workspaceId)
+      const tab = useTabs.getState().tabs.find(tab => tab.id === workspaceId)
+      const row = await getProject(tab?.projectId ?? workspaceId)
       if (!row) {
         throw new Error("项目索引不存在")
       }
