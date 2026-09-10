@@ -381,7 +381,7 @@ export function useAIChat(workspaceId?: string): AIChatRuntime {
 
   // token 使用同步
 
-  useTokenUsageReporter(messages)
+  useTokenUsageReporter(messages, workspaceId)
   useConversationLifecycle({ workspaceId, messages, status })
 
   useEffect(() => {

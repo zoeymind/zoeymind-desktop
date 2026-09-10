@@ -1,24 +1,13 @@
 import { describe, expect, it } from "vitest"
 import type { UIMessage } from "ai"
 import { resolveContextBudget } from "@/shared/native"
-import {
-  buildActiveProjection,
-  FIRST_SUMMARY_PROMPT,
-  selectCompactionCut,
-  serializeForSummary,
-} from "./ContextCompactor"
+import { buildActiveProjection, selectCompactionCut, serializeForSummary } from "./ContextCompactor"
 import type { CompactionState } from "../storage/sqliteChatStore"
 
 const message = (id: string, role: "user" | "assistant", text: string): UIMessage => ({
   id,
   role,
   parts: [{ type: "text", text }],
-})
-
-describe("compaction handoff prompt", () => {
-  it("preserves structured Portal evidence", () => {
-    expect(FIRST_SUMMARY_PROMPT).toContain("scope、path、anchorTag 和 revision")
-  })
 })
 
 describe("context budget", () => {

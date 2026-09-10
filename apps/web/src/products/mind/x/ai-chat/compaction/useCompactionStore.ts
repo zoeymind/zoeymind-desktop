@@ -9,21 +9,86 @@ import type { CompactionState as PersistedCompactionState } from "../storage/sql
 export type CompactionPhase = "idle" | "pending" | "done" | "error"
 
 interface CompactionStoreState {
+  conversationId?: string
+  attemptId?: string
   phase: CompactionPhase
   compaction: PersistedCompactionState | null
   errorMessage?: string
-  setPhase: (phase: CompactionPhase) => void
-  setCompaction: (state: PersistedCompactionState | null) => void
-  setError: (message: string) => void
-  reset: () => void
 }
 
-export const useCompactionStore = create<CompactionStoreState>(set => ({
+export const useCompactionStore = create<CompactionStoreState>(() => ({
   phase: "idle",
   compaction: null,
-  setPhase: phase => set({ phase, errorMessage: undefined }),
-  setCompaction: compaction =>
-    set({ compaction, phase: compaction ? "done" : "idle", errorMessage: undefined }),
-  setError: errorMessage => set({ phase: "error", errorMessage }),
-  reset: () => set({ phase: "idle", compaction: null, errorMessage: undefined }),
 }))
+
+export function resetCompaction(conversationId: string | undefined): void {
+  useCompactionStore.setState({
+    conversationId,
+    attemptId: undefined,
+    phase: "idle",
+    compaction: null,
+    errorMessage: undefined,
+  })
+}
+
+export function setConversationCompaction(
+  conversationId: string | undefined,
+  compaction: PersistedCompactionState | null
+): void {
+  useCompactionStore.setState({
+    conversationId,
+    attemptId: undefined,
+    phase: compaction ? "done" : "idle",
+    compaction,
+    errorMessage: undefined,
+  })
+}
+
+export function beginCompaction(conversationId: string, attemptId: string): boolean {
+  const current = useCompactionStore.getState()
+  if (current.conversationId !== undefined && current.conversationId !== conversationId)
+    return false
+  useCompactionStore.setState({
+    conversationId,
+    attemptId,
+    phase: "pending",
+    errorMessage: undefined,
+  })
+  return true
+}
+
+export function publishCompaction(
+  conversationId: string,
+  attemptId: string,
+  compaction: PersistedCompactionState
+): void {
+  const current = useCompactionStore.getState()
+  if (current.conversationId !== conversationId || current.attemptId !== attemptId) return
+  useCompactionStore.setState({
+    attemptId: undefined,
+    compaction,
+    phase: "done",
+    errorMessage: undefined,
+  })
+}
+
+export function finishCompactionWithoutChange(conversationId: string, attemptId: string): void {
+  const current = useCompactionStore.getState()
+  if (current.conversationId !== conversationId || current.attemptId !== attemptId) return
+  useCompactionStore.setState({ attemptId: undefined, phase: "idle", errorMessage: undefined })
+}
+
+export function publishCompactionError(
+  conversationId: string,
+  attemptId: string,
+  message: string
+): void {
+  const current = useCompactionStore.getState()
+  if (current.conversationId !== conversationId || current.attemptId !== attemptId) return
+  useCompactionStore.setState({ attemptId: undefined, phase: "error", errorMessage: message })
+}
+
+export function ownsCompactionAttempt(conversationId: string, attemptId: string): boolean {
+  const current = useCompactionStore.getState()
+  return current.conversationId === conversationId && current.attemptId === attemptId
+}

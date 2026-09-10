@@ -147,6 +147,7 @@ export interface UIMessageWithMetadata extends UIMessage {
   metadata?: {
     retriever_resources?: RetrieverResource[]
     totalUsage?: SDKTokenUsage
+    contextUsage?: SDKTokenUsage
     modelId?: string
     responseStartedAt?: number
     responseDurationMs?: number

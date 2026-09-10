@@ -11,7 +11,10 @@ import { sqliteChatStore } from "../storage/sqliteChatStore"
 import type { CompactionState, Conversation } from "../storage/sqliteChatStore"
 import { getModuleAIChatRuntime } from "../../ai-chat/context/ai-chat-runtime"
 import { useTabs } from "@/shared/tabs/store"
-import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
+import {
+  resetCompaction,
+  setConversationCompaction,
+} from "../../ai-chat/compaction/useCompactionStore"
 import { resetToolUI, restorePendingFromMessages } from "../../ai-chat/context/ToolUIRegistry"
 import {
   interruptPendingToolParts,
@@ -174,7 +177,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       abortedMessageId: null,
       interruptedToolCallIds: [],
     })
-    useCompactionStore.getState().setCompaction(current.compactionsByWorkspace[workspaceId] ?? null)
+    setConversationCompaction(conversationId, current.compactionsByWorkspace[workspaceId] ?? null)
   },
   setTotalTokenUsage: usage => {
     const current = get()
@@ -466,7 +469,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       if (conversationId) {
         await sqliteChatStore.truncateConversation(conversationId, baseMessages)
         const loaded = await sqliteChatStore.loadConversationState(conversationId)
-        useCompactionStore.getState().setCompaction(loaded.compaction)
+        setConversationCompaction(conversationId, loaded.compaction)
       }
 
       await runtime.sendMessage(
@@ -527,7 +530,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
             }
           : {}),
       })
-      if (active) useCompactionStore.getState().reset()
+      if (active) resetCompaction(newConv.id)
       runtime?.setMessages([])
 
       logger.info("[AIchatV2Store] 创建新对话", { conversationId: newConv.id })
@@ -578,7 +581,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
 
       runtime?.setMessages(transcript)
       if (active) {
-        useCompactionStore.getState().setCompaction(compaction)
+        setConversationCompaction(conversationId, compaction)
         restorePendingFromMessages(transcript)
       }
 

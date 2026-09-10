@@ -72,7 +72,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
   const showHistory = useAIChatV2Store(s => s.showHistory)
   const setShowHistory = useAIChatV2Store(s => s.setShowHistory)
   const currentConversationId = useAIChatV2Store(s => s.currentConversationId)
-  const totalTokenUsage = useAIChatV2Store(s => s.totalTokenUsage)
+  const contextOccupancy = useAIChatV2Store(s => s.totalTokenUsage.total)
   const showScrollToBottom = useAIChatV2Store(s => s.showScrollToBottom)
   const setShowScrollToBottom = useAIChatV2Store(s => s.setShowScrollToBottom)
   const createNewConversation = useAIChatV2Store(s => s.createNewConversation)
@@ -355,7 +355,7 @@ export const AIchatV2: React.FC<AIchatV2Props> = ({ isActive }) => {
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
           disabled={!isAIConfigured}
-          usedTokens={totalTokenUsage.total}
+          usedTokens={contextOccupancy}
           maxTokens={contextBudget?.contextWindow ?? 128000}
         />
       </div>

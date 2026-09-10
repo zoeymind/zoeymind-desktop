@@ -201,11 +201,12 @@ export async function runLocalStream(
       : resolveDefaultChatModel(config)
     const mcpTools = await awaitWithAbort(mcpManager.loadTools(), signal)
     const tools: ToolSet = { ...getAgentTools(), ...mcpTools }
+    const runtimeSystem = `${input.systemContent}\n\n---\n\n${describeRuntimeTools(tools)}`
     const compacted = await contextCompactor.prepare({
       conversationId: input.conversationId,
       transcript: input.transcript,
       requestedModelId: resolved.entry.id,
-      system: input.systemContent,
+      system: runtimeSystem,
       tools,
       force: input.force,
       signal,
@@ -221,24 +222,31 @@ export async function runLocalStream(
     const result = streamText({
       model: createLanguageModel(resolved.provider, resolved.entry),
       tools,
-      system: `${input.systemContent}\n\n---\n\n${describeRuntimeTools(tools)}`,
+      system: runtimeSystem,
       messages: modelMessages,
       abortSignal: signal,
       maxRetries: 2,
       maxOutputTokens: resolved.entry.maxOutputTokens,
       stopWhen: stepCountIs(8),
     })
+    let contextUsage:
+      { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined
     return result.toUIMessageStreamResponse({
       originalMessages: input.transcript,
       messageMetadata: ({ part }) => {
         if (part.type === "start") {
           return { modelId: resolved.entry.id, responseStartedAt, turnStartedAt }
         }
+        if (part.type === "finish-step") {
+          contextUsage = part.usage
+          return undefined
+        }
         if (part.type === "finish") {
           clearPreparedTurn(input.attemptKey)
           return {
             modelId: resolved.entry.id,
             totalUsage: part.totalUsage,
+            contextUsage,
             responseStartedAt,
             responseDurationMs: Date.now() - responseStartedAt,
             turnStartedAt,

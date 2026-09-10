@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { ToolSet, UIMessage } from "ai"
 import {
   ContextCompactor,
@@ -7,6 +7,7 @@ import {
 } from "./ContextCompactor"
 import type { CompactionState } from "../storage/sqliteChatStore"
 import type { ModelsConfig } from "@/shared/native"
+import { resetCompaction, useCompactionStore } from "./useCompactionStore"
 
 const config: ModelsConfig = {
   providers: [{ id: "provider", name: "Local", kind: "ollama" }],
@@ -54,6 +55,8 @@ function dependencies(options?: { fail?: boolean }) {
   }
   return { deps, commit, getState: () => state }
 }
+
+beforeEach(() => resetCompaction(undefined))
 
 describe("ContextCompactor", () => {
   it("commits originals then returns summary plus the whole recent tail", async () => {
@@ -124,5 +127,182 @@ describe("ContextCompactor", () => {
         force: true,
       })
     ).rejects.toBeInstanceOf(CompactionUnavailableError)
+  })
+})
+
+describe("occupancy and cancellation regressions", () => {
+  const modestTranscript = (metadata?: Record<string, unknown>): UIMessage[] => [
+    { id: "u1", role: "user", parts: [{ type: "text", text: "context ".repeat(700) }] },
+    { id: "a1", role: "assistant", parts: [{ type: "text", text: "done" }] },
+    { id: "u2", role: "user", parts: [{ type: "text", text: "context ".repeat(700) }] },
+    {
+      id: "a2",
+      role: "assistant",
+      parts: [{ type: "text", text: "done" }],
+      metadata: { modelId: "model", ...metadata },
+    },
+    { id: "u3", role: "user", parts: [{ type: "text", text: "continue" }] },
+  ]
+
+  function fixture(messages: UIMessage[]) {
+    const commit = vi.fn(async () => {})
+    const generateSummary = vi.fn(async () => "summary")
+    const deps: ContextCompactorDependencies = {
+      loadConfig: async () => config,
+      loadState: async () => ({ transcript: messages, compaction: null }),
+      commit,
+      generateSummary,
+      now: () => 0,
+      createId: () => "regression",
+    }
+    return { deps, commit, generateSummary }
+  }
+
+  it("does not treat cumulative multi-step billing usage as context occupancy", async () => {
+    const messages = modestTranscript({ totalUsage: { totalTokens: 120_000 } })
+    const test = fixture(messages)
+    const result = await new ContextCompactor(test.deps).prepare({
+      conversationId: "billing",
+      transcript: messages,
+      requestedModelId: "model",
+      system: "system",
+      tools: {} as ToolSet,
+      force: false,
+    })
+    expect(result.compacted).toBe(false)
+    expect(test.generateSummary).not.toHaveBeenCalled()
+  })
+
+  it("uses final-step context usage as occupancy", async () => {
+    const messages = modestTranscript({ contextUsage: { totalTokens: 4_900 } }).map(message =>
+      message.id === "u1" || message.id === "u2"
+        ? { ...message, parts: [{ type: "text" as const, text: "context ".repeat(1_100) }] }
+        : message
+    )
+    const test = fixture(messages)
+    const result = await new ContextCompactor(test.deps).prepare({
+      conversationId: "occupancy",
+      transcript: messages,
+      requestedModelId: "model",
+      system: "system",
+      tools: {} as ToolSet,
+      force: false,
+    })
+    expect(result.compacted).toBe(true)
+    expect(result.state?.tokensBefore).toBeGreaterThanOrEqual(4_900)
+  })
+
+  it("rejects cancellation before summary work begins", async () => {
+    const messages = transcript()
+    const test = fixture(messages)
+    const controller = new AbortController()
+    controller.abort()
+    await expect(
+      new ContextCompactor(test.deps).prepare({
+        conversationId: "cancelled-before",
+        transcript: messages,
+        requestedModelId: "model",
+        system: "system",
+        tools: {} as ToolSet,
+        force: true,
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ name: "AbortError" })
+    expect(test.generateSummary).not.toHaveBeenCalled()
+    expect(test.commit).not.toHaveBeenCalled()
+  })
+
+  it("aborts a late summary without committing", async () => {
+    const messages = transcript()
+    const test = fixture(messages)
+    let resolveSummary!: (summary: string) => void
+    test.deps.generateSummary = vi.fn(
+      () => new Promise<string>(resolve => void (resolveSummary = resolve))
+    )
+    const controller = new AbortController()
+    const pending = new ContextCompactor(test.deps).prepare({
+      conversationId: "cancelled",
+      transcript: messages,
+      requestedModelId: "model",
+      system: "system",
+      tools: {} as ToolSet,
+      force: true,
+      signal: controller.signal,
+    })
+    await vi.waitFor(() => expect(test.deps.generateSummary).toHaveBeenCalledOnce())
+    controller.abort()
+    resolveSummary("late")
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" })
+    expect(test.commit).not.toHaveBeenCalled()
+    expect(useCompactionStore.getState().phase).toBe("idle")
+  })
+
+  it("cancels while waiting behind another compaction attempt", async () => {
+    const messages = transcript()
+    const test = fixture(messages)
+    let resolveFirst!: (summary: string) => void
+    test.deps.generateSummary = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise<string>(resolve => void (resolveFirst = resolve)))
+      .mockResolvedValue("third summary")
+    const compactor = new ContextCompactor(test.deps)
+    const first = compactor.prepare({
+      conversationId: "queued",
+      transcript: messages,
+      requestedModelId: "model",
+      system: "system",
+      tools: {} as ToolSet,
+      force: true,
+    })
+    await vi.waitFor(() => expect(test.deps.generateSummary).toHaveBeenCalledOnce())
+    const controller = new AbortController()
+    const second = compactor.prepare({
+      conversationId: "queued",
+      transcript: messages,
+      requestedModelId: "model",
+      system: "system",
+      tools: {} as ToolSet,
+      force: true,
+      signal: controller.signal,
+    })
+    controller.abort()
+    await expect(second).rejects.toMatchObject({ name: "AbortError" })
+    const third = compactor.prepare({
+      conversationId: "queued",
+      transcript: messages,
+      requestedModelId: "model",
+      system: "system",
+      tools: {} as ToolSet,
+      force: true,
+    })
+    await Promise.resolve()
+    expect(test.deps.generateSummary).toHaveBeenCalledOnce()
+    resolveFirst("summary")
+    await first
+    await third
+    expect(test.deps.generateSummary).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not publish into a newly selected conversation", async () => {
+    const messages = transcript()
+    const test = fixture(messages)
+    let resolveSummary!: (summary: string) => void
+    test.deps.generateSummary = vi.fn(
+      () => new Promise<string>(resolve => void (resolveSummary = resolve))
+    )
+    const pending = new ContextCompactor(test.deps).prepare({
+      conversationId: "old",
+      transcript: messages,
+      requestedModelId: "model",
+      system: "system",
+      tools: {} as ToolSet,
+      force: true,
+    })
+    await vi.waitFor(() => expect(test.deps.generateSummary).toHaveBeenCalledOnce())
+    resetCompaction("new")
+    resolveSummary("late")
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" })
+    expect(test.commit).not.toHaveBeenCalled()
+    expect(useCompactionStore.getState()).toMatchObject({ conversationId: "new", phase: "idle" })
   })
 })

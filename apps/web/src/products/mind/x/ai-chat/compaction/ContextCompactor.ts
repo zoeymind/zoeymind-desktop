@@ -19,7 +19,13 @@ import {
 } from "@/shared/native"
 import { sqliteChatStore, type CompactionState } from "../storage/sqliteChatStore"
 import { countTokens } from "../utils/tokenCounter"
-import { useCompactionStore } from "./useCompactionStore"
+import {
+  beginCompaction,
+  finishCompactionWithoutChange,
+  ownsCompactionAttempt,
+  publishCompaction,
+  publishCompactionError,
+} from "./useCompactionStore"
 import { getCompactionThresholdPercent } from "./settings"
 
 export const COMPACTION_HEADER =
@@ -87,6 +93,38 @@ export interface PrepareResult {
 }
 
 const mutexes = new Map<string, Promise<void>>()
+let nextAttemptId = 0
+
+function abortError(): DOMException {
+  return new DOMException("Aborted", "AbortError")
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw signal.reason ?? abortError()
+}
+
+function waitFor<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(signal.reason ?? abortError())
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason ?? abortError())
+    signal.addEventListener("abort", onAbort, { once: true })
+    promise.then(
+      value => {
+        signal.removeEventListener("abort", onAbort)
+        resolve(value)
+      },
+      error => {
+        signal.removeEventListener("abort", onAbort)
+        reject(error)
+      }
+    )
+  })
+}
+
+function isAbort(error: unknown, signal?: AbortSignal): boolean {
+  return signal?.aborted === true || (error instanceof DOMException && error.name === "AbortError")
+}
 
 export function buildActiveProjection(
   transcript: UIMessage[],
@@ -171,12 +209,13 @@ function latestProviderOccupancy(projection: UIMessage[], modelId: string): numb
   for (let index = projection.length - 1; index >= 0; index -= 1) {
     const message = projection[index]
     const metadata = message.metadata as
-      { modelId?: string; totalUsage?: { totalTokens?: number } } | undefined
-    const total = metadata?.totalUsage?.totalTokens
+      { modelId?: string; contextUsage?: { totalTokens?: number } } | undefined
+    const total = metadata?.contextUsage?.totalTokens
     if (
       message.role === "assistant" &&
       metadata?.modelId === modelId &&
-      typeof total === "number"
+      typeof total === "number" &&
+      Number.isFinite(total)
     ) {
       return (
         total +
@@ -268,6 +307,7 @@ export class ContextCompactor {
   }
 
   async prepare(input: PrepareInput): Promise<PrepareResult> {
+    throwIfAborted(input.signal)
     const previous = mutexes.get(input.conversationId) ?? Promise.resolve()
     let release!: () => void
     const current = new Promise<void>(resolve => {
@@ -275,24 +315,33 @@ export class ContextCompactor {
     })
     const queued = previous.then(() => current)
     mutexes.set(input.conversationId, queued)
-    await previous
+    void queued.then(() => {
+      if (mutexes.get(input.conversationId) === queued) mutexes.delete(input.conversationId)
+    })
     try {
+      await waitFor(previous, input.signal)
+    } catch (error) {
+      release()
+      throw error
+    }
+    try {
+      throwIfAborted(input.signal)
       return await this.prepareLocked(input)
     } finally {
       release()
-      if (mutexes.get(input.conversationId) === queued) mutexes.delete(input.conversationId)
     }
   }
 
   private async prepareLocked(input: PrepareInput): Promise<PrepareResult> {
-    const persisted = await this.dependencies.loadState(input.conversationId)
+    const attemptId = String(++nextAttemptId)
+    const persisted = await waitFor(this.dependencies.loadState(input.conversationId), input.signal)
     const state = persisted.compaction
     const previousProjection = buildActiveProjection(input.transcript, state)
     try {
-      const config = await this.dependencies.loadConfig()
+      const config = await waitFor(this.dependencies.loadConfig(), input.signal)
       const { entry, provider } = resolveChatModel(config, input.requestedModelId)
       const budget = resolveContextBudget(entry, getCompactionThresholdPercent())
-      const converted = await convertToModelMessages(previousProjection)
+      const converted = await waitFor(convertToModelMessages(previousProjection), input.signal)
       const pruned = pruneMessages({
         messages: converted,
         reasoning: "before-last-message",
@@ -306,6 +355,7 @@ export class ContextCompactor {
       }
       return await this.compact(
         input,
+        attemptId,
         entry,
         provider,
         budget,
@@ -314,7 +364,15 @@ export class ContextCompactor {
         occupancy
       )
     } catch (error) {
-      useCompactionStore.getState().setError(error instanceof Error ? error.message : String(error))
+      if (isAbort(error, input.signal)) {
+        finishCompactionWithoutChange(input.conversationId, attemptId)
+        throw error
+      }
+      publishCompactionError(
+        input.conversationId,
+        attemptId,
+        error instanceof Error ? error.message : String(error)
+      )
       if (input.force) throw error
       logger.warn("[Compaction] 维护压缩失败，沿用先前投影", { error })
       return { messages: previousProjection, state, compacted: false }
@@ -323,6 +381,7 @@ export class ContextCompactor {
 
   private async compact(
     input: PrepareInput,
+    attemptId: string,
     entry: ModelEntry,
     provider: ModelProvider,
     budget: ResolvedContextBudget,
@@ -330,7 +389,7 @@ export class ContextCompactor {
     previousProjection: UIMessage[],
     occupancy: number
   ): Promise<PrepareResult> {
-    useCompactionStore.getState().setPhase("pending")
+    if (!beginCompaction(input.conversationId, attemptId)) throw abortError()
     const previousBoundary = state
       ? input.transcript.findIndex(message => message.id === state.compactedThroughMessageId)
       : -1
@@ -353,7 +412,7 @@ export class ContextCompactor {
     }
     if (cut === null) {
       if (input.force) throw new CompactionUnavailableError()
-      useCompactionStore.getState().setPhase("idle")
+      finishCompactionWithoutChange(input.conversationId, attemptId)
       return { messages: previousProjection, state, compacted: false }
     }
     const startedAt = this.dependencies.now()
@@ -361,15 +420,20 @@ export class ContextCompactor {
     const prompt = `${state ? ITERATIVE_PROMPT : FIRST_SUMMARY_PROMPT}\n\n${
       state ? `<prior-summary>\n${state.summary}\n</prior-summary>\n\n` : ""
     }<new-history>\n${serializeForSummary(newPrefix)}\n</new-history>`
-    let summary = await this.dependencies.generateSummary({
-      prompt,
-      maxOutputTokens: summaryBudget,
-      entry,
-      provider,
-      signal: input.signal,
-    })
+    let summary = await waitFor(
+      this.dependencies.generateSummary({
+        prompt,
+        maxOutputTokens: summaryBudget,
+        entry,
+        provider,
+        signal: input.signal,
+      }),
+      input.signal
+    )
+    throwIfAborted(input.signal)
     summary = summary.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim()
     if (!summary) throw new Error("EMPTY_COMPACTION_SUMMARY")
+    if (!ownsCompactionAttempt(input.conversationId, attemptId)) throw abortError()
     const now = this.dependencies.now()
     const nextState: CompactionState = {
       conversationId: input.conversationId,
@@ -389,13 +453,15 @@ export class ContextCompactor {
       emptyMessages: "remove",
     })
     nextState.tokensAfter = estimateSerializedRequest(input.system, compactedMessages, input.tools)
-    await this.dependencies.commit(input.conversationId, input.transcript, nextState)
-    useCompactionStore.getState().setCompaction(nextState)
-    return {
-      messages: buildActiveProjection(input.transcript, nextState),
-      state: nextState,
-      compacted: true,
-    }
+    throwIfAborted(input.signal)
+    if (!ownsCompactionAttempt(input.conversationId, attemptId)) throw abortError()
+    await waitFor(
+      this.dependencies.commit(input.conversationId, input.transcript, nextState),
+      input.signal
+    )
+    throwIfAborted(input.signal)
+    publishCompaction(input.conversationId, attemptId, nextState)
+    return { messages: compactedProjection, state: nextState, compacted: true }
   }
 }
 
