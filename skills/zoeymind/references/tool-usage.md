@@ -84,7 +84,7 @@ Available operations:
 - `append_cases`: append case roots and their two-space-indented steps to a module. It accepts cases only; use `insert_subtree` for modules.
 - `replace_text`: replace literal text only within one module and selected `fields`; set `expect` to the exact occurrence count.
 
-Structured edits return a compact receipt by default. Add `returnView` only when the next action requires post-edit content. A count mismatch, stale target, or overlapping operation rejects the whole request without mutation.
+Structured edits return a compact receipt by default. Add `returnView` only when the next action requires post-edit content. Many draft warnings are bounded and aggregated in `diagnosticSummary`. A count mismatch, stale target, or overlapping operation rejects the whole request without mutation.
 
 Use Tree Hashline `patch` only for compatibility; use `insert_subtree` and `replace_subtree` for new structured edits:
 

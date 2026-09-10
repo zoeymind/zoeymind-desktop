@@ -848,8 +848,6 @@ describe("DocumentPortal", () => {
         severity: "warning",
         code: "CASE_HAS_NO_STEPS",
         path: ["模块", "不完整用例 & 前置条件"],
-        line: 4,
-        repairPatchHint: "PUT 4.=4:\n+[P3] 不完整用例 & 前置条件\n+  操作 & 预期结果",
       }),
     ])
   })
@@ -992,8 +990,6 @@ describe("DocumentPortal", () => {
         severity: "warning",
         code: "STEP_HAS_NO_EXPECTED_RESULT",
         path: ["模块", "新用例 & 前置条件", "只有操作没有预期"],
-        line: 5,
-        repairPatchHint: "PUT 5.=5:\n+只有操作没有预期 & 预期结果",
       }),
     ])
   })
@@ -1986,4 +1982,27 @@ describe("DocumentPortal", () => {
       expect(mindMap.execCommand).not.toHaveBeenCalled()
     }
   )
+  it("bounds draft diagnostics without forcing a structured return view", async () => {
+    const { portal } = registerLivePortal({
+      data: { uid: "root", text: "文档" },
+      children: [],
+    })
+    const read = portal.read({ documentId: "patches", view: "subtree" })
+    const tree = Array.from({ length: 30 }, (_, index) => `[P1] 草稿${index} & 前置`).join("\n")
+    const result = await portal.edit({
+      documentId: "patches",
+      anchorTag: read.anchorTag,
+      operations: [
+        {
+          op: "insert_subtree",
+          at: 1,
+          position: "last-child",
+          tree: `# 草稿模块\n  ${tree.replaceAll("\n", "\n  ")}`,
+        },
+      ],
+    })
+    expect(result).not.toHaveProperty("view")
+    expect(result.diagnostics).toHaveLength(20)
+    expect(result.diagnosticSummary).toEqual({ total: 30, returned: 20, omitted: 10 })
+  })
 })

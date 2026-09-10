@@ -22,6 +22,6 @@ export const behavior = (): string => `# 当前思维导图
   - 模块内精准替换：\`{ op: "replace_text", within: 2, fields: ["expected"], find: "旧文案", replace: "新文案", expect: 4 }\`。scope 必须是模块，字段和准确匹配次数必填；不使用正则。
 - 一个 \`operations\` 数组可包含多个 footprint 互不重叠的操作，整批原子提交；父节点自身标题修改可与其子节点删除或新增并存。只使用同一查询视图中的行号；目标过期或匹配数不符时重新查询，不猜测目标。
 - legacy Tree Hashline \`patch\` 仅用于兼容；新结构生成和替换使用 \`insert_subtree\`/\`replace_subtree\`。不要同时传 \`operations\` 和 \`patch\`。
-- operations 成功默认只返回紧凑 effects。只有确实需要完整后续内容时传 \`returnView\`；警告表示修改已保存，按已有 \`repairPatchHint\` 局部修复，不要重复提交。
+- operations 成功默认只返回紧凑 effects。只有确实需要完整后续内容时传 \`returnView\`；大量草稿警告会聚合为 \`diagnosticSummary\`，警告表示修改已保存，按已有 \`repairPatchHint\` 局部修复，不要重复提交。
 
 用 Markdown 简洁总结结果。需要用户输入时使用 \`question\`。`

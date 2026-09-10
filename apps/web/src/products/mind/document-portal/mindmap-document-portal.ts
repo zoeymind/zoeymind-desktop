@@ -39,6 +39,7 @@ const DEFAULT_READ_MAX_LINES = 200
 const MAX_READ_LINES = 1_000
 const DEFAULT_SEARCH_LIMIT = 50
 
+const MAX_RETURNED_DIAGNOSTICS = 20
 const ANCHOR_TTL_MS = 5 * 60 * 1_000
 
 interface ReadSnapshot {
@@ -1548,10 +1549,7 @@ export function createMindMapDocumentPortal(
             ? committedData.root
             : (committedData as MindMapNodeTree)
         const pendingDiagnostics = lintAffectedNodes(committedRoot, affectedUids)
-        const needsView =
-          request.operations === undefined ||
-          request.returnView !== undefined ||
-          pendingDiagnostics.length > 0
+        const needsView = request.operations === undefined || request.returnView !== undefined
         const preferredReturnPath =
           pendingDiagnostics.length === 0 && request.returnView?.path !== undefined
             ? normalizePublicPath(committedRoot, request.returnView.path)
@@ -1564,39 +1562,43 @@ export function createMindMapDocumentPortal(
         const view = needsView
           ? this.read({
               documentId: request.documentId,
-              view:
-                pendingDiagnostics.length > 0 ? "subtree" : (request.returnView?.view ?? "outline"),
               path: returnPath,
+              view:
+                request.operations === undefined && pendingDiagnostics.length > 0
+                  ? "subtree"
+                  : (request.returnView?.view ?? "outline"),
               maxLines: request.returnView?.maxLines ?? DEFAULT_READ_MAX_LINES,
             })
           : undefined
         const viewSnapshot = view ? readSnapshots.get(view.anchorTag) : undefined
         const lineByUid = new Map<string, number>()
         for (const [line, uid] of viewSnapshot?.lines ?? []) lineByUid.set(uid, line)
-        const diagnostics: DocumentEditDiagnostic[] = pendingDiagnostics.map(diagnostic => {
-          const line = lineByUid.get(diagnostic.uid)
-          const publicDiagnostic: Omit<DocumentEditDiagnostic, "line" | "repairPatchHint"> = {
-            severity: diagnostic.severity,
-            code: diagnostic.code,
-            path: diagnostic.path,
-            message: diagnostic.message,
-          }
-          if (line === undefined) return publicDiagnostic
-          const repairPatchHint =
-            diagnostic.code === "CASE_HAS_NO_STEPS"
-              ? (() => {
-                  const caseNode = findDataNode(committedRoot, diagnostic.uid)?.node
-                  const priority = getIcons(caseNode ?? committedRoot)
-                    .find(icon => icon.startsWith("priority_"))
-                    ?.slice("priority_".length)
-                  const label = priority
-                    ? `[P${priority}] ${diagnostic.path.at(-1)}`
-                    : diagnostic.path.at(-1)
-                  return `PUT ${line}.=${line}:\n+${label}\n+  操作 & 预期结果`
-                })()
-              : `PUT ${line}.=${line}:\n+${diagnostic.path.at(-1)} & 预期结果`
-          return { ...publicDiagnostic, line, repairPatchHint }
-        })
+        const diagnostics: DocumentEditDiagnostic[] = pendingDiagnostics
+          .slice(0, MAX_RETURNED_DIAGNOSTICS)
+          .map(diagnostic => {
+            const line = lineByUid.get(diagnostic.uid)
+            const publicDiagnostic: Omit<DocumentEditDiagnostic, "line" | "repairPatchHint"> = {
+              severity: diagnostic.severity,
+              code: diagnostic.code,
+              path: diagnostic.path,
+              message: diagnostic.message,
+            }
+            if (line === undefined) return publicDiagnostic
+            const repairPatchHint =
+              diagnostic.code === "CASE_HAS_NO_STEPS"
+                ? (() => {
+                    const caseNode = findDataNode(committedRoot, diagnostic.uid)?.node
+                    const priority = getIcons(caseNode ?? committedRoot)
+                      .find(icon => icon.startsWith("priority_"))
+                      ?.slice("priority_".length)
+                    const label = priority
+                      ? `[P${priority}] ${diagnostic.path.at(-1)}`
+                      : diagnostic.path.at(-1)
+                    return `PUT ${line}.=${line}:\n+${label}\n+  操作 & 预期结果`
+                  })()
+                : `PUT ${line}.=${line}:\n+${diagnostic.path.at(-1)} & 预期结果`
+            return { ...publicDiagnostic, line, repairPatchHint }
+          })
         return {
           documentId: request.documentId,
           revision: getDocumentRevision(mindMap),
@@ -1606,6 +1608,15 @@ export function createMindMapDocumentPortal(
           ...(effects.length ? { effects } : {}),
           ...(view ? { view } : {}),
           diagnostics,
+          ...(pendingDiagnostics.length > 0
+            ? {
+                diagnosticSummary: {
+                  total: pendingDiagnostics.length,
+                  returned: diagnostics.length,
+                  omitted: pendingDiagnostics.length - diagnostics.length,
+                },
+              }
+            : {}),
         }
       })
     },

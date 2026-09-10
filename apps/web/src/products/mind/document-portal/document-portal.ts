@@ -138,6 +138,11 @@ export interface DocumentEditDiagnostic {
   line?: number
   repairPatchHint?: string
 }
+export interface DocumentEditDiagnosticSummary {
+  total: number
+  returned: number
+  omitted: number
+}
 export interface DocumentEditEffect {
   operation: number
   nodes?: number
@@ -156,6 +161,7 @@ export interface DocumentEditResult {
   view?: DocumentReadResult
   effects?: DocumentEditEffect[]
   diagnostics: DocumentEditDiagnostic[]
+  diagnosticSummary?: DocumentEditDiagnosticSummary
 }
 
 export interface DocumentPortal {
