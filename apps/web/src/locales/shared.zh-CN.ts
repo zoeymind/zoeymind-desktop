@@ -3,6 +3,22 @@
  */
 
 export default {
+  menu: {
+    file: "文件",
+    new: "新建",
+    open: "打开…",
+    openRecent: "打开最近",
+    noRecent: "（空）",
+    save: "保存",
+    saveAs: "另存为…",
+    closeTab: "关闭标签",
+    edit: "编辑",
+    undo: "撤销",
+    redo: "重做",
+    selectAll: "全选",
+    language: "语言",
+    window: "窗口",
+  },
   settings: {
     title: "设置",
     preferences: "偏好设置",
@@ -86,13 +102,6 @@ export default {
     retry: "重新加载",
     home: "返回首页",
     details: "错误详情",
-  },
-  projects: {
-    dialogs: {
-      removeTitle: "从 ZoeyMind 中移除“{{itemName}}”？",
-      removeDescription: "只会移除项目索引，不会删除磁盘上的 .zmind 文件。",
-      removeAction: "移除",
-    },
   },
   windowControls: {
     groupLabel: "窗口控制",

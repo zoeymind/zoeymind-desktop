@@ -111,7 +111,7 @@ export function MoveDialog({ open, onOpenChange, project, onMoved }: MoveDialogP
             {busy ? (
               <>
                 <Loader2 className="mr-1 size-3.5 animate-spin" />
-                {t("common.processing", "处理中...")}
+                {t("projects.dialogs.processing")}
               </>
             ) : (
               t("projects.home.moveTo", "移动到")

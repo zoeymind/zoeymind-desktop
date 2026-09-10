@@ -3,6 +3,22 @@
  */
 
 export default {
+  menu: {
+    file: "File",
+    new: "New",
+    open: "Open…",
+    openRecent: "Open Recent",
+    noRecent: "(Empty)",
+    save: "Save",
+    saveAs: "Save As…",
+    closeTab: "Close Tab",
+    edit: "Edit",
+    undo: "Undo",
+    redo: "Redo",
+    selectAll: "Select All",
+    language: "Language",
+    window: "Window",
+  },
   settings: {
     title: "Settings",
     preferences: "Preferences",
@@ -87,13 +103,6 @@ export default {
     retry: "Reload",
     home: "Return home",
     details: "Error details",
-  },
-  projects: {
-    dialogs: {
-      removeTitle: "Remove “{{itemName}}” from ZoeyMind?",
-      removeDescription: "This removes the project index only. The .zmind file remains on disk.",
-      removeAction: "Remove",
-    },
   },
   windowControls: {
     groupLabel: "Window controls",

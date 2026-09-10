@@ -6,6 +6,12 @@
 
 export default {
   mindmap: {
+    editor: {
+      newProjectTitle: "Untitled project",
+      createFailed: "Failed to create project",
+      openFailed: "Failed to open project",
+      importFailed: "Failed to import project",
+    },
     toast: {
       snapshotLoadFailedTitle: "Load failed",
       snapshotLoadFailedDesc: "Could not load the snapshot list. Please try again.",
@@ -254,6 +260,8 @@ export default {
         thinkingProcess: "Thinking process",
         thinkingShort: "Thinking",
         toolStatus: {
+          queryCurrent: "Reading the current document",
+          editCurrent: "Editing the current document",
           defaultPending: "Running...",
           addCases: "Add cases",
           addModule: "Add module",
@@ -548,6 +556,7 @@ export default {
       recursiveFold: "Recursively collapse / expand",
       newNode: "New node",
       newChildNode: "New child node",
+      importFailed: "Import failed",
     },
     formatPanel: {
       aiPanel: {
@@ -1004,6 +1013,8 @@ export default {
       unfavoritedTitle: "Unfavorited",
     },
     card: {
+      fileSize: "File size",
+      revealInFolder: "Show in folder",
       lastUpdated: "Last updated",
       messageCount: "Message count",
       permOwner: "Owner",
@@ -1051,6 +1062,9 @@ export default {
       importDesc: "Create from XMind, Markdown, or nested ZIP",
     },
     dialogs: {
+      removeTitle: "Remove “{{itemName}}” from ZoeyMind?",
+      removeDescription: "This removes the project index only. The .zmind file remains on disk.",
+      removeAction: "Remove",
       deleteDescription:
         "The project will be moved to trash and can be restored within 30 days, after which it is permanently deleted.",
       deleteTitle: 'Delete "{{itemName}}"?',
@@ -1197,6 +1211,7 @@ export default {
       groupPersonal: "Personal",
     },
     home: {
+      moveFailed: "Move failed",
       collapseSidebar: "Collapse sidebar",
       expandSidebar: "Expand sidebar",
       navAll: "All Mindmaps",

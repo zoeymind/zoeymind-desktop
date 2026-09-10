@@ -6,6 +6,12 @@
 
 export default {
   mindmap: {
+    editor: {
+      newProjectTitle: "未命名项目",
+      createFailed: "创建项目失败",
+      openFailed: "打开项目失败",
+      importFailed: "导入项目失败",
+    },
     toast: {
       snapshotLoadFailedTitle: "加载失败",
       snapshotLoadFailedDesc: "无法加载快照列表，请重试",
@@ -249,6 +255,8 @@ export default {
         thinkingProcess: "思考过程",
         thinkingShort: "思考中",
         toolStatus: {
+          queryCurrent: "正在查询当前导图",
+          editCurrent: "正在编辑当前导图",
           defaultPending: "执行中...",
           addCases: "添加用例",
           addModule: "添加模块",
@@ -974,6 +982,8 @@ export default {
       unfavoritedTitle: "已取消收藏",
     },
     card: {
+      fileSize: "文件大小",
+      revealInFolder: "在文件夹中显示",
       lastUpdated: "最后修改",
       messageCount: "消息数量",
       permOwner: "拥有者",
@@ -1021,6 +1031,9 @@ export default {
       importDesc: "从 XMind、Markdown 或嵌套 ZIP 文件创建",
     },
     dialogs: {
+      removeTitle: "从 ZoeyMind 中移除“{{itemName}}”？",
+      removeDescription: "只会移除项目索引，不会删除磁盘上的 .zmind 文件。",
+      removeAction: "移除",
       deleteDescription: "项目将移入回收站，可在 30 天内还原；超期后自动永久删除。",
       deleteTitle: '确定要删除项目 "{{itemName}}" 吗？',
       nameLabel: "项目名称",
@@ -1158,6 +1171,7 @@ export default {
       groupPersonal: "个人",
     },
     home: {
+      moveFailed: "移动失败",
       collapseSidebar: "收起侧栏",
       expandSidebar: "展开侧栏",
       navAll: "全部导图",

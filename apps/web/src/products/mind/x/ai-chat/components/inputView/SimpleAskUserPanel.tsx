@@ -276,7 +276,7 @@ export function SimpleAskUserPanel({
                     disabled={!draft.trim()}
                   >
                     <Check className="mr-0.5 size-3" />
-                    {t("mindmap.aiChat.input.askUserConfirm")}
+                    {t("common.confirm")}
                   </Button>
                 </div>
               </div>
