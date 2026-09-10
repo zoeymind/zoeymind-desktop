@@ -4,6 +4,18 @@ This file records user-visible changes to `@zoeymind/cli` and `@zoeymind/mcp`. B
 
 ## Unreleased
 
+## 0.6.0 - 2026-09-10
+
+### Fixed
+
+- Preserve root descendants during `set_node` and allow parent title edits with disjoint child deletion; retain atomic rejection of destructive overlaps.
+- Bound draft diagnostic responses and keep structured edit receipts compact unless a return view is requested.
+- Apply case priority changes in `set_node` and reject complete subtree replacement when the anchored view omits descendants.
+
+### Added
+
+- Expose structured `insert_subtree` and `replace_subtree` through the shared editing contract, including module skeleton insertion.
+
 ## 0.5.0 - 2026-08-28
 
 ### Added
