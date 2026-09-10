@@ -2,16 +2,13 @@
  * tokenCounter — 给 UI 与压缩预算估 token 数.
  *
  * 实现: CJK 感知字符启发式 (中文 ≈0.75 token/字, 其余 ≈0.26 token/字符),
- * 对 o200k_base 实测平均误差 ~32%, 且系统性偏保守(只高估不低估):
- *   - 高估方向安全: ContextCompactor 触发压缩略早只是省上下文;
- *     低估才会让请求撞真实 API 上限.
+ * 对通用聊天文本提供低成本、本地且有界的上下文占用估算.
  *
  * 为什么不用 tiktoken: o200k 词表静态打包占主 chunk ~29%(2.3MB), 首次构造
  * ~240ms, 每次 encode 随上下文线性增长(40K 字符 ≈22ms, 400K ≈210ms), 全在主线程.
  * 而这里的两个消费方都不需要逐字节精度:
- *   - ContextCompactor: occupancy = max(localEstimate, providerUsage), 每轮完成后
- *     provider 返回的精确 totalUsage 兜底, 启发式只作用于增量部分; 压缩触发本身
- *     还有 trigger 预算余量.
+ *   - ContextCompactor: 序列化实际发送的 system/messages/tools 后估算占用，并用
+ *     provider 返回的最后一步 context usage 校正已发送部分.
  *   - ToolCallCard "~N tokens": 纯展示.
  *
  * 历史注: 曾用 js-tiktoken/lite + o200k_base 静态词表, 因上述启动与主线程成本移除.
@@ -28,7 +25,7 @@ function isCjkChar(code: number): boolean {
 }
 
 const CJK_TOKEN_WEIGHT = 0.75
-const OTHER_CHARS_PER_TOKEN = 1 / 0.26
+const OTHER_TOKEN_WEIGHT = 0.26
 
 /**
  * 同步估算一段文本的 token 数. 非空文本至少返回 1.
@@ -43,7 +40,7 @@ export function countTokens(text: string): number {
     if (isCjkChar(text.charCodeAt(i))) cjk++
   }
   const other = text.length - cjk
-  return Math.max(1, Math.ceil(cjk * CJK_TOKEN_WEIGHT + other * OTHER_CHARS_PER_TOKEN))
+  return Math.max(1, Math.ceil(cjk * CJK_TOKEN_WEIGHT + other * OTHER_TOKEN_WEIGHT))
 }
 
 /**
