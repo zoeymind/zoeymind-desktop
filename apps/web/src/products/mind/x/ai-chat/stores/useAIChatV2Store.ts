@@ -8,8 +8,9 @@ import { create } from "zustand"
 import { logger } from "@zoeymind/logger"
 import type { Attachment, SendMessageParams, TokenUsage } from "../../ai-chat/types"
 import { sqliteChatStore } from "../storage/sqliteChatStore"
-import type { Conversation } from "../storage/sqliteChatStore"
+import type { CompactionState, Conversation } from "../storage/sqliteChatStore"
 import { getModuleAIChatRuntime } from "../../ai-chat/context/ai-chat-runtime"
+import { useTabs } from "@/shared/tabs/store"
 import { useCompactionStore } from "../../ai-chat/compaction/useCompactionStore"
 import { resetToolUI, restorePendingFromMessages } from "../../ai-chat/context/ToolUIRegistry"
 import {
@@ -28,9 +29,11 @@ const buildSendMessageParams = ({
   attachments,
   selectedModel,
   provider,
+  conversationId,
 }: MessageDraftPayload & {
   selectedModel: string
   provider?: string
+  conversationId?: string
 }): SendMessageParams => {
   const filesParts = attachments
     .filter(attachment => attachment.type === "image" && attachment.dataUrl)
@@ -48,14 +51,41 @@ const buildSendMessageParams = ({
       model: selectedModel,
       turnStartedAt: Date.now(),
       ...(provider && { provider }),
+      ...(conversationId && { conversationId }),
     },
   }
 }
 const activeResends = new Set<string>()
+const conversationTransitions = new Map<string, number>()
+let conversationRequest = 0
+
+function nextConversationTransition(workspaceId: string): number {
+  const transition = ++conversationRequest
+  conversationTransitions.set(workspaceId, transition)
+  return transition
+}
+
+function claimConversationTransition(workspaceId: string, transition: number): boolean {
+  const current = conversationTransitions.get(workspaceId) ?? 0
+  if (current > transition) return false
+  conversationTransitions.set(workspaceId, transition)
+  return true
+}
+
+function isCurrentConversationTransition(workspaceId: string, transition: number): boolean {
+  return conversationTransitions.get(workspaceId) === transition
+}
+
+function isActiveWorkspace(workspaceId: string): boolean {
+  return useTabs.getState().activeId === workspaceId
+}
 
 interface AIchatV2State {
   // 核心状态 (messages 已移到 runtime context, 不在 store)
   currentConversationId: string | undefined
+  conversationIdsByWorkspace: Record<string, string | undefined>
+  knowledgeBaseIdsByWorkspace: Record<string, string[] | undefined>
+  compactionsByWorkspace: Record<string, CompactionState | null | undefined>
   totalTokenUsage: TokenUsage
 
   // 输入框状态
@@ -81,6 +111,7 @@ interface AIchatV2State {
   mergedUserPrompt: string
   // Actions
   setCurrentConversationId: (id: string | undefined) => void
+  selectWorkspaceConversation: (workspaceId: string) => void
   setTotalTokenUsage: (usage: TokenUsage) => void
   setInputMessage: (message: string) => void
   setAttachments: (attachments: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void
@@ -94,7 +125,7 @@ interface AIchatV2State {
   // 业务 Actions
   sendMessage: (workspaceId: string, selectedModel: string, provider?: string) => Promise<void>
   interruptAndSend: (workspaceId: string, selectedModel: string, provider?: string) => Promise<void>
-  stopGeneration: () => void
+  stopGeneration: (workspaceId: string) => Promise<void>
   resendMessageFrom: (
     messageId: string,
     draft: MessageDraftPayload,
@@ -111,6 +142,9 @@ interface AIchatV2State {
 
 export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   currentConversationId: undefined,
+  conversationIdsByWorkspace: {},
+  knowledgeBaseIdsByWorkspace: {},
+  compactionsByWorkspace: {},
   totalTokenUsage: { input: 0, output: 0, total: 0 },
   inputMessage: "",
   attachments: [],
@@ -129,6 +163,18 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
     if (current.currentConversationId !== id) {
       set({ currentConversationId: id })
     }
+  },
+  selectWorkspaceConversation: workspaceId => {
+    const current = get()
+    const conversationId = current.conversationIdsByWorkspace[workspaceId]
+    if (!conversationId || current.currentConversationId === conversationId) return
+    set({
+      currentConversationId: conversationId,
+      selectedKnowledgeBaseIds: current.knowledgeBaseIdsByWorkspace[workspaceId] ?? [],
+      abortedMessageId: null,
+      interruptedToolCallIds: [],
+    })
+    useCompactionStore.getState().setCompaction(current.compactionsByWorkspace[workspaceId] ?? null)
   },
   setTotalTokenUsage: usage => {
     const current = get()
@@ -179,22 +225,29 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   },
   setSelectedKnowledgeBaseIds: async ids => {
     const current = get()
-    // 比较数组内容是否相同
     const currentIds = current.selectedKnowledgeBaseIds
     const idsEqual =
       currentIds.length === ids.length && currentIds.every((id, index) => id === ids[index])
-    if (!idsEqual) {
-      set({ selectedKnowledgeBaseIds: ids })
+    if (idsEqual) return
 
-      // 保存到当前会话
-      if (current.currentConversationId) {
-        try {
-          await sqliteChatStore.updateConversation(current.currentConversationId, {
-            selectedKnowledgeBaseIds: ids.length > 0 ? ids : undefined,
-          })
-        } catch (error) {
-          logger.error("[AIchatV2Store] 保存知识库选择失败", { error })
-        }
+    const workspaceId = useTabs.getState().activeId
+    const conversationId =
+      workspaceId === "home" ? undefined : current.conversationIdsByWorkspace[workspaceId]
+    set({
+      selectedKnowledgeBaseIds: ids,
+      knowledgeBaseIdsByWorkspace:
+        workspaceId === "home"
+          ? current.knowledgeBaseIdsByWorkspace
+          : { ...current.knowledgeBaseIdsByWorkspace, [workspaceId]: ids },
+    })
+
+    if (conversationId) {
+      try {
+        await sqliteChatStore.updateConversation(conversationId, {
+          selectedKnowledgeBaseIds: ids.length > 0 ? ids : undefined,
+        })
+      } catch (error) {
+        logger.error("[AIchatV2Store] 保存知识库选择失败", { error })
       }
     }
   },
@@ -208,8 +261,10 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
 
   // 发送消息
   sendMessage: async (workspaceId, selectedModel, provider) => {
-    const { inputMessage, attachments, currentConversationId, selectedKnowledgeBaseIds } = get()
-    const runtime = getModuleAIChatRuntime()
+    const { inputMessage, attachments, conversationIdsByWorkspace, selectedKnowledgeBaseIds } =
+      get()
+    const currentConversationId = conversationIdsByWorkspace[workspaceId]
+    const runtime = getModuleAIChatRuntime(workspaceId)
 
     if ((!inputMessage.trim() && attachments.length === 0) || !runtime) {
       logger.warn("[AIchatV2Store] 无法发送消息", {
@@ -257,8 +312,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       let conversationId = currentConversationId
       if (!conversationId) {
         await get().createNewConversation(workspaceId)
-        conversationId = get().currentConversationId
-        // 创建新会话后，保存当前的知识库选择
+        conversationId = get().conversationIdsByWorkspace[workspaceId]
         if (conversationId && selectedKnowledgeBaseIds.length > 0) {
           await sqliteChatStore.updateConversation(conversationId, {
             selectedKnowledgeBaseIds,
@@ -268,17 +322,29 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
 
       const sendParams = buildSendMessageParams({
         text: inputMessage,
+        conversationId,
         attachments,
         selectedModel,
         provider,
       })
-
-      runtime.sendMessage(sendParams)
-
-      // 清空输入
-      get().clearInput()
+      const sending = runtime.sendMessage(sendParams)
+      if (
+        get().conversationIdsByWorkspace[workspaceId] === conversationId &&
+        get().inputMessage === inputMessage &&
+        get().attachments === attachments
+      ) {
+        get().clearInput()
+      }
+      await sending
     } catch (error) {
+      if (
+        get().conversationIdsByWorkspace[workspaceId] === currentConversationId &&
+        !get().inputMessage
+      ) {
+        set({ inputMessage, attachments, lastSentInput: "" })
+      }
       logger.error("[AIchatV2Store] 发送消息失败", { error })
+      throw error
     }
   },
 
@@ -286,9 +352,9 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
   // 注: 虽然后端现在透传 abortSignal, 但 useChat 在 stop() 后不会自动把 in-flight 的
   // tool part (input-streaming / input-available) 转成 output-error, 我们需要手动清理,
   // 否则下一轮 SDK 会以为还有 pending tool 拒绝发送.
-  stopGeneration: () => {
-    const runtime = getModuleAIChatRuntime()
-    runtime?.stop()
+  stopGeneration: async workspaceId => {
+    const runtime = getModuleAIChatRuntime(workspaceId)
+    const stopping = runtime?.stop() ?? Promise.resolve()
     resetToolUI()
     const messages = runtime?.messages ?? []
 
@@ -300,43 +366,54 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       })
 
       const interruptedMessage = interruptPendingToolParts(lastMsg, TOOL_EXECUTION_INTERRUPTED)
-      if (interruptedMessage !== lastMsg && runtime) {
-        runtime.setMessages([...messages.slice(0, -1), interruptedMessage])
-      }
+      if (runtime) runtime.setMessages([...messages.slice(0, -1), interruptedMessage])
+    } else if (runtime) {
+      runtime.setMessages(messages)
     }
+    await stopping
   },
 
   interruptAndSend: async (workspaceId, selectedModel, provider) => {
-    const runtime = getModuleAIChatRuntime()
+    const runtime = getModuleAIChatRuntime(workspaceId)
     if (!runtime || runtime.status === "ready") {
       await get().sendMessage(workspaceId, selectedModel, provider)
       return
     }
 
-    get().stopGeneration()
+    const { inputMessage, attachments, conversationIdsByWorkspace } = get()
+    const conversationId = conversationIdsByWorkspace[workspaceId]
+    await get().stopGeneration(workspaceId)
 
-    // 等待 SDK 状态脱离 streaming/submitted（最多 500ms，每 50ms 检查）
-    const MAX_WAIT = 500
-    const INTERVAL = 50
-    let waited = 0
-    while (waited < MAX_WAIT) {
-      const s = runtime.status
-      if (s !== "streaming" && s !== "submitted") break
-      await new Promise(r => setTimeout(r, INTERVAL))
-      waited += INTERVAL
+    if (
+      getModuleAIChatRuntime(workspaceId)?.instanceId !== runtime.instanceId ||
+      get().conversationIdsByWorkspace[workspaceId] !== conversationId
+    )
+      return
+
+    const sending = runtime.sendMessage(
+      buildSendMessageParams({
+        text: inputMessage,
+        attachments,
+        selectedModel,
+        provider,
+        conversationId,
+      })
+    )
+    if (get().inputMessage === inputMessage && get().attachments === attachments) get().clearInput()
+    try {
+      await sending
+    } catch (error) {
+      if (get().conversationIdsByWorkspace[workspaceId] === conversationId && !get().inputMessage)
+        set({ inputMessage, attachments })
+      throw error
     }
-
-    if (waited >= MAX_WAIT) {
-      logger.warn("[AIchatV2Store] interruptAndSend: 等待 stop 超时，强制发送")
-    }
-
-    await get().sendMessage(workspaceId, selectedModel, provider)
   },
 
   // 从指定用户消息之前的上下文重新发送：仅重放该消息之前的对话，不污染底部输入框。
   resendMessageFrom: async (messageId, draft, workspaceId, selectedModel, provider) => {
-    const { currentConversationId, selectedKnowledgeBaseIds } = get()
-    const runtime = getModuleAIChatRuntime()
+    const { conversationIdsByWorkspace, selectedKnowledgeBaseIds } = get()
+    const currentConversationId = conversationIdsByWorkspace[workspaceId]
+    const runtime = getModuleAIChatRuntime(workspaceId)
 
     if ((!draft.text.trim() && draft.attachments.length === 0) || !runtime) {
       logger.warn("[AIchatV2Store] 无法重新发送消息：输入为空或 runtime 未初始化", {
@@ -375,7 +452,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
 
       if (!conversationId) {
         await get().createNewConversation(workspaceId)
-        conversationId = get().currentConversationId
+        conversationId = get().conversationIdsByWorkspace[workspaceId]
         if (conversationId && selectedKnowledgeBaseIds.length > 0) {
           await sqliteChatStore.updateConversation(conversationId, {
             selectedKnowledgeBaseIds,
@@ -392,12 +469,13 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
         useCompactionStore.getState().setCompaction(loaded.compaction)
       }
 
-      runtime.sendMessage(
+      await runtime.sendMessage(
         buildSendMessageParams({
           text: draft.text,
           attachments: draft.attachments,
           selectedModel,
           provider,
+          conversationId,
         })
       )
 
@@ -409,7 +487,7 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
       return true
     } catch (error) {
       logger.error("[AIchatV2Store] 重新发送消息失败", { error, messageId })
-      return false
+      throw error
     } finally {
       activeResends.delete(resendKey)
     }
@@ -417,18 +495,40 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
 
   // 创建新对话
   createNewConversation: async workspaceId => {
+    const transition = nextConversationTransition(workspaceId)
     try {
+      const runtime = getModuleAIChatRuntime(workspaceId)
+      await runtime?.stop()
       const newConv = await sqliteChatStore.createConversation(workspaceId)
-      useCompactionStore.getState().reset()
+      if (!isCurrentConversationTransition(workspaceId, transition)) return
+      const active = isActiveWorkspace(workspaceId)
+      const current = get()
       set({
-        currentConversationId: newConv.id,
-        inputMessage: "",
-        attachments: [],
-        selectedKnowledgeBaseIds: [], // 新会话清空知识库选择
+        conversationIdsByWorkspace: {
+          ...current.conversationIdsByWorkspace,
+          [workspaceId]: newConv.id,
+        },
+        knowledgeBaseIdsByWorkspace: {
+          ...current.knowledgeBaseIdsByWorkspace,
+          [workspaceId]: [],
+        },
+        compactionsByWorkspace: {
+          ...current.compactionsByWorkspace,
+          [workspaceId]: null,
+        },
+        ...(active
+          ? {
+              currentConversationId: newConv.id,
+              inputMessage: "",
+              attachments: [],
+              selectedKnowledgeBaseIds: [],
+              abortedMessageId: null,
+              interruptedToolCallIds: [],
+            }
+          : {}),
       })
-
-      // 同步到 SDK
-      getModuleAIChatRuntime()?.setMessages([])
+      if (active) useCompactionStore.getState().reset()
+      runtime?.setMessages([])
 
       logger.info("[AIchatV2Store] 创建新对话", { conversationId: newConv.id })
     } catch (error) {
@@ -438,29 +538,54 @@ export const useAIChatV2Store = create<AIchatV2State>((set, get) => ({
 
   // 加载对话
   loadConversation: async conversationId => {
+    const transition = ++conversationRequest
     try {
-      const { transcript, compaction } = await sqliteChatStore.loadConversationState(conversationId)
       const conversation = await sqliteChatStore.getConversation(conversationId)
+      if (!conversation) return
+      const { workspaceId } = conversation
+      if (!claimConversationTransition(workspaceId, transition)) return
+      const { transcript, compaction } = await sqliteChatStore.loadConversationState(conversationId)
+      const runtime = getModuleAIChatRuntime(workspaceId)
+      await runtime?.stop()
+      if (!isCurrentConversationTransition(workspaceId, transition)) return
 
       const knowledgeBaseIds =
-        conversation?.selectedKnowledgeBaseIds || conversation?.selectedRAGDataSources || []
-
+        conversation.selectedKnowledgeBaseIds || conversation.selectedRAGDataSources || []
+      const active = isActiveWorkspace(workspaceId)
+      const current = get()
       set({
-        currentConversationId: conversationId,
-        selectedKnowledgeBaseIds: knowledgeBaseIds,
+        conversationIdsByWorkspace: {
+          ...current.conversationIdsByWorkspace,
+          [workspaceId]: conversationId,
+        },
+        knowledgeBaseIdsByWorkspace: {
+          ...current.knowledgeBaseIdsByWorkspace,
+          [workspaceId]: knowledgeBaseIds,
+        },
+        compactionsByWorkspace: {
+          ...current.compactionsByWorkspace,
+          [workspaceId]: compaction,
+        },
+        ...(active
+          ? {
+              currentConversationId: conversationId,
+              selectedKnowledgeBaseIds: knowledgeBaseIds,
+              abortedMessageId: null,
+              interruptedToolCallIds: [],
+            }
+          : {}),
       })
 
-      // 同步到 SDK (useChat 内部 messages 改为新对话的, 这是单对话模型, 切了就是切了)
-      getModuleAIChatRuntime()?.setMessages(transcript)
-      useCompactionStore.getState().setCompaction(compaction)
-
-      // 加载完后扫一次 pending tool UI calls (恢复刷新前未答的弹框)
-      restorePendingFromMessages(transcript)
+      runtime?.setMessages(transcript)
+      if (active) {
+        useCompactionStore.getState().setCompaction(compaction)
+        restorePendingFromMessages(transcript)
+      }
 
       logger.info("[AIchatV2Store] 加载对话", {
         conversationId,
         messageCount: transcript.length,
-        knowledgeBaseCount: conversation?.selectedKnowledgeBaseIds?.length || 0,
+        knowledgeBaseCount: conversation.selectedKnowledgeBaseIds?.length || 0,
       })
     } catch (error) {
       logger.error("[AIchatV2Store] 加载对话失败", { error })

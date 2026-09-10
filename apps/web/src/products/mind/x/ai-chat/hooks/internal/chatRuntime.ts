@@ -1,2 +1,5 @@
-/** Shared transport and dispatcher runtime boundary. */
-export type ChatRuntime = Record<string, never>
+/** Mutable identity used to reject completions from superseded chat generations. */
+export interface ChatRuntime {
+  generation: number
+  workspaceId: string | undefined
+}

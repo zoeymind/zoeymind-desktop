@@ -57,22 +57,19 @@ export const InputView: React.FC<InputViewProps> = ({
     setAttachments,
     logPrefix: "[AIchatV2 InputView]",
   })
+  const workspaceId = (mindMap as { workspaceId?: string } | null)?.workspaceId
 
   const handleSend = () => {
     if (disabled) return
     if (!inputMessage.trim() && attachments.length === 0) return
-    if (!(mindMap as { workspaceId?: string } | null)?.workspaceId) return
+    if (!workspaceId) return
 
     const provider = currentModel?.provider
     if (isProcessing) {
-      interruptAndSend(
-        (mindMap as { workspaceId?: string } | null)!.workspaceId!,
-        selectedModel,
-        provider
-      )
+      void interruptAndSend(workspaceId, selectedModel, provider)
       return
     }
-    sendMessage((mindMap as { workspaceId?: string } | null)!.workspaceId!, selectedModel, provider)
+    void sendMessage(workspaceId, selectedModel, provider)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -97,7 +94,9 @@ export const InputView: React.FC<InputViewProps> = ({
       selectedModel={selectedModel}
       setSelectedModel={setSelectedModel}
       onSend={handleSend}
-      onStop={stopGeneration}
+      onStop={() => {
+        if (workspaceId) void stopGeneration(workspaceId)
+      }}
       onAddImage={addImageFiles}
       disabled={disabled}
       isSending={isProcessing}

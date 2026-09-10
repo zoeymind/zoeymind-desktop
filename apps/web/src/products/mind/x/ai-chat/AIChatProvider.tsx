@@ -13,10 +13,10 @@
 import type { ReactNode, ReactElement } from "react"
 import { useAIChat } from "./hooks/useAIChat"
 import { AIChatRuntimeProvider } from "./context/AIChatRuntimeContext"
-import { useProjectMindMapStore as useMindMapStore } from "@/products/mind/editor-session"
+import { useProjectSession } from "@/products/mind/editor-session"
 
 export function AIChatProvider({ children }: { children: ReactNode }): ReactElement {
-  const { mindMap } = useMindMapStore()
-  const runtime = useAIChat((mindMap as { workspaceId?: string } | null)?.workspaceId)
+  const workspaceId = useProjectSession(state => state.projectId)
+  const runtime = useAIChat(workspaceId)
   return <AIChatRuntimeProvider runtime={runtime}>{children}</AIChatRuntimeProvider>
 }

@@ -19,7 +19,7 @@ import {
   subscribeToolUIPending,
   type PendingToolUICall,
 } from "./ToolUIRegistry"
-import { getModuleAIChatRuntime } from "./ai-chat-runtime"
+import { useAIChatRuntime } from "./ai-chat-runtime"
 import { logger } from "@zoeymind/logger"
 
 interface ToolUIItemProps {
@@ -28,17 +28,11 @@ interface ToolUIItemProps {
 
 function ToolUIItem({ call }: ToolUIItemProps): ReactNode {
   const handler = getToolUIHandler(call.toolName)
+  const runtime = useAIChatRuntime()
 
   const respond = useCallback(
     async (output: unknown) => {
-      const runtime = getModuleAIChatRuntime()
-      if (!runtime) {
-        logger.warn("[ToolUIRenderer] runtime 未初始化, 无法回传 respond", {
-          toolName: call.toolName,
-          toolCallId: call.toolCallId,
-        })
-        return
-      }
+      if (!runtime) return
       const serialized = handler?.serializeOutput
         ? handler.serializeOutput(output)
         : JSON.stringify(output)
@@ -49,7 +43,7 @@ function ToolUIItem({ call }: ToolUIItemProps): ReactNode {
       })
       completeToolUICall(call.toolCallId)
     },
-    [call.toolCallId, call.toolName, handler]
+    [call.toolCallId, call.toolName, handler, runtime]
   )
 
   const dismiss = useCallback(() => {

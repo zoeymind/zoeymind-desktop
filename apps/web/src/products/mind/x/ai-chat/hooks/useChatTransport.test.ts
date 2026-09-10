@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { UIMessage } from "ai"
-import { readTurnStartedAt } from "./useChatTransport"
+import { awaitWithAbort, readTurnStartedAt } from "./useChatTransport"
 
 describe("readTurnStartedAt", () => {
   it("keeps the original user send time across tool-result round trips", () => {
@@ -36,5 +36,22 @@ describe("readTurnStartedAt", () => {
         { id: "user-1", role: "user", metadata: { turnStartedAt: "now" }, parts: [] },
       ] as UIMessage[])
     ).toBeUndefined()
+  })
+})
+
+describe("awaitWithAbort", () => {
+  it("rejects an uninterruptible preflight wait when the request is cancelled", async () => {
+    const controller = new AbortController()
+    const never = new Promise<string>(() => {})
+    const pending = awaitWithAbort(never, controller.signal)
+    controller.abort()
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" })
+  })
+
+  it("removes its abort listener when preflight settles", async () => {
+    const controller = new AbortController()
+    const remove = vi.spyOn(controller.signal, "removeEventListener")
+    await expect(awaitWithAbort(Promise.resolve("ready"), controller.signal)).resolves.toBe("ready")
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function))
   })
 })

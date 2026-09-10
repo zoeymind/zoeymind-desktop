@@ -52,15 +52,11 @@ export function AIChatRuntimeProvider({
 
   const value = useMemo<AIChatRuntime>(
     () => ({
-      sendMessage: params => {
-        actionRefs.current.sendMessage?.(params)
-      },
-      regenerate: options => {
-        actionRefs.current.regenerate?.(options)
-      },
-      stop: () => {
-        actionRefs.current.stop?.()
-      },
+      workspaceId: runtime.workspaceId,
+      instanceId: runtime.instanceId,
+      sendMessage: params => actionRefs.current.sendMessage?.(params) ?? Promise.resolve(),
+      regenerate: options => actionRefs.current.regenerate?.(options) ?? Promise.resolve(),
+      stop: () => actionRefs.current.stop?.() ?? Promise.resolve(),
       setMessages: msgs => {
         actionRefs.current.setMessages?.(msgs)
       },
@@ -69,7 +65,7 @@ export function AIChatRuntimeProvider({
       status,
       error,
     }),
-    [messages, status, error]
+    [runtime.workspaceId, runtime.instanceId, messages, status, error]
   )
 
   return <AIChatRuntimeContext.Provider value={value}>{children}</AIChatRuntimeContext.Provider>

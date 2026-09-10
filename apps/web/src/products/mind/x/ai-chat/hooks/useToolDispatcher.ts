@@ -34,6 +34,7 @@ export interface UseToolDispatcherResult {
 }
 
 export function useToolDispatcher({
+  runtime,
   addToolOutput,
 }: UseToolDispatcherOptions): UseToolDispatcherResult {
   const toolUsageRef = useRef<Record<string, never>>({})
@@ -51,6 +52,13 @@ export function useToolDispatcher({
 
   const onToolCall = useCallback<UseToolDispatcherResult["onToolCall"]>(
     async ({ toolCall }) => {
+      const generation = runtime.generation
+      const documentResolver = {
+        resolve: () => {
+          if (!runtime.workspaceId) throw new Error("Chat runtime has no document workspace")
+          return runtime.workspaceId
+        },
+      }
       if ("dynamic" in toolCall && toolCall.dynamic) {
         logger.warn("[useToolDispatcher] 不支持动态工具")
         return
@@ -62,9 +70,12 @@ export function useToolDispatcher({
               ? { ...(toolCall.input as Record<string, unknown>), preview: true }
               : toolCall.input
           const initialOutput = await Promise.resolve(
-            executeCurrentDocumentPortalTool(toolCall.toolName, initialInput)
+            executeCurrentDocumentPortalTool(toolCall.toolName, initialInput, {
+              resolver: documentResolver,
+            })
           )
-          if (consumeInterruptedToolCall(toolCall.toolCallId)) return
+          if (runtime.generation !== generation || consumeInterruptedToolCall(toolCall.toolCallId))
+            return
           if (
             toolCall.toolName === "edit_current_mindmap" &&
             initialOutput.success === true &&
@@ -81,8 +92,10 @@ export function useToolDispatcher({
                   toolCall.input as {
                     returnView?: { view?: "outline" | "subtree"; maxLines?: number }
                   }
-                ).returnView
+                ).returnView,
+                { resolver: documentResolver }
               )
+              if (runtime.generation !== generation) return
               await addToolOutput({
                 tool: toolCall.toolName,
                 toolCallId: toolCall.toolCallId,
@@ -90,6 +103,7 @@ export function useToolDispatcher({
               })
               return
             }
+            if (runtime.generation !== generation) return
             enqueueToolUICall({
               toolCallId: toolCall.toolCallId,
               toolName: toolCall.toolName,
@@ -104,12 +118,16 @@ export function useToolDispatcher({
           const output =
             toolCall.toolName === "edit_current_mindmap"
               ? await Promise.resolve(
-                  executeCurrentDocumentPortalTool(toolCall.toolName, toolCall.input)
+                  executeCurrentDocumentPortalTool(toolCall.toolName, toolCall.input, {
+                    resolver: documentResolver,
+                  })
                 )
               : initialOutput
+          if (runtime.generation !== generation) return
           await addToolOutput({ tool: toolCall.toolName, toolCallId: toolCall.toolCallId, output })
         } catch (error) {
-          if (consumeInterruptedToolCall(toolCall.toolCallId)) return
+          if (runtime.generation !== generation || consumeInterruptedToolCall(toolCall.toolCallId))
+            return
           logger.error("[useToolDispatcher] 当前文档工具执行失败", {
             toolName: toolCall.toolName,
             error,
@@ -141,7 +159,7 @@ export function useToolDispatcher({
         })
       }
     },
-    [addToolOutput]
+    [addToolOutput, runtime]
   )
 
   return { onToolCall, toolUsageRef, lastReportedRef, toolUsageProjectRef }

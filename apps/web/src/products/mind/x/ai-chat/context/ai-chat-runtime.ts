@@ -3,9 +3,11 @@ import type { UIMessage } from "@ai-sdk/react"
 import type { AddToolOutputParams, SendMessageParams } from "../../ai-chat/types"
 
 export interface AIChatRuntime {
-  sendMessage: (params: SendMessageParams) => void
-  regenerate: (options?: { body?: Record<string, unknown> }) => void
-  stop: () => void
+  workspaceId: string | undefined
+  instanceId: symbol
+  sendMessage: (params: SendMessageParams) => Promise<void>
+  regenerate: (options?: { body?: Record<string, unknown> }) => Promise<void>
+  stop: () => Promise<void>
   setMessages: (messages: UIMessage[]) => void
   addToolOutput: (params: AddToolOutputParams) => Promise<void>
   messages: UIMessage[]
@@ -21,12 +23,21 @@ export function useAIChatRuntime(): AIChatRuntime {
   return value
 }
 
-let moduleRuntime: AIChatRuntime | null = null
+const moduleRuntimes = new Map<string, { owner: symbol; runtime: AIChatRuntime }>()
 
-export function setModuleAIChatRuntime(runtime: AIChatRuntime | null): void {
-  moduleRuntime = runtime
+export function registerModuleAIChatRuntime(
+  workspaceId: string,
+  owner: symbol,
+  runtime: AIChatRuntime
+): void {
+  moduleRuntimes.set(workspaceId, { owner, runtime })
 }
 
-export function getModuleAIChatRuntime(): AIChatRuntime | null {
-  return moduleRuntime
+export function unregisterModuleAIChatRuntime(workspaceId: string, owner: symbol): void {
+  const registration = moduleRuntimes.get(workspaceId)
+  if (registration?.owner === owner) moduleRuntimes.delete(workspaceId)
+}
+
+export function getModuleAIChatRuntime(workspaceId: string | undefined): AIChatRuntime | null {
+  return workspaceId ? (moduleRuntimes.get(workspaceId)?.runtime ?? null) : null
 }

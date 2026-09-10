@@ -37,6 +37,26 @@ interface PreparedTurn {
 
 export const preparedTurnCache = new Map<string, PreparedTurn>()
 
+export function awaitWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+  if (signal.aborted)
+    return Promise.reject(signal.reason ?? new DOMException("Aborted", "AbortError"))
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason ?? new DOMException("Aborted", "AbortError"))
+    signal.addEventListener("abort", onAbort, { once: true })
+    promise.then(
+      value => {
+        signal.removeEventListener("abort", onAbort)
+        resolve(value)
+      },
+      error => {
+        signal.removeEventListener("abort", onAbort)
+        reject(error)
+      }
+    )
+  })
+}
+
 function latestUser(messages: UIMessage[]): UIMessage | undefined {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     if (messages[index].role === "user") return messages[index]
@@ -78,14 +98,16 @@ export function clearPreparedTurn(key?: string): void {
   else preparedTurnCache.clear()
 }
 
-export function useChatTransport() {
+export function useChatTransport(workspaceId?: string) {
   return useMemo(
     () =>
       async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const body = init?.body ? JSON.parse(init.body as string) : {}
         const transcript = (body.messages ?? []) as UIMessage[]
-        const conversationId = useAIChatV2Store.getState().currentConversationId
-        if (!conversationId) return errorResponse("REQUEST_FAILED")
+        const conversationId =
+          typeof body.conversationId === "string" ? body.conversationId : undefined
+        if (!conversationId || !workspaceId || body.workspaceId !== workspaceId)
+          return errorResponse("REQUEST_FAILED")
         const attemptKey = buildAttemptKey(conversationId, transcript)
         if (!attemptKey) return errorResponse("REQUEST_FAILED")
         const forced = body.compactionMode === "force-overflow-recovery"
@@ -104,19 +126,22 @@ export function useChatTransport() {
 
           if (getMindmapContextEnabled() && !isToolResultRoundtrip) {
             try {
-              mindmapContextText = readCurrentDocumentOutline().content
+              mindmapContextText = readCurrentDocumentOutline({
+                resolver: { resolve: () => workspaceId },
+              }).content
             } catch (error) {
               logger.warn("[useChatTransport] 获取文档大纲失败", { error })
             }
           }
           if (!isToolResultRoundtrip) {
             try {
-              const recall = await recallForQuery(
-                extractLatestUserText(transcript),
-                getRecentMessageIds(transcript)
+              const recall = await awaitWithAbort(
+                recallForQuery(extractLatestUserText(transcript), getRecentMessageIds(transcript)),
+                init?.signal ?? undefined
               )
               memoryContextText = recall?.injectedText
             } catch (error) {
+              if (init?.signal?.aborted) throw error
               logger.warn("[useChatTransport] 长期记忆召回失败", { error })
             }
           }
@@ -144,7 +169,7 @@ export function useChatTransport() {
           init?.signal ?? undefined
         )
       },
-    []
+    [workspaceId]
   )
 }
 
@@ -170,11 +195,11 @@ export async function runLocalStream(
   const responseStartedAt = Date.now()
   const turnStartedAt = readTurnStartedAt(input.transcript) ?? responseStartedAt
   try {
-    const config = await loadModelsConfig()
+    const config = await awaitWithAbort(loadModelsConfig(), signal)
     const resolved = input.requestedModelId
       ? resolveChatModel(config, input.requestedModelId)
       : resolveDefaultChatModel(config)
-    const mcpTools = await mcpManager.loadTools()
+    const mcpTools = await awaitWithAbort(mcpManager.loadTools(), signal)
     const tools: ToolSet = { ...getAgentTools(), ...mcpTools }
     const compacted = await contextCompactor.prepare({
       conversationId: input.conversationId,
@@ -186,7 +211,10 @@ export async function runLocalStream(
       signal,
     })
     const modelMessages = pruneMessages({
-      messages: await convertToModelMessages(cloneMessages(compacted.messages)),
+      messages: await awaitWithAbort(
+        convertToModelMessages(cloneMessages(compacted.messages)),
+        signal
+      ),
       reasoning: "before-last-message",
       emptyMessages: "remove",
     })
@@ -221,7 +249,10 @@ export async function runLocalStream(
       onError: serializeChatError,
     })
   } catch (error) {
-    if (signal?.aborted) clearPreparedTurn(input.attemptKey)
+    if (signal?.aborted) {
+      clearPreparedTurn(input.attemptKey)
+      throw error
+    }
     if (input.force) clearPreparedTurn(input.attemptKey)
     return errorResponse(input.force ? "CONTEXT_OVERFLOW" : serializeChatError(error))
   }
