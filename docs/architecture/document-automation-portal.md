@@ -1,7 +1,7 @@
 # 文档自动化 Portal Epic
 
 - 状态：已实现；CLI/MCP release artifacts 和发布工作流已完成
-- 最近更新：2026-08-22
+- 最近更新：2026-09-10
 - 适用范围：ZoeyMind Desktop
 - 稳定术语：[CONTEXT.md](../../CONTEXT.md)
 
@@ -18,6 +18,14 @@ Portal 是文档自动化内核，不是某个 Agent 的 Adapter。AI SDK、CLI 
 第一阶段操作当前已经打开且 ready 的文档标签。未打开文档的后台无界面加载与保存不属于本 Epic。
 
 外部 CLI 与 MCP Adapter 暴露 `projects`、`activate_project`、`query_current_mindmap`、`edit_current_mindmap`。外部调用方先控制活动项目，随后 query/edit 在每次调用开始时解析当前 ready 的 `ProjectSession`。内置 AI Chat 不暴露项目控制，只暴露当前导图 query/edit，并使用同一个 Portal 内核。内部文档身份、节点 UID 和编辑审查 token 均不进入模型输入。
+
+内置 Chat 的运行时按 workspace 注册，查询和编辑绑定发起请求的文档，不随活动标签切换重定向。停止会使旧工具执行失效，并等待请求流和 SDK 状态结束后再接受中断后的消息；对话持久化使用消息所属对话，而非全局当前对话。
+
+“全部会话”中选择其它项目的历史时，显式加载到当前 Chat，不自动切换导图，也不修改历史会话的原始项目归属。后续消息持久化到所选会话；工具作用于发起请求时当前 Chat 所属的文档。历史加载不要求原项目存在或已打开。
+
+结构化编辑中，`set_node` 只修改节点自身内容，包含文档根，始终保留子节点。模块骨架使用 `insert_subtree`（`before` / `after` / `last-child`）；完整替换使用 `replace_subtree`。`append_cases` 只接收用例。父节点改标题可以与其子节点删除、插入组合；删除祖先与修改后代仍作为冲突整体拒绝。结构化编辑仅在显式 `returnView` 时返回视图，草稿诊断有数量上限并返回汇总。
+
+Chat 的上下文占用与累计计费用量分离：`contextUsage` 来自最后一个模型步骤，`totalUsage` 只表示多步累计消耗。压缩预算使用当前投影与实际发送的 system/tools；取消或切换对话后，过期摘要不能发布到新对话。
 
 ## MCP 配置
 
