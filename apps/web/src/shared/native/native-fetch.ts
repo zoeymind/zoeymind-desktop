@@ -35,6 +35,8 @@ function base64ToUint8Array(b64: string): Uint8Array {
 }
 
 export const nativeFetch: typeof fetch = async (input, init) => {
+  const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined)
+  signal?.throwIfAborted()
   const url = typeof input === "string" || input instanceof URL ? String(input) : input.url
   const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase()
   const headers: Record<string, string> = {}
@@ -62,107 +64,98 @@ export const nativeFetch: typeof fetch = async (input, init) => {
     bodyStr = await input.text()
   }
 
+  signal?.throwIfAborted()
   const requestId = createUUID()
   const unlisten: UnlistenFn[] = []
-  const cleanup = () => {
-    for (const fn of unlisten) {
-      try {
-        fn()
-      } catch {
-        /* ignore */
-      }
-    }
-    unlisten.length = 0
-  }
-
-  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
-  let headResolve: ((h: HeadEventPayload) => void) | null = null
-  let headReject: ((e: unknown) => void) | null = null
-  const headPromise = new Promise<HeadEventPayload>((resolve, reject) => {
-    headResolve = resolve
-    headReject = reject
+  let resolveResponse!: (response: Response) => void
+  let rejectResponse!: (error: unknown) => void
+  const responsePromise = new Promise<Response>((resolve, reject) => {
+    resolveResponse = resolve
+    rejectResponse = reject
   })
-
-  unlisten.push(
-    await listen<HeadEventPayload>(`http:${requestId}:head`, event => {
-      headResolve?.(event.payload)
-    })
-  )
-  unlisten.push(
-    await listen<ChunkEventPayload>(`http:${requestId}:chunk`, event => {
-      if (!controllerRef) return
-      try {
-        controllerRef.enqueue(base64ToUint8Array(event.payload.bytes))
-      } catch {
-        /* stream closed */
-      }
-    })
-  )
-  unlisten.push(
-    await listen<Record<string, never>>(`http:${requestId}:done`, () => {
-      try {
-        controllerRef?.close()
-      } catch {
-        /* already closed */
-      }
-      cleanup()
-    })
-  )
-  unlisten.push(
-    await listen<ErrorEventPayload>(`http:${requestId}:error`, event => {
-      const err = new Error(event.payload.message)
-      if (controllerRef) {
-        try {
-          controllerRef.error(err)
-        } catch {
-          /* already closed */
-        }
-      } else {
-        headReject?.(err)
-      }
-      cleanup()
-    })
-  )
-
-  // AbortSignal: 触发 Rust 侧取消 + 关流
+  let finished = false
+  let started = false
+  let hasHeaders = false
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  const cleanup = () => {
+    signal?.removeEventListener("abort", onAbort)
+    for (const dispose of unlisten.splice(0)) dispose()
+  }
+  const fail = (error: unknown) => {
+    if (finished) return
+    finished = true
+    rejectResponse(error)
+    controller.error(error)
+    cleanup()
+  }
+  const abortNative = () => {
+    if (started) void invoke("http_stream_abort", { requestId }).catch(() => undefined)
+  }
   const onAbort = () => {
-    void invoke("http_stream_abort", { requestId }).catch(() => undefined)
-    try {
-      controllerRef?.close()
-    } catch {
-      /* ignore */
-    }
-    cleanup()
+    if (finished) return
+    abortNative()
+    fail(signal?.reason ?? new DOMException("The request was aborted", "AbortError"))
   }
-  init?.signal?.addEventListener("abort", onAbort, { once: true })
-
-  try {
-    await invoke("http_stream_start", {
-      req: {
-        requestId,
-        url,
-        method,
-        headers,
-        body: bodyStr,
-      },
-    })
-  } catch (err) {
-    cleanup()
-    throw err
-  }
-
-  const head = await headPromise
+  // Buffer immediately: native head/chunk/done events can arrive in the same task.
   const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      controllerRef = controller
+    start(value) {
+      controller = value
     },
     cancel() {
-      onAbort()
+      if (finished) return
+      finished = true
+      abortNative()
+      cleanup()
     },
   })
+  signal?.addEventListener("abort", onAbort, { once: true })
+  if (signal?.aborted) onAbort()
 
-  return new Response(body, {
-    status: head.status,
-    headers: new Headers(head.headers),
-  })
+  const subscribe = async <T>(event: string, callback: (payload: T) => void) => {
+    if (finished) return
+    const dispose = await listen<T>(`http:${requestId}:${event}`, event => {
+      if (!finished) callback(event.payload)
+    })
+    if (finished) dispose()
+    else unlisten.push(dispose)
+  }
+  const start = async () => {
+    await subscribe<HeadEventPayload>("head", head => {
+      try {
+        const nullBody = method === "HEAD" || [204, 205, 304].includes(head.status)
+        resolveResponse(new Response(nullBody ? null : body, head))
+        hasHeaders = true
+      } catch (error) {
+        abortNative()
+        fail(error)
+      }
+    })
+    await subscribe<ChunkEventPayload>("chunk", chunk => {
+      try {
+        controller.enqueue(base64ToUint8Array(chunk.bytes))
+      } catch (error) {
+        abortNative()
+        fail(error)
+      }
+    })
+    await subscribe("done", () => {
+      if (!hasHeaders) {
+        fail(new Error("HTTP stream ended before response headers"))
+        return
+      }
+      finished = true
+      controller.close()
+      cleanup()
+    })
+    await subscribe<ErrorEventPayload>("error", error => fail(new Error(error.message)))
+    if (finished) return
+    started = true
+    await invoke("http_stream_start", {
+      req: { requestId, url, method, headers, body: bodyStr },
+    })
+    // Abort may race with native registration while the start command is in flight.
+    if (signal?.aborted) abortNative()
+  }
+  void start().catch(fail)
+  return responsePromise
 }
