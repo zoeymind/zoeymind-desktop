@@ -39,8 +39,10 @@ try {
     temporary,
   );
 
-  const cliBin = join(temporary, "node_modules/.bin/zoeymind");
-  const mcpBin = join(temporary, "node_modules/.bin/zoeymind-mcp");
+  const binSuffix = process.platform === "win32" ? ".cmd" : "";
+  const binDirectory = join(temporary, "node_modules/.bin");
+  const cliBin = join(binDirectory, `zoeymind${binSuffix}`);
+  const mcpBin = join(binDirectory, `zoeymind-mcp${binSuffix}`);
   const cliPackage = JSON.parse(
     readFileSync(
       join(temporary, "node_modules/@zoeymind/cli/package.json"),
@@ -63,7 +65,16 @@ try {
   if (!readFileSync(mcpBin, "utf8").includes("node"))
     throw new Error("MCP executable link is missing");
 
-  const cliRun = spawnSync(cliBin, ["doctor", "--json"], {
+  // npm's Windows shim is a batch file, not a directly executable program.
+  // A fixed command in the bin directory avoids quoting the temporary path.
+  const command =
+    process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : cliBin;
+  const args =
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", "zoeymind.cmd doctor --json"]
+      : ["doctor", "--json"];
+  const cliRun = spawnSync(command, args, {
+    cwd: binDirectory,
     encoding: "utf8",
     env: {
       ...process.env,
@@ -73,10 +84,15 @@ try {
       XDG_DATA_HOME: temporary,
     },
   });
+  if (cliRun.error) throw cliRun.error;
+  if (cliRun.signal || !cliRun.stdout?.trim())
+    throw new Error(
+      `Packaged CLI produced no JSON (status=${cliRun.status}, signal=${cliRun.signal}): ${cliRun.stderr ?? ""}`,
+    );
   const cliOutput = `${cliRun.stdout}${cliRun.stderr}`;
   const cliReport = JSON.parse(cliRun.stdout);
   if (
-    cliRun.status === 0 ||
+    cliRun.status !== 1 ||
     cliReport.ok !== false ||
     cliReport.checks?.find((check) => check.id === "desktop-broker")?.status !==
       "fail"
